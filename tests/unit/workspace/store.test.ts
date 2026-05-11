@@ -7,6 +7,8 @@ import {
   bddViewpoint,
   IBD_VIEWPOINT_ID,
   ibdViewpoint,
+  REQUIREMENTS_VIEWPOINT_ID,
+  requirementsViewpoint,
 } from '@/viewpoints';
 import {
   DEFAULT_LEFT_PANE_WIDTH,
@@ -67,6 +69,12 @@ describe('workspace store', () => {
     expect(s.viewpoints.has(IBD_VIEWPOINT_ID)).toBe(true);
     expect(s.viewpoints.get(IBD_VIEWPOINT_ID)).toBe(ibdViewpoint);
     expect(s.viewpoints.get(BDD_VIEWPOINT_ID)).toBe(bddViewpoint);
+  });
+
+  it('registers the Requirements viewpoint at bootstrap (issue #70)', () => {
+    const s = useWorkspaceStore.getState();
+    expect(s.viewpoints.has(REQUIREMENTS_VIEWPOINT_ID)).toBe(true);
+    expect(s.viewpoints.get(REQUIREMENTS_VIEWPOINT_ID)).toBe(requirementsViewpoint);
   });
 
   it('bootstrap creates a new Untitled Project when storage is empty', async () => {
@@ -257,6 +265,37 @@ describe('workspace store', () => {
       .diagrams.find((d) => d.id === id);
     expect(ibd?.name).toBe('Internal Block Diagram');
     expect(ibd?.context).toBeUndefined();
+  });
+
+  it('createDiagram appends a Requirements diagram with no context and persists it (#70)', async () => {
+    const storage = makeMemoryStorage();
+    const repository = createInMemorySessionRepository({ storage });
+    const user = createSessionUser();
+    await useWorkspaceStore.getState().bootstrap({ repository, user, storage });
+
+    const id = useWorkspaceStore
+      .getState()
+      .createDiagram(REQUIREMENTS_VIEWPOINT_ID);
+    expect(id).not.toBeNull();
+
+    const s = useWorkspaceStore.getState();
+    const reqs = s.diagrams.find((d) => d.id === id);
+    expect(reqs).toBeDefined();
+    expect(reqs!.viewpointId).toBe(REQUIREMENTS_VIEWPOINT_ID);
+    // ADR 0004 § 1: no Diagram.context link for Requirements diagrams.
+    expect(reqs!.context).toBeUndefined();
+    expect(reqs!.name).toBe('Requirements Diagram');
+    expect(reqs!.positions).toEqual({});
+
+    // Persistence: simulate a reload and confirm the diagram is back.
+    resetWorkspaceStoreForTests();
+    await useWorkspaceStore.getState().bootstrap({ repository, user, storage });
+    const reloaded = useWorkspaceStore
+      .getState()
+      .diagrams.find((d) => d.viewpointId === REQUIREMENTS_VIEWPOINT_ID);
+    expect(reloaded).toBeDefined();
+    expect(reloaded!.name).toBe('Requirements Diagram');
+    expect(reloaded!.context).toBeUndefined();
   });
 
   it('createDiagram returns null for an unknown viewpoint id', async () => {
