@@ -247,6 +247,28 @@ describe('ElementRegistry — update', () => {
     );
     expect(beforeAgain?.name).toBe('Vehicle');
   });
+
+  it('accepts optional base fields (documentation, ownerId) even when the instance has none set', () => {
+    const r = createElementRegistry();
+    const v = mkPartDef('Vehicle');
+    r.add(v);
+    expect(() =>
+      r.update<'PartDefinition'>(v.id, { documentation: 'A car block' }),
+    ).not.toThrow();
+    const after = r.get(v.id);
+    expect(after?.documentation).toBe('A car block');
+  });
+
+  it('setting an optional base field to undefined clears it without throwing', () => {
+    const r = createElementRegistry();
+    const v: PartDefinitionElement = {
+      ...mkPartDef('Vehicle'),
+      documentation: 'old',
+    };
+    r.add(v);
+    r.update<'PartDefinition'>(v.id, { documentation: undefined });
+    expect(r.get(v.id)?.documentation).toBeUndefined();
+  });
 });
 
 describe('ElementRegistry — checkIntegrity', () => {

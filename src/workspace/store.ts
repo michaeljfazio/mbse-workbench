@@ -137,6 +137,7 @@ export interface WorkspaceActions {
   saveProject(): Promise<void>;
   createBlock(position?: NodePosition): ElementId | null;
   renameElement(id: ElementId, name: string): void;
+  setElementDescription(id: ElementId, description: string): void;
   deleteElement(id: ElementId): void;
   deleteSelection(): void;
   unlinkEdge(id: EdgeId): void;
@@ -250,6 +251,10 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
         edges: r.edges(),
         modelVersion: get().bus?.version() ?? 0,
       });
+      // Autosave after every committed dispatch so a page refresh sees the
+      // latest model. The repository is sessionStorage-backed; the call is
+      // effectively synchronous and any failure is swallowed there.
+      void get().saveProject();
     });
 
     set({
@@ -351,6 +356,23 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
         kind: 'update-element',
         id,
         patch: { name: trimmed },
+      },
+      user,
+    );
+  },
+
+  setElementDescription(id, description) {
+    const { bus, user, registry } = get();
+    if (!bus || !user || !registry) return;
+    const existing = registry.get(id);
+    if (!existing) return;
+    const next = description.length === 0 ? undefined : description;
+    if ((existing.documentation ?? undefined) === next) return;
+    bus.dispatch(
+      {
+        kind: 'update-element',
+        id,
+        patch: { documentation: next },
       },
       user,
     );

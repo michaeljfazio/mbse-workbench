@@ -1,3 +1,4 @@
+import { Inspector } from './inspector/Inspector';
 import { useWorkspaceStore, type InspectorTab } from './store';
 
 interface TabDef {
@@ -64,9 +65,7 @@ export function SidebarPane({ width }: SidebarPaneProps): JSX.Element {
         className="flex-1 overflow-auto p-4 text-sm"
       >
         {inspectorTab === 'inspector' ? (
-          <p className="text-muted-foreground">
-            Select an element to edit its properties.
-          </p>
+          <Inspector />
         ) : (
           <p className="text-muted-foreground">Chat lands in Phase 11.</p>
         )}

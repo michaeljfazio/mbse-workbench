@@ -51,6 +51,12 @@ const ELEMENT_EDGE_KINDS = new Set<ElementKind>([
   'Transition',
 ]);
 
+// Optional fields defined on ElementBase. They are valid on every element
+// kind, but the instance may not carry the property if it was never set.
+// The update guard whitelists them so a first-time assignment is not
+// mistaken for a kind mismatch.
+const ELEMENT_BASE_OPTIONAL_FIELDS = new Set<string>(['ownerId', 'documentation']);
+
 function hasEndpoints(element: ModelElement): element is ElementWithEndpoints {
   return ELEMENT_EDGE_KINDS.has(element.kind);
 }
@@ -117,7 +123,7 @@ export function createElementRegistry(): ElementRegistry {
         if (key === 'id' || key === 'kind') {
           throw new Error(`update patch must not contain ${key}`);
         }
-        if (!(key in existing)) {
+        if (!(key in existing) && !ELEMENT_BASE_OPTIONAL_FIELDS.has(key)) {
           throw new Error(
             `update kind mismatch: element ${id} is ${existing.kind}, ` +
               `but patch field "${key}" is not part of that kind`,
