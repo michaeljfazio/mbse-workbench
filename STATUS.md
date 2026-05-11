@@ -4,14 +4,14 @@
 phase:2 — BDD vertical slice (template for all viewpoints)
 
 ## Current iteration
-- Iteration #: 14
+- Iteration #: 15
 - Started: 2026-05-11
-- Branch: issue/34-bdd-dagre-auto-layout
-- Working on: #34 — feat(bdd): dagre auto-layout + per-view manual position persistence
+- Branch: issue/33-project-tree-drag-from-tree
+- Working on: #33 — feat(workspace): project tree pane with drag-from-tree-to-canvas (PR #42 open, auto-merge enabled, CI running)
 
 ## Last test run
-- Command: `pnpm run check` (darwin, visual gate skipped per playwright config; visual specs re-run in Linux container and pass against committed baselines)
-- Result: PASS — 168 unit tests (19 files) + 42 e2e (chromium + webkit, functional + a11y); Linux `--grep @visual` = 10 visual specs PASS
+- Command: `pnpm run check` (darwin; visual gate skipped per playwright config, visual specs re-verified in Linux container against committed baselines)
+- Result: PASS — 180 unit (20 files) + 50 e2e (chromium + webkit, functional + a11y); Linux `--grep @visual` = 12 visual specs PASS (10 prior + 2 new for project-tree-populated)
 - Failures: (none)
 
 ## Known issues / blockers
@@ -45,6 +45,7 @@ phase:2 — BDD vertical slice (template for all viewpoints)
 - 2026-05-11: **Position-as-command-bus** (#34) — `update-diagram-position` is now a first-class `Command` variant. The bus reads/writes positions via a new `DiagramPositionStore` port (`src/commands/diagramPositions.ts`); the workspace store implements it on a closure that mutates `diagrams[d].positions` via Zustand `set`. **Reverses the earlier #31 "presentation-only, no command-bus" decision** because issue #34 explicitly requires single-step undo for both manual drag and auto-layout. `createBlock` wraps create-element + initial position in a compound, so create-and-place is one undo step. `setNodePosition` short-circuits when the new position equals the old, so mouse-up-without-move drags don't pollute the undo stack. `delete-element` deliberately leaves the position entry in place so undo restores the element at its prior coordinates without needing extra inverse machinery — verified by `bddActions.test.ts`. `Project.diagrams` round-trips through `InMemorySessionRepository`; `load()` normalises missing `diagrams` to `[]` for forward-compat (links: #34).
 - 2026-05-11: Auto-layout (#34) is a single bus dispatch of a compound command containing N `update-diagram-position` sub-commands (one per element returned by `dagreLayout`). One Cmd-Z reverts the whole layout. `dagreLayout(elements, edges, options)` builds a fresh `dagre.graphlib.Graph()` every call (strict-mode safety), returns `Map<ElementId, NodePosition>` translated from dagre's centre coordinates to React Flow's top-left. Default rankdir TB, nodesep 60, ranksep 80. Toolbar "Auto-layout" button calls `runAutoLayout(diagram.id)`; disabled when there are no elements (links: #34).
 - 2026-05-11: Playwright drag tests of selected blocks fall over a strict-mode locator violation because the Inspector container also carries `data-element-id` for the currently-selected element. Fix: always scope by `[data-testid="bdd-block-${id}"]` rather than the bare attribute. Recorded in `docs/CONTEXT.md` (links: #34).
+- 2026-05-11: Project tree (#33) — kind groups computed from union of (a) registry kinds and (b) `paletteItems[].elementKind` across all registered viewpoints; an empty BDD project still shows the "Blocks" affordance. `draggable` only when kind is in the *active* viewpoint's palette. Drag payload uses `application/x-mbse-element-kind` (`PROJECT_TREE_DRAG_TYPE`). Canvas drop validates against `acceptedElementKinds`, translates via `reactFlow.screenToFlowPosition`, centers on cursor, auto-selects new element. Roving-tabindex via derived focus key (`explicitFocusKey ?? visibleKeys[0]`) — no state-syncing useEffect. The pane wrapper now uses `aria-label="Project tree pane"` so the inner `role="tree"` keeps the canonical `Project tree` name that existing workspace-shell tests assert on (links: #33, PR #42).
 
 ## Next action
-On iteration 15: open PR #N for #34 and let auto-merge fire CI. After merge, pick from remaining Phase 2 children (#33 project tree drag-from-tree, #35 PNG/SVG export, #36 Phase 2 gate e2e). #33 and #35 are independent of each other and both Sonnet-routine; #36 depends on all of #33/#35/#34 (now merged). Natural next pick is #33 (project tree) because Phase 2's empty left pane is the most visible UX gap; export (#35) can wait until the canvas content is richer.
+Wait for PR #42 CI + auto-merge. After merge: remaining Phase 2 children are #35 (PNG/SVG export) and #36 (Phase 2 gate e2e). #36 depends on everything else, so pick #35 next. After #35 merges, #36 closes Phase 2 with the comprehensive smoke test and tags vphase-2.
