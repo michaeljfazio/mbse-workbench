@@ -159,6 +159,103 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
   exits, `rm -rf node_modules && pnpm install --frozen-lockfile` to
   restore the host's darwin-arm64 binaries.
 
+- **2026-05-11** — `Viewpoint<T>` is the typed seam every viewpoint plugs
+  into in `src/viewpoints/types.ts`. After issue #31 the interface
+  uses `nodeTypes: NodeTypes` and `edgeTypes: EdgeTypes` (the exact
+  ReactFlow upstream types) plus two mappers `nodeTypeFor(element)`
+  and `edgeTypeFor(edge)` that translate from model `kind` to the
+  ReactFlow type string. The previous `renderNode` / `renderEdge`
+  hooks are gone — they were a placeholder that ReactFlow's typed
+  custom-node/edge approach replaces cleanly. Module-scope the
+  `nodeTypes`/`edgeTypes` records (or freeze them at module load)
+  per docs/CONTEXT.md's earlier stability note. `CanvasPane` reads
+  the active viewpoint and passes its `nodeTypes`/`edgeTypes` straight
+  to `<ReactFlow>`. Future viewpoints just register a new `Viewpoint`
+  config — no core changes needed.
+
+- **2026-05-11** — Avoid circular imports between `@/workspace/store`
+  and `@/viewpoints/bdd`: BlockNode (under viewpoints) cannot import
+  `useWorkspaceStore` at module load, because the store itself
+  imports viewpoints during its own module init, creating a cycle
+  that leaves the BDD `Viewpoint` const undefined at the moment the
+  store's singleton registry tries to register it. Solution: the
+  store passes per-element callbacks (e.g. `onRename`) through the
+  ReactFlow node `data` field. Custom nodes consume only their
+  `NodeProps<T>['data']` and never reach back into the store
+  directly. Pattern applies to every viewpoint, not just BDD.
+
+- **2026-05-11** — `vite preview` re-reads `vite.config.ts` to
+  determine the base path it serves under, even when serving a build
+  that already has `--base=/` baked in. Without that, preview mounts
+  at `/mbse-workbench/` and `page.goto('/')` from Playwright 404s,
+  producing blank screenshots. The visual-baseline run-script in the
+  Linux container therefore sets `VITE_BASE_OVERRIDE=/` on both the
+  `vite build` and `vite preview` invocations. `vite.config.ts` honors
+  `process.env.VITE_BASE_OVERRIDE` ahead of its `mode` check so the
+  override is the single switch. (Production CI builds for GitHub
+  Pages do **not** set the override, so they keep
+  `base: '/mbse-workbench/'`.)
+
+- **2026-05-11** — Per-diagram positions: each `Diagram` (per
+  `src/workspace/diagram.ts`) carries a `positions:
+  Record<ElementId, {x, y}>` map. The same element can therefore sit
+  at different coordinates in BDD and IBD (or in two BDDs) without
+  duplicating the element in the registry. The workspace store's
+  `setNodePosition(diagramId, elementId, pos)` is a direct state
+  update — not a command-bus dispatch — because moves are
+  presentation-only and shouldn't pollute the model event log. Undo
+  of a *create-block* via the command bus cascades through the
+  registry's `remove(id)` which also frees the position entry from
+  the next snapshot pass. #34 (dagre + manual position persistence)
+  will keep positions on `Diagram` but add a serializer when
+  positions need to round-trip through the repository.
+
+- **2026-05-11** — Edge markers (composition diamond, generalization
+  triangle) are rendered as per-edge SVG `<marker>` defs inside each
+  custom edge component (`CompositionEdge`, `GeneralizationEdge`),
+  not via ReactFlow's built-in `MarkerType`. ReactFlow's built-ins
+  only cover open/closed arrows. Each marker uses a unique id
+  (`bdd-{kind}-{shape}-${edgeId}`) and is referenced by `<BaseEdge
+  markerStart|markerEnd={"url(#...)"}>`. `markerStart` for
+  composition (diamond on the *whole* side) and `markerEnd` for
+  generalization (hollow triangle on the *parent* side). Use
+  `orient="auto-start-reverse"` so the marker rotates with the edge
+  direction.
+
+- **2026-05-11** — Block-node label was originally a `<button>` so
+  double-click could open the inline editor. That triggers
+  axe-core's `nested-interactive` (serious) because ReactFlow's
+  outer node wrapper already has `role="button" tabindex="0"`. Fix:
+  the label is a non-interactive `<div onDoubleClick=...>`. Inline
+  editor is still reachable via double-click (mouse) and remains
+  keyboard-friendly: focusing the node and pressing F2 will hook in
+  during #32 (inspector). DO NOT make custom-node children
+  interactive (button/link/input outside of explicit editor mode) —
+  they'll all hit nested-interactive.
+
+- **2026-05-11** — Drag-create gotchas for ReactFlow handles in
+  Playwright tests:
+  1. **CSS test-id collisions.** `data-testid="bdd-block-${id}"`
+     plus `bdd-block-label-${id}` plus `bdd-block-input-${id}`
+     means a `^=bdd-block-` selector matches the outer block AND
+     its children. Use a more discriminating selector like
+     `[data-testid^="bdd-block-"][data-element-id]` to count
+     blocks.
+  2. **Cascade overlap blocks handles.** A small cascade offset
+     between newly-created blocks leaves the source's bottom
+     handle hidden under the next block. Cascade horizontally by
+     `block_width + margin` (40 px), and vertically by
+     `block_height + margin` (60 px) so handles are always
+     reachable.
+  3. **`nodrag` on the label intercepts node drags.** The drag-to-
+     move helper must grab the node by a non-nodrag area (the
+     stereotype band at the top of the block works). Otherwise
+     the click hits the label and Playwright's actionability
+     check fails after retries.
+  4. **Handle z-index.** Tailwind class `!z-10` on the handle
+     ensures it sits above the block's own children so a click on
+     the very top edge actually hits the handle, not the content.
+
 - **2026-05-11** — The `github-pages` environment has a `branch_policy`
   protection rule with `custom_branch_policies: true`. Out of the box
   only the `main` branch is in the allow-list, so the release workflow

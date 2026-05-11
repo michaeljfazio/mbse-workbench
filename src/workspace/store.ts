@@ -1,7 +1,19 @@
 import { create } from 'zustand';
 
-import type { ElementId, ElementRegistry } from '@/model';
-import { createElementRegistry, createProjectId } from '@/model';
+import type {
+  EdgeId,
+  ElementId,
+  ElementRegistry,
+  ModelEdge,
+  ModelElement,
+  PartDefinitionElement,
+} from '@/model';
+import {
+  createEdgeId,
+  createElementId,
+  createElementRegistry,
+  createProjectId,
+} from '@/model';
 import type { CommandBus } from '@/commands';
 import { createCommandBus } from '@/commands';
 import type { CollaborationProvider, User } from '@/collab';
@@ -10,6 +22,7 @@ import type { ModelRepository, Project } from '@/repository';
 import {
   bddViewpoint,
   createViewpointRegistry,
+  type BddEdgeKind,
   type Viewpoint,
   type ViewpointRegistry,
 } from '@/viewpoints';
@@ -18,6 +31,7 @@ import {
   createDiagramId,
   type Diagram,
   type DiagramId,
+  type NodePosition,
 } from './diagram';
 
 export const LAYOUT_STORAGE_KEY = 'mbse:v1:workspace:layout';
@@ -26,6 +40,9 @@ export const DEFAULT_LEFT_PANE_WIDTH = 256;
 export const DEFAULT_RIGHT_PANE_WIDTH = 360;
 export const MIN_PANE_WIDTH = 200;
 export const MAX_PANE_WIDTH = 600;
+
+const NEW_BLOCK_DEFAULT_POSITION: NodePosition = { x: 80, y: 80 };
+const NEW_BLOCK_CASCADE_OFFSET = 48;
 
 export type InspectorTab = 'inspector' | 'chat';
 
@@ -100,11 +117,14 @@ export interface WorkspaceState {
   readonly project: Project | null;
   readonly diagrams: readonly Diagram[];
   readonly activeDiagramId: DiagramId | null;
+  readonly elements: readonly ModelElement[];
+  readonly edges: readonly ModelEdge[];
   readonly selectedElementIds: readonly ElementId[];
   readonly leftPaneWidth: number;
   readonly rightPaneWidth: number;
   readonly inspectorTab: InspectorTab;
   readonly storage: Storage | null;
+  readonly modelVersion: number;
 }
 
 export interface WorkspaceActions {
@@ -115,6 +135,23 @@ export interface WorkspaceActions {
   setRightPaneWidth(px: number): void;
   setInspectorTab(tab: InspectorTab): void;
   saveProject(): Promise<void>;
+  createBlock(position?: NodePosition): ElementId | null;
+  renameElement(id: ElementId, name: string): void;
+  deleteElement(id: ElementId): void;
+  deleteSelection(): void;
+  unlinkEdge(id: EdgeId): void;
+  linkBlocks(
+    source: ElementId,
+    target: ElementId,
+    kind: BddEdgeKind,
+  ): EdgeId | null;
+  setNodePosition(
+    diagramId: DiagramId,
+    elementId: ElementId,
+    position: NodePosition,
+  ): void;
+  undo(): void;
+  redo(): void;
 }
 
 export type WorkspaceStore = WorkspaceState & WorkspaceActions;
@@ -130,11 +167,14 @@ const INITIAL_STATE: WorkspaceState = {
   project: null,
   diagrams: [],
   activeDiagramId: null,
+  elements: [],
+  edges: [],
   selectedElementIds: [],
   leftPaneWidth: DEFAULT_LEFT_PANE_WIDTH,
   rightPaneWidth: DEFAULT_RIGHT_PANE_WIDTH,
   inspectorTab: 'inspector',
   storage: null,
+  modelVersion: 0,
 };
 
 function newEmptyProject(): Project {
@@ -146,6 +186,23 @@ function newEmptyProject(): Project {
     modifiedAt: now,
     elements: [],
     edges: [],
+  };
+}
+
+function nextBlockName(elements: readonly ModelElement[]): string {
+  const blocks = elements.filter((e): e is PartDefinitionElement => e.kind === 'PartDefinition');
+  let n = blocks.length + 1;
+  const taken = new Set(blocks.map((b) => b.name));
+  while (taken.has(`Block ${n}`)) n += 1;
+  return `Block ${n}`;
+}
+
+function nextBlockPosition(diagram: Diagram | null): NodePosition {
+  if (!diagram) return NEW_BLOCK_DEFAULT_POSITION;
+  const count = Object.keys(diagram.positions).length;
+  return {
+    x: NEW_BLOCK_DEFAULT_POSITION.x + count * NEW_BLOCK_CASCADE_OFFSET,
+    y: NEW_BLOCK_DEFAULT_POSITION.y + count * NEW_BLOCK_CASCADE_OFFSET,
   };
 }
 
@@ -182,7 +239,18 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       id: createDiagramId(),
       viewpointId: bddViewpoint.id,
       name: 'Main BDD',
+      positions: {},
     };
+
+    bus.subscribe(() => {
+      const r = get().registry;
+      if (!r) return;
+      set({
+        elements: r.elements(),
+        edges: r.edges(),
+        modelVersion: get().bus?.version() ?? 0,
+      });
+    });
 
     set({
       initialized: true,
@@ -194,10 +262,13 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       project,
       diagrams: [diagram],
       activeDiagramId: diagram.id,
+      elements: registry.elements(),
+      edges: registry.edges(),
       selectedElementIds: [],
       leftPaneWidth: layout.leftPaneWidth,
       rightPaneWidth: layout.rightPaneWidth,
       storage: storageInst,
+      modelVersion: bus.version(),
     });
   },
 
@@ -244,6 +315,110 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
     await repository.save(updated);
     set({ project: updated });
   },
+
+  createBlock(position) {
+    const { bus, user, diagrams, activeDiagramId, elements } = get();
+    if (!bus || !user) return null;
+    const id = createElementId();
+    const block: PartDefinitionElement = {
+      id,
+      kind: 'PartDefinition',
+      name: nextBlockName(elements),
+      isAbstract: false,
+      propertyIds: [],
+      portIds: [],
+    };
+    bus.dispatch({ kind: 'create-element', element: block }, user);
+
+    const activeDiagram = diagrams.find((d) => d.id === activeDiagramId) ?? null;
+    const pos = position ?? nextBlockPosition(activeDiagram);
+    if (activeDiagram) {
+      get().setNodePosition(activeDiagram.id, id, pos);
+    }
+    return id;
+  },
+
+  renameElement(id, name) {
+    const { bus, user, registry } = get();
+    if (!bus || !user || !registry) return;
+    const trimmed = name.trim();
+    if (trimmed.length === 0) return;
+    const existing = registry.get(id);
+    if (!existing) return;
+    if (existing.name === trimmed) return;
+    bus.dispatch(
+      {
+        kind: 'update-element',
+        id,
+        patch: { name: trimmed },
+      },
+      user,
+    );
+  },
+
+  deleteElement(id) {
+    const { bus, user, registry } = get();
+    if (!bus || !user || !registry) return;
+    if (!registry.get(id)) return;
+    bus.dispatch({ kind: 'delete-element', id }, user);
+    set({
+      selectedElementIds: get().selectedElementIds.filter((s) => s !== id),
+    });
+  },
+
+  deleteSelection() {
+    const { selectedElementIds } = get();
+    for (const id of selectedElementIds) {
+      get().deleteElement(id);
+    }
+    set({ selectedElementIds: [] });
+  },
+
+  unlinkEdge(id) {
+    const { bus, user, registry } = get();
+    if (!bus || !user || !registry) return;
+    if (!registry.getEdge(id)) return;
+    bus.dispatch({ kind: 'unlink', id }, user);
+  },
+
+  linkBlocks(source, target, kind) {
+    const { bus, user, registry } = get();
+    if (!bus || !user || !registry) return null;
+    if (source === target) return null;
+    const sourceEl = registry.get(source);
+    const targetEl = registry.get(target);
+    if (!sourceEl || !targetEl) return null;
+    if (sourceEl.kind !== 'PartDefinition' || targetEl.kind !== 'PartDefinition') {
+      return null;
+    }
+    const edgeId = createEdgeId();
+    const edge: ModelEdge =
+      kind === 'Composition'
+        ? { id: edgeId, kind: 'Composition', sourceId: source, targetId: target }
+        : { id: edgeId, kind: 'Generalization', sourceId: source, targetId: target };
+    bus.dispatch({ kind: 'link', edge }, user);
+    return edgeId;
+  },
+
+  setNodePosition(diagramId, elementId, position) {
+    const { diagrams } = get();
+    const next = diagrams.map((d) => {
+      if (d.id !== diagramId) return d;
+      return {
+        ...d,
+        positions: { ...d.positions, [elementId]: position },
+      };
+    });
+    set({ diagrams: next });
+  },
+
+  undo() {
+    get().bus?.undo();
+  },
+
+  redo() {
+    get().bus?.redo();
+  },
 }));
 
 export function resetWorkspaceStoreForTests(): void {
@@ -255,4 +430,9 @@ export function getActiveViewpoint(state: WorkspaceState): Viewpoint | undefined
   const active = state.diagrams.find((d) => d.id === state.activeDiagramId);
   if (!active) return undefined;
   return state.viewpoints.get(active.viewpointId);
+}
+
+export function getActiveDiagram(state: WorkspaceState): Diagram | undefined {
+  if (!state.activeDiagramId) return undefined;
+  return state.diagrams.find((d) => d.id === state.activeDiagramId);
 }
