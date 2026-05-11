@@ -5,6 +5,13 @@ export type {
   ProjectId,
 } from './id';
 
+export {
+  createElementId,
+  createEdgeId,
+  createUserId,
+  createProjectId,
+} from './id';
+
 export type {
   ModelElement,
   ElementKind,
@@ -56,3 +63,14 @@ export type {
 } from './edges';
 
 export { EDGE_KINDS } from './edges';
+
+export type {
+  ElementRegistry,
+  ElementPatch,
+  IntegrityResult,
+  DanglingEdgeFinding,
+  DanglingElementRefFinding,
+  EndpointRole,
+} from './registry';
+
+export { createElementRegistry } from './registry';
