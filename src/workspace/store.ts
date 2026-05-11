@@ -6,6 +6,7 @@ import type {
   ElementId,
   ElementPatch,
   ElementRegistry,
+  ItemFlowElement,
   ModelEdge,
   ModelElement,
   PartDefinitionElement,
@@ -194,6 +195,8 @@ export interface WorkspaceActions {
   setPartUsageMultiplicity(id: ElementId, multiplicity: string): void;
   openInternalDiagram(partDefinitionId: ElementId): DiagramId | null;
   connectPorts(connection: Connection): ElementId | null;
+  connectItemFlow(connection: Connection): ElementId | null;
+  setItemFlowType(id: ElementId, itemType: string): void;
   undo(): void;
   redo(): void;
 }
@@ -303,6 +306,17 @@ function nextConnectionUsageName(elements: readonly ModelElement[]): string {
   let n = taken.size + 1;
   while (taken.has(`connection${n}`)) n += 1;
   return `connection${n}`;
+}
+
+function nextItemFlowName(elements: readonly ModelElement[]): string {
+  const taken = new Set(
+    elements
+      .filter((e): e is ItemFlowElement => e.kind === 'ItemFlow')
+      .map((e) => e.name),
+  );
+  let n = taken.size + 1;
+  while (taken.has(`flow${n}`)) n += 1;
+  return `flow${n}`;
 }
 
 export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
@@ -806,6 +820,35 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
     };
     bus.dispatch({ kind: 'create-element', element }, user);
     return id;
+  },
+
+  connectItemFlow(connection) {
+    const { bus, user, registry, elements } = get();
+    if (!bus || !user || !registry) return null;
+    const canonical = canonicalizeIbdConnection(connection, registry);
+    if (!canonical) return null;
+    const id = createElementId();
+    const element: ItemFlowElement = {
+      id,
+      kind: 'ItemFlow',
+      name: nextItemFlowName(elements),
+      sourceId: canonical.sourcePortUsageId,
+      targetId: canonical.targetPortUsageId,
+    };
+    bus.dispatch({ kind: 'create-element', element }, user);
+    return id;
+  },
+
+  setItemFlowType(id, itemType) {
+    const { bus, user, registry } = get();
+    if (!bus || !user || !registry) return;
+    const existing = registry.get(id);
+    if (!existing || existing.kind !== 'ItemFlow') return;
+    const trimmed = itemType.trim();
+    const next = trimmed.length === 0 ? undefined : trimmed;
+    if ((existing.itemType ?? undefined) === next) return;
+    const patch: ElementPatch<'ItemFlow'> = { itemType: next };
+    bus.dispatch({ kind: 'update-element', id, patch }, user);
   },
 
   undo() {

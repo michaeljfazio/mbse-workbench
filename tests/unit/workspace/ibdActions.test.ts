@@ -4,6 +4,7 @@ import { createSessionUser } from '@/collab';
 import type {
   ConnectionUsageElement,
   ElementId,
+  ItemFlowElement,
   PartDefinitionElement,
   PartUsageElement,
   PortDefinitionElement,
@@ -532,6 +533,285 @@ describe('workspace store — IBD actions (issue #50)', () => {
         .elements.find((e): e is ConnectionUsageElement => e.id === second)!;
       expect(firstEl.name).toBe('connection1');
       expect(secondEl.name).toBe('connection2');
+    });
+  });
+
+  describe('connectItemFlow — #52', () => {
+    async function seedItemFlowParts(): Promise<{
+      partA: PartUsageElement;
+      partB: PartUsageElement;
+    }> {
+      await bootstrap();
+      const defA = useWorkspaceStore.getState().createBlock()!;
+      useWorkspaceStore.getState().renameElement(defA, 'Producer');
+      useWorkspaceStore
+        .getState()
+        .addPortToDefinition(defA, { name: 'p', direction: 'out' });
+      const defB = useWorkspaceStore.getState().createBlock()!;
+      useWorkspaceStore.getState().renameElement(defB, 'Consumer');
+      useWorkspaceStore
+        .getState()
+        .addPortToDefinition(defB, { name: 'p', direction: 'in' });
+
+      const ibdId = useWorkspaceStore.getState().openInternalDiagram(defA)!;
+      const a = useWorkspaceStore
+        .getState()
+        .createPartUsage(ibdId, defA, { x: 0, y: 0 })!;
+      const b = useWorkspaceStore
+        .getState()
+        .createPartUsage(ibdId, defB, { x: 200, y: 0 })!;
+      return {
+        partA: findPartUsage(a)!,
+        partB: findPartUsage(b)!,
+      };
+    }
+
+    it('creates an ItemFlow element when the drag passes typed validation', async () => {
+      const { partA, partB } = await seedItemFlowParts();
+      const id = useWorkspaceStore.getState().connectItemFlow({
+        source: partA.id,
+        target: partB.id,
+        sourceHandle: partA.portUsageIds[0]!,
+        targetHandle: partB.portUsageIds[0]!,
+      })!;
+
+      const flow = useWorkspaceStore
+        .getState()
+        .elements.find((e): e is ItemFlowElement => e.id === id);
+      expect(flow?.kind).toBe('ItemFlow');
+      expect(flow?.sourceId).toBe(partA.portUsageIds[0]);
+      expect(flow?.targetId).toBe(partB.portUsageIds[0]);
+      expect(flow?.itemType).toBeUndefined();
+    });
+
+    it('canonicalises in → out drags so the saved source is the out port', async () => {
+      await bootstrap();
+      const defA = useWorkspaceStore.getState().createBlock()!;
+      useWorkspaceStore
+        .getState()
+        .addPortToDefinition(defA, { name: 'p', direction: 'in' });
+      const defB = useWorkspaceStore.getState().createBlock()!;
+      useWorkspaceStore
+        .getState()
+        .addPortToDefinition(defB, { name: 'p', direction: 'out' });
+
+      const ibdId = useWorkspaceStore.getState().openInternalDiagram(defA)!;
+      const a = findPartUsage(
+        useWorkspaceStore
+          .getState()
+          .createPartUsage(ibdId, defA, { x: 0, y: 0 })!,
+      )!;
+      const b = findPartUsage(
+        useWorkspaceStore
+          .getState()
+          .createPartUsage(ibdId, defB, { x: 200, y: 0 })!,
+      )!;
+
+      const inPortUsage = a.portUsageIds[0]!;
+      const outPortUsage = b.portUsageIds[0]!;
+      const id = useWorkspaceStore.getState().connectItemFlow({
+        source: a.id,
+        target: b.id,
+        sourceHandle: inPortUsage,
+        targetHandle: outPortUsage,
+      })!;
+
+      const flow = useWorkspaceStore
+        .getState()
+        .elements.find((e): e is ItemFlowElement => e.id === id)!;
+      expect(flow.sourceId).toBe(outPortUsage);
+      expect(flow.targetId).toBe(inPortUsage);
+    });
+
+    it('rejects in ↔ in', async () => {
+      await bootstrap();
+      const defA = useWorkspaceStore.getState().createBlock()!;
+      useWorkspaceStore
+        .getState()
+        .addPortToDefinition(defA, { name: 'p', direction: 'in' });
+      const defB = useWorkspaceStore.getState().createBlock()!;
+      useWorkspaceStore
+        .getState()
+        .addPortToDefinition(defB, { name: 'p', direction: 'in' });
+
+      const ibdId = useWorkspaceStore.getState().openInternalDiagram(defA)!;
+      const a = findPartUsage(
+        useWorkspaceStore
+          .getState()
+          .createPartUsage(ibdId, defA, { x: 0, y: 0 })!,
+      )!;
+      const b = findPartUsage(
+        useWorkspaceStore
+          .getState()
+          .createPartUsage(ibdId, defB, { x: 200, y: 0 })!,
+      )!;
+
+      const id = useWorkspaceStore.getState().connectItemFlow({
+        source: a.id,
+        target: b.id,
+        sourceHandle: a.portUsageIds[0]!,
+        targetHandle: b.portUsageIds[0]!,
+      });
+      expect(id).toBeNull();
+    });
+
+    it('accepts inout ↔ inout', async () => {
+      await bootstrap();
+      const defA = useWorkspaceStore.getState().createBlock()!;
+      useWorkspaceStore
+        .getState()
+        .addPortToDefinition(defA, { name: 'p', direction: 'inout' });
+      const defB = useWorkspaceStore.getState().createBlock()!;
+      useWorkspaceStore
+        .getState()
+        .addPortToDefinition(defB, { name: 'p', direction: 'inout' });
+
+      const ibdId = useWorkspaceStore.getState().openInternalDiagram(defA)!;
+      const a = findPartUsage(
+        useWorkspaceStore
+          .getState()
+          .createPartUsage(ibdId, defA, { x: 0, y: 0 })!,
+      )!;
+      const b = findPartUsage(
+        useWorkspaceStore
+          .getState()
+          .createPartUsage(ibdId, defB, { x: 200, y: 0 })!,
+      )!;
+
+      const id = useWorkspaceStore.getState().connectItemFlow({
+        source: a.id,
+        target: b.id,
+        sourceHandle: a.portUsageIds[0]!,
+        targetHandle: b.portUsageIds[0]!,
+      });
+      expect(id).not.toBeNull();
+    });
+
+    it('cascades default names flow1, flow2, …', async () => {
+      const { partA, partB } = await seedItemFlowParts();
+      const defA = partA.definitionId as ElementId;
+      const defB = partB.definitionId as ElementId;
+      useWorkspaceStore
+        .getState()
+        .addPortToDefinition(defA, { name: 'p2', direction: 'out' });
+      useWorkspaceStore
+        .getState()
+        .addPortToDefinition(defB, { name: 'p2', direction: 'in' });
+
+      const ibdId = useWorkspaceStore
+        .getState()
+        .diagrams.find((d) => d.viewpointId === 'ibd')!.id;
+      const a2 = findPartUsage(
+        useWorkspaceStore
+          .getState()
+          .createPartUsage(ibdId, defA, { x: 0, y: 200 })!,
+      )!;
+      const b2 = findPartUsage(
+        useWorkspaceStore
+          .getState()
+          .createPartUsage(ibdId, defB, { x: 200, y: 200 })!,
+      )!;
+
+      const first = useWorkspaceStore.getState().connectItemFlow({
+        source: a2.id,
+        target: b2.id,
+        sourceHandle: a2.portUsageIds[0]!,
+        targetHandle: b2.portUsageIds[0]!,
+      })!;
+      const second = useWorkspaceStore.getState().connectItemFlow({
+        source: a2.id,
+        target: b2.id,
+        sourceHandle: a2.portUsageIds[1]!,
+        targetHandle: b2.portUsageIds[1]!,
+      })!;
+      const firstEl = useWorkspaceStore
+        .getState()
+        .elements.find((e): e is ItemFlowElement => e.id === first)!;
+      const secondEl = useWorkspaceStore
+        .getState()
+        .elements.find((e): e is ItemFlowElement => e.id === second)!;
+      expect(firstEl.name).toBe('flow1');
+      expect(secondEl.name).toBe('flow2');
+    });
+
+    it('one undo step deletes the ItemFlow element', async () => {
+      const { partA, partB } = await seedItemFlowParts();
+      const id = useWorkspaceStore.getState().connectItemFlow({
+        source: partA.id,
+        target: partB.id,
+        sourceHandle: partA.portUsageIds[0]!,
+        targetHandle: partB.portUsageIds[0]!,
+      })!;
+      useWorkspaceStore.getState().undo();
+      expect(
+        useWorkspaceStore.getState().elements.find((e) => e.id === id),
+      ).toBeUndefined();
+    });
+  });
+
+  describe('setItemFlowType — #52', () => {
+    async function seedFlow(): Promise<ElementId> {
+      await bootstrap();
+      const defA = useWorkspaceStore.getState().createBlock()!;
+      useWorkspaceStore
+        .getState()
+        .addPortToDefinition(defA, { name: 'p', direction: 'out' });
+      const defB = useWorkspaceStore.getState().createBlock()!;
+      useWorkspaceStore
+        .getState()
+        .addPortToDefinition(defB, { name: 'p', direction: 'in' });
+      const ibdId = useWorkspaceStore.getState().openInternalDiagram(defA)!;
+      const a = findPartUsage(
+        useWorkspaceStore
+          .getState()
+          .createPartUsage(ibdId, defA, { x: 0, y: 0 })!,
+      )!;
+      const b = findPartUsage(
+        useWorkspaceStore
+          .getState()
+          .createPartUsage(ibdId, defB, { x: 200, y: 0 })!,
+      )!;
+      return useWorkspaceStore.getState().connectItemFlow({
+        source: a.id,
+        target: b.id,
+        sourceHandle: a.portUsageIds[0]!,
+        targetHandle: b.portUsageIds[0]!,
+      })!;
+    }
+
+    it('updates the itemType field', async () => {
+      const id = await seedFlow();
+      useWorkspaceStore.getState().setItemFlowType(id, 'Fuel');
+      const flow = useWorkspaceStore
+        .getState()
+        .elements.find((e): e is ItemFlowElement => e.id === id)!;
+      expect(flow.itemType).toBe('Fuel');
+    });
+
+    it('empty string clears the itemType', async () => {
+      const id = await seedFlow();
+      useWorkspaceStore.getState().setItemFlowType(id, 'Fuel');
+      useWorkspaceStore.getState().setItemFlowType(id, '');
+      const flow = useWorkspaceStore
+        .getState()
+        .elements.find((e): e is ItemFlowElement => e.id === id)!;
+      expect(flow.itemType).toBeUndefined();
+    });
+
+    it('is a no-op when value is unchanged', async () => {
+      const id = await seedFlow();
+      useWorkspaceStore.getState().setItemFlowType(id, 'Fuel');
+      const before = useWorkspaceStore.getState().modelVersion;
+      useWorkspaceStore.getState().setItemFlowType(id, 'Fuel');
+      expect(useWorkspaceStore.getState().modelVersion).toBe(before);
+    });
+
+    it('is a no-op when id does not point at an ItemFlow', async () => {
+      await bootstrap();
+      const defId = useWorkspaceStore.getState().createBlock()!;
+      const before = useWorkspaceStore.getState().modelVersion;
+      useWorkspaceStore.getState().setItemFlowType(defId, 'Fuel');
+      expect(useWorkspaceStore.getState().modelVersion).toBe(before);
     });
   });
 

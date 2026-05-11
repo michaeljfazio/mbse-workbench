@@ -521,6 +521,35 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
     needed, add an `interactionWidth`-style wider invisible path to the
     custom edge component.
 
+- **2026-05-12** — IBD ItemFlow (#52) wiring notes:
+  - **Shift-modifier discrimination.** `IbdItemFlowEdge` rides the same
+    `Connection`/handle plumbing as `ConnectionUsage`. The choice between
+    the two is made in `CanvasPane.onConnect`: a `shiftHeldRef` (updated
+    by a window-level `keydown`/`keyup` listener AND seeded from the
+    `onConnectStart` native-event `shiftKey`) routes the drop to
+    `connectItemFlow` instead of `connectPorts`. **`onConnectStart`'s
+    event arg is a native DOM `MouseEvent | TouchEvent`, not React's
+    synthetic** — typing it as `ReactMouseEvent` fails the
+    `OnConnectStart` signature.
+  - **Same typing rules as ConnectionUsage.** ItemFlow validity is
+    enforced by the existing `canonicalizeIbdConnection`/`isValidIbdConnection`
+    pair — the model fork happens after the canonicalisation step.
+    `in` ↔ `in` and `out` ↔ `out` are still rejected; `in` → `out` is
+    normalised so the stored ItemFlow's `sourceId` is the out/inout side.
+  - **Edge visual: dashed stroke + arrowhead.** ItemFlow uses
+    `strokeDasharray: '6 4'` and a per-edge `<marker>` triangle
+    (`refX=11, refY=6, orient="auto-start-reverse"`, fill = stroke
+    colour). ConnectionUsage stays solid + unmarkered, so the two are
+    unambiguous on the canvas.
+  - **Label preference: itemType > name.** The edge label renders
+    `itemType` when set, falling back to the cascading default `flow1`,
+    `flow2`, … name. Inspector's `ItemFlowExtras` section lets the user
+    edit `itemType` (commits on blur or Enter). The Project tree
+    automatically groups ItemFlow elements under an "Item flows" header.
+  - **Registry already covers `itemType`.** `KIND_OPTIONAL_FIELDS.ItemFlow
+    = {'itemType'}` was in place from the metamodel split; no registry
+    change was needed for first-time itemType edits.
+
 - **2026-05-12** — `@xyflow/react` v12.3.x multi-handle-per-node
   integration notes (verified via context7 against authoritative docs
   ahead of Phase 3 IBD first use, per AGENT.md directive 11):

@@ -11,6 +11,7 @@ import {
   ConnectionUsageEdge,
   IBD_CONNECTION_USAGE_EDGE_TYPE,
 } from './ConnectionUsageEdge';
+import { IBD_ITEM_FLOW_EDGE_TYPE, ItemFlowEdge } from './ItemFlowEdge';
 import { IBD_PART_USAGE_NODE_TYPE, PartUsageNode } from './PartUsageNode';
 
 export {
@@ -32,6 +33,8 @@ export type {
   IbdConnectionUsageEdge,
   IbdConnectionUsageEdgeData,
 } from './ConnectionUsageEdge';
+export { IBD_ITEM_FLOW_EDGE_TYPE, ItemFlowEdge } from './ItemFlowEdge';
+export type { IbdItemFlowEdge, IbdItemFlowEdgeData } from './ItemFlowEdge';
 export {
   HANDLE_TYPE_BY_DIRECTION,
   buildPortUsageOwnership,
@@ -55,12 +58,12 @@ export type { IbdConnectionEndpoints } from './isValidConnection';
 export const IBD_VIEWPOINT_ID: ViewpointId = 'ibd';
 
 // Module-scoped (frozen) so React Flow can rely on referential stability.
-// #52 will add ItemFlow to `edgeTypes`.
 const IBD_NODE_TYPES = Object.freeze({
   [IBD_PART_USAGE_NODE_TYPE]: PartUsageNode,
 }) as unknown as ViewpointNodeTypes;
 const IBD_EDGE_TYPES = Object.freeze({
   [IBD_CONNECTION_USAGE_EDGE_TYPE]: ConnectionUsageEdge,
+  [IBD_ITEM_FLOW_EDGE_TYPE]: ItemFlowEdge,
 }) as unknown as ViewpointEdgeTypes;
 
 export const ibdViewpoint: Viewpoint = {
@@ -70,7 +73,7 @@ export const ibdViewpoint: Viewpoint = {
   // labelled Handle on its parent PartUsage, so it does not appear here.
   acceptedElementKinds: ['PartUsage'],
   acceptedEdgeKinds: [],
-  acceptedEdgeElementKinds: ['ConnectionUsage'],
+  acceptedEdgeElementKinds: ['ConnectionUsage', 'ItemFlow'],
   defaultLayout: 'dagre',
   paletteItems: [
     {
@@ -91,6 +94,7 @@ export const ibdViewpoint: Viewpoint = {
   },
   edgeTypeForElement(element: ModelElement): string {
     if (element.kind === 'ConnectionUsage') return IBD_CONNECTION_USAGE_EDGE_TYPE;
+    if (element.kind === 'ItemFlow') return IBD_ITEM_FLOW_EDGE_TYPE;
     throw new Error(
       `ibd viewpoint cannot render element-as-edge kind: ${element.kind}`,
     );

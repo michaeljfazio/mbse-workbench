@@ -155,6 +155,11 @@ function toFlowEdges(
         portUsageToPartUsage: ownership,
       });
       if (!endpoints) continue;
+      const data: Record<string, unknown> = {
+        elementId: el.id,
+        name: el.name,
+      };
+      if (el.kind === 'ItemFlow') data.itemType = el.itemType;
       out.push({
         id: el.id,
         type: viewpoint.edgeTypeForElement(el),
@@ -163,7 +168,7 @@ function toFlowEdges(
         sourceHandle: endpoints.sourceHandleId,
         targetHandle: endpoints.targetHandleId,
         selected: selectedIds.has(el.id),
-        data: { elementId: el.id, name: el.name },
+        data,
       });
     }
   }
@@ -189,11 +194,13 @@ function CanvasInner(): JSX.Element {
   const renameElement = useWorkspaceStore((s) => s.renameElement);
   const runAutoLayout = useWorkspaceStore((s) => s.runAutoLayout);
   const connectPorts = useWorkspaceStore((s) => s.connectPorts);
+  const connectItemFlow = useWorkspaceStore((s) => s.connectItemFlow);
 
   const [pending, setPending] = useState<PendingConnection | null>(null);
   const [pendingPart, setPendingPart] = useState<PendingPartDrop | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const isConnectingRef = useRef(false);
+  const shiftHeldRef = useRef(false);
   const reactFlow = useReactFlow();
   const createPartUsage = useWorkspaceStore((s) => s.createPartUsage);
 
@@ -322,9 +329,18 @@ function CanvasInner(): JSX.Element {
     ],
   );
 
-  const onConnectStart = useCallback(() => {
-    isConnectingRef.current = true;
-  }, []);
+  const onConnectStart = useCallback(
+    (event: MouseEvent | TouchEvent) => {
+      isConnectingRef.current = true;
+      // Capture initial Shift state from the drag-start event. The window
+      // listener below keeps it in sync if the user presses/releases Shift
+      // during the drag.
+      if ('shiftKey' in event) {
+        shiftHeldRef.current = event.shiftKey;
+      }
+    },
+    [],
+  );
 
   const onConnectEnd = useCallback(() => {
     // React Flow emits a stray `{type:'select', selected:true}` for the
@@ -357,12 +373,16 @@ function CanvasInner(): JSX.Element {
         return;
       }
       if (viewpoint.id === IBD_VIEWPOINT_ID) {
-        const id = connectPorts(connection);
+        // Shift held during the drag promotes the connection to an ItemFlow
+        // (directed flow of an item-type) instead of a plain ConnectionUsage.
+        const id = shiftHeldRef.current
+          ? connectItemFlow(connection)
+          : connectPorts(connection);
         if (id) setSelection([id]);
         return;
       }
     },
-    [viewpoint, flowNodes, reactFlow, connectPorts, setSelection],
+    [viewpoint, flowNodes, reactFlow, connectPorts, connectItemFlow, setSelection],
   );
 
   const isValidConnection = useCallback(
@@ -522,6 +542,21 @@ function CanvasInner(): JSX.Element {
       // dialog effect-cleanup hook intentionally empty; popover owns its own listeners
     };
   }, [pending]);
+
+  // Track Shift state on the window so the IBD onConnect handler can read it
+  // even when the user toggles Shift mid-drag. KeyboardEvent.shiftKey reflects
+  // the live modifier state after every key event.
+  useEffect(() => {
+    const updateShift = (event: KeyboardEvent): void => {
+      shiftHeldRef.current = event.shiftKey;
+    };
+    window.addEventListener('keydown', updateShift);
+    window.addEventListener('keyup', updateShift);
+    return () => {
+      window.removeEventListener('keydown', updateShift);
+      window.removeEventListener('keyup', updateShift);
+    };
+  }, []);
 
   if (!initialized) {
     return (
