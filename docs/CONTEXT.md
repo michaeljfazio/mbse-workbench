@@ -390,3 +390,38 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
   the environments REST API. Adding a new release tag pattern in the
   future means adding it here too, or the deploy will silently fail
   with that exact error.
+
+- **2026-05-12** — `@xyflow/react` v12.3.x multi-handle-per-node
+  integration notes (verified via context7 against authoritative docs
+  ahead of Phase 3 IBD first use, per AGENT.md directive 11):
+  - **Multiple handles per side.** No special API. Render several
+    `<Handle>` components on the same node; each carries the same
+    `position={Position.Left|Right|Top|Bottom}` but a unique `id` and
+    is positioned with inline CSS `style={{ top: '<pct>%' }}` (or
+    `left` for top/bottom positions). React Flow centers each handle
+    by default, so the CSS percentage override is the canonical
+    placement mechanism. Example:
+    `<Handle type="target" position={Position.Left} id="port-a" style={{ top: '30%' }} />`
+  - **`Connection` shape with handle ids.** `onConnect` receives
+    `{ source, sourceHandle, target, targetHandle }`. When handles
+    carry an `id`, that string flows into `sourceHandle`/`targetHandle`
+    on `Connection`. Use this to identify port endpoints in IBD's
+    `ConnectionUsage`/`ItemFlow` creation — both edge-element kinds
+    carry `sourceId`/`targetId` of the **PortUsage**, not the
+    PartUsage, so the handle id should be the PortUsage id.
+  - **No built-in label on `<Handle>`.** Render a label as a sibling
+    `<span>` positioned next to the handle, OR pass children into the
+    `<Handle>` itself (docs show this pattern for icon handles).
+    Either works; the sibling approach keeps the handle's hit area
+    pure.
+  - **`isConnectable` and `isValidConnection` compose independently.**
+    `isConnectable={false}` on a `<Handle>` blocks drag initiation
+    from that handle entirely (handle still renders). `isValidConnection`
+    (per-Handle or per-`<ReactFlow>`) fires during the drag and can
+    block specific source/target pairs. Use `isConnectable` to
+    permanently disable a port; use `isValidConnection` for
+    direction-based typing.
+  - **Edge creation flow unchanged in v12.** `onConnect(connection)`
+    is still where new edges are added; the project's command bus
+    intercepts this rather than calling `addEdge` directly. No v12.3-
+    specific divergence found in docs.
