@@ -37,6 +37,7 @@ import {
   dagreLayout,
   IBD_VIEWPOINT_ID,
   ibdViewpoint,
+  requirementsViewpoint,
   type BddEdgeKind,
   type Viewpoint,
   type ViewpointId,
@@ -115,6 +116,7 @@ function buildViewpointSingleton(): ViewpointRegistry {
   const registry = createViewpointRegistry();
   registry.register(bddViewpoint);
   registry.register(ibdViewpoint);
+  registry.register(requirementsViewpoint);
   return registry;
 }
 

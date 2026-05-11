@@ -72,3 +72,5 @@ export type {
   IbdPartUsageData,
   IbdPartUsageNode,
 } from './ibd';
+
+export { REQUIREMENTS_VIEWPOINT_ID, requirementsViewpoint } from './requirements';
