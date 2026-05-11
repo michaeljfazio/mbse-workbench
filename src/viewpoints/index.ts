@@ -40,4 +40,21 @@ export {
   BDD_BLOCK_WIDTH,
 } from './bdd/BlockNode';
 
-export { IBD_VIEWPOINT_ID, ibdViewpoint } from './ibd';
+export {
+  HANDLE_TYPE_BY_DIRECTION,
+  IBD_PART_USAGE_HEIGHT,
+  IBD_PART_USAGE_NODE_TYPE,
+  IBD_PART_USAGE_WIDTH,
+  IBD_VIEWPOINT_ID,
+  ibdViewpoint,
+  isPartDefinition,
+  isPortDefinition,
+  placeHandle,
+  resolvePartHandles,
+} from './ibd';
+
+export type {
+  IbdPartHandleSpec,
+  IbdPartUsageData,
+  IbdPartUsageNode,
+} from './ibd';

@@ -57,6 +57,25 @@ const ELEMENT_EDGE_KINDS = new Set<ElementKind>([
 // mistaken for a kind mismatch.
 const ELEMENT_BASE_OPTIONAL_FIELDS = new Set<string>(['ownerId', 'documentation']);
 
+// Per-kind optional fields: ElementBase optionals already cover documentation
+// and ownerId; this table covers kind-specific optional fields so a first-time
+// patch on a freshly-created element (that omitted the field) is accepted.
+// Keeping this explicit avoids a runtime introspection of the discriminated
+// union types and stays in sync with the TypeScript definitions.
+const KIND_OPTIONAL_FIELDS: Partial<
+  Record<ElementKind, ReadonlySet<string>>
+> = {
+  PartUsage: new Set(['multiplicity']),
+  PortDefinition: new Set(['interfaceId']),
+  ActionUsage: new Set(['definitionId']),
+  StateUsage: new Set(['definitionId', 'entryAction', 'exitAction', 'doAction']),
+  Transition: new Set(['trigger', 'guard', 'effect']),
+  UseCase: new Set(['text']),
+  Requirement: new Set(['reqId', 'rationale']),
+  ItemFlow: new Set(['itemType']),
+  ValueProperty: new Set(['defaultValue']),
+};
+
 function hasEndpoints(element: ModelElement): element is ElementWithEndpoints {
   return ELEMENT_EDGE_KINDS.has(element.kind);
 }
@@ -119,11 +138,16 @@ export function createElementRegistry(): ElementRegistry {
       // Detect a kind mismatch by checking that every patch field
       // exists on the stored element. Caller-chosen K could be wrong
       // (TS cannot infer it from a runtime id), so we verify here.
+      const kindOptional = KIND_OPTIONAL_FIELDS[existing.kind];
       for (const key of Object.keys(patch)) {
         if (key === 'id' || key === 'kind') {
           throw new Error(`update patch must not contain ${key}`);
         }
-        if (!(key in existing) && !ELEMENT_BASE_OPTIONAL_FIELDS.has(key)) {
+        if (
+          !(key in existing) &&
+          !ELEMENT_BASE_OPTIONAL_FIELDS.has(key) &&
+          !(kindOptional?.has(key) ?? false)
+        ) {
           throw new Error(
             `update kind mismatch: element ${id} is ${existing.kind}, ` +
               `but patch field "${key}" is not part of that kind`,

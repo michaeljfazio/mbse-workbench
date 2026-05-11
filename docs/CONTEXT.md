@@ -403,6 +403,49 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
   while landing #49 (clicking an inactive tab to make IBD active flagged
   the active tab as 3.32:1 because the bg/text were still transitioning).
 
+- **2026-05-12** — `PartUsageElement.portUsageIds: ElementId[]` was added in
+  #50 to mirror `PartDefinition.portIds`. Without it there was no way to
+  link a PartUsage instance to the PortUsage children it owns (PortUsages
+  only know their PortDefinition type via `definitionId`). At creation
+  time the workspace's `createPartUsage` action materialises one PortUsage
+  per `PortDefinition` on the type and records their ids on
+  `portUsageIds`. ADR 0003's "PortUsages as Handles" decision relies on
+  this link: the IBD canvas renders one `<Handle>` per PortUsage with
+  `id = PortUsage.id`. Future #51 (ConnectionUsage) will read
+  `Connection.sourceHandle`/`targetHandle` as PortUsage ids.
+
+- **2026-05-12** — Registry `update<K>` guard accepts patches for
+  kind-specific optional fields via `KIND_OPTIONAL_FIELDS` table in
+  `src/model/registry.ts`. Same pattern as `ELEMENT_BASE_OPTIONAL_FIELDS`
+  but per-kind, so a first-time `multiplicity` (on PartUsage) or
+  `direction` patch on a freshly-created element doesn't trip the
+  kind-mismatch error. Add new optional kind fields to that table when
+  introducing them. Discovered while landing #50.
+
+- **2026-05-12** — When `setPartUsageMultiplicity`, `setPortDirection`, or
+  any `update-element` command sets a per-kind field (not on
+  `ElementBase`), the patch literal must be assigned through a typed
+  `ElementPatch<'KindName'>` variable. The default `Command` union has
+  `UpdateElementCommand<ElementKind>` where the patch is `Partial` over
+  only the union-common fields. Inline object literals fail
+  excess-property checks (TS 2353). Pattern:
+  `const patch: ElementPatch<'PartUsage'> = { multiplicity: next };`
+  then `bus.dispatch({ kind: 'update-element', id, patch }, user)`.
+
+- **2026-05-12** — Visual baseline regen via the Linux container is
+  scripted at `scripts/regen-baselines.sh` and runs inside
+  `mcr.microsoft.com/playwright:v1.48.2-jammy` via `podman --platform
+  linux/arm64`. The container's bundled Node 20.18 corepack has stale
+  signing keys and rejects `corepack enable`; the script bypasses with
+  `npm install --global pnpm@<packageManager-pinned-version>`. **Gotcha:**
+  Playwright's `--update-snapshots` only rewrites a baseline when it
+  detects a diff. If a stale dist or build cache survives between runs,
+  the test can "pass" against the OLD baseline and silently skip the
+  rewrite. Symptom: file mtime stays at the prior commit. Fix: delete the
+  specific baseline files you intend to regenerate before invoking the
+  container — then Playwright logs "A snapshot doesn't exist, writing
+  actual" and the new file is written.
+
 - **2026-05-12** — `@xyflow/react` v12.3.x multi-handle-per-node
   integration notes (verified via context7 against authoritative docs
   ahead of Phase 3 IBD first use, per AGENT.md directive 11):

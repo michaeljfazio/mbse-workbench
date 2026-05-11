@@ -7,12 +7,35 @@ import type {
   ViewpointNodeTypes,
 } from '../types';
 
+import { IBD_PART_USAGE_NODE_TYPE, PartUsageNode } from './PartUsageNode';
+
+export {
+  IBD_PART_USAGE_NODE_TYPE,
+  IBD_PART_USAGE_WIDTH,
+  IBD_PART_USAGE_HEIGHT,
+  PartUsageNode,
+} from './PartUsageNode';
+export type {
+  IbdPartHandleSpec,
+  IbdPartUsageData,
+  IbdPartUsageNode,
+} from './PartUsageNode';
+export {
+  HANDLE_TYPE_BY_DIRECTION,
+  isPartDefinition,
+  isPortDefinition,
+  placeHandle,
+  resolvePartHandles,
+} from './partUsageHelpers';
+export type { SidePlacement, BuildPartHandleSpecsInput } from './partUsageHelpers';
+
 export const IBD_VIEWPOINT_ID: ViewpointId = 'ibd';
 
 // Module-scoped (frozen) so React Flow can rely on referential stability.
-// Both records are empty for #49 — #50 adds the PartUsage node type, #51
-// adds the ConnectionUsage edge type, #52 adds the ItemFlow edge variant.
-const IBD_NODE_TYPES = Object.freeze({}) as unknown as ViewpointNodeTypes;
+// #51 will add ConnectionUsage and #52 will add ItemFlow to `edgeTypes`.
+const IBD_NODE_TYPES = Object.freeze({
+  [IBD_PART_USAGE_NODE_TYPE]: PartUsageNode,
+}) as unknown as ViewpointNodeTypes;
 const IBD_EDGE_TYPES = Object.freeze({}) as unknown as ViewpointEdgeTypes;
 
 export const ibdViewpoint: Viewpoint = {
@@ -23,15 +46,21 @@ export const ibdViewpoint: Viewpoint = {
   acceptedElementKinds: ['PartUsage'],
   acceptedEdgeKinds: [],
   defaultLayout: 'dagre',
-  // Empty for #49 — #50 introduces the "Part" palette item once the
-  // PartUsage node component lands.
-  paletteItems: [],
+  paletteItems: [
+    {
+      elementKind: 'PartUsage',
+      label: 'Part',
+      description:
+        'A SysMLv2 part usage typed by a PartDefinition. Drop onto an IBD to instantiate.',
+    },
+  ],
   nodeTypes: IBD_NODE_TYPES,
   edgeTypes: IBD_EDGE_TYPES,
   nodeTypeFor(element: ModelElement): string {
-    throw new Error(`ibd viewpoint cannot yet render element kind: ${element.kind}`);
+    if (element.kind === 'PartUsage') return IBD_PART_USAGE_NODE_TYPE;
+    throw new Error(`ibd viewpoint cannot render element kind: ${element.kind}`);
   },
   edgeTypeFor(edge: ModelEdge): string {
-    throw new Error(`ibd viewpoint cannot yet render edge kind: ${edge.kind}`);
+    throw new Error(`ibd viewpoint cannot render edge kind: ${edge.kind}`);
   },
 };

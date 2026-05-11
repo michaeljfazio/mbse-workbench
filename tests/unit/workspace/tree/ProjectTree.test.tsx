@@ -224,14 +224,17 @@ describe('<ProjectTree />', () => {
 
     render(<ProjectTree />);
     const tree = screen.getByTestId('project-tree');
-    const group = screen.getByTestId('project-tree-group-PartDefinition');
-    const leafB = screen.getByTestId(`project-tree-leaf-${b}`);
+    const blocksGroup = screen.getByTestId(
+      'project-tree-group-PartDefinition',
+    );
+    const groupItems = screen.getAllByRole('treeitem', { name: /^[A-Za-z]+ \(/ });
+    const lastGroupItem = groupItems[groupItems.length - 1]!;
 
     fireEvent.keyDown(tree, { key: 'End' });
-    expect(leafB).toHaveAttribute('tabindex', '0');
+    expect(lastGroupItem).toHaveAttribute('tabindex', '0');
 
     fireEvent.keyDown(tree, { key: 'Home' });
-    expect(group).toHaveAttribute('tabindex', '0');
+    expect(blocksGroup).toHaveAttribute('tabindex', '0');
   });
 
   it('group element count reflects only its own kind', async () => {
