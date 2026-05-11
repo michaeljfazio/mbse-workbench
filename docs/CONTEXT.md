@@ -657,3 +657,20 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
     same-element form. Both are direct `set()` updates — no command
     bus dispatch — because navigation is presentation state, not
     model state.
+
+- **2026-05-12** — `scripts/regen-baselines.sh` runs Playwright with
+  `--update-snapshots --grep @visual` against the **full** visual suite,
+  so it will rewrite **every** baseline whose actual bit-diffs from the
+  expected — not just the new one you're trying to add. This matters when
+  earlier baselines were manually extracted from a failed CI run (per the
+  iteration-25 procedure above): the arm64 podman renderer will produce
+  *different* bytes than the amd64 CI runner, and `--update-snapshots`
+  happily overwrites the CI-extracted baseline with the arm64 one — which
+  then fails CI next push. Workflow when adding a new viewpoint baseline:
+  (a) run the container regen; (b) `git status` and identify any
+  *previously-committed* baselines that got rewritten besides the new
+  one(s) you wanted; (c) `git checkout -- <those paths>` to revert them
+  back to their main-committed forms; (d) only stage the genuinely-new
+  baseline files. Discovered while landing #70 (the regen pass rewrote
+  three iteration-24/25 CI-extracted IBD baselines that would have failed
+  CI on the next push).
