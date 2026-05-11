@@ -5,7 +5,13 @@ import {
   type ElementRegistry,
   type ModelEdge,
 } from '@/model';
-import { allowAll, type PermissionHook, type User } from '@/collab';
+import {
+  can as defaultCan,
+  NoopCollaborationProvider,
+  type CollaborationProvider,
+  type PermissionHook,
+  type User,
+} from '@/collab';
 import { PermissionDeniedError } from './errors';
 import type { Command, CompoundCommand, UpdateElementCommand } from './types';
 import type { ModelEvent, Unsubscribe } from './events';
@@ -22,6 +28,7 @@ export interface CommandBus {
 export interface CreateCommandBusOptions {
   readonly registry: ElementRegistry;
   readonly can?: PermissionHook;
+  readonly provider?: CollaborationProvider;
   readonly now?: () => number;
   readonly eventIdFactory?: () => string;
 }
@@ -34,7 +41,8 @@ interface UndoEntry {
 
 export function createCommandBus(options: CreateCommandBusOptions): CommandBus {
   const registry = options.registry;
-  const can = options.can ?? allowAll;
+  const can = options.can ?? defaultCan;
+  const provider = options.provider ?? new NoopCollaborationProvider();
   const now = options.now ?? (() => Date.now());
   const eventIdFactory = options.eventIdFactory ?? (() => createElementId());
 
@@ -60,6 +68,7 @@ export function createCommandBus(options: CreateCommandBusOptions): CommandBus {
     };
     eventLog.push(event);
     notify(event);
+    provider.publish(event);
     return event;
   }
 
