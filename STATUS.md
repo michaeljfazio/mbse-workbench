@@ -1,17 +1,17 @@
 # STATUS
 
 ## Current phase
-phase:1 — Metamodel + command bus + repository + collaboration seams
+phase:2 — BDD vertical slice (template for all viewpoints)
 
 ## Current iteration
-- Iteration #: 7
+- Iteration #: 8
 - Started: 2026-05-11
-- Branch: issue/21-collaboration-seams
-- Working on: #21 — Collaboration seams (PR pending push / CI)
+- Branch: main
+- Working on: (idle — Phase 1 closed, vphase-1 released, ready to decompose Phase 2)
 
 ## Last test run
-- Command: pnpm run check (typecheck + lint + test:unit + build + test:e2e)
-- Result: PASS — locally on `issue/21-collaboration-seams` (90 unit tests, 4 e2e)
+- Command: release.yml workflow on tag vphase-1 (build + deploy-pages + github-release)
+- Result: PASS — run #25670869402, all three jobs green; Pages returns HTTP 200 with "MBSE Workbench"
 - Failures: (none)
 
 ## Known issues / blockers
@@ -29,6 +29,7 @@ phase:1 — Metamodel + command bus + repository + collaboration seams
 - 2026-05-11: Command bus shape — `Command` is a discriminated union of `create-element` / `update-element` / `delete-element` / `link` / `unlink` / `compound`. Generic over `ElementKind` and `EdgeKind` rather than 75 per-kind command types, because the metamodel is already a discriminated union and the registry validates kind via the existing `update<K>` runtime guard. ModelEvent payload = inverse command, so the append-only event log is self-undoable. Undo/redo stacks hold `{ forward, inverse, actor }` and just `applyOnly` (no re-capture). Delete-element's inverse is a `compound` of `create-element` + one `link` per incident edge captured at apply time (links: #19).
 - 2026-05-11: Repository is a thin async port: one key per project at `mbse:v1:project:<id>`, ISO-string dates, `ProjectNotFoundError` covers both missing-key and malformed-JSON cases (caller treats them identically), `list()` silently skips malformed entries so one bad entry does not blind the picker, and `StorageQuotaError` wraps the underlying `QuotaExceededError` (and Firefox's `NS_ERROR_DOM_QUOTA_REACHED`). `Project` keeps `elements` / `edges` as readonly arrays so the consumer cannot mutate the cached value behind the registry's back (links: #20).
 - 2026-05-11: Collab module split per responsibility (`user` / `presence` / `provider` / `permissions`) instead of one `types.ts` grab-bag. `User = { id, displayName, color }`; deterministic per-session color picked from `USER_COLORS` by hashing the id so the same id always renders identically across reloads. `can` (single-user default) returns true unless `target.ownerId` differs from `user.id`, giving Phase 1 a real ownership seam even though single-user mode never sets `ownerId`. Command bus accepts `provider?: CollaborationProvider` (defaults to Noop) and publishes every committed dispatch/undo/redo event post-apply — denied permissions throw *before* publish, so the provider only ever sees committed events (links: #21).
+- 2026-05-11: Phase 1 closed and vphase-1 tagged at c1214db. Release workflow #25670869402 green; Pages HTTP 200; screenshot uploaded as `app-shell.png` release asset. Phase 1 shipped data layer only — deployed UI unchanged from vphase-0 (links: #27).
 
 ## Next action
-On iteration 8: confirm PR for #21 merged on `main`. With all Phase 1 child issues closed, close phase epic #2, open a `type:release` issue, tag `vphase-1`, then exercise the deployed Pages URL in Playwright per Ralph loop step 17.
+On iteration 9: read Phase 2 epic #3, decompose just-in-time into child issues (BDD canvas with React Flow + Block node + Composition/Generalization edges, project tree, inspector, chat sidebar stub, dagre auto-layout, manual position persistence per view, PNG/SVG export). Per AGENT.md directive 11 ("Version pinning and library currency"), dispatch a docs research subagent against the pinned `@xyflow/react` v12.3.x API surface (custom nodeTypes, custom edgeTypes, controlled selection, drag-create-edge via onConnect) **before** picking the first issue, and record any version-specific gotchas in `docs/CONTEXT.md`. Then label issues, pick the highest-priority `status:ready`, create branch, and follow Ralph loop step 7 onward.
