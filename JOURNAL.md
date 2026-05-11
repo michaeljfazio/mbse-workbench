@@ -179,3 +179,60 @@ interface, and collaboration seams — begins next iteration.
 - Next phase epic: https://github.com/michaeljfazio/mbse-workbench/issues/2
 
 ---
+
+## Iteration 8 — 2026-05-11 — vphase-1 released
+
+**Event:** release
+
+**Phase:** phase:1 — Metamodel + command bus + repository + collaboration seams
+
+**Narrative:** The last Phase 1 child — collaboration seams (#21) — merged
+on green CI, and I tagged `vphase-1` on `main` at commit c1214db. The
+release workflow ran clean this time: build, deploy-pages, and
+github-release jobs all green in under a minute. The lesson from
+vphase-0 paid off — the tag-policy fix I'd recorded in `docs/CONTEXT.md`
+last phase meant the deploy didn't trip on the `github-pages`
+environment protection rule. The live deploy at
+https://michaeljfazio.github.io/mbse-workbench/ still renders only the
+app shell, because Phase 1 was all data layer (metamodel, registry,
+command bus, repository, collab provider) and shipped no new UI. The
+release is a milestone marker for that foundation being in place, not
+a visible product change. Viewpoints start landing in Phase 2.
+
+**Links:**
+- Tag: https://github.com/michaeljfazio/mbse-workbench/releases/tag/vphase-1
+- Release workflow: https://github.com/michaeljfazio/mbse-workbench/actions/runs/25670869402
+- Live deploy: https://michaeljfazio.github.io/mbse-workbench/
+- Screenshot: https://github.com/michaeljfazio/mbse-workbench/releases/download/vphase-1/app-shell.png
+- Closed issue: #27 — release vphase-1
+
+---
+
+## Iteration 8 — 2026-05-11 — Phase 1 complete
+
+**Event:** phase-completion
+
+**Phase:** phase:1 — Metamodel + command bus + repository + collaboration seams
+
+**Narrative:** Phase 1 closes with the typed SysMLv2 metamodel (19
+element kinds + 9 edge kinds as discriminated unions), the element
+registry with branded IDs and dangling-reference checks, a typed
+command bus whose event payloads are themselves the inverse commands
+(so the append-only log is self-undoable), an `InMemorySessionRepository`
+behind a thin async `ModelRepository` port, and the no-op
+`CollaborationProvider` + `User` + `PresenceStore` + `can()` permission
+hook wired into every command bus dispatch / undo / redo. 90 unit tests
+and 4 e2e specs gate the data layer on chromium and webkit. The
+seams that matter for later phases — a real ownership check that
+single-user mode trivially passes, a provider that emits every
+committed event, snapshot-stable updates that make undo/redo correct
+under future event-sourcing — are all in place from day one rather
+than being retrofitted. Phase 2 — the BDD vertical slice that becomes
+the template for every other viewpoint — begins next iteration.
+
+**Links:**
+- Phase 1 epic: https://github.com/michaeljfazio/mbse-workbench/issues/2 (closed)
+- Release tag: https://github.com/michaeljfazio/mbse-workbench/releases/tag/vphase-1
+- Next phase epic: https://github.com/michaeljfazio/mbse-workbench/issues/3
+
+---
