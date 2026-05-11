@@ -4,14 +4,14 @@
 phase:2 — BDD vertical slice (template for all viewpoints)
 
 ## Current iteration
-- Iteration #: 15
+- Iteration #: 16
 - Started: 2026-05-11
-- Branch: issue/33-project-tree-drag-from-tree
-- Working on: #33 — feat(workspace): project tree pane with drag-from-tree-to-canvas (PR #42 open, auto-merge enabled, CI running)
+- Branch: issue/35-png-svg-export
+- Working on: #35 — feat(bdd): PNG and SVG export of current canvas via toolbar (PR pending push + auto-merge)
 
 ## Last test run
-- Command: `pnpm run check` (darwin; visual gate skipped per playwright config, visual specs re-verified in Linux container against committed baselines)
-- Result: PASS — 180 unit (20 files) + 50 e2e (chromium + webkit, functional + a11y); Linux `--grep @visual` = 12 visual specs PASS (10 prior + 2 new for project-tree-populated)
+- Command: `pnpm run check` (darwin; visual specs skipped per playwright config, re-verified in Linux container)
+- Result: PASS — 194 unit (22 files: 14 new for slug + SVG builder) + 58 e2e (chromium + webkit, functional + a11y, including 8 new export specs); Linux `--grep @visual` = 12 visual specs PASS unchanged
 - Failures: (none)
 
 ## Known issues / blockers
@@ -46,6 +46,7 @@ phase:2 — BDD vertical slice (template for all viewpoints)
 - 2026-05-11: Auto-layout (#34) is a single bus dispatch of a compound command containing N `update-diagram-position` sub-commands (one per element returned by `dagreLayout`). One Cmd-Z reverts the whole layout. `dagreLayout(elements, edges, options)` builds a fresh `dagre.graphlib.Graph()` every call (strict-mode safety), returns `Map<ElementId, NodePosition>` translated from dagre's centre coordinates to React Flow's top-left. Default rankdir TB, nodesep 60, ranksep 80. Toolbar "Auto-layout" button calls `runAutoLayout(diagram.id)`; disabled when there are no elements (links: #34).
 - 2026-05-11: Playwright drag tests of selected blocks fall over a strict-mode locator violation because the Inspector container also carries `data-element-id` for the currently-selected element. Fix: always scope by `[data-testid="bdd-block-${id}"]` rather than the bare attribute. Recorded in `docs/CONTEXT.md` (links: #34).
 - 2026-05-11: Project tree (#33) — kind groups computed from union of (a) registry kinds and (b) `paletteItems[].elementKind` across all registered viewpoints; an empty BDD project still shows the "Blocks" affordance. `draggable` only when kind is in the *active* viewpoint's palette. Drag payload uses `application/x-mbse-element-kind` (`PROJECT_TREE_DRAG_TYPE`). Canvas drop validates against `acceptedElementKinds`, translates via `reactFlow.screenToFlowPosition`, centers on cursor, auto-selects new element. Roving-tabindex via derived focus key (`explicitFocusKey ?? visibleKeys[0]`) — no state-syncing useEffect. The pane wrapper now uses `aria-label="Project tree pane"` so the inner `role="tree"` keeps the canonical `Project tree` name that existing workspace-shell tests assert on (links: #33, PR #42).
+- 2026-05-11: Export (#35) — `src/workspace/export/` ships a pure `buildDiagramSvg` (XML built from `{elements, edges, positions, viewpoint}`), a thin PNG rasteriser that hands the SVG to a `<canvas>` at 2× DPR, and a slug helper. The two exporters share `BuildDiagramSvgInput`, so PNG and SVG always agree on geometry. `mbse-node` / `mbse-edge` class names are the contract for the spec's structural assertions. Toolbar `ExportMenu` is a split-button: closes on outside-pointerdown / Escape; menuitems trigger download then close. Visual baselines pass unchanged on the new button — the diff is well under `maxDiffPixelRatio: 0.01`, verified by running the Linux-container @visual suite; rationale captured in `docs/CONTEXT.md` so future single-button toolbar additions don't trigger needless regenerations (links: #35).
 
 ## Next action
-Wait for PR #42 CI + auto-merge. After merge: remaining Phase 2 children are #35 (PNG/SVG export) and #36 (Phase 2 gate e2e). #36 depends on everything else, so pick #35 next. After #35 merges, #36 closes Phase 2 with the comprehensive smoke test and tags vphase-2.
+Push branch `issue/35-png-svg-export`, open PR, enable auto-merge. After PR #35 merges only #36 (Phase 2 gate e2e) remains; that's the closing test for Phase 2.
