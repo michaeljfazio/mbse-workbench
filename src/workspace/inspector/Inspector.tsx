@@ -10,6 +10,9 @@ import type {
   PortDefinitionElement,
   PortDirection,
   PortUsageElement,
+  RequirementElement,
+  RequirementPriority,
+  RequirementStatus,
 } from '@/model';
 import { useWorkspaceStore } from '../store';
 
@@ -25,6 +28,27 @@ const PORT_DIRECTIONS: readonly { value: PortDirection; label: string }[] = [
   { value: 'in', label: 'in' },
   { value: 'out', label: 'out' },
   { value: 'inout', label: 'inout' },
+];
+
+const REQUIREMENT_PRIORITIES: readonly {
+  value: RequirementPriority;
+  label: string;
+}[] = [
+  { value: 'low', label: 'Low' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'high', label: 'High' },
+  { value: 'critical', label: 'Critical' },
+];
+
+const REQUIREMENT_STATUSES: readonly {
+  value: RequirementStatus;
+  label: string;
+}[] = [
+  { value: 'draft', label: 'Draft' },
+  { value: 'approved', label: 'Approved' },
+  { value: 'implemented', label: 'Implemented' },
+  { value: 'verified', label: 'Verified' },
+  { value: 'rejected', label: 'Rejected' },
 ];
 
 export function Inspector(): JSX.Element {
@@ -104,6 +128,10 @@ function InspectorSingle({ element }: InspectorSingleProps): JSX.Element {
 
       {element.kind === 'ItemFlow' ? (
         <ItemFlowExtras element={element} />
+      ) : null}
+
+      {element.kind === 'Requirement' ? (
+        <RequirementExtras element={element} />
       ) : null}
 
       <OwnerField element={element} />
@@ -514,6 +542,219 @@ function PartUsageExtras({ element }: PartUsageExtrasProps): JSX.Element {
         />
       </div>
     </>
+  );
+}
+
+interface RequirementExtrasProps {
+  readonly element: RequirementElement;
+}
+
+function RequirementExtras({ element }: RequirementExtrasProps): JSX.Element {
+  const setRequirementReqId = useWorkspaceStore(
+    (s) => s.setRequirementReqId,
+  );
+  const setRequirementText = useWorkspaceStore((s) => s.setRequirementText);
+  const setRequirementPriority = useWorkspaceStore(
+    (s) => s.setRequirementPriority,
+  );
+  const setRequirementStatus = useWorkspaceStore(
+    (s) => s.setRequirementStatus,
+  );
+  const setRequirementRationale = useWorkspaceStore(
+    (s) => s.setRequirementRationale,
+  );
+
+  const [reqIdDraft, setReqIdDraft] = useState(element.reqId ?? '');
+  useEffect(() => {
+    setReqIdDraft(element.reqId ?? '');
+  }, [element.id, element.reqId]);
+  const reqIdInputId = useMemo(
+    () => `inspector-req-id-${element.id}`,
+    [element.id],
+  );
+  const commitReqId = (): void => {
+    if (reqIdDraft !== (element.reqId ?? '')) {
+      setRequirementReqId(element.id, reqIdDraft);
+    }
+  };
+
+  const [textDraft, setTextDraft] = useState(element.text);
+  useEffect(() => {
+    setTextDraft(element.text);
+  }, [element.id, element.text]);
+  const textInputId = useMemo(
+    () => `inspector-req-text-${element.id}`,
+    [element.id],
+  );
+  const commitText = (): void => {
+    if (textDraft !== element.text) {
+      setRequirementText(element.id, textDraft);
+    }
+  };
+
+  const priorityId = useMemo(
+    () => `inspector-req-priority-${element.id}`,
+    [element.id],
+  );
+  const statusId = useMemo(
+    () => `inspector-req-status-${element.id}`,
+    [element.id],
+  );
+
+  const [rationaleDraft, setRationaleDraft] = useState(
+    element.rationale ?? '',
+  );
+  useEffect(() => {
+    setRationaleDraft(element.rationale ?? '');
+  }, [element.id, element.rationale]);
+  const rationaleInputId = useMemo(
+    () => `inspector-req-rationale-${element.id}`,
+    [element.id],
+  );
+  const commitRationale = (): void => {
+    if (rationaleDraft !== (element.rationale ?? '')) {
+      setRequirementRationale(element.id, rationaleDraft);
+    }
+  };
+
+  return (
+    <div
+      data-testid="inspector-requirement"
+      className="flex flex-col gap-3"
+    >
+      <div className="flex flex-col gap-1.5">
+        <label
+          htmlFor={reqIdInputId}
+          className="text-xs font-medium text-muted-foreground"
+        >
+          Requirement ID
+        </label>
+        <input
+          id={reqIdInputId}
+          type="text"
+          value={reqIdDraft}
+          data-testid="inspector-req-id"
+          placeholder="e.g. R-001"
+          onChange={(e) => setReqIdDraft(e.target.value)}
+          onBlur={commitReqId}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              (e.target as HTMLInputElement).blur();
+            } else if (e.key === 'Escape') {
+              e.preventDefault();
+              setReqIdDraft(element.reqId ?? '');
+              (e.target as HTMLInputElement).blur();
+            }
+          }}
+          className="rounded-md border border-border bg-background px-2 py-1.5 font-mono text-sm text-foreground shadow-sm focus:border-primary focus:outline-none"
+        />
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <label
+          htmlFor={priorityId}
+          className="text-xs font-medium text-muted-foreground"
+        >
+          Priority
+        </label>
+        <select
+          id={priorityId}
+          value={element.priority}
+          data-testid="inspector-req-priority"
+          onChange={(e) =>
+            setRequirementPriority(
+              element.id,
+              e.target.value as RequirementPriority,
+            )
+          }
+          className="rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground shadow-sm focus:border-primary focus:outline-none"
+        >
+          {REQUIREMENT_PRIORITIES.map((p) => (
+            <option key={p.value} value={p.value}>
+              {p.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <label
+          htmlFor={statusId}
+          className="text-xs font-medium text-muted-foreground"
+        >
+          Status
+        </label>
+        <select
+          id={statusId}
+          value={element.status}
+          data-testid="inspector-req-status"
+          onChange={(e) =>
+            setRequirementStatus(
+              element.id,
+              e.target.value as RequirementStatus,
+            )
+          }
+          className="rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground shadow-sm focus:border-primary focus:outline-none"
+        >
+          {REQUIREMENT_STATUSES.map((s) => (
+            <option key={s.value} value={s.value}>
+              {s.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <label
+          htmlFor={textInputId}
+          className="text-xs font-medium text-muted-foreground"
+        >
+          Text
+        </label>
+        <textarea
+          id={textInputId}
+          value={textDraft}
+          data-testid="inspector-req-text"
+          rows={4}
+          placeholder="What shall the system do?"
+          onChange={(e) => setTextDraft(e.target.value)}
+          onBlur={commitText}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+              e.preventDefault();
+              (e.target as HTMLTextAreaElement).blur();
+            }
+          }}
+          className="resize-y rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground shadow-sm focus:border-primary focus:outline-none"
+        />
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <label
+          htmlFor={rationaleInputId}
+          className="text-xs font-medium text-muted-foreground"
+        >
+          Rationale
+        </label>
+        <input
+          id={rationaleInputId}
+          type="text"
+          value={rationaleDraft}
+          data-testid="inspector-req-rationale"
+          placeholder="Why this requirement exists"
+          onChange={(e) => setRationaleDraft(e.target.value)}
+          onBlur={commitRationale}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              (e.target as HTMLInputElement).blur();
+            } else if (e.key === 'Escape') {
+              e.preventDefault();
+              setRationaleDraft(element.rationale ?? '');
+              (e.target as HTMLInputElement).blur();
+            }
+          }}
+          className="rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground shadow-sm focus:border-primary focus:outline-none"
+        />
+      </div>
+    </div>
   );
 }
 

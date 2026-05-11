@@ -53,7 +53,22 @@ describe('<ProjectTree />', () => {
     render(<ProjectTree />);
 
     expect(screen.queryByTestId('project-tree-group-UseCase')).toBeNull();
-    expect(screen.queryByTestId('project-tree-group-Requirement')).toBeNull();
+    // Requirement now has a palette item from the Requirements viewpoint, so
+    // its group is always shown — see the dedicated test below.
+    expect(
+      screen.getByTestId('project-tree-group-Requirement'),
+    ).toBeInTheDocument();
+  });
+
+  it('renders the Requirements group from the Requirements viewpoint palette even when empty', async () => {
+    await bootstrap();
+    render(<ProjectTree />);
+
+    const group = screen.getByTestId('project-tree-group-Requirement');
+    expect(group).toHaveAttribute(
+      'aria-label',
+      expect.stringMatching(/Requirements \(0\)/),
+    );
   });
 
   it('lists elements under their kind group, sorted by name', async () => {

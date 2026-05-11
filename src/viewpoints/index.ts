@@ -73,4 +73,17 @@ export type {
   IbdPartUsageNode,
 } from './ibd';
 
-export { REQUIREMENTS_VIEWPOINT_ID, requirementsViewpoint } from './requirements';
+export {
+  REQUIREMENT_NODE_HEIGHT,
+  REQUIREMENT_NODE_WIDTH,
+  REQUIREMENTS_REQUIREMENT_NODE_TYPE,
+  REQUIREMENTS_VIEWPOINT_ID,
+  RequirementNode,
+  requirementsViewpoint,
+} from './requirements';
+
+export type {
+  RequirementNodeData,
+  RequirementNodeType,
+  RequirementRenameCallback,
+} from './requirements';

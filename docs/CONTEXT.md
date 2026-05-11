@@ -674,3 +674,38 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
   baseline files. Discovered while landing #70 (the regen pass rewrote
   three iteration-24/25 CI-extracted IBD baselines that would have failed
   CI on the next push).
+
+- **2026-05-12** — Playwright `page.addInitScript` runs on **every** page
+  load — including `page.reload()`. If the script unconditionally seeds
+  sessionStorage with a fixed project, every reload wipes out the
+  workspace's autosaved changes. Symptom: an e2e test that creates an
+  element, reloads, and asserts persistence sees an empty project after
+  the reload. Fix: gate the seed on
+  `if (sessionStorage.getItem(key)) return;` so addInitScript is a no-op
+  on reloads. Tests that don't reload (most `*-empty.spec.ts`,
+  `ibd-*.spec.ts`) don't hit this; the round-trip Phase 2/3 gate specs
+  used `expect`-driven UI assertions instead of seed reads after reload,
+  so they sidestepped it too. Discovered while landing #71.
+
+- **2026-05-12** — Requirement palette item + Requirement-aware drop /
+  toolbar wiring (#71): the Requirements viewpoint now ships a
+  `paletteItems` entry so the project tree always exposes the
+  "Requirements" group, even in projects with zero Requirements
+  (matches the Blocks/Parts affordance pattern). `CanvasPane.handleDrop`
+  branches on `viewpoint.id === REQUIREMENTS_VIEWPOINT_ID && kind === 'Requirement'`
+  to call `createRequirement(diagram.id, position)`. A new
+  `+ Requirement` toolbar button mirrors BDD's `+ Block`. The workspace
+  store action `createRequirement` wraps `create-element` + an initial
+  `update-diagram-position` in a compound command — one Cmd-Z reverts
+  the whole step. Cascading defaults: name `Req1`/`Req2`/… picks the
+  next free `Req${size+1}` index; reqId scans `R-001`, `R-002`, …
+  **from 1 upwards** to fill gaps from custom-reqId imports or
+  out-of-order creation. Defaults: `priority: 'medium'`,
+  `status: 'draft'`, `text: ''`. KIND_OPTIONAL_FIELDS.Requirement
+  already covered `reqId` + `rationale` from the metamodel split, so no
+  registry change was needed. The project tree now renders a
+  `font-mono text-[10px]` reqId subtitle (right-aligned) for any
+  Requirement with `reqId` set — pinned to `text-foreground/75` rather
+  than `text-muted-foreground` for WCAG AA contrast on the card
+  background (the muted shade failed at 3.88:1, same as the
+  earlier-discovered popover description pattern).

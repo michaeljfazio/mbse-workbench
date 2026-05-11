@@ -14,6 +14,9 @@ import type {
   PortDefinitionElement,
   PortDirection,
   PortUsageElement,
+  RequirementElement,
+  RequirementPriority,
+  RequirementStatus,
 } from '@/model';
 import {
   createEdgeId,
@@ -205,6 +208,16 @@ export interface WorkspaceActions {
   connectPorts(connection: Connection): ElementId | null;
   connectItemFlow(connection: Connection): ElementId | null;
   setItemFlowType(id: ElementId, itemType: string): void;
+  createRequirement(
+    diagramId: DiagramId,
+    position: NodePosition,
+    options?: CreateRequirementOptions,
+  ): ElementId | null;
+  setRequirementReqId(id: ElementId, reqId: string): void;
+  setRequirementText(id: ElementId, text: string): void;
+  setRequirementPriority(id: ElementId, priority: RequirementPriority): void;
+  setRequirementStatus(id: ElementId, status: RequirementStatus): void;
+  setRequirementRationale(id: ElementId, rationale: string): void;
   undo(): void;
   redo(): void;
 }
@@ -325,6 +338,46 @@ function nextItemFlowName(elements: readonly ModelElement[]): string {
   let n = taken.size + 1;
   while (taken.has(`flow${n}`)) n += 1;
   return `flow${n}`;
+}
+
+function requirementsOf(
+  elements: readonly ModelElement[],
+): readonly RequirementElement[] {
+  return elements.filter(
+    (e): e is RequirementElement => e.kind === 'Requirement',
+  );
+}
+
+function nextRequirementName(elements: readonly ModelElement[]): string {
+  const taken = new Set(requirementsOf(elements).map((r) => r.name));
+  let n = taken.size + 1;
+  while (taken.has(`Req${n}`)) n += 1;
+  return `Req${n}`;
+}
+
+function nextRequirementReqId(elements: readonly ModelElement[]): string {
+  const taken = new Set(
+    requirementsOf(elements)
+      .map((r) => r.reqId)
+      .filter((id): id is string => id !== undefined && id.length > 0),
+  );
+  // Scan from 1 so cascade fills gaps when reqIds were assigned out of order
+  // (custom reqId overrides, deletions, imports).
+  let n = 1;
+  while (taken.has(`R-${String(n).padStart(3, '0')}`)) n += 1;
+  return `R-${String(n).padStart(3, '0')}`;
+}
+
+const REQUIREMENT_PRIORITY_DEFAULT: RequirementPriority = 'medium';
+const REQUIREMENT_STATUS_DEFAULT: RequirementStatus = 'draft';
+
+export interface CreateRequirementOptions {
+  readonly name?: string;
+  readonly reqId?: string;
+  readonly text?: string;
+  readonly priority?: RequirementPriority;
+  readonly status?: RequirementStatus;
+  readonly rationale?: string;
 }
 
 export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
@@ -882,6 +935,95 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
     const next = trimmed.length === 0 ? undefined : trimmed;
     if ((existing.itemType ?? undefined) === next) return;
     const patch: ElementPatch<'ItemFlow'> = { itemType: next };
+    bus.dispatch({ kind: 'update-element', id, patch }, user);
+  },
+
+  createRequirement(diagramId, position, options) {
+    const { bus, user, registry, diagrams, elements } = get();
+    if (!bus || !user || !registry) return null;
+    if (!diagrams.some((d) => d.id === diagramId)) return null;
+    const id = createElementId();
+    const requirement: RequirementElement = {
+      id,
+      kind: 'Requirement',
+      name: options?.name?.trim() ?? nextRequirementName(elements),
+      text: options?.text ?? '',
+      priority: options?.priority ?? REQUIREMENT_PRIORITY_DEFAULT,
+      status: options?.status ?? REQUIREMENT_STATUS_DEFAULT,
+      reqId: options?.reqId ?? nextRequirementReqId(elements),
+      ...(options?.rationale !== undefined && options.rationale.length > 0
+        ? { rationale: options.rationale }
+        : {}),
+    };
+    bus.dispatch(
+      {
+        kind: 'compound',
+        commands: [
+          { kind: 'create-element', element: requirement },
+          {
+            kind: 'update-diagram-position',
+            diagramId,
+            elementId: id,
+            position,
+          },
+        ],
+      },
+      user,
+    );
+    return id;
+  },
+
+  setRequirementReqId(id, reqId) {
+    const { bus, user, registry } = get();
+    if (!bus || !user || !registry) return;
+    const existing = registry.get(id);
+    if (!existing || existing.kind !== 'Requirement') return;
+    const trimmed = reqId.trim();
+    const next = trimmed.length === 0 ? undefined : trimmed;
+    if ((existing.reqId ?? undefined) === next) return;
+    const patch: ElementPatch<'Requirement'> = { reqId: next };
+    bus.dispatch({ kind: 'update-element', id, patch }, user);
+  },
+
+  setRequirementText(id, text) {
+    const { bus, user, registry } = get();
+    if (!bus || !user || !registry) return;
+    const existing = registry.get(id);
+    if (!existing || existing.kind !== 'Requirement') return;
+    if (existing.text === text) return;
+    const patch: ElementPatch<'Requirement'> = { text };
+    bus.dispatch({ kind: 'update-element', id, patch }, user);
+  },
+
+  setRequirementPriority(id, priority) {
+    const { bus, user, registry } = get();
+    if (!bus || !user || !registry) return;
+    const existing = registry.get(id);
+    if (!existing || existing.kind !== 'Requirement') return;
+    if (existing.priority === priority) return;
+    const patch: ElementPatch<'Requirement'> = { priority };
+    bus.dispatch({ kind: 'update-element', id, patch }, user);
+  },
+
+  setRequirementStatus(id, status) {
+    const { bus, user, registry } = get();
+    if (!bus || !user || !registry) return;
+    const existing = registry.get(id);
+    if (!existing || existing.kind !== 'Requirement') return;
+    if (existing.status === status) return;
+    const patch: ElementPatch<'Requirement'> = { status };
+    bus.dispatch({ kind: 'update-element', id, patch }, user);
+  },
+
+  setRequirementRationale(id, rationale) {
+    const { bus, user, registry } = get();
+    if (!bus || !user || !registry) return;
+    const existing = registry.get(id);
+    if (!existing || existing.kind !== 'Requirement') return;
+    const trimmed = rationale.trim();
+    const next = trimmed.length === 0 ? undefined : trimmed;
+    if ((existing.rationale ?? undefined) === next) return;
+    const patch: ElementPatch<'Requirement'> = { rationale: next };
     bus.dispatch({ kind: 'update-element', id, patch }, user);
   },
 
