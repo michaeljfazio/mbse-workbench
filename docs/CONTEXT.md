@@ -69,6 +69,21 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
   one bad project does not blind the picker. Dates are stored as ISO
   strings; the Repository never deals in live `Date` objects.
 
+- **2026-05-11** — Collaboration seams live in `src/collab/`, split per
+  responsibility: `user.ts` (`User = { id, displayName, color }` and
+  `createSessionUser()` factory; deterministic color via hash of `id` into
+  `USER_COLORS`), `presence.ts` (`PresenceStore` with set/get/all/subscribe
+  — empty `setSelection` clears the presence so `allPresences()` omits
+  cleared users), `provider.ts` (`CollaborationProvider` + `NoopCollaborationProvider`),
+  `permissions.ts` (`PermissionAction` / `PermissionHook` / `allowAll` /
+  `can`). `can` is the wired default: returns `true` unless `target.ownerId`
+  is set and differs from `user.id`, which gives Phase 1 a real seam for
+  future multi-user permissions even though single-user mode never sets
+  `ownerId`. The command bus accepts `provider?: CollaborationProvider`
+  (defaults to `NoopCollaborationProvider`) and publishes every successful
+  dispatch/undo/redo event to it post-apply — denied permissions throw
+  before publish, so the provider only sees committed events.
+
 - **2026-05-11** — The `github-pages` environment has a `branch_policy`
   protection rule with `custom_branch_policies: true`. Out of the box
   only the `main` branch is in the allow-list, so the release workflow

@@ -42,8 +42,8 @@ function mkComposition(
   };
 }
 
-function mkUser(name = 'alice'): User {
-  return { id: createUserId(), name };
+function mkUser(displayName = 'alice'): User {
+  return { id: createUserId(), displayName, color: '#000000' };
 }
 
 describe('createCommandBus — basic dispatch', () => {
