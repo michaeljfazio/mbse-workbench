@@ -5,6 +5,8 @@ import { createInMemorySessionRepository } from '@/repository';
 import {
   BDD_VIEWPOINT_ID,
   bddViewpoint,
+  IBD_VIEWPOINT_ID,
+  ibdViewpoint,
 } from '@/viewpoints';
 import {
   DEFAULT_LEFT_PANE_WIDTH,
@@ -57,6 +59,14 @@ describe('workspace store', () => {
     expect(s.activeDiagramId).toBeNull();
     expect(s.selectedElementIds).toEqual([]);
     expect(s.viewpoints.has(BDD_VIEWPOINT_ID)).toBe(true);
+  });
+
+  it('registers both BDD and IBD viewpoints at bootstrap (issue #49)', () => {
+    const s = useWorkspaceStore.getState();
+    expect(s.viewpoints.has(BDD_VIEWPOINT_ID)).toBe(true);
+    expect(s.viewpoints.has(IBD_VIEWPOINT_ID)).toBe(true);
+    expect(s.viewpoints.get(IBD_VIEWPOINT_ID)).toBe(ibdViewpoint);
+    expect(s.viewpoints.get(BDD_VIEWPOINT_ID)).toBe(bddViewpoint);
   });
 
   it('bootstrap creates a new Untitled Project when storage is empty', async () => {
@@ -194,6 +204,83 @@ describe('workspace store', () => {
   it('saveProject is a no-op before bootstrap', async () => {
     await expect(useWorkspaceStore.getState().saveProject()).resolves.toBeUndefined();
     expect(useWorkspaceStore.getState().project).toBeNull();
+  });
+
+  it('createDiagram appends a new IBD diagram and persists it (#49)', async () => {
+    const storage = makeMemoryStorage();
+    const repository = createInMemorySessionRepository({ storage });
+    const user = createSessionUser();
+    await useWorkspaceStore.getState().bootstrap({ repository, user, storage });
+
+    const partDefinitionId = mkElementId('engine');
+    const id = useWorkspaceStore.getState().createDiagram(IBD_VIEWPOINT_ID, {
+      name: 'Engine IBD',
+      context: { kind: 'partDefinition', id: partDefinitionId },
+    });
+    expect(id).not.toBeNull();
+
+    const s = useWorkspaceStore.getState();
+    expect(s.diagrams).toHaveLength(2);
+    const ibd = s.diagrams.find((d) => d.viewpointId === IBD_VIEWPOINT_ID);
+    expect(ibd).toBeDefined();
+    expect(ibd!.name).toBe('Engine IBD');
+    expect(ibd!.context).toEqual({
+      kind: 'partDefinition',
+      id: partDefinitionId,
+    });
+    expect(ibd!.positions).toEqual({});
+
+    // Persistence: simulate a reload and confirm the IBD diagram is back.
+    resetWorkspaceStoreForTests();
+    await useWorkspaceStore.getState().bootstrap({ repository, user, storage });
+    const reloaded = useWorkspaceStore
+      .getState()
+      .diagrams.find((d) => d.viewpointId === IBD_VIEWPOINT_ID);
+    expect(reloaded).toBeDefined();
+    expect(reloaded!.name).toBe('Engine IBD');
+    expect(reloaded!.context).toEqual({
+      kind: 'partDefinition',
+      id: partDefinitionId,
+    });
+  });
+
+  it('createDiagram defaults the name to the viewpoint label and omits context when not provided (#49)', async () => {
+    const storage = makeMemoryStorage();
+    const repository = createInMemorySessionRepository({ storage });
+    const user = createSessionUser();
+    await useWorkspaceStore.getState().bootstrap({ repository, user, storage });
+
+    const id = useWorkspaceStore.getState().createDiagram(IBD_VIEWPOINT_ID);
+    expect(id).not.toBeNull();
+    const ibd = useWorkspaceStore
+      .getState()
+      .diagrams.find((d) => d.id === id);
+    expect(ibd?.name).toBe('Internal Block Diagram');
+    expect(ibd?.context).toBeUndefined();
+  });
+
+  it('createDiagram returns null for an unknown viewpoint id', async () => {
+    const storage = makeMemoryStorage();
+    const repository = createInMemorySessionRepository({ storage });
+    const user = createSessionUser();
+    await useWorkspaceStore.getState().bootstrap({ repository, user, storage });
+
+    const before = useWorkspaceStore.getState().diagrams.length;
+    const id = useWorkspaceStore.getState().createDiagram('does-not-exist');
+    expect(id).toBeNull();
+    expect(useWorkspaceStore.getState().diagrams).toHaveLength(before);
+  });
+
+  it('createDiagram makes the new diagram switchable via setActiveDiagram (#49)', async () => {
+    const storage = makeMemoryStorage();
+    const repository = createInMemorySessionRepository({ storage });
+    const user = createSessionUser();
+    await useWorkspaceStore.getState().bootstrap({ repository, user, storage });
+
+    const id = useWorkspaceStore.getState().createDiagram(IBD_VIEWPOINT_ID);
+    expect(id).not.toBeNull();
+    useWorkspaceStore.getState().setActiveDiagram(id!);
+    expect(useWorkspaceStore.getState().activeDiagramId).toBe(id);
   });
 
   it('persists command-bus history through save and rehydrates it on reload (#44)', async () => {

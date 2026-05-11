@@ -39,3 +39,5 @@ export {
   BDD_BLOCK_HEIGHT,
   BDD_BLOCK_WIDTH,
 } from './bdd/BlockNode';
+
+export { IBD_VIEWPOINT_ID, ibdViewpoint } from './ibd';
