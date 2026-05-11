@@ -16,7 +16,13 @@ import type {
  *  - `satisfy` and `verify` allow any target kind from the allowed list
  */
 
-const SATISFY_VERIFY_TARGET_KINDS: ReadonlySet<ElementKind> = new Set<ElementKind>([
+/**
+ * Element kinds that are valid endpoints (target side) for `satisfy`/`verify`
+ * RequirementTrace edges per ADR 0004 § 3. Also defines which kinds surface
+ * the inspector's `TraceLinksExtras` section and the context-menu
+ * "Show requirement traces" entry.
+ */
+export const TRACE_TARGET_KINDS: ReadonlySet<ElementKind> = new Set<ElementKind>([
   'Requirement',
   'PartDefinition',
   'PartUsage',
@@ -26,6 +32,10 @@ const SATISFY_VERIFY_TARGET_KINDS: ReadonlySet<ElementKind> = new Set<ElementKin
   'StateUsage',
   'UseCase',
 ]);
+
+export function isTraceTargetKind(kind: ElementKind): boolean {
+  return TRACE_TARGET_KINDS.has(kind);
+}
 
 export function isValidRequirementTraceConnection(
   connection: Connection,
@@ -45,7 +55,7 @@ export function isValidRequirementTraceConnection(
   if (traceKind === 'derive' || traceKind === 'refine') {
     return targetEl.kind === 'Requirement';
   }
-  return SATISFY_VERIFY_TARGET_KINDS.has(targetEl.kind);
+  return TRACE_TARGET_KINDS.has(targetEl.kind);
 }
 
 /**

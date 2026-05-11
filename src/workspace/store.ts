@@ -43,6 +43,7 @@ import {
   dagreLayout,
   IBD_VIEWPOINT_ID,
   ibdViewpoint,
+  REQUIREMENTS_VIEWPOINT_ID,
   requirementsViewpoint,
   type BddEdgeKind,
   type Viewpoint,
@@ -208,6 +209,7 @@ export interface WorkspaceActions {
     elementId: ElementId,
     diagramId: DiagramId,
   ): void;
+  showRequirementTracesFor(elementId: ElementId): DiagramId | null;
   connectPorts(connection: Connection): ElementId | null;
   connectItemFlow(connection: Connection): ElementId | null;
   setItemFlowType(id: ElementId, itemType: string): void;
@@ -899,6 +901,24 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       activeDiagramId: diagramId,
       selectedElementIds: [elementId],
     });
+  },
+
+  showRequirementTracesFor(elementId) {
+    const { registry, diagrams, edges } = get();
+    if (!registry || !registry.get(elementId)) return null;
+    const reqDiagram = diagrams.find(
+      (d) => d.viewpointId === REQUIREMENTS_VIEWPOINT_ID,
+    );
+    if (!reqDiagram) return null;
+    const trace = edges.find(
+      (e) => e.kind === 'RequirementTrace' && e.targetId === elementId,
+    );
+    if (!trace) return null;
+    set({
+      activeDiagramId: reqDiagram.id,
+      selectedElementIds: [trace.sourceId],
+    });
+    return reqDiagram.id;
   },
 
   connectPorts(connection) {

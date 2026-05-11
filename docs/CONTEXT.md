@@ -773,3 +773,39 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
   than `text-muted-foreground` for WCAG AA contrast on the card
   background (the muted shade failed at 3.88:1, same as the
   earlier-discovered popover description pattern).
+
+- **2026-05-12** — `<ul role="radiogroup">` with `<li>` children fails axe
+  `listitem` (serious) because the `role` override removes the implicit list
+  semantics, so the `<li>` parent is no longer inside a `role=list`. Use
+  `<div role="radiogroup">` with `<button role="radio">` siblings (no
+  intermediate `<li>`) for the popover's requirements picker. The same trap
+  applies to any custom-roled `<ul>` list. Discovered while landing #73.
+
+- **2026-05-12** — Playwright's `toContainText` reads `textContent`, which
+  does NOT include `<input value="...">` attribute values. The inspector's
+  `inspector-name` field is an `<input>`, so an assertion like
+  `expect(getByTestId('inspector-single')).toContainText('Stop on red')` will
+  fail even when the inspector clearly shows that name — the text is the
+  input's value, not its text. Assert with
+  `expect(getByTestId('inspector-name')).toHaveValue('Stop on red')` instead.
+  Discovered while landing #73.
+
+- **2026-05-12** — Cross-diagram traceability via inspector (#73): a
+  `TraceLinksExtras` section appears in the Inspector for any element kind
+  in `TRACE_TARGET_KINDS` (PartDefinition / PartUsage / ActionDefinition /
+  ActionUsage / StateDefinition / StateUsage / UseCase / Requirement). The
+  set is exported from `@/viewpoints` (`isTraceTargetKind(kind)` helper).
+  The section lists every `RequirementTraceEdge` where the selected element
+  is the **target**, with `«kind»` + source Requirement name (+ optional
+  reqId) + trash to unlink. A "+ Link requirement" button opens
+  `LinkRequirementPopover` (search + radio list of all Requirements + four
+  trace-kind buttons; satisfy/verify enabled for non-Requirement targets,
+  all four for Requirement targets per ADR 0004 § 3). The popover uses
+  `position: fixed` so it escapes the inspector pane's overflow. Per ADR
+  0004 § 4, trace edges are NOT rendered on BDD/IBD canvases in Phase 4 —
+  the cross-diagram visibility seam is the inspector list plus the context
+  menu's new "Show requirement traces" entry, which calls
+  `showRequirementTracesFor(elementId)` to switch to the first Requirements
+  diagram and select the first incoming trace's source Requirement. The
+  context menu entry is omitted when the element has zero incoming traces
+  or when no Requirements diagram exists yet.
