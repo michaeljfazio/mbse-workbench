@@ -44,3 +44,7 @@ artifacts
 agent-trace.jsonl
 loop.log
 dry-run/
+
+# Container scratch (when generating Linux baselines via podman/docker)
+.pnpm-store/
+qemu_*.core

@@ -122,6 +122,43 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
   dispatch/undo/redo event to it post-apply — denied permissions throw
   before publish, so the provider only sees committed events.
 
+- **2026-05-11** — Workspace shell architecture (issue #30): the three-pane
+  shell lives under `src/workspace/` (Workspace + Header + ProjectTreePane +
+  CanvasPane + SidebarPane + Divider). State sits in a Zustand store
+  (`src/workspace/store.ts`); `useWorkspaceStore.getState().bootstrap({
+  repository, user })` is called once from `main.tsx` before render. The
+  store owns the `ElementRegistry`, `CommandBus`, `CollaborationProvider`,
+  the active `Project`, the in-memory `Diagram[]` (one per open tab), the
+  pane widths, and the inspector-tab selection. Pane widths are persisted
+  to sessionStorage under `mbse:v1:workspace:layout` so resize survives
+  reload. `resetWorkspaceStoreForTests()` wipes data fields back to the
+  initial snapshot without touching the action closures — call it in
+  `beforeEach`/`afterEach`. The `Viewpoint<T>` interface and
+  `ViewpointRegistry` live in `src/viewpoints/`; the BDD stub registers
+  there but renderNode/renderEdge are no-ops until #31.
+
+- **2026-05-11** — Visual snapshot baselines (Playwright
+  `toHaveScreenshot`) are pinned to the **Linux** renderer used by GitHub
+  Actions `ubuntu-latest`. Local agents on darwin would diff against the
+  Linux baselines and flap on font hinting differences, so
+  `playwright.config.ts` sets `grepInvert: /@visual/` whenever
+  `!CI && platform !== 'linux'`. The visual gate still runs in CI. The
+  snapshot path template moves all baselines under
+  `tests/e2e/__screenshots__/{testFileName}/{arg}-{projectName}.png` so
+  diffs live in a single committed tree (no per-spec sibling
+  `*-snapshots/` folders). Generating new baselines locally on darwin
+  requires a Linux container: `mcr.microsoft.com/playwright:v1.48.2-jammy`
+  via `podman run --platform linux/arm64` (amd64 emulation flakes esbuild
+  on Apple Silicon — arm64 native works, font rendering matches CI within
+  the configured `maxDiffPixelRatio: 0.01` tolerance). Inside the
+  container, **`rm -rf node_modules dist` and reinstall fresh**, build,
+  then `vite preview --host 0.0.0.0 --port 5173` (NOT `vite dev` — Vite's
+  file watcher hits `ENOSPC` in the container). Point Playwright at the
+  preview via `PLAYWRIGHT_BASE_URL=http://localhost:5173 pnpm exec
+  playwright test --update-snapshots --grep @visual`. After the container
+  exits, `rm -rf node_modules && pnpm install --frozen-lockfile` to
+  restore the host's darwin-arm64 binaries.
+
 - **2026-05-11** — The `github-pages` environment has a `branch_policy`
   protection rule with `custom_branch_policies: true`. Out of the box
   only the `main` branch is in the allow-list, so the release workflow

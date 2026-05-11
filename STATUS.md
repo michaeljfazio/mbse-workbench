@@ -4,14 +4,14 @@
 phase:2 — BDD vertical slice (template for all viewpoints)
 
 ## Current iteration
-- Iteration #: 9
+- Iteration #: 10
 - Started: 2026-05-11
-- Branch: issue/29-decompose-phase-2
-- Working on: #29 — chore(phase-2): decompose Phase 2 + record @xyflow/react v12.3.x research findings
+- Branch: issue/30-workspace-shell (PR #38 open, auto-merge enabled, CI in progress)
+- Working on: #30 — feat(workspace): three-pane shell + viewpoint registry + workspace store
 
 ## Last test run
-- Command: release.yml workflow on tag vphase-1 (build + deploy-pages + github-release)
-- Result: PASS — run #25670869402, all three jobs green; Pages returns HTTP 200 with "MBSE Workbench"
+- Command: pnpm run check (darwin, @visual skipped via `grepInvert` per docs/CONTEXT.md)
+- Result: PASS — 13 test files / 106 unit specs; vite build 0.56 s; 12 Playwright specs (6 chromium + 6 webkit, functional + a11y) all green
 - Failures: (none)
 
 ## Known issues / blockers
@@ -32,6 +32,8 @@ phase:2 — BDD vertical slice (template for all viewpoints)
 - 2026-05-11: Phase 1 closed and vphase-1 tagged at c1214db. Release workflow #25670869402 green; Pages HTTP 200; screenshot uploaded as `app-shell.png` release asset. Phase 1 shipped data layer only — deployed UI unchanged from vphase-0 (links: #27).
 - 2026-05-11: Phase 2 decomposed into 7 child issues (#30 workspace shell + viewpoint registry, #31 BDD React Flow canvas + Block/Composition/Generalization, #32 inspector, #33 project tree + drag-from-tree, #34 dagre auto-layout + per-view positions, #35 PNG/SVG export, #36 Phase 2 gate e2e). Reason: AGENT.md Ralph loop step 6 — just-in-time decomposition. Sequencing: #30 unblocks #31; #31 unblocks #32-#35 (independent of each other); #36 depends on all. Linked from epic #3's task list (links: #29).
 - 2026-05-11: `@xyflow/react` v12.3.x research findings recorded in `docs/CONTEXT.md` ahead of Phase 2 first use — Zustand wiring (drive via props + applyNodeChanges/applyEdgeChanges, route through command bus), required CSS import, `node.width`/`node.height` (not `style`), `nodrag`/`nopan` classes on interactive children, fresh `dagre.graphlib.Graph()` per layout call for strict-mode safety, built-in delete key. Reason: AGENT.md directive 11 — version pinning + library currency. Verified via context7-fetched authoritative v12 docs (links: #29).
+- 2026-05-11: Workspace shell foundation (#30) committed at daa7c6f. Three-pane resizable layout (project tree / canvas / sidebar tabs), Zustand `useWorkspaceStore`, `Viewpoint<T>` registry with BDD stub, project bootstrap via `InMemorySessionRepository`, pane-width persistence to sessionStorage. Resize divider exposed as a keyboard-operable `role=separator` with `aria-valuenow`/`aria-controls`. PR #38 open with auto-merge enabled.
+- 2026-05-11: Visual snapshot baselines pinned to **Linux** renderer (CI runs ubuntu-latest). `playwright.config.ts` skips `@visual` specs when `!CI && platform !== 'linux'` so the agent's darwin `npm run check` doesn't flap on font hinting. Baselines live under `tests/e2e/__screenshots__/{testFileName}/{arg}-{projectName}.png` (via `snapshotPathTemplate`). Generation procedure: `mcr.microsoft.com/playwright:v1.48.2-jammy` via `podman --platform linux/arm64` + `vite preview` (Vite dev hits `ENOSPC` on file-watcher limits in the container). Full procedure recorded in `docs/CONTEXT.md` for future viewpoints (links: #30).
 
 ## Next action
-On iteration 10: pick #30 (workspace shell + viewpoint registry + workspace store), relabel `status:in-progress`, branch `issue/30-workspace-shell`, implement. This is the load-bearing foundation issue for Phase 2 — directive 12 recommends Opus for the first issue in a phase whose result becomes the template for subsequent issues. Build the three-pane resizable shell, Zustand workspace store, `Viewpoint<T>` registry per AGENT.md directive 5, project bootstrap via `InMemorySessionRepository`, BDD placeholder. Visual baseline `workspace-empty-bdd.png` on Chromium + WebKit; a11y scan; resize-handle persistence test with real mouse events.
+On iteration 11: verify PR #38 merged green on CI, then pick #31 (BDD React Flow canvas + Block / Composition / Generalization edges + drag-create). This is the second Phase 2 issue and unblocks #32–#35; per AGENT.md directive 12, Opus is appropriate because the BlockNode + edge-type-picker + onConnect routing pattern is the template every later viewpoint reuses. The workspace store + `Viewpoint<T>` registry + sample project are in place from #30; #31 wires React Flow into the canvas region, imports `@xyflow/react/dist/style.css` at app entry, declares module-scoped `nodeTypes`/`edgeTypes`, and dispatches a compound `create-element` + `link` command on each `onConnect`.
