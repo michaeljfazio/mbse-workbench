@@ -271,6 +271,92 @@ describe('ElementRegistry — update', () => {
   });
 });
 
+describe('ElementRegistry — updateEdge', () => {
+  it('updates an edge label and replaces it (snapshot stability)', () => {
+    const r = createElementRegistry();
+    const a = mkPartDef('A');
+    const b = mkPartDef('B');
+    r.add(a);
+    r.add(b);
+    const edge: ModelEdge = {
+      id: createEdgeId(),
+      kind: 'RequirementTrace',
+      sourceId: a.id,
+      targetId: b.id,
+      traceKind: 'satisfy',
+    };
+    r.addEdge(edge);
+    const before = r.getEdge(edge.id);
+    r.updateEdge<'RequirementTrace'>(edge.id, { label: 'covers' });
+    const after = r.getEdge(edge.id);
+    expect(after?.label).toBe('covers');
+    expect(before).not.toBe(after);
+  });
+
+  it('updates a per-kind optional field on first assignment', () => {
+    const r = createElementRegistry();
+    const a = mkPartDef('A');
+    const b = mkPartDef('B');
+    r.add(a);
+    r.add(b);
+    const flow: ModelEdge = {
+      id: createEdgeId(),
+      kind: 'ControlFlow',
+      sourceId: a.id,
+      targetId: b.id,
+    };
+    r.addEdge(flow);
+    r.updateEdge<'ControlFlow'>(flow.id, { guard: 'x > 0' });
+    expect((r.getEdge(flow.id) as { guard?: string }).guard).toBe('x > 0');
+  });
+
+  it('throws when the target id does not exist', () => {
+    const r = createElementRegistry();
+    expect(() =>
+      r.updateEdge<'RequirementTrace'>(mkEdgeId('ghost'), { label: 'x' }),
+    ).toThrow(/update edge target not found/);
+  });
+
+  it('rejects id / kind / sourceId / targetId in the patch', () => {
+    const r = createElementRegistry();
+    const a = mkPartDef('A');
+    const b = mkPartDef('B');
+    r.add(a);
+    r.add(b);
+    const edge: ModelEdge = {
+      id: createEdgeId(),
+      kind: 'RequirementTrace',
+      sourceId: a.id,
+      targetId: b.id,
+      traceKind: 'derive',
+    };
+    r.addEdge(edge);
+    for (const key of ['id', 'kind', 'sourceId', 'targetId']) {
+      expect(() =>
+        r.updateEdge(edge.id, { [key]: 'oops' } as never),
+      ).toThrow(/update edge patch must not contain/);
+    }
+  });
+
+  it('rejects a patch field that is not part of the edge kind', () => {
+    const r = createElementRegistry();
+    const a = mkPartDef('A');
+    const b = mkPartDef('B');
+    r.add(a);
+    r.add(b);
+    const edge: ModelEdge = {
+      id: createEdgeId(),
+      kind: 'Composition',
+      sourceId: a.id,
+      targetId: b.id,
+    };
+    r.addEdge(edge);
+    expect(() =>
+      r.updateEdge(edge.id, { guard: 'x' } as never),
+    ).toThrow(/update edge kind mismatch/);
+  });
+});
+
 describe('ElementRegistry — checkIntegrity', () => {
   it('returns empty findings for a registry built only via the safe API', () => {
     const r = createElementRegistry();

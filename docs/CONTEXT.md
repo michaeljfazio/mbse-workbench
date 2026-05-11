@@ -687,6 +687,70 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
   used `expect`-driven UI assertions instead of seed reads after reload,
   so they sidestepped it too. Discovered while landing #71.
 
+- **2026-05-12** — Edge mutation goes through a first-class `update-edge`
+  command (mirrors `update-element`). Added in #72 so a RequirementTrace's
+  `label` can be edited from the inspector with single-step undo. Shape:
+  `{ kind: 'update-edge', id: EdgeId, patch: EdgePatch<K> }`. `EdgePatch<K>`
+  forbids id/kind/sourceId/targetId — rewriting endpoints is structurally
+  unlink+relink, not an update. Registry `updateEdge` mirrors `update<K>`:
+  same kind-mismatch guard, same `EDGE_BASE_OPTIONAL_FIELDS` whitelist
+  (currently just `label`) plus a per-kind table for fields like
+  `ControlFlow.guard`, `ObjectFlow.itemType`, `Extend.extensionPoint`. Bus
+  inverse captures `previousValues` by key — replaying restores or clears
+  the prior label on undo.
+
+- **2026-05-12** — `Inspector` looks up the selected id in BOTH
+  `elements` and `edges`. `selectedElementIds` is typed `readonly
+  ElementId[]` but at runtime carries any id-shaped string; pushing an
+  `EdgeId` onto it for a ModelEdge selection works because brands are
+  compile-time only. `<Inspector />` returns `<InspectorTraceEdge edge=...
+  />` for `RequirementTrace`; other ModelEdge kinds fall through to
+  "Selected element no longer exists." (until a future inspector covers
+  Composition/Generalization/etc.). Pattern keeps the inspector
+  presentational and the element-vs-edge dispatch at the top.
+
+- **2026-05-12** — `CanvasPane.onEdgesChange` now selects ModelEdges into
+  `selectedElementIds` (alongside element-as-edge ids). The diff branch
+  partitions flow edges into `elementEdgeIds` (id resolves in registry)
+  vs `modelEdgeIds` (everything else — the BDD/Requirements
+  ModelEdge layer). Selection merges both lists with the preserved
+  non-edge ids. Required for RequirementTrace edges to surface in the
+  inspector after click. The `remove` change branch still routes
+  registry-resolving ids to `deleteElement` and the rest to `unlinkEdge`
+  — that contract is unchanged.
+
+- **2026-05-12** — RequirementNode (#71) shipped without React Flow
+  `<Handle>` components — perfectly fine for Phase 1 but blocked
+  drag-create of trace edges in #72. Added `Handle type="target"
+  position={Position.Top} id="top"` and `Handle type="source"
+  position={Position.Bottom} id="bottom"` with the same Tailwind classes
+  as BDD's BlockNode (`!z-10 !h-3 !w-3 !rounded-full !border-2
+  !border-card !bg-primary`). Lesson for future viewpoints: add the
+  Handles in the node component during the *node* phase even if the
+  *edges* phase is still pending — the e2e drag tests in the edge
+  phase need a real handle to grab via Playwright `mouse.down/move/up`,
+  and skipping it forces the edge-phase PR to also touch the node
+  component, slightly muddying the diff.
+
+- **2026-05-12** — Playwright locator gotcha for `EdgeLabelRenderer`
+  edges: the React Flow `<EdgeLabelRenderer>` portals its children
+  OUT of the inner `<svg>` and into a sibling absolute-positioned
+  `<div class="react-flow__renderer">` next to it. Anything with
+  `data-testid` inside the renderer surfaces in `document.querySelector`
+  alongside the SVG `<g>` that holds the rest of the edge. A naive
+  `[data-testid^="req-trace-edge-"]` selector matches the `<g>` AND the
+  portaled stereotype label div AND the (optional) user-label span —
+  three hits per edge. Use a SVG-side discriminator like
+  `g[data-trace-kind]` for edge counts. Discovered while writing #72's
+  e2e specs.
+
+- **2026-05-12** — `EdgeProps<MyEdge>` (v12.3) does NOT include
+  `labelX` / `labelY` in its public typing even though some
+  `getXxxPath` helpers return them. Don't destructure `labelX`/`labelY`
+  from props; instead pull them from `getSmoothStepPath(...)` and pass
+  to the EdgeLabelRenderer transform string yourself. Caught by `tsc -b`
+  during #72 — TS 2339 on `labelX` / `labelY` properties.
+
 - **2026-05-12** — Requirement palette item + Requirement-aware drop /
   toolbar wiring (#71): the Requirements viewpoint now ships a
   `paletteItems` entry so the project tree always exposes the

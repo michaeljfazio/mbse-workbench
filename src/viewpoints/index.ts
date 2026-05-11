@@ -74,16 +74,22 @@ export type {
 } from './ibd';
 
 export {
+  isValidRequirementTraceConnection,
   REQUIREMENT_NODE_HEIGHT,
   REQUIREMENT_NODE_WIDTH,
   REQUIREMENTS_REQUIREMENT_NODE_TYPE,
+  REQUIREMENTS_TRACE_EDGE_TYPE,
   REQUIREMENTS_VIEWPOINT_ID,
   RequirementNode,
+  RequirementTraceEdge,
   requirementsViewpoint,
+  validTraceKindsFor,
 } from './requirements';
 
 export type {
   RequirementNodeData,
   RequirementNodeType,
   RequirementRenameCallback,
+  RequirementTraceEdgeData,
+  RequirementTraceFlowEdge,
 } from './requirements';

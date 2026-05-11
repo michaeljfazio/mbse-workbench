@@ -1,4 +1,4 @@
-import type { ModelEdge } from './edges';
+import type { EdgeKind, EdgeOfKind, ModelEdge } from './edges';
 import type { ElementKind, ElementOfKind, ModelElement } from './elements';
 import type { EdgeId, ElementId } from './id';
 
@@ -27,6 +27,13 @@ export type ElementPatch<K extends ElementKind> = Partial<
   Omit<ElementOfKind<K>, 'id' | 'kind'>
 >;
 
+// Edge patches forbid changing endpoints because rewriting a graph edge's
+// source/target is structurally a different operation (unlink + re-link).
+// Label and per-kind optional fields are fair game.
+export type EdgePatch<K extends EdgeKind> = Partial<
+  Omit<EdgeOfKind<K>, 'id' | 'kind' | 'sourceId' | 'targetId'>
+>;
+
 export interface ElementRegistry {
   add(element: ModelElement): void;
   addEdge(edge: ModelEdge): void;
@@ -35,6 +42,7 @@ export interface ElementRegistry {
   remove(id: ElementId): void;
   removeEdge(id: EdgeId): void;
   update<K extends ElementKind>(id: ElementId, patch: ElementPatch<K>): void;
+  updateEdge<K extends EdgeKind>(id: EdgeId, patch: EdgePatch<K>): void;
   elements(): readonly ModelElement[];
   edges(): readonly ModelEdge[];
   checkIntegrity(): IntegrityResult;
@@ -62,6 +70,22 @@ const ELEMENT_BASE_OPTIONAL_FIELDS = new Set<string>(['ownerId', 'documentation'
 // patch on a freshly-created element (that omitted the field) is accepted.
 // Keeping this explicit avoids a runtime introspection of the discriminated
 // union types and stays in sync with the TypeScript definitions.
+// Edge-kind optional fields: forbid sourceId/targetId/id/kind changes, allow
+// per-kind optionals plus the shared `label`. Same intent as
+// KIND_OPTIONAL_FIELDS for elements.
+const EDGE_KIND_OPTIONAL_FIELDS: Partial<
+  Record<EdgeKind, ReadonlySet<string>>
+> = {
+  ControlFlow: new Set(['guard']),
+  ObjectFlow: new Set(['itemType']),
+  Extend: new Set(['extensionPoint']),
+};
+
+// `label` is on EdgeBase and is valid for every edge kind, but the instance
+// may not carry the property if it was never set — same shape as
+// ELEMENT_BASE_OPTIONAL_FIELDS for elements.
+const EDGE_BASE_OPTIONAL_FIELDS = new Set<string>(['label']);
+
 const KIND_OPTIONAL_FIELDS: Partial<
   Record<ElementKind, ReadonlySet<string>>
 > = {
@@ -157,6 +181,36 @@ export function createElementRegistry(): ElementRegistry {
       // Replace with a new object so prior snapshots stay frozen in time.
       const updated = { ...existing, ...patch } as ModelElement;
       elements.set(id, updated);
+    },
+
+    updateEdge(id, patch) {
+      const existing = edges.get(id);
+      if (!existing) {
+        throw new Error(`update edge target not found: ${id}`);
+      }
+      const kindOptional = EDGE_KIND_OPTIONAL_FIELDS[existing.kind];
+      for (const key of Object.keys(patch)) {
+        if (
+          key === 'id' ||
+          key === 'kind' ||
+          key === 'sourceId' ||
+          key === 'targetId'
+        ) {
+          throw new Error(`update edge patch must not contain ${key}`);
+        }
+        if (
+          !(key in existing) &&
+          !EDGE_BASE_OPTIONAL_FIELDS.has(key) &&
+          !(kindOptional?.has(key) ?? false)
+        ) {
+          throw new Error(
+            `update edge kind mismatch: edge ${id} is ${existing.kind}, ` +
+              `but patch field "${key}" is not part of that kind`,
+          );
+        }
+      }
+      const updated = { ...existing, ...patch } as ModelEdge;
+      edges.set(id, updated);
     },
 
     elements() {

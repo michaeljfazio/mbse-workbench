@@ -248,3 +248,99 @@ describe('workspace store — Requirements actions', () => {
     expect(findRequirement(fourth!).reqId).toBe('R-004');
   });
 });
+
+describe('workspace store — RequirementTrace actions (#72)', () => {
+  beforeEach(() => resetWorkspaceStoreForTests());
+  afterEach(() => resetWorkspaceStoreForTests());
+
+  async function setup() {
+    await bootstrap();
+    const reqDiagramId = useWorkspaceStore
+      .getState()
+      .createDiagram('requirements', { name: 'Reqs' })!;
+    const r1 = useWorkspaceStore
+      .getState()
+      .createRequirement(reqDiagramId, { x: 0, y: 0 }, { name: 'R1' })!;
+    const r2 = useWorkspaceStore
+      .getState()
+      .createRequirement(reqDiagramId, { x: 200, y: 0 }, { name: 'R2' })!;
+    return { reqDiagramId, r1, r2 };
+  }
+
+  it('linkRequirementTrace creates a RequirementTraceEdge with the chosen kind', async () => {
+    const { r1, r2 } = await setup();
+    const id = useWorkspaceStore
+      .getState()
+      .linkRequirementTrace(r1, r2, 'satisfy');
+    expect(id).not.toBeNull();
+    const edge = useWorkspaceStore.getState().edges.find((e) => e.id === id);
+    expect(edge?.kind).toBe('RequirementTrace');
+    expect(
+      edge?.kind === 'RequirementTrace' ? edge.traceKind : null,
+    ).toBe('satisfy');
+  });
+
+  it('linkRequirementTrace returns null when source is not a Requirement', async () => {
+    await setup();
+    // Create a Block to use as a bogus source.
+    const block = useWorkspaceStore.getState().createBlock({ x: 0, y: 0 })!;
+    const r1 = useWorkspaceStore
+      .getState()
+      .elements.filter((e) => e.kind === 'Requirement')[0]!;
+    const id = useWorkspaceStore
+      .getState()
+      .linkRequirementTrace(block, r1.id, 'satisfy');
+    expect(id).toBeNull();
+  });
+
+  it('linkRequirementTrace rejects derive/refine when target is not a Requirement', async () => {
+    await setup();
+    const block = useWorkspaceStore.getState().createBlock({ x: 0, y: 0 })!;
+    const r1 = useWorkspaceStore
+      .getState()
+      .elements.filter((e) => e.kind === 'Requirement')[0]!;
+    expect(
+      useWorkspaceStore
+        .getState()
+        .linkRequirementTrace(r1.id, block, 'derive'),
+    ).toBeNull();
+    expect(
+      useWorkspaceStore
+        .getState()
+        .linkRequirementTrace(r1.id, block, 'refine'),
+    ).toBeNull();
+    // satisfy / verify allow PartDefinition targets.
+    expect(
+      useWorkspaceStore
+        .getState()
+        .linkRequirementTrace(r1.id, block, 'satisfy'),
+    ).not.toBeNull();
+  });
+
+  it('setRequirementTraceLabel commits a label and undoes back to undefined', async () => {
+    const { r1, r2 } = await setup();
+    const id = useWorkspaceStore
+      .getState()
+      .linkRequirementTrace(r1, r2, 'satisfy')!;
+    useWorkspaceStore.getState().setRequirementTraceLabel(id, 'covers');
+    expect(
+      useWorkspaceStore.getState().edges.find((e) => e.id === id)?.label,
+    ).toBe('covers');
+    useWorkspaceStore.getState().undo();
+    expect(
+      useWorkspaceStore.getState().edges.find((e) => e.id === id)?.label,
+    ).toBeUndefined();
+  });
+
+  it('setRequirementTraceLabel("") clears the existing label', async () => {
+    const { r1, r2 } = await setup();
+    const id = useWorkspaceStore
+      .getState()
+      .linkRequirementTrace(r1, r2, 'satisfy')!;
+    useWorkspaceStore.getState().setRequirementTraceLabel(id, 'covers');
+    useWorkspaceStore.getState().setRequirementTraceLabel(id, '');
+    expect(
+      useWorkspaceStore.getState().edges.find((e) => e.id === id)?.label,
+    ).toBeUndefined();
+  });
+});

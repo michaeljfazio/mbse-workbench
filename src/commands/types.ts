@@ -1,5 +1,7 @@
 import type {
   EdgeId,
+  EdgeKind,
+  EdgePatch,
   ElementId,
   ElementKind,
   ElementPatch,
@@ -35,6 +37,12 @@ export interface UnlinkCommand {
   readonly id: EdgeId;
 }
 
+export interface UpdateEdgeCommand<K extends EdgeKind = EdgeKind> {
+  readonly kind: 'update-edge';
+  readonly id: EdgeId;
+  readonly patch: EdgePatch<K>;
+}
+
 export interface UpdateDiagramPositionCommand {
   readonly kind: 'update-diagram-position';
   readonly diagramId: DiagramId;
@@ -55,6 +63,7 @@ export type Command =
   | DeleteElementCommand
   | LinkCommand
   | UnlinkCommand
+  | UpdateEdgeCommand
   | UpdateDiagramPositionCommand
   | CompoundCommand;
 

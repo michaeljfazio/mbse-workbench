@@ -6,6 +6,7 @@ export type {
   DeleteElementCommand,
   LinkCommand,
   UnlinkCommand,
+  UpdateEdgeCommand,
   UpdateDiagramPositionCommand,
   CompoundCommand,
 } from './types';

@@ -21,6 +21,7 @@ import type {
   ModelEdge,
   ModelElement,
   PartDefinitionElement,
+  RequirementTraceKind,
 } from '@/model';
 import {
   BDD_BLOCK_HEIGHT,
@@ -38,6 +39,7 @@ import {
   REQUIREMENTS_VIEWPOINT_ID,
   resolveIbdEdgeEndpoints,
   resolvePartHandles,
+  validTraceKindsFor,
   type BddEdgeKind,
   type Viewpoint,
 } from '@/viewpoints';
@@ -46,6 +48,7 @@ import { ContextMenu, deriveNavTargets, type NavTarget } from './contextMenu';
 import { EdgeKindPopover } from './EdgeKindPopover';
 import { ExportMenu } from './ExportMenu';
 import { PartUsageTypePopover } from './PartUsageTypePopover';
+import { TraceKindPopover } from './TraceKindPopover';
 import type { Diagram } from './diagram';
 import { downloadDiagramPng, downloadDiagramSvg } from './export';
 import {
@@ -65,6 +68,13 @@ interface PendingPartDrop {
   readonly flowPosition: { x: number; y: number };
   readonly popoverX: number;
   readonly popoverY: number;
+}
+
+interface PendingTrace {
+  readonly connection: Connection;
+  readonly allowedKinds: readonly RequirementTraceKind[];
+  readonly x: number;
+  readonly y: number;
 }
 
 interface ContextMenuState {
@@ -147,6 +157,11 @@ function toFlowEdges(
   const out: Edge[] = [];
   for (const e of edges) {
     if (!viewpoint.acceptedEdgeKinds.includes(e.kind)) continue;
+    const data: Record<string, unknown> = { edgeId: e.id };
+    if (e.kind === 'RequirementTrace') {
+      data.traceKind = e.traceKind;
+      data.label = e.label;
+    }
     out.push({
       id: e.id,
       type: viewpoint.edgeTypeFor(e),
@@ -155,7 +170,7 @@ function toFlowEdges(
       sourceHandle: 'bottom',
       targetHandle: 'top',
       selected: selectedIds.has(e.id as unknown as ElementId),
-      data: { edgeId: e.id },
+      data,
     });
   }
 
@@ -219,9 +234,13 @@ function CanvasInner(): JSX.Element {
   const connectPorts = useWorkspaceStore((s) => s.connectPorts);
   const connectItemFlow = useWorkspaceStore((s) => s.connectItemFlow);
   const createRequirement = useWorkspaceStore((s) => s.createRequirement);
+  const linkRequirementTrace = useWorkspaceStore(
+    (s) => s.linkRequirementTrace,
+  );
 
   const [pending, setPending] = useState<PendingConnection | null>(null);
   const [pendingPart, setPendingPart] = useState<PendingPartDrop | null>(null);
+  const [pendingTrace, setPendingTrace] = useState<PendingTrace | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const isConnectingRef = useRef(false);
@@ -315,14 +334,22 @@ function CanvasInner(): JSX.Element {
 
   const onEdgesChange = useCallback(
     (changes: EdgeChange[]) => {
-      // Edge ids can be either ModelEdge ids (BDD edges) or ElementId for
-      // element-as-edge kinds (ConnectionUsage / ItemFlow / Transition). We
-      // need to know which is which to (a) route deletions to the right
-      // store action and (b) reconcile selection across the two layers.
+      // Edge ids can be either ModelEdge ids or ElementId for element-as-edge
+      // kinds (ConnectionUsage / ItemFlow / Transition). We need to know which
+      // is which to (a) route deletions to the right store action and (b)
+      // reconcile selection across the two layers.
       const elementEdgeIds = new Set(
         flowEdges
           .filter((e) => registry?.get(e.id as ElementId))
           .map((e) => e.id as ElementId),
+      );
+      // Selectable ModelEdges include all flow edges whose id is NOT an
+      // element id — these are real `ModelEdge` rows. Requirements
+      // RequirementTrace edges show up in the inspector via this path.
+      const modelEdgeIds = new Set(
+        flowEdges
+          .filter((e) => !elementEdgeIds.has(e.id as ElementId))
+          .map((e) => e.id as unknown as ElementId),
       );
 
       const hasSelectChange = changes.some((c) => c.type === 'select');
@@ -331,10 +358,21 @@ function CanvasInner(): JSX.Element {
         const nextElementEdgeSelected: ElementId[] = next
           .filter((e) => e.selected && elementEdgeIds.has(e.id as ElementId))
           .map((e) => e.id as ElementId);
+        const nextModelEdgeSelected: ElementId[] = next
+          .filter(
+            (e) =>
+              e.selected &&
+              modelEdgeIds.has(e.id as unknown as ElementId),
+          )
+          .map((e) => e.id as unknown as ElementId);
         const preserved = selectedElementIds.filter(
-          (id) => !elementEdgeIds.has(id),
+          (id) => !elementEdgeIds.has(id) && !modelEdgeIds.has(id),
         );
-        const merged: ElementId[] = [...preserved, ...nextElementEdgeSelected];
+        const merged: ElementId[] = [
+          ...preserved,
+          ...nextElementEdgeSelected,
+          ...nextModelEdgeSelected,
+        ];
         const same =
           merged.length === selectedElementIds.length &&
           merged.every((id, i) => id === selectedElementIds[i]);
@@ -414,8 +452,32 @@ function CanvasInner(): JSX.Element {
         if (id) setSelection([id]);
         return;
       }
+      if (viewpoint.id === REQUIREMENTS_VIEWPOINT_ID && registry) {
+        const allowed = validTraceKindsFor(connection, registry);
+        if (allowed.length === 0) return;
+        const targetNode = flowNodes.find((n) => n.id === connection.target);
+        const screenPos = targetNode
+          ? reactFlow.flowToScreenPosition({
+              x: targetNode.position.x + REQUIREMENT_NODE_WIDTH / 2,
+              y: targetNode.position.y,
+            })
+          : { x: 0, y: 0 };
+        const rect = canvasRef.current?.getBoundingClientRect();
+        const x = screenPos.x - (rect?.left ?? 0);
+        const y = screenPos.y - (rect?.top ?? 0);
+        setPendingTrace({ connection, allowedKinds: allowed, x, y });
+        return;
+      }
     },
-    [viewpoint, flowNodes, reactFlow, connectPorts, connectItemFlow, setSelection],
+    [
+      viewpoint,
+      flowNodes,
+      reactFlow,
+      connectPorts,
+      connectItemFlow,
+      setSelection,
+      registry,
+    ],
   );
 
   const isValidConnection = useCallback(
@@ -431,6 +493,13 @@ function CanvasInner(): JSX.Element {
         const conn = connection as Connection;
         if (!conn.sourceHandle || !conn.targetHandle) return false;
         return isValidIbdConnection(conn, registry);
+      }
+      if (viewpoint.id === REQUIREMENTS_VIEWPOINT_ID) {
+        // Requirements viewpoint: source must be Requirement; target depends
+        // on the chosen traceKind. During drag we don't know the kind yet, so
+        // the validity check is satisfied as long as *some* kind would work.
+        const conn = connection as Connection;
+        return validTraceKindsFor(conn, registry).length > 0;
       }
       // BDD: both endpoints must resolve to a PartDefinition.
       const s = registry.get(source as ElementId);
@@ -454,6 +523,27 @@ function CanvasInner(): JSX.Element {
   );
 
   const cancelPending = useCallback(() => setPending(null), []);
+
+  const confirmPendingTrace = useCallback(
+    (traceKind: RequirementTraceKind) => {
+      if (!pendingTrace) return;
+      const { source, target } = pendingTrace.connection;
+      if (!source || !target) {
+        setPendingTrace(null);
+        return;
+      }
+      const id = linkRequirementTrace(
+        source as ElementId,
+        target as ElementId,
+        traceKind,
+      );
+      setPendingTrace(null);
+      if (id) setSelection([id as unknown as ElementId]);
+    },
+    [pendingTrace, linkRequirementTrace, setSelection],
+  );
+
+  const cancelPendingTrace = useCallback(() => setPendingTrace(null), []);
 
   const handleAddBlock = useCallback(() => {
     if (!diagram) return;
@@ -802,6 +892,15 @@ function CanvasInner(): JSX.Element {
             definitions={partDefinitions}
             onPick={confirmPendingPart}
             onCancel={cancelPendingPart}
+          />
+        ) : null}
+        {pendingTrace ? (
+          <TraceKindPopover
+            x={pendingTrace.x}
+            y={pendingTrace.y}
+            allowedKinds={pendingTrace.allowedKinds}
+            onPick={confirmPendingTrace}
+            onCancel={cancelPendingTrace}
           />
         ) : null}
         {contextMenu ? (
