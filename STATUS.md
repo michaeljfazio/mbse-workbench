@@ -4,14 +4,14 @@
 phase:3 — IBD
 
 ## Current iteration
-- Iteration #: 19
+- Iteration #: 20
 - Started: 2026-05-12
-- Branch: issue/48-decompose-phase-3
-- Working on: #48 — chore(phase-3): decompose Phase 3 + record @xyflow/react Handle research findings
+- Branch: (idle — awaiting CI on PR #56, then will pick #50)
+- Working on: #49 — feat(ibd): IBD viewpoint registration + empty IBD canvas + Diagram.context + ADR 0003
 
 ## Last test run
-- Command: (decomposition iteration; no code change beyond docs)
-- Result: N/A — CI will run `pnpm run check` on the PR; previous iteration's CI run 25681274560 (PR #46) and release workflow 25681490005 were green.
+- Command: `pnpm run check` (darwin) — typecheck + lint + 215 unit + build + 64 e2e (chromium + webkit, @visual auto-skipped on darwin per playwright.config.ts)
+- Result: PASS
 - Failures: (none)
 
 ## Known issues / blockers
@@ -51,6 +51,8 @@ phase:3 — IBD
 - 2026-05-12: Phase 2 closed and **vphase-2 tagged at 0f93af0**. Phase 2 gate spec (#36) merged via PR #46 (CI run 25681274560, 72/72 green chromium + webkit + visual + a11y). Release workflow 25681490005 (build + deploy-pages + github-release) green; Pages https://michaeljfazio.github.io/mbse-workbench/ returns HTTP 200; smoke walkthrough of the live URL via headless Chromium captured four screenshots (shell → +Block ×2 → Auto-layout → Inspector rename to "Engine") uploaded as release assets on vphase-2. First release that the demo URL actually demos something — vphase-0 and vphase-1 only shipped an app shell. Phase 3 (IBD) begins next iteration; Viewpoint registry already shaped so adding it means writing one folder + one config (links: #3 epic closed, #47 release, PR #46).
 - 2026-05-12: Phase 3 decomposed into six child issues (#49 IBD viewpoint registration + ADR 0003 IBD shape, #50 PartUsage node + PortUsage handles + port management, #51 ConnectionUsage edge + typed compatibility, #52 ItemFlow edge variant, #53 cross-diagram navigation, #54 Phase 3 gate spec). Reason: AGENT.md Ralph loop step 6 — just-in-time decomposition. Sequencing: #49 unblocks #50; #50 unblocks #51/#52 (parallelizable); #53 independent of the rest; #54 depends on #49-#53. Linked from epic #4's task list (links: #48).
 - 2026-05-12: `@xyflow/react` v12.3.x multi-handle-per-node research findings recorded in `docs/CONTEXT.md` ahead of Phase 3 first use — multiple `<Handle>` per side use unique `id` plus inline `style={{ top: '<pct>%' }}`, `Connection.sourceHandle`/`targetHandle` carry the handle id, no built-in label (use a sibling `<span>` or `<Handle>` children), `isConnectable` and `isValidConnection` compose independently. Reason: AGENT.md directive 11 — verify pinned API before first use. Verified via context7 (links: #48).
+- 2026-05-12: IBD viewpoint (#49) — `ibdViewpoint` registered alongside BDD with empty `nodeTypes`/`edgeTypes` (frozen module-scope), `acceptedElementKinds: ['PartUsage']`, `acceptedEdgeKinds: []`, empty `paletteItems` (#50 introduces Part). `Diagram.context?: { kind: 'partDefinition'; id }` added per ADR 0003 and round-trips through `InMemorySessionRepository`; missing `context` normalises to `undefined` (forward-compat). New workspace action `createDiagram(viewpointId, options?)` appends and persists a diagram. `CanvasPane` hides the BDD-only "+ Block" toolbar button when the active viewpoint isn't BDD — IBD's toolbar still shows the viewpoint label and Auto-layout/Delete/Export (disabled until #50). Visual baseline `ibd-empty.{chromium,webkit}.png` committed (links: #49, PR #56).
+- 2026-05-12: Axe `color-contrast` can sample tabs mid-CSS-transition immediately after a click and report a phantom contrast failure. Wait for `document.getAnimations()` `.finished` before `AxeBuilder.analyze()` in any `@a11y` spec that switches state right before the scan. Playwright's `animations: 'disabled'` only applies to screenshot capture, not axe-core. Discovered while landing #49; recorded in `docs/CONTEXT.md` (links: #49, PR #56).
 
 ## Next action
-Pick **#49** (`feat(ibd): IBD viewpoint registration + empty IBD canvas + Diagram.context + ADR 0003`) as the next iteration's work — first IBD vertical slice. ADR 0003 resolves: IBD scope (one IBD per PartDefinition via `Diagram.context.id`), PortUsages as Handles (not separate nodes), ConnectionUsage typing rules (in↔out / inout↔any, in↔in & out↔out blocked), and BDD↔IBD coupling (keep Composition as direct PartDefinition→PartDefinition for Phase 3; no auto-spawned PartUsages). New `Diagram.context` field round-trips with forward-compat `undefined` normalisation. Visual baseline `ibd-empty-{project}.png` committed.
+Pick **#50** (`feat(ibd): PartUsage node + PortUsage handles + port management on PartDefinition`) as the next iteration's work. Adds the `PartUsageNode` custom node component (renders name + definition italic) and labelled `<Handle>` per `PortDefinition` on the underlying PartDefinition with alternating left/right CSS `top: %` placement. Inspector gains an "Add port" button on `PartDefinition` (compound command for the new `PortDefinition` + `portIds` patch). PartUsage placement comes from the per-diagram positions store; drop on IBD creates a typed PartUsage (decision: "type as…" picker vs untyped placeholder TBD in PR body). #51 (ConnectionUsage) and #52 (ItemFlow) become parallelizable once #50 lands.
