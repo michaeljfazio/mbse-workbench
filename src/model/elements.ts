@@ -27,6 +27,23 @@ export type ActionNodeType =
   | 'decision'
   | 'merge';
 
+export const ACTION_NODE_TYPE_VALUES: readonly ActionNodeType[] = [
+  'action',
+  'initial',
+  'final',
+  'fork',
+  'join',
+  'decision',
+  'merge',
+] as const;
+
+export function isActionNodeType(value: unknown): value is ActionNodeType {
+  return (
+    typeof value === 'string' &&
+    (ACTION_NODE_TYPE_VALUES as readonly string[]).includes(value)
+  );
+}
+
 export type StateNodeType = 'state' | 'initial' | 'final';
 
 export type ValueType = 'string' | 'number' | 'boolean';

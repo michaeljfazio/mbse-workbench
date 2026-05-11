@@ -40,6 +40,11 @@ export interface Viewpoint {
   // Maps an `acceptedEdgeElementKinds` element to its ReactFlow edge type.
   // Throws for unsupported kinds — same contract as `edgeTypeFor`.
   edgeTypeForElement(element: ModelElement): string;
+  // Layout box size for the given element. BDD/IBD/Requirements return a
+  // viewpoint-wide constant; Activity returns per-`nodeType` sizes because
+  // pseudostates render as small circles/diamonds/bars and a uniform box
+  // would leave handles floating in empty space around the visible shape.
+  nodeSizeFor(element: ModelElement): { readonly width: number; readonly height: number };
 }
 
 export class DuplicateViewpointError extends Error {

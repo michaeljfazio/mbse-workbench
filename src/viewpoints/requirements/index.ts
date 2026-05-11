@@ -88,4 +88,7 @@ export const requirementsViewpoint: Viewpoint = {
       `requirements viewpoint cannot render element-as-edge kind: ${element.kind}`,
     );
   },
+  nodeSizeFor(): { readonly width: number; readonly height: number } {
+    return { width: REQUIREMENT_NODE_WIDTH, height: REQUIREMENT_NODE_HEIGHT };
+  },
 };

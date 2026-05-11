@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 
 import type {
+  ActionNodeType,
+  ActionUsageElement,
   ConnectionUsageElement,
   EdgeId,
   EdgePatch,
@@ -220,6 +222,24 @@ export interface WorkspaceActions {
     position: NodePosition,
     options?: CreateRequirementOptions,
   ): ElementId | null;
+  createActionUsage(
+    diagramId: DiagramId,
+    position: NodePosition,
+    nodeType: ActionNodeType,
+    options?: CreateActionUsageOptions,
+  ): ElementId | null;
+  setActionDefinition(
+    id: ElementId,
+    definitionId: ElementId | null,
+  ): void;
+  addActionDefinitionParameter(
+    actionDefinitionId: ElementId,
+    valuePropertyId: ElementId,
+  ): void;
+  removeActionDefinitionParameter(
+    actionDefinitionId: ElementId,
+    valuePropertyId: ElementId,
+  ): void;
   setRequirementReqId(id: ElementId, reqId: string): void;
   setRequirementText(id: ElementId, text: string): void;
   setRequirementPriority(id: ElementId, priority: RequirementPriority): void;
@@ -368,6 +388,17 @@ function nextRequirementName(elements: readonly ModelElement[]): string {
   return `Req${n}`;
 }
 
+function nextActionName(elements: readonly ModelElement[]): string {
+  const taken = new Set(
+    elements
+      .filter((e): e is ActionUsageElement => e.kind === 'ActionUsage')
+      .map((e) => e.name),
+  );
+  let n = taken.size + 1;
+  while (taken.has(`Action${n}`)) n += 1;
+  return `Action${n}`;
+}
+
 function nextRequirementReqId(elements: readonly ModelElement[]): string {
   const taken = new Set(
     requirementsOf(elements)
@@ -391,6 +422,11 @@ export interface CreateRequirementOptions {
   readonly priority?: RequirementPriority;
   readonly status?: RequirementStatus;
   readonly rationale?: string;
+}
+
+export interface CreateActionUsageOptions {
+  readonly name?: string;
+  readonly definitionId?: ElementId;
 }
 
 export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
@@ -1002,6 +1038,94 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       user,
     );
     return id;
+  },
+
+  createActionUsage(diagramId, position, nodeType, options) {
+    const { bus, user, registry, diagrams, elements } = get();
+    if (!bus || !user || !registry) return null;
+    if (!diagrams.some((d) => d.id === diagramId)) return null;
+    // Initial / final pseudostates have no displayed name. Skipping the
+    // default name keeps the canvas visually clean and the spec's intent
+    // — "empty for initial/final" — explicit at creation time.
+    const isNameableByDefault =
+      nodeType !== 'initial' && nodeType !== 'final';
+    const defaultName = isNameableByDefault ? nextActionName(elements) : '';
+    const id = createElementId();
+    const action: ActionUsageElement = {
+      id,
+      kind: 'ActionUsage',
+      name: options?.name?.trim() ?? defaultName,
+      nodeType,
+      ...(options?.definitionId !== undefined
+        ? { definitionId: options.definitionId }
+        : {}),
+    };
+    bus.dispatch(
+      {
+        kind: 'compound',
+        commands: [
+          { kind: 'create-element', element: action },
+          {
+            kind: 'update-diagram-position',
+            diagramId,
+            elementId: id,
+            position,
+          },
+        ],
+      },
+      user,
+    );
+    return id;
+  },
+
+  setActionDefinition(id, definitionId) {
+    const { bus, user, registry } = get();
+    if (!bus || !user || !registry) return;
+    const existing = registry.get(id);
+    if (!existing || existing.kind !== 'ActionUsage') return;
+    if ((existing.definitionId ?? null) === definitionId) return;
+    if (definitionId !== null) {
+      const target = registry.get(definitionId);
+      if (!target || target.kind !== 'ActionDefinition') return;
+    }
+    const patch: ElementPatch<'ActionUsage'> = {
+      definitionId: definitionId ?? undefined,
+    };
+    bus.dispatch({ kind: 'update-element', id, patch }, user);
+  },
+
+  addActionDefinitionParameter(actionDefinitionId, valuePropertyId) {
+    const { bus, user, registry } = get();
+    if (!bus || !user || !registry) return;
+    const existing = registry.get(actionDefinitionId);
+    if (!existing || existing.kind !== 'ActionDefinition') return;
+    const param = registry.get(valuePropertyId);
+    if (!param || param.kind !== 'ValueProperty') return;
+    if (existing.parameterIds.includes(valuePropertyId)) return;
+    const patch: ElementPatch<'ActionDefinition'> = {
+      parameterIds: [...existing.parameterIds, valuePropertyId],
+    };
+    bus.dispatch(
+      { kind: 'update-element', id: actionDefinitionId, patch },
+      user,
+    );
+  },
+
+  removeActionDefinitionParameter(actionDefinitionId, valuePropertyId) {
+    const { bus, user, registry } = get();
+    if (!bus || !user || !registry) return;
+    const existing = registry.get(actionDefinitionId);
+    if (!existing || existing.kind !== 'ActionDefinition') return;
+    if (!existing.parameterIds.includes(valuePropertyId)) return;
+    const patch: ElementPatch<'ActionDefinition'> = {
+      parameterIds: existing.parameterIds.filter(
+        (pid) => pid !== valuePropertyId,
+      ),
+    };
+    bus.dispatch(
+      { kind: 'update-element', id: actionDefinitionId, patch },
+      user,
+    );
   },
 
   setRequirementReqId(id, reqId) {

@@ -12,7 +12,12 @@ import {
   IBD_CONNECTION_USAGE_EDGE_TYPE,
 } from './ConnectionUsageEdge';
 import { IBD_ITEM_FLOW_EDGE_TYPE, ItemFlowEdge } from './ItemFlowEdge';
-import { IBD_PART_USAGE_NODE_TYPE, PartUsageNode } from './PartUsageNode';
+import {
+  IBD_PART_USAGE_HEIGHT,
+  IBD_PART_USAGE_NODE_TYPE,
+  IBD_PART_USAGE_WIDTH,
+  PartUsageNode,
+} from './PartUsageNode';
 
 export {
   IBD_PART_USAGE_NODE_TYPE,
@@ -98,5 +103,8 @@ export const ibdViewpoint: Viewpoint = {
     throw new Error(
       `ibd viewpoint cannot render element-as-edge kind: ${element.kind}`,
     );
+  },
+  nodeSizeFor(): { readonly width: number; readonly height: number } {
+    return { width: IBD_PART_USAGE_WIDTH, height: IBD_PART_USAGE_HEIGHT };
   },
 };

@@ -804,6 +804,58 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
   Requirements and then `+ Block` on BDD followed by `block.click()` left
   the inspector in 2-element state, so `inspector-name` never appeared.
 
+- **2026-05-12** — Activity Diagram pseudostate sizes are per-element, not
+  per-viewpoint (#88). The `Viewpoint` interface gained
+  `nodeSizeFor(element: ModelElement)`; BDD/IBD/Requirements all return a
+  viewpoint-wide constant, but Activity returns one of four per-`nodeType`
+  sizes (action 180×80, initial/final 28×28 circle, fork/join 80×8 bar,
+  decision/merge 70×70 diamond). `CanvasPane.toFlowNodes` now calls
+  `viewpoint.nodeSizeFor(el)` per element instead of one size per viewpoint.
+  The export builder (`buildDiagramSvg`) still takes a single
+  `(nodeWidth, nodeHeight)` per call — Activity export will need a follow-up
+  to honour per-element sizing if the demo grows that path. The four
+  visible shapes share one custom-node component (`ActionUsageNode`)
+  registered under all seven node-type strings; the component branches on
+  `data.nodeType` to render the right shape. Selection rings on
+  initial/final/diamond use `ring-* ring-offset-*` on the bounding box (not
+  the visible shape) — clean enough at 28×28/70×70 but worth noting if a
+  designer asks why the ring is square around a circle.
+
+- **2026-05-12** — Activity palette UI is a horizontal chip strip rendered
+  *below* the canvas toolbar by `CanvasPane`, only when the active viewpoint
+  is Activity (`<ActivityPalette />`). Each of the seven chips is a
+  `draggable` div that sets two `dataTransfer` MIME types: the existing
+  `PROJECT_TREE_DRAG_TYPE` carrying the kind (`'ActionUsage'`) and a new
+  `PROJECT_TREE_DRAG_NODE_TYPE` (`application/x-mbse-action-node-type`)
+  carrying the `ActionNodeType` discriminator. `CanvasPane.handleDrop`
+  reads both: kind to validate against `acceptedElementKinds`, nodeType to
+  pick the correct `createActionUsage` variant. Drops via the project
+  tree's "Actions" group (which only sets the kind MIME) fall back to the
+  default `'action'` nodeType. Pattern transfers to State Machine Phase 6:
+  add a `StateMachinePalette` chip strip with the same two-MIME pattern.
+
+- **2026-05-12** — `ActionUsage` initial/final pseudostates are intentionally
+  created with `name: ''` (`createActionUsage` skips the cascading default
+  for those two nodeTypes). Project tree leaf renderer falls back to a
+  placeholder display name `«${nodeType}»` whenever an ActionUsage's name is
+  empty — without that, the tree leaf row would be visually blank.
+  Inspector NameField still renders the empty input (the field has
+  `required` for accessibility but the workspace store's `renameElement`
+  guard rejects empty strings, so the field stays empty until the user
+  types something). Default cascading uses `Action${size+1}` for
+  action/decision/merge/fork/join.
+
+- **2026-05-12** — `ActionDefinition.parameterIds` is mutated via two store
+  actions: `addActionDefinitionParameter(defId, valuePropertyId)` and
+  `removeActionDefinitionParameter(defId, valuePropertyId)`. Both replace
+  the array via `update-element` patch with a fresh `parameterIds` value
+  (registry's snapshot-stable `update<K>` semantics). Duplicate add is a
+  no-op; remove of a missing id is a no-op. There is no UI yet for
+  *creating* ValueProperty elements; the inspector's "Add parameter"
+  picker exposes ValueProperty elements that exist in the project but
+  have no other UI affordance — Phase 8 (Parametric Diagram) introduces
+  the creator path.
+
 - **2026-05-12** — Cross-diagram traceability via inspector (#73): a
   `TraceLinksExtras` section appears in the Inspector for any element kind
   in `TRACE_TARGET_KINDS` (PartDefinition / PartUsage / ActionDefinition /

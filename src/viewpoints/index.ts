@@ -89,17 +89,33 @@ export {
 } from './requirements';
 
 export {
+  ACTIVITY_ACTION_HEIGHT,
   ACTIVITY_ACTION_NODE_TYPE,
+  ACTIVITY_ACTION_WIDTH,
+  ACTIVITY_BAR_HEIGHT,
+  ACTIVITY_BAR_WIDTH,
   ACTIVITY_CONTROL_FLOW_EDGE_TYPE,
   ACTIVITY_DECISION_NODE_TYPE,
+  ACTIVITY_DIAMOND_SIZE,
   ACTIVITY_FINAL_NODE_TYPE,
   ACTIVITY_FORK_NODE_TYPE,
   ACTIVITY_INITIAL_NODE_TYPE,
   ACTIVITY_JOIN_NODE_TYPE,
   ACTIVITY_MERGE_NODE_TYPE,
   ACTIVITY_OBJECT_FLOW_EDGE_TYPE,
+  ACTIVITY_PSEUDOSTATE_CIRCLE_SIZE,
   ACTIVITY_VIEWPOINT_ID,
+  ActionUsageNode,
+  actionNodeSize,
   activityViewpoint,
+  isRenamablePseudostate,
+} from './activity';
+
+export type {
+  ActionNodeSize,
+  ActionRenameCallback,
+  ActionUsageFlowNode,
+  ActionUsageNodeData,
 } from './activity';
 
 export type {

@@ -8,13 +8,34 @@ import type {
   ViewpointNodeTypes,
 } from '../types';
 
+import { ActionUsageNode, actionNodeSize } from './ActionUsageNode';
+
+export {
+  ACTIVITY_ACTION_HEIGHT,
+  ACTIVITY_ACTION_WIDTH,
+  ACTIVITY_BAR_HEIGHT,
+  ACTIVITY_BAR_WIDTH,
+  ACTIVITY_DIAMOND_SIZE,
+  ACTIVITY_PSEUDOSTATE_CIRCLE_SIZE,
+  ActionUsageNode,
+  actionNodeSize,
+  isRenamablePseudostate,
+} from './ActionUsageNode';
+export type {
+  ActionNodeSize,
+  ActionRenameCallback,
+  ActionUsageFlowNode,
+  ActionUsageNodeData,
+} from './ActionUsageNode';
+
 export const ACTIVITY_VIEWPOINT_ID: ViewpointId = 'activity';
 
 // One ReactFlow node-type string per ActionUsage `nodeType` discriminator.
 // Per ADR 0005 § 2, pseudostates are tags on ActionUsage rather than
 // separate metamodel kinds — the viewpoint's `nodeTypeFor` translates
-// `nodeType` into one of these strings, and #88 will register the actual
-// node renderers under the same keys.
+// `nodeType` into one of these strings, and `ACTIVITY_NODE_TYPES` registers
+// the same `ActionUsageNode` component under each (the component branches
+// on `data.nodeType` to render the appropriate shape).
 export const ACTIVITY_ACTION_NODE_TYPE = 'activity-action';
 export const ACTIVITY_INITIAL_NODE_TYPE = 'activity-initial';
 export const ACTIVITY_FINAL_NODE_TYPE = 'activity-final';
@@ -37,10 +58,20 @@ const NODE_TYPE_BY_ACTION_NODE_TYPE: Readonly<Record<ActionNodeType, string>> = 
 };
 
 // Module-scoped (frozen) so React Flow can rely on referential stability.
-// #87 leaves both records empty; #88 populates `ACTIVITY_NODE_TYPES` with
-// the seven custom node renderers and #89 populates `ACTIVITY_EDGE_TYPES`
-// with the ControlFlow + ObjectFlow renderers.
-const ACTIVITY_NODE_TYPES = Object.freeze({}) as unknown as ViewpointNodeTypes;
+// All seven node-type strings register the same `ActionUsageNode` component;
+// it discriminates on `data.nodeType` to render the correct shape.
+const ACTIVITY_NODE_TYPES = Object.freeze({
+  [ACTIVITY_ACTION_NODE_TYPE]: ActionUsageNode,
+  [ACTIVITY_INITIAL_NODE_TYPE]: ActionUsageNode,
+  [ACTIVITY_FINAL_NODE_TYPE]: ActionUsageNode,
+  [ACTIVITY_FORK_NODE_TYPE]: ActionUsageNode,
+  [ACTIVITY_JOIN_NODE_TYPE]: ActionUsageNode,
+  [ACTIVITY_DECISION_NODE_TYPE]: ActionUsageNode,
+  [ACTIVITY_MERGE_NODE_TYPE]: ActionUsageNode,
+}) as unknown as ViewpointNodeTypes;
+// #89 will populate `ACTIVITY_EDGE_TYPES` with the ControlFlow + ObjectFlow
+// renderers; until then, the frozen empty record satisfies React Flow's
+// stable-reference requirement.
 const ACTIVITY_EDGE_TYPES = Object.freeze({}) as unknown as ViewpointEdgeTypes;
 
 const ACTIVITY_PALETTE_ITEMS: readonly PaletteItem[] = [
@@ -122,5 +153,12 @@ export const activityViewpoint: Viewpoint = {
     throw new Error(
       `activity viewpoint cannot render element-as-edge kind: ${element.kind}`,
     );
+  },
+  nodeSizeFor(element: ModelElement): { readonly width: number; readonly height: number } {
+    if (element.kind === 'ActionUsage') return actionNodeSize(element.nodeType);
+    // ActionDefinition is reserved for a future "called activity" frame; until
+    // that ships, treat it as a default-sized action box so canvas layout
+    // doesn't blow up if one slips through (`acceptedElementKinds` lists it).
+    return actionNodeSize('action');
   },
 };
