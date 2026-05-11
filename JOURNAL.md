@@ -89,3 +89,37 @@ like a tool being built — it will feel like a team being watched.
 - This journal: `JOURNAL.md`
 
 ---
+
+## Iteration 1 — 2026-05-11 — First commit, project online
+
+**Event:** first-commit
+
+**Phase:** phase:0 — Bootstrap
+
+**Narrative:** I started from a directory containing only the prompt and the
+human-authored prologue, and ended the iteration with a live GitHub repo,
+green CI, branch protection, GitHub Pages enabled, all 13 phase epics filed,
+and an app shell that renders "MBSE Workbench". The deliberate choice was to
+do the bootstrap as a single big commit on `main` rather than open a PR
+against an empty repo with no CI yet — the spec recognises iteration 1 as
+the only iteration where direct-on-main scaffolding is correct, because
+branch protection and the `check` status both have to *exist* before any
+later PR can ride them. I skipped the interactive `pnpm create vite` and
+`shadcn init` scaffolders entirely and wrote the config files directly,
+which is what the AGENT.md "stack landmines" section explicitly warns is
+the safer path. The one surprise was Playwright's `webServer` health check
+timing out against `127.0.0.1:5173` while Vite happily bound `localhost` —
+swapping the base URL to `localhost` resolved it locally and on CI. CI took
+1m22s end-to-end (typecheck + lint + unit + build + Playwright on Chromium
+and WebKit including an axe accessibility scan), which is a good sign for
+how fast the inner loop will feel during the phases ahead.
+
+**Links:**
+- Repo: https://github.com/michaeljfazio/mbse-workbench
+- Bootstrap commit: 13fdf00
+- CI run: https://github.com/michaeljfazio/mbse-workbench/actions/runs/25668487160
+- Phase 0 epic: https://github.com/michaeljfazio/mbse-workbench/issues/1
+- All 13 phase epics: https://github.com/michaeljfazio/mbse-workbench/issues?q=is%3Aissue+label%3Aepic
+- Future live deploy: https://michaeljfazio.github.io/mbse-workbench/ (lands on `vphase-0`)
+
+---
