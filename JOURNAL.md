@@ -321,3 +321,21 @@ adding it means writing one folder plus one config object.
 - Next phase epic: https://github.com/michaeljfazio/mbse-workbench/issues/5
 
 ---
+
+## Iteration 33 — 2026-05-12 — Phase 4 (Requirements Diagram) complete; vphase-4 deployed
+
+**Event:** phase-completion
+
+**Phase:** phase:4 — Requirements Diagram
+
+**Narrative:** Phase 4 was the first phase where the gate ran across three diagrams in a single test: drop two Requirements on the Requirements canvas, rename and edit one's full field set (reqId, priority, status, text, rationale) through the inspector, reload to prove every field persisted, drag a derive trace between the two, switch to BDD, create an Engine block, satisfy it with R-001 and verify it with R-002 via the inspector's new "+ Link requirement" popover, then unwind everything with Cmd-Z and replay with Cmd-Shift-Z. Two non-obvious things surfaced. First, the workspace-global selection MERGES on canvas clicks: switching to BDD with a trace edge still selected on the Requirements tab, then clicking the freshly-created Engine block, left the inspector saying "2 elements selected" and `inspector-name` never appeared. The fix was a small but instructive one — select via the project tree leaf, which calls `setSelection([id])` and REPLACES, rather than via the canvas node. Second, the very first CI run failed on an unrelated baseline that had drifted silently since #82: the `bdd-two-blocks-linked` baseline pre-dated the TraceLinksExtras addition to the inspector and the spec selects Block 2 at shot time, so the right pane gained a "Linked requirements" section that the committed baseline didn't have. The drift was under the threshold while #82 was open and slid over it by the time #84 ran. Both gotchas are recorded in `docs/CONTEXT.md`. The live deploy at /mbse-workbench/ now genuinely demos requirements traceability — the smoke walkthrough shows a derived requirement pair and a satisfying block, side by side.
+
+**Links:**
+- Phase 4 epic: https://github.com/michaeljfazio/mbse-workbench/issues/5 (closed)
+- Phase 4 gate PR: https://github.com/michaeljfazio/mbse-workbench/pull/84
+- Release issue: https://github.com/michaeljfazio/mbse-workbench/issues/85
+- Release tag: https://github.com/michaeljfazio/mbse-workbench/releases/tag/vphase-4
+- Live deploy: https://michaeljfazio.github.io/mbse-workbench/
+- Next phase epic: https://github.com/michaeljfazio/mbse-workbench/issues/6
+
+---
