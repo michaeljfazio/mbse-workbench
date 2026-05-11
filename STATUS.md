@@ -4,15 +4,15 @@
 phase:3 — IBD
 
 ## Current iteration
-- Iteration #: 18
-- Started: 2026-05-11
-- Branch: main
-- Working on: (idle — Phase 2 closed, vphase-2 deployed; Phase 3 awaits decomposition next iteration)
+- Iteration #: 19
+- Started: 2026-05-12
+- Branch: issue/48-decompose-phase-3
+- Working on: #48 — chore(phase-3): decompose Phase 3 + record @xyflow/react Handle research findings
 
 ## Last test run
-- Command: `pnpm exec playwright test --project=chromium` plus `pnpm run typecheck && pnpm run lint && pnpm run test:unit`
-- Result: PASS — 30 chromium e2e specs (including the new Phase 2 gate `tests/e2e/phase-2-gate.spec.ts`), 203 unit tests across 22 files, typecheck and lint clean. CI run 25681274560 on PR #46 finished 72/72 green on chromium + webkit + visual + a11y. Release workflow 25681490005 (build + deploy-pages + github-release) green.
-- Failures: (none) — local darwin webkit reproduces a long-standing flake on the existing bdd-canvas `drag-create a Composition` test where SVG edge visibility settles slowly; CI Linux webkit is the source of truth and passed.
+- Command: (decomposition iteration; no code change beyond docs)
+- Result: N/A — CI will run `pnpm run check` on the PR; previous iteration's CI run 25681274560 (PR #46) and release workflow 25681490005 were green.
+- Failures: (none)
 
 ## Known issues / blockers
 - (none)
@@ -49,6 +49,8 @@ phase:3 — IBD
 - 2026-05-11: Export (#35) — `src/workspace/export/` ships a pure `buildDiagramSvg` (XML built from `{elements, edges, positions, viewpoint}`), a thin PNG rasteriser that hands the SVG to a `<canvas>` at 2× DPR, and a slug helper. The two exporters share `BuildDiagramSvgInput`, so PNG and SVG always agree on geometry. `mbse-node` / `mbse-edge` class names are the contract for the spec's structural assertions. Toolbar `ExportMenu` is a split-button: closes on outside-pointerdown / Escape; menuitems trigger download then close. Visual baselines pass unchanged on the new button — the diff is well under `maxDiffPixelRatio: 0.01`, verified by running the Linux-container @visual suite; rationale captured in `docs/CONTEXT.md` so future single-button toolbar additions don't trigger needless regenerations (links: #35).
 - 2026-05-11: Iteration 17 — Drafted Phase 2 gate spec (#36) and discovered AGENT.md's "refresh → Cmd-Z → link gone" sequence is unsupported: the command bus's undo/redo stacks live in the bus's closure and are wiped on every bootstrap. Rather than reorder the gate (which would diverge from AGENT.md's verbatim wording) or fix it in #36's PR (would bundle two issues into one), opened **#44** ("feat(commands): persist undo/redo history across page reload") as a new Phase 2 child, marked #36 `status:blocked`, and implemented #44 this iteration. `Project` now carries `history: { undo: UndoEntry[]; redo: UndoEntry[] }`; `CommandBus` exposes `getHistory()` and accepts `initialUndoStack` / `initialRedoStack`. Legacy / malformed `history` fields normalise to `EMPTY_COMMAND_HISTORY` on load so older persisted entries don't break (links: #44, PR #45).
 - 2026-05-12: Phase 2 closed and **vphase-2 tagged at 0f93af0**. Phase 2 gate spec (#36) merged via PR #46 (CI run 25681274560, 72/72 green chromium + webkit + visual + a11y). Release workflow 25681490005 (build + deploy-pages + github-release) green; Pages https://michaeljfazio.github.io/mbse-workbench/ returns HTTP 200; smoke walkthrough of the live URL via headless Chromium captured four screenshots (shell → +Block ×2 → Auto-layout → Inspector rename to "Engine") uploaded as release assets on vphase-2. First release that the demo URL actually demos something — vphase-0 and vphase-1 only shipped an app shell. Phase 3 (IBD) begins next iteration; Viewpoint registry already shaped so adding it means writing one folder + one config (links: #3 epic closed, #47 release, PR #46).
+- 2026-05-12: Phase 3 decomposed into six child issues (#49 IBD viewpoint registration + ADR 0003 IBD shape, #50 PartUsage node + PortUsage handles + port management, #51 ConnectionUsage edge + typed compatibility, #52 ItemFlow edge variant, #53 cross-diagram navigation, #54 Phase 3 gate spec). Reason: AGENT.md Ralph loop step 6 — just-in-time decomposition. Sequencing: #49 unblocks #50; #50 unblocks #51/#52 (parallelizable); #53 independent of the rest; #54 depends on #49-#53. Linked from epic #4's task list (links: #48).
+- 2026-05-12: `@xyflow/react` v12.3.x multi-handle-per-node research findings recorded in `docs/CONTEXT.md` ahead of Phase 3 first use — multiple `<Handle>` per side use unique `id` plus inline `style={{ top: '<pct>%' }}`, `Connection.sourceHandle`/`targetHandle` carry the handle id, no built-in label (use a sibling `<span>` or `<Handle>` children), `isConnectable` and `isValidConnection` compose independently. Reason: AGENT.md directive 11 — verify pinned API before first use. Verified via context7 (links: #48).
 
 ## Next action
-Decompose Phase 3 (IBD) into child issues against epic #4: ports + port definitions on Block, connection usage with port-to-port wiring, item flow as a typed connection variant, IBD viewpoint config (acceptedElementKinds, nodeTypes for Part/Port, edgeTypes for ConnectionUsage/ItemFlow), and the Phase 3 cross-diagram gate spec (same Block appears in BDD and IBD; editing one reflects in the other). Then pick #30-equivalent first to seed the viewpoint, mirroring Phase 2's sequencing.
+Pick **#49** (`feat(ibd): IBD viewpoint registration + empty IBD canvas + Diagram.context + ADR 0003`) as the next iteration's work — first IBD vertical slice. ADR 0003 resolves: IBD scope (one IBD per PartDefinition via `Diagram.context.id`), PortUsages as Handles (not separate nodes), ConnectionUsage typing rules (in↔out / inout↔any, in↔in & out↔out blocked), and BDD↔IBD coupling (keep Composition as direct PartDefinition→PartDefinition for Phase 3; no auto-spawned PartUsages). New `Diagram.context` field round-trips with forward-compat `undefined` normalisation. Visual baseline `ibd-empty-{project}.png` committed.
