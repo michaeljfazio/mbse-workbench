@@ -2,6 +2,7 @@ export { Workspace } from './Workspace';
 
 export type {
   BootstrapDeps,
+  CreateDiagramOptions,
   InspectorTab,
   WorkspaceState,
   WorkspaceStore,
@@ -19,5 +20,11 @@ export {
   useWorkspaceStore,
 } from './store';
 
-export type { Diagram, DiagramId, NodePosition } from './diagram';
+export type {
+  Diagram,
+  DiagramContext,
+  DiagramId,
+  NodePosition,
+  PartDefinitionDiagramContext,
+} from './diagram';
 export { createDiagramId } from './diagram';

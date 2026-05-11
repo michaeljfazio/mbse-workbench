@@ -12,9 +12,19 @@ export interface NodePosition {
   readonly y: number;
 }
 
+// Per ADR 0003: an IBD diagram is associated with exactly one PartDefinition.
+// BDD diagrams leave `context` `undefined`.
+export interface PartDefinitionDiagramContext {
+  readonly kind: 'partDefinition';
+  readonly id: ElementId;
+}
+
+export type DiagramContext = PartDefinitionDiagramContext;
+
 export interface Diagram {
   readonly id: DiagramId;
   readonly viewpointId: ViewpointId;
   name: string;
   positions: Record<ElementId, NodePosition>;
+  context?: DiagramContext;
 }

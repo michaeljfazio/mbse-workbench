@@ -391,6 +391,18 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
   future means adding it here too, or the deploy will silently fail
   with that exact error.
 
+- **2026-05-12** — Axe `color-contrast` is computed against the page's
+  *live* computed styles, which means it can sample a tab/button mid-CSS-
+  transition immediately after a click and report a phantom "insufficient
+  contrast" that doesn't reflect the final colour pair. Workaround in any
+  `@a11y` spec that switches state right before the scan: wait for
+  animations/transitions to settle with
+  `await page.evaluate(async () => { await Promise.all(document.getAnimations().map((a) => a.finished)); });`
+  before calling `AxeBuilder.analyze()`. Playwright's `animations: 'disabled'`
+  only fires for screenshot capture — axe is not gated by it. Discovered
+  while landing #49 (clicking an inactive tab to make IBD active flagged
+  the active tab as 3.32:1 because the bg/text were still transitioning).
+
 - **2026-05-12** — `@xyflow/react` v12.3.x multi-handle-per-node
   integration notes (verified via context7 against authoritative docs
   ahead of Phase 3 IBD first use, per AGENT.md directive 11):

@@ -26,14 +26,17 @@ import {
   bddViewpoint,
   createViewpointRegistry,
   dagreLayout,
+  ibdViewpoint,
   type BddEdgeKind,
   type Viewpoint,
+  type ViewpointId,
   type ViewpointRegistry,
 } from '@/viewpoints';
 
 import {
   createDiagramId,
   type Diagram,
+  type DiagramContext,
   type DiagramId,
   type NodePosition,
 } from './diagram';
@@ -98,6 +101,7 @@ function defaultBrowserStorage(): Storage | null {
 function buildViewpointSingleton(): ViewpointRegistry {
   const registry = createViewpointRegistry();
   registry.register(bddViewpoint);
+  registry.register(ibdViewpoint);
   return registry;
 }
 
@@ -131,9 +135,18 @@ export interface WorkspaceState {
   readonly modelVersion: number;
 }
 
+export interface CreateDiagramOptions {
+  readonly name?: string;
+  readonly context?: DiagramContext;
+}
+
 export interface WorkspaceActions {
   bootstrap(deps: BootstrapDeps): Promise<void>;
   setActiveDiagram(id: DiagramId): void;
+  createDiagram(
+    viewpointId: ViewpointId,
+    options?: CreateDiagramOptions,
+  ): DiagramId | null;
   setSelection(ids: readonly ElementId[]): void;
   setLeftPaneWidth(px: number): void;
   setRightPaneWidth(px: number): void;
@@ -323,6 +336,23 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   setActiveDiagram(id) {
     if (!get().diagrams.some((d) => d.id === id)) return;
     set({ activeDiagramId: id });
+  },
+
+  createDiagram(viewpointId, options) {
+    const { viewpoints, diagrams } = get();
+    if (!viewpoints.has(viewpointId)) return null;
+    const id = createDiagramId();
+    const fallbackName = viewpoints.get(viewpointId)?.label ?? viewpointId;
+    const diagram: Diagram = {
+      id,
+      viewpointId,
+      name: options?.name ?? fallbackName,
+      positions: {},
+      ...(options?.context !== undefined ? { context: options.context } : {}),
+    };
+    set({ diagrams: [...diagrams, diagram] });
+    void get().saveProject();
+    return id;
   },
 
   setSelection(ids) {

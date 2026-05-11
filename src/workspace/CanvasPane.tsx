@@ -25,7 +25,7 @@ import {
   BDD_BLOCK_HEIGHT,
   BDD_BLOCK_WIDTH,
 } from '@/viewpoints/bdd/BlockNode';
-import type { BddEdgeKind, Viewpoint } from '@/viewpoints';
+import { BDD_VIEWPOINT_ID, type BddEdgeKind, type Viewpoint } from '@/viewpoints';
 
 import { EdgeKindPopover } from './EdgeKindPopover';
 import { ExportMenu } from './ExportMenu';
@@ -339,14 +339,16 @@ function CanvasInner(): JSX.Element {
           {viewpoint.label}
         </span>
         <span aria-hidden="true" className="h-4 w-px bg-border" />
-        <button
-          type="button"
-          data-testid="toolbar-add-block"
-          onClick={handleAddBlock}
-          className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-foreground shadow-sm transition hover:bg-accent"
-        >
-          + Block
-        </button>
+        {viewpoint.id === BDD_VIEWPOINT_ID ? (
+          <button
+            type="button"
+            data-testid="toolbar-add-block"
+            onClick={handleAddBlock}
+            className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-foreground shadow-sm transition hover:bg-accent"
+          >
+            + Block
+          </button>
+        ) : null}
         <button
           type="button"
           data-testid="toolbar-auto-layout"

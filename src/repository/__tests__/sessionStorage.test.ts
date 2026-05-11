@@ -336,6 +336,65 @@ describe('InMemorySessionRepository', () => {
     );
   });
 
+  it('round-trips Diagram.context for IBD diagrams (#49)', async () => {
+    const repo = createInMemorySessionRepository({ storage });
+    const partId = mkElementId('engine');
+    const ibdDiagramId =
+      'ibd-1' as unknown as Project['diagrams'][number]['id'];
+    const project: Project = {
+      id: 'p-ibd' as ProjectId,
+      name: 'p-ibd',
+      createdAt: '2026-05-12T10:00:00.000Z',
+      modifiedAt: '2026-05-12T10:05:00.000Z',
+      elements: [],
+      edges: [],
+      diagrams: [
+        {
+          id: ibdDiagramId,
+          viewpointId: 'ibd' as Project['diagrams'][number]['viewpointId'],
+          name: 'Engine IBD',
+          positions: {},
+          context: { kind: 'partDefinition', id: partId },
+        },
+      ],
+      history: EMPTY_COMMAND_HISTORY,
+    };
+    await repo.save(project);
+    const loaded = await repo.load(project.id);
+    expect(loaded.diagrams).toHaveLength(1);
+    expect(loaded.diagrams[0]?.context).toEqual({
+      kind: 'partDefinition',
+      id: partId,
+    });
+  });
+
+  it('forward-compat: pre-#49 stored diagrams (no `context` field) load with context undefined', async () => {
+    storage.setItem(
+      'mbse:v1:project:legacy-no-context',
+      JSON.stringify({
+        id: 'legacy-no-context',
+        name: 'legacy',
+        createdAt: '2026-05-11T10:00:00.000Z',
+        modifiedAt: '2026-05-11T10:05:00.000Z',
+        elements: [],
+        edges: [],
+        diagrams: [
+          {
+            id: 'd1',
+            viewpointId: 'bdd',
+            name: 'Main BDD',
+            positions: {},
+          },
+        ],
+        history: { undo: [], redo: [] },
+      }),
+    );
+    const repo = createInMemorySessionRepository({ storage });
+    const loaded = await repo.load('legacy-no-context' as ProjectId);
+    expect(loaded.diagrams).toHaveLength(1);
+    expect(loaded.diagrams[0]?.context).toBeUndefined();
+  });
+
   it('round-trips diagrams and per-diagram positions', async () => {
     const repo = createInMemorySessionRepository({ storage });
     const project: Project = {
