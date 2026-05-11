@@ -790,6 +790,20 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
   `expect(getByTestId('inspector-name')).toHaveValue('Stop on red')` instead.
   Discovered while landing #73.
 
+- **2026-05-12** — Selection is workspace-global; `CanvasPane.onNodesChange`
+  MERGES new node-selects with the existing `selectedElementIds` (line ~310:
+  `preserved = selectedElementIds.filter(id => !nodeIds.has(id))`). Clicking
+  a node on the BDD canvas right after a Requirement (or any element on a
+  different diagram) was selected leaves the inspector in its
+  multi-select state ("N elements selected") because the cross-diagram
+  selection isn't covered by any node on the current canvas. Tests that
+  cross diagram boundaries and then need a single-element inspector should
+  use the **project tree leaf** (`project-tree-leaf-${id}` → `setSelection([id])`)
+  to REPLACE selection rather than the canvas node. Discovered while
+  landing the Phase 4 gate (#74) where a derive trace was selected on
+  Requirements and then `+ Block` on BDD followed by `block.click()` left
+  the inspector in 2-element state, so `inspector-name` never appeared.
+
 - **2026-05-12** — Cross-diagram traceability via inspector (#73): a
   `TraceLinksExtras` section appears in the Inspector for any element kind
   in `TRACE_TARGET_KINDS` (PartDefinition / PartUsage / ActionDefinition /
