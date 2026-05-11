@@ -4,15 +4,15 @@
 phase:1 — Metamodel + command bus + repository + collaboration seams
 
 ## Current iteration
-- Iteration #: 2
+- Iteration #: 3
 - Started: 2026-05-11
-- Branch: issue/14-release-vphase-0
-- Working on: #14 — Release vphase-0 and verify Pages deploys (closing Phase 0)
+- Branch: issue/17-metamodel-discriminated-unions
+- Working on: #17 — Typed SysMLv2 metamodel as discriminated unions (PR #22, auto-merge enabled, CI pending)
 
 ## Last test run
-- Command: Release workflow (build → deploy-pages → github-release)
-- Result: PASS — https://github.com/michaeljfazio/mbse-workbench/actions/runs/25668816928
-- Failures: First attempt failed at `deploy-pages` with "Tag vphase-0 is not allowed to deploy to github-pages due to environment protection rules". Fixed by registering `vphase-*` and `v*.*.*` as `deployment-branch-policies` of type `tag` on the `github-pages` environment; rerun green. Captured in `docs/CONTEXT.md`.
+- Command: pnpm run check (typecheck + lint + test:unit + build + test:e2e)
+- Result: PASS — locally on `issue/17-metamodel-discriminated-unions`
+- Failures: (none)
 
 ## Known issues / blockers
 - (none)
@@ -23,6 +23,8 @@ phase:1 — Metamodel + command bus + repository + collaboration seams
 - 2026-05-11: `pnpm run check` composes typecheck + lint + unit + build + e2e in that order; the Playwright suite is the single source of truth for functional, visual (`@visual`-tagged) and accessibility (`@a11y`-tagged) specs across `chromium` and `webkit` projects.
 - 2026-05-11: Repo name fixed to `mbse-workbench`; Pages base path `/mbse-workbench/` in production via `vite.config.ts`.
 - 2026-05-11: Allow `vphase-*` and `v*.*.*` tags to deploy to the `github-pages` environment via environment deployment-branch-policies (type: tag). Reason: protection rule blocked the first vphase-0 deploy with a tag policy error; documented in `docs/CONTEXT.md` so future phases skip this.
+- 2026-05-11: Phase 1 decomposed into 5 child issues (#17 metamodel, #18 registry, #19 command bus, #20 repository, #21 collaboration seams). Reason: AGENT.md Ralph loop step 6 — just-in-time decomposition when the phase becomes current. Linked from epic #2's task list.
+- 2026-05-11: Metamodel split — 19 element kinds in `ModelElement` discriminated union; 9 pure structural relationships in `ModelEdge`. `ConnectionUsage` / `ItemFlow` / `Transition` are elements (named, selectable) with `sourceId`/`targetId` baked in; the diagram renderer derives edge geometry from either source. Recorded in [ADR 0002](docs/adr/0002-metamodel-shape.md) (links: #17).
 
 ## Next action
-On iteration 3: Phase 0 is closed. Open Phase 1 child issues just-in-time (metamodel discriminated unions per element kind, element registry, typed command bus + inverse commands, event log + undo/redo, `InMemorySessionRepository`, `CollaborationProvider` no-op + `User` + `PresenceStore` + `can()` permission hook). Pick the highest-priority `status:ready` Phase 1 issue and start.
+On iteration 4: confirm PR #22 merged and #17 closed on `main`. If merged, pick the next highest-priority `status:ready` Phase 1 child issue — #18 (element registry with stable IDs, integrity checks) is the natural next step since the command bus, repository, and collaboration seams all depend on the registry. If PR #22 is still pending or red, address whatever CI surfaced before starting #18.

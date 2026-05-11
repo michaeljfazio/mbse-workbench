@@ -7,3 +7,4 @@ to the index below in chronological order.
 ## Index
 
 - [0001 — Metamodel as discriminated unions](0001-metamodel-as-discriminated-unions.md)
+- [0002 — Metamodel shape: elements vs. edges, discriminated unions, IDs](0002-metamodel-shape.md)
