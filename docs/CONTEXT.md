@@ -597,3 +597,35 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
     is still where new edges are added; the project's command bus
     intercepts this rather than calling `addEdge` directly. No v12.3-
     specific divergence found in docs.
+
+- **2026-05-12** — Cross-diagram context menu (#53) wiring notes:
+  - **ReactFlow context-menu hooks.** `<ReactFlow onNodeContextMenu>` and
+    `onEdgeContextMenu` fire with `(event: React.MouseEvent, node|edge)`
+    on right-click. Always call `event.preventDefault()` on the path
+    that opens the app menu, or the browser-native context menu also
+    shows. Skip `preventDefault()` when the menu has zero nav targets
+    so the user still gets the browser default (copy/search/etc.).
+  - **`text-muted-foreground` on `bg-card` fails WCAG AA at normal
+    weight.** Computed contrast is 4.34:1 vs the 4.5:1 threshold. Any
+    popover/menu description text scanned by axe-core must use a
+    darker shade — `text-foreground/75` (≈75% opacity of near-black on
+    `--card`) clears the bar with margin. The existing
+    `EdgeKindPopover` and `PartUsageTypePopover` share the same
+    pattern and are not yet axe-scanned in open state; if/when they
+    are, swap their description spans to the same opacity-based class.
+    Bold + uppercase headers (`text-xs font-semibold uppercase`) are
+    exempt because axe treats them as "large/bold" needing only 3:1.
+  - **Context menu nav targets are derived, not stored.** The pure
+    `deriveNavTargets({ element, diagrams, activeDiagramId, elements,
+    viewpoints, actions })` in `src/workspace/contextMenu/navTargets.ts`
+    returns ordered `NavTarget[]` with cross-kind hops first
+    (BDD PartDefinition → IBD, IBD PartUsage → BDD), then same-element
+    nav for every other diagram where the element's id is an own key
+    in `Diagram.positions`. Use `Object.prototype.hasOwnProperty.call`
+    so prototype-inherited keys don't accidentally match.
+  - **Store seam.** `showDefinitionOnBdd(partUsageId)` switches active
+    diagram to the first BDD and selects the typing PartDefinition;
+    `navigateToElementOnDiagram(elementId, diagramId)` is the generic
+    same-element form. Both are direct `set()` updates — no command
+    bus dispatch — because navigation is presentation state, not
+    model state.
