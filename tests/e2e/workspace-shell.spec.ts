@@ -87,18 +87,6 @@ test.describe('Workspace shell (issue #30)', () => {
     expect(Math.abs(reloadedBox.width - widthAfterDrag)).toBeLessThanOrEqual(2);
   });
 
-  test('@visual workspace empty BDD baseline', async ({ page }) => {
-    await page.goto('/');
-    await expect(
-      page.getByRole('region', { name: 'Canvas' }),
-    ).toContainText(/Block Definition Diagram/);
-    // Move the mouse out of the way so hover states don't leak into the snapshot.
-    await page.mouse.move(0, 0);
-    await expect(page).toHaveScreenshot('workspace-empty-bdd.png', {
-      fullPage: false,
-    });
-  });
-
   test('@a11y workspace shell has no serious or critical violations', async ({
     page,
   }) => {

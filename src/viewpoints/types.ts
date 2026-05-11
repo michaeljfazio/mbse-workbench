@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import type { EdgeTypes, NodeTypes } from '@xyflow/react';
 
 import type { EdgeKind, ElementKind, ModelEdge, ModelElement } from '@/model';
 
@@ -12,15 +12,21 @@ export interface PaletteItem {
   readonly description?: string;
 }
 
-export interface Viewpoint<TElement extends ModelElement = ModelElement> {
+export type ViewpointNodeTypes = NodeTypes;
+
+export type ViewpointEdgeTypes = EdgeTypes;
+
+export interface Viewpoint {
   readonly id: ViewpointId;
   readonly label: string;
   readonly acceptedElementKinds: readonly ElementKind[];
   readonly acceptedEdgeKinds: readonly EdgeKind[];
   readonly defaultLayout: LayoutEngine;
   readonly paletteItems: readonly PaletteItem[];
-  renderNode(element: TElement): ReactNode;
-  renderEdge(edge: ModelEdge): ReactNode;
+  readonly nodeTypes: ViewpointNodeTypes;
+  readonly edgeTypes: ViewpointEdgeTypes;
+  nodeTypeFor(element: ModelElement): string;
+  edgeTypeFor(edge: ModelEdge): string;
 }
 
 export class DuplicateViewpointError extends Error {

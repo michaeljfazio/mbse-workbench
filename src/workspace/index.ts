@@ -13,10 +13,11 @@ export {
   LAYOUT_STORAGE_KEY,
   MAX_PANE_WIDTH,
   MIN_PANE_WIDTH,
+  getActiveDiagram,
   getActiveViewpoint,
   resetWorkspaceStoreForTests,
   useWorkspaceStore,
 } from './store';
 
-export type { Diagram, DiagramId } from './diagram';
+export type { Diagram, DiagramId, NodePosition } from './diagram';
 export { createDiagramId } from './diagram';

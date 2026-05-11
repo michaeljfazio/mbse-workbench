@@ -2,10 +2,29 @@ export type {
   LayoutEngine,
   PaletteItem,
   Viewpoint,
+  ViewpointEdgeTypes,
   ViewpointId,
+  ViewpointNodeTypes,
   ViewpointRegistry,
 } from './types';
 
 export { createViewpointRegistry, DuplicateViewpointError } from './types';
 
-export { BDD_VIEWPOINT_ID, bddViewpoint } from './bdd';
+export {
+  BDD_BLOCK_NODE_TYPE,
+  BDD_COMPOSITION_EDGE_TYPE,
+  BDD_GENERALIZATION_EDGE_TYPE,
+  BDD_VIEWPOINT_ID,
+  bddViewpoint,
+} from './bdd';
+
+export type {
+  BddBlockData,
+  BddBlockNode,
+  BddCompositionEdge,
+  BddEdge,
+  BddEdgeKind,
+  BddGeneralizationEdge,
+} from './bdd';
+
+export { isValidBddConnection } from './bdd';

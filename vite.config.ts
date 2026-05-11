@@ -4,7 +4,9 @@ import path from 'node:path';
 
 export default defineConfig(({ mode }) => ({
   plugins: [react()],
-  base: mode === 'production' ? '/mbse-workbench/' : '/',
+  base:
+    process.env.VITE_BASE_OVERRIDE ??
+    (mode === 'production' ? '/mbse-workbench/' : '/'),
   resolve: {
     alias: {
       '@': path.resolve(__dirname, 'src'),

@@ -16,8 +16,14 @@ function makeStub(id: string, label: string): Viewpoint {
     acceptedEdgeKinds: [],
     defaultLayout: 'manual',
     paletteItems: [],
-    renderNode: () => null,
-    renderEdge: () => null,
+    nodeTypes: {},
+    edgeTypes: {},
+    nodeTypeFor() {
+      throw new Error(`stub viewpoint ${id} cannot render nodes`);
+    },
+    edgeTypeFor() {
+      throw new Error(`stub viewpoint ${id} cannot render edges`);
+    },
   };
 }
 
@@ -56,13 +62,18 @@ describe('Viewpoint registry', () => {
     expect(registry.list().map((v) => v.id)).toEqual(['b', 'a', 'c']);
   });
 
-  it('BDD stub viewpoint reports BDD-specific element and edge kinds', () => {
+  it('BDD viewpoint reports BDD-specific element and edge kinds and a Block palette item', () => {
     expect(bddViewpoint.id).toBe('bdd');
     expect(bddViewpoint.acceptedElementKinds).toContain('PartDefinition');
     expect(bddViewpoint.acceptedEdgeKinds).toEqual(
       expect.arrayContaining(['Composition', 'Generalization']),
     );
     expect(bddViewpoint.defaultLayout).toBe('dagre');
-    expect(bddViewpoint.paletteItems).toEqual([]);
+    expect(bddViewpoint.paletteItems.map((p) => p.elementKind)).toContain(
+      'PartDefinition',
+    );
+    expect(Object.keys(bddViewpoint.nodeTypes)).toContain('bdd-block');
+    expect(Object.keys(bddViewpoint.edgeTypes)).toContain('bdd-composition');
+    expect(Object.keys(bddViewpoint.edgeTypes)).toContain('bdd-generalization');
   });
 });
