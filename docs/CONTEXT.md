@@ -446,6 +446,34 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
   container — then Playwright logs "A snapshot doesn't exist, writing
   actual" and the new file is written.
 
+- **2026-05-12** — **arm64 podman emulation is NOT reliable for visual
+  baselines on text-heavy screens.** Apple-Silicon-native arm64 rendering
+  of the Playwright Jammy image produces fonts with subtly different
+  hinting/anti-aliasing from the amd64 GitHub Actions runner. The
+  per-glyph delta is small enough to stay under `maxDiffPixelRatio: 0.01`
+  for screens with little text (the BDD baselines all passed), but the
+  IBD screen with two PartUsage cards + port labels + a connection-edge
+  label accumulates 9394 px of difference (ratio 0.02 — 2× the threshold).
+  The earlier "matches CI within tolerance" note was over-confident; it
+  only held for the screens that existed at the time. **Preferred
+  baseline-generation workflow going forward:**
+  1. First-time generation: regenerate in the arm64 container as before,
+     commit, push.
+  2. If CI fails on the new baseline, **do not retry the container
+     regen** — instead, download the Playwright HTML report from the
+     failed CI run (`gh run download <run-id> --name playwright-report
+     --dir /tmp/...`) and lift the per-browser **actual** PNGs out of
+     `data/`. Identify them by file size (the *expected* PNG in the
+     report bit-exactly matches the committed baseline; the *diff* PNG
+     has red/yellow overlay; the *actual* is the third one, with subtly
+     different text rendering). Copy actuals over the baselines and
+     push.
+  Both the chromium and webkit actuals from a single failed run are
+  bit-exact representations of what CI will produce on the next run, so
+  the second push will match within tolerance. Recorded after #51 PR
+  #59's first CI run produced a 0.02-ratio diff that the arm64-regen
+  procedure had silently green-lit.
+
 - **2026-05-12** — IBD ConnectionUsage (#51) wiring lessons:
   - **Element-as-edge layer.** `Viewpoint` gained
     `acceptedEdgeElementKinds: readonly ElementKind[]` and
