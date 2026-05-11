@@ -14,14 +14,17 @@ import {
   createElementRegistry,
   createProjectId,
 } from '@/model';
-import type { CommandBus } from '@/commands';
+import type { Command, CommandBus, DiagramPositionStore } from '@/commands';
 import { createCommandBus } from '@/commands';
 import type { CollaborationProvider, User } from '@/collab';
 import { NoopCollaborationProvider } from '@/collab';
 import type { ModelRepository, Project } from '@/repository';
 import {
+  BDD_BLOCK_HEIGHT,
+  BDD_BLOCK_WIDTH,
   bddViewpoint,
   createViewpointRegistry,
+  dagreLayout,
   type BddEdgeKind,
   type Viewpoint,
   type ViewpointRegistry,
@@ -151,6 +154,7 @@ export interface WorkspaceActions {
     elementId: ElementId,
     position: NodePosition,
   ): void;
+  runAutoLayout(diagramId: DiagramId): void;
   undo(): void;
   redo(): void;
 }
@@ -187,6 +191,16 @@ function newEmptyProject(): Project {
     modifiedAt: now,
     elements: [],
     edges: [],
+    diagrams: [],
+  };
+}
+
+function newDefaultDiagram(): Diagram {
+  return {
+    id: createDiagramId(),
+    viewpointId: bddViewpoint.id,
+    name: 'Main BDD',
+    positions: {},
   };
 }
 
@@ -224,24 +238,49 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       project = await repository.load(firstMetadata.id);
     } else {
       project = newEmptyProject();
-      await repository.save(project);
     }
+
+    // Ensure the project carries at least one diagram. Older persisted
+    // projects (or freshly-minted ones) may have an empty `diagrams` array.
+    let diagrams: readonly Diagram[] = project.diagrams;
+    if (diagrams.length === 0) {
+      diagrams = [newDefaultDiagram()];
+      project = { ...project, diagrams };
+    }
+    await repository.save(project);
 
     const registry = createElementRegistry();
     for (const element of project.elements) registry.add(element);
     for (const edge of project.edges) registry.addEdge(edge);
 
+    // Position store wired to the (about-to-be-set) workspace state. The bus
+    // reads/writes positions via this port so position changes are first-class
+    // commands with undo support.
+    const positionStore: DiagramPositionStore = {
+      getPosition(diagramId, elementId) {
+        const diagram = get().diagrams.find((d) => d.id === diagramId);
+        return diagram?.positions[elementId];
+      },
+      setPosition(diagramId, elementId, position) {
+        const nextDiagrams = get().diagrams.map((d) => {
+          if (d.id !== diagramId) return d;
+          const nextPositions: Record<ElementId, NodePosition> = { ...d.positions };
+          if (position === undefined) {
+            delete nextPositions[elementId];
+          } else {
+            nextPositions[elementId] = position;
+          }
+          return { ...d, positions: nextPositions };
+        });
+        set({ diagrams: nextDiagrams });
+      },
+    };
+
     const bus = createCommandBus({
       registry,
       provider: collaborationProvider,
+      positions: positionStore,
     });
-
-    const diagram: Diagram = {
-      id: createDiagramId(),
-      viewpointId: bddViewpoint.id,
-      name: 'Main BDD',
-      positions: {},
-    };
 
     bus.subscribe(() => {
       const r = get().registry;
@@ -265,8 +304,8 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       bus,
       provider: collaborationProvider,
       project,
-      diagrams: [diagram],
-      activeDiagramId: diagram.id,
+      diagrams,
+      activeDiagramId: diagrams[0]!.id,
       elements: registry.elements(),
       edges: registry.edges(),
       selectedElementIds: [],
@@ -309,13 +348,14 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   },
 
   async saveProject() {
-    const { repository, project, registry } = get();
+    const { repository, project, registry, diagrams } = get();
     if (!repository || !project || !registry) return;
     const updated: Project = {
       ...project,
       modifiedAt: new Date().toISOString(),
       elements: registry.elements(),
       edges: registry.edges(),
+      diagrams,
     };
     await repository.save(updated);
     set({ project: updated });
@@ -333,13 +373,21 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       propertyIds: [],
       portIds: [],
     };
-    bus.dispatch({ kind: 'create-element', element: block }, user);
-
     const activeDiagram = diagrams.find((d) => d.id === activeDiagramId) ?? null;
     const pos = position ?? nextBlockPosition(activeDiagram);
+
+    // Wrap create-element + initial position in one compound command so the
+    // undo stack treats "create-and-place" as a single step.
+    const commands: Command[] = [{ kind: 'create-element', element: block }];
     if (activeDiagram) {
-      get().setNodePosition(activeDiagram.id, id, pos);
+      commands.push({
+        kind: 'update-diagram-position',
+        diagramId: activeDiagram.id,
+        elementId: id,
+        position: pos,
+      });
     }
+    bus.dispatch({ kind: 'compound', commands }, user);
     return id;
   },
 
@@ -423,15 +471,43 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   },
 
   setNodePosition(diagramId, elementId, position) {
-    const { diagrams } = get();
-    const next = diagrams.map((d) => {
-      if (d.id !== diagramId) return d;
-      return {
-        ...d,
-        positions: { ...d.positions, [elementId]: position },
-      };
+    const { bus, user, diagrams } = get();
+    if (!bus || !user) return;
+    const diagram = diagrams.find((d) => d.id === diagramId);
+    if (!diagram) return;
+    const existing = diagram.positions[elementId];
+    if (existing && existing.x === position.x && existing.y === position.y) return;
+    bus.dispatch(
+      {
+        kind: 'update-diagram-position',
+        diagramId,
+        elementId,
+        position,
+      },
+      user,
+    );
+  },
+
+  runAutoLayout(diagramId) {
+    const { bus, user, diagrams, elements, edges } = get();
+    if (!bus || !user) return;
+    const diagram = diagrams.find((d) => d.id === diagramId);
+    if (!diagram) return;
+    const layout = dagreLayout(elements, edges, {
+      nodeWidth: BDD_BLOCK_WIDTH,
+      nodeHeight: BDD_BLOCK_HEIGHT,
     });
-    set({ diagrams: next });
+    if (layout.size === 0) return;
+    const commands: Command[] = [];
+    for (const [elementId, position] of layout) {
+      commands.push({
+        kind: 'update-diagram-position',
+        diagramId,
+        elementId,
+        position,
+      });
+    }
+    bus.dispatch({ kind: 'compound', commands }, user);
   },
 
   undo() {

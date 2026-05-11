@@ -94,6 +94,7 @@ function CanvasInner(): JSX.Element {
   const unlinkEdge = useWorkspaceStore((s) => s.unlinkEdge);
   const linkBlocks = useWorkspaceStore((s) => s.linkBlocks);
   const renameElement = useWorkspaceStore((s) => s.renameElement);
+  const runAutoLayout = useWorkspaceStore((s) => s.runAutoLayout);
 
   const [pending, setPending] = useState<PendingConnection | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -215,6 +216,13 @@ function CanvasInner(): JSX.Element {
     });
   }, [createBlock, diagram]);
 
+  const handleAutoLayout = useCallback(() => {
+    if (!diagram) return;
+    runAutoLayout(diagram.id);
+  }, [diagram, runAutoLayout]);
+
+  const elementCount = elements.length;
+
   useEffect(() => {
     if (!pending) return;
     return () => {
@@ -268,6 +276,16 @@ function CanvasInner(): JSX.Element {
           className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-foreground shadow-sm transition hover:bg-accent"
         >
           + Block
+        </button>
+        <button
+          type="button"
+          data-testid="toolbar-auto-layout"
+          onClick={handleAutoLayout}
+          disabled={elementCount === 0}
+          title="Re-arrange blocks with dagre layout"
+          className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-foreground shadow-sm transition hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Auto-layout
         </button>
         <button
           type="button"

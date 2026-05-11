@@ -21,6 +21,11 @@ export type BddEdge = BddCompositionEdge | BddGeneralizationEdge;
 export type BddEdgeKind = 'Composition' | 'Generalization';
 
 export { isValidBddConnection } from './isValidConnection';
+export {
+  dagreLayout,
+  DEFAULT_DAGRE_OPTIONS,
+  type DagreLayoutOptions,
+} from './layout';
 
 export const BDD_VIEWPOINT_ID: ViewpointId = 'bdd';
 

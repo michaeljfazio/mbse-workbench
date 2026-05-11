@@ -1,4 +1,5 @@
 import type { ModelEdge, ModelElement, ProjectId } from '@/model';
+import type { Diagram } from '@/workspace/diagram';
 
 export interface Project {
   readonly id: ProjectId;
@@ -7,9 +8,10 @@ export interface Project {
   modifiedAt: string;
   elements: readonly ModelElement[];
   edges: readonly ModelEdge[];
+  diagrams: readonly Diagram[];
 }
 
-export type ProjectMetadata = Omit<Project, 'elements' | 'edges'>;
+export type ProjectMetadata = Omit<Project, 'elements' | 'edges' | 'diagrams'>;
 
 export interface ModelRepository {
   load(projectId: string): Promise<Project>;

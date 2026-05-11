@@ -6,8 +6,13 @@ export type {
   DeleteElementCommand,
   LinkCommand,
   UnlinkCommand,
+  UpdateDiagramPositionCommand,
   CompoundCommand,
 } from './types';
+
+export type { DiagramPositionStore } from './diagramPositions';
+
+export { createInMemoryDiagramPositionStore } from './diagramPositions';
 
 export type { ModelEvent, Unsubscribe } from './events';
 
