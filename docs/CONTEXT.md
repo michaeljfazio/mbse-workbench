@@ -47,6 +47,15 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
   `tests/unit/model/helpers.ts` (`mkElementId`, `mkEdgeId`,
   `mkUserId`); production `src/model/` code carries no `as` casts.
 
+- **2026-05-11** — Command bus events carry `{ command, payload }` where
+  `payload` is the inverse of `command`. This makes the append-only event
+  log self-undoable: replay any event's `payload` to undo it. The undo
+  and redo stacks themselves hold `{ forward, inverse, actor }` triples;
+  undo / redo just `applyOnly` (no re-capture) and swap stacks. Delete-
+  element's inverse is a `compound` of `create-element` + one `link` per
+  incident edge captured at apply time. Redo of delete re-applies the
+  original forward command (registry cascades again).
+
 - **2026-05-11** — The `github-pages` environment has a `branch_policy`
   protection rule with `custom_branch_policies: true`. Out of the box
   only the `main` branch is in the allow-list, so the release workflow

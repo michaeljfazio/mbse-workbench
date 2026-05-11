@@ -4,14 +4,14 @@
 phase:1 — Metamodel + command bus + repository + collaboration seams
 
 ## Current iteration
-- Iteration #: 4
+- Iteration #: 5
 - Started: 2026-05-11
-- Branch: issue/18-element-registry
-- Working on: #18 — Element registry with stable IDs and integrity checks (PR #23, auto-merge enabled, CI pending)
+- Branch: issue/19-command-bus
+- Working on: #19 — Typed command bus with events, inverse commands, undo/redo (PR pending push)
 
 ## Last test run
 - Command: pnpm run check (typecheck + lint + test:unit + build + test:e2e)
-- Result: PASS — locally on `issue/18-element-registry` (33 unit tests, 4 e2e)
+- Result: PASS — locally on `issue/19-command-bus` (54 unit tests, 4 e2e)
 - Failures: (none)
 
 ## Known issues / blockers
@@ -26,6 +26,7 @@ phase:1 — Metamodel + command bus + repository + collaboration seams
 - 2026-05-11: Phase 1 decomposed into 5 child issues (#17 metamodel, #18 registry, #19 command bus, #20 repository, #21 collaboration seams). Reason: AGENT.md Ralph loop step 6 — just-in-time decomposition when the phase becomes current. Linked from epic #2's task list.
 - 2026-05-11: Metamodel split — 19 element kinds in `ModelElement` discriminated union; 9 pure structural relationships in `ModelEdge`. `ConnectionUsage` / `ItemFlow` / `Transition` are elements (named, selectable) with `sourceId`/`targetId` baked in; the diagram renderer derives edge geometry from either source. Recorded in [ADR 0002](docs/adr/0002-metamodel-shape.md) (links: #17).
 - 2026-05-11: Registry `update<K>` replaces the stored element with a new object rather than mutating in place, so a `readonly ModelElement[]` snapshot taken before `update` is unaffected. Reason: command-bus undo/redo and future event-sourcing will rely on snapshot stability; in-place mutation would silently corrupt history. Runtime kind-check guards the case where the caller-chosen `K` does not match the stored element's `kind` (TS cannot infer K from a runtime id). Records dangling refs for the three element-kinds that carry `sourceId`/`targetId` directly (links: #18).
+- 2026-05-11: Command bus shape — `Command` is a discriminated union of `create-element` / `update-element` / `delete-element` / `link` / `unlink` / `compound`. Generic over `ElementKind` and `EdgeKind` rather than 75 per-kind command types, because the metamodel is already a discriminated union and the registry validates kind via the existing `update<K>` runtime guard. ModelEvent payload = inverse command, so the append-only event log is self-undoable. Undo/redo stacks hold `{ forward, inverse, actor }` and just `applyOnly` (no re-capture). Delete-element's inverse is a `compound` of `create-element` + one `link` per incident edge captured at apply time (links: #19).
 
 ## Next action
-On iteration 5: confirm PR #23 merged and #18 closed on `main`. If merged, pick #19 (typed command bus with events, inverse commands, undo/redo) — depends on the registry just landed and unblocks both the repository (#20) and collaboration seams (#21). The command bus is the load-bearing piece for Architectural directive § 2, so the implementing subagent should be Opus; routine work in #20 / #21 can run on Sonnet.
+On iteration 6: confirm PR for #19 merged on `main`. If merged, the next-priority Phase 1 work is #20 (InMemorySessionRepository) — it depends on the registry + command bus event log, and is the persistence seam the future ModelRepository slots into. #21 (collab seams) can run in parallel once #20 lands. Both are routine implementation work — Sonnet-class subagents.
