@@ -28,3 +28,14 @@ export type {
 } from './bdd';
 
 export { isValidBddConnection } from './bdd';
+
+export {
+  dagreLayout,
+  DEFAULT_DAGRE_OPTIONS,
+  type DagreLayoutOptions,
+} from './bdd';
+
+export {
+  BDD_BLOCK_HEIGHT,
+  BDD_BLOCK_WIDTH,
+} from './bdd/BlockNode';

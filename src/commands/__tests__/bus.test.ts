@@ -12,11 +12,13 @@ import {
 } from '@/model';
 import {
   createCommandBus,
+  createInMemoryDiagramPositionStore,
   PermissionDeniedError,
   type Command,
   type ModelEvent,
 } from '@/commands';
 import type { User } from '@/collab';
+import { createDiagramId } from '@/workspace/diagram';
 
 function mkPartDef(name: string, id?: ElementId): PartDefinitionElement {
   return {
@@ -389,6 +391,165 @@ describe('createCommandBus — error paths', () => {
     }
     expect(bus.events()).toHaveLength(0);
     expect(bus.undo()).toBeUndefined();
+  });
+});
+
+describe('createCommandBus — update-diagram-position', () => {
+  it('applies a position to the store and inverts to the previous value (undefined initially)', () => {
+    const registry = createElementRegistry();
+    const positions = createInMemoryDiagramPositionStore();
+    const bus = createCommandBus({ registry, positions });
+    const user = mkUser();
+    const block = mkPartDef('A');
+    bus.dispatch({ kind: 'create-element', element: block }, user);
+    const diagramId = createDiagramId();
+
+    const event = bus.dispatch(
+      {
+        kind: 'update-diagram-position',
+        diagramId,
+        elementId: block.id,
+        position: { x: 100, y: 200 },
+      },
+      user,
+    );
+
+    expect(positions.getPosition(diagramId, block.id)).toEqual({ x: 100, y: 200 });
+    expect(event.payload).toEqual({
+      kind: 'update-diagram-position',
+      diagramId,
+      elementId: block.id,
+      position: undefined,
+    });
+  });
+
+  it('undo restores the prior position; redo replays the new one', () => {
+    const registry = createElementRegistry();
+    const positions = createInMemoryDiagramPositionStore();
+    const bus = createCommandBus({ registry, positions });
+    const user = mkUser();
+    const block = mkPartDef('A');
+    bus.dispatch({ kind: 'create-element', element: block }, user);
+    const diagramId = createDiagramId();
+
+    bus.dispatch(
+      {
+        kind: 'update-diagram-position',
+        diagramId,
+        elementId: block.id,
+        position: { x: 10, y: 10 },
+      },
+      user,
+    );
+    bus.dispatch(
+      {
+        kind: 'update-diagram-position',
+        diagramId,
+        elementId: block.id,
+        position: { x: 300, y: 400 },
+      },
+      user,
+    );
+
+    expect(positions.getPosition(diagramId, block.id)).toEqual({ x: 300, y: 400 });
+    bus.undo();
+    expect(positions.getPosition(diagramId, block.id)).toEqual({ x: 10, y: 10 });
+    bus.undo();
+    expect(positions.getPosition(diagramId, block.id)).toBeUndefined();
+    bus.redo();
+    expect(positions.getPosition(diagramId, block.id)).toEqual({ x: 10, y: 10 });
+    bus.redo();
+    expect(positions.getPosition(diagramId, block.id)).toEqual({ x: 300, y: 400 });
+  });
+
+  it('a compound of N position updates undoes back to the prior state for every element', () => {
+    const registry = createElementRegistry();
+    const positions = createInMemoryDiagramPositionStore();
+    const bus = createCommandBus({ registry, positions });
+    const user = mkUser();
+    const a = mkPartDef('A');
+    const b = mkPartDef('B');
+    const c = mkPartDef('C');
+    bus.dispatch({ kind: 'create-element', element: a }, user);
+    bus.dispatch({ kind: 'create-element', element: b }, user);
+    bus.dispatch({ kind: 'create-element', element: c }, user);
+    const diagramId = createDiagramId();
+
+    // Seed initial positions (simulating prior manual placements).
+    bus.dispatch(
+      {
+        kind: 'update-diagram-position',
+        diagramId,
+        elementId: a.id,
+        position: { x: 0, y: 0 },
+      },
+      user,
+    );
+    bus.dispatch(
+      {
+        kind: 'update-diagram-position',
+        diagramId,
+        elementId: b.id,
+        position: { x: 10, y: 10 },
+      },
+      user,
+    );
+    // c starts without a position.
+
+    // Auto-layout: one compound command bulk-updating every node.
+    bus.dispatch(
+      {
+        kind: 'compound',
+        commands: [
+          {
+            kind: 'update-diagram-position',
+            diagramId,
+            elementId: a.id,
+            position: { x: 100, y: 100 },
+          },
+          {
+            kind: 'update-diagram-position',
+            diagramId,
+            elementId: b.id,
+            position: { x: 200, y: 200 },
+          },
+          {
+            kind: 'update-diagram-position',
+            diagramId,
+            elementId: c.id,
+            position: { x: 300, y: 300 },
+          },
+        ],
+      },
+      user,
+    );
+
+    expect(positions.getPosition(diagramId, a.id)).toEqual({ x: 100, y: 100 });
+    expect(positions.getPosition(diagramId, b.id)).toEqual({ x: 200, y: 200 });
+    expect(positions.getPosition(diagramId, c.id)).toEqual({ x: 300, y: 300 });
+
+    bus.undo();
+    expect(positions.getPosition(diagramId, a.id)).toEqual({ x: 0, y: 0 });
+    expect(positions.getPosition(diagramId, b.id)).toEqual({ x: 10, y: 10 });
+    expect(positions.getPosition(diagramId, c.id)).toBeUndefined();
+  });
+
+  it('throws when dispatched without a positions store wired in', () => {
+    const registry = createElementRegistry();
+    const bus = createCommandBus({ registry });
+    const user = mkUser();
+    const diagramId = createDiagramId();
+    expect(() =>
+      bus.dispatch(
+        {
+          kind: 'update-diagram-position',
+          diagramId,
+          elementId: createElementId(),
+          position: { x: 0, y: 0 },
+        },
+        user,
+      ),
+    ).toThrow();
   });
 });
 

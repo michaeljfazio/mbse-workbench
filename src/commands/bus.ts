@@ -12,8 +12,14 @@ import {
   type PermissionHook,
   type User,
 } from '@/collab';
+import type { DiagramPositionStore } from './diagramPositions';
 import { PermissionDeniedError } from './errors';
-import type { Command, CompoundCommand, UpdateElementCommand } from './types';
+import type {
+  Command,
+  CompoundCommand,
+  UpdateDiagramPositionCommand,
+  UpdateElementCommand,
+} from './types';
 import type { ModelEvent, Unsubscribe } from './events';
 
 export interface CommandBus {
@@ -31,6 +37,9 @@ export interface CreateCommandBusOptions {
   readonly provider?: CollaborationProvider;
   readonly now?: () => number;
   readonly eventIdFactory?: () => string;
+  // Required only for `update-diagram-position` commands. Bus throws if such
+  // a command is dispatched without a positions store wired in.
+  readonly positions?: DiagramPositionStore;
 }
 
 interface UndoEntry {
@@ -45,6 +54,7 @@ export function createCommandBus(options: CreateCommandBusOptions): CommandBus {
   const provider = options.provider ?? new NoopCollaborationProvider();
   const now = options.now ?? (() => Date.now());
   const eventIdFactory = options.eventIdFactory ?? (() => createElementId());
+  const positions = options.positions;
 
   const eventLog: ModelEvent[] = [];
   const undoStack: UndoEntry[] = [];
@@ -105,6 +115,9 @@ export function createCommandBus(options: CreateCommandBusOptions): CommandBus {
         }
         return;
       }
+      case 'update-diagram-position':
+        // Position changes are presentation, not model: not permission-gated.
+        return;
       case 'compound':
         for (const sub of command.commands) checkPermissions(actor, sub);
         return;
@@ -169,6 +182,26 @@ export function createCommandBus(options: CreateCommandBusOptions): CommandBus {
         registry.removeEdge(command.id);
         return { kind: 'link', edge: existing };
       }
+      case 'update-diagram-position': {
+        if (!positions) {
+          throw new Error(
+            'update-diagram-position dispatched without a DiagramPositionStore wired into the bus',
+          );
+        }
+        const prev = positions.getPosition(command.diagramId, command.elementId);
+        positions.setPosition(
+          command.diagramId,
+          command.elementId,
+          command.position,
+        );
+        const inverse: UpdateDiagramPositionCommand = {
+          kind: 'update-diagram-position',
+          diagramId: command.diagramId,
+          elementId: command.elementId,
+          position: prev,
+        };
+        return inverse;
+      }
       case 'compound': {
         const inverses: Command[] = [];
         for (const sub of command.commands) {
@@ -199,6 +232,18 @@ export function createCommandBus(options: CreateCommandBusOptions): CommandBus {
         return;
       case 'unlink':
         registry.removeEdge(command.id);
+        return;
+      case 'update-diagram-position':
+        if (!positions) {
+          throw new Error(
+            'update-diagram-position replay without a DiagramPositionStore wired into the bus',
+          );
+        }
+        positions.setPosition(
+          command.diagramId,
+          command.elementId,
+          command.position,
+        );
         return;
       case 'compound':
         for (const sub of command.commands) applyOnly(sub);

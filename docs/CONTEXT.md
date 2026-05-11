@@ -287,6 +287,36 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
   Cmd-Z falls through to the workspace's model undo stack. Cmd-Y is
   treated as an alias for redo.
 
+- **2026-05-11** — Node position changes are first-class **command-bus
+  commands** (`update-diagram-position`), not direct state writes. This
+  supersedes the earlier "direct mutation" decision so drag and auto-layout
+  both undo with a single Cmd-Z. The bus reads/writes positions via the
+  `DiagramPositionStore` port (`src/commands/diagramPositions.ts`); the
+  workspace store implements it on top of its `diagrams` array via a
+  closure-bound `getPosition`/`setPosition`. `delete-element` deliberately
+  does NOT clear the position entry — its inverse therefore doesn't need
+  to restore it, and undo of a delete brings the element back to where
+  it was. `createBlock` wraps create-element + initial position in a
+  compound so create-and-place is one undo step. The "no-op if unchanged"
+  guard in `setNodePosition` keeps mouse-up-without-move drags out of
+  the undo stack.
+
+- **2026-05-11** — The Inspector container stamps `data-element-id` on its
+  outer div when a block is selected, so the bare attribute selector
+  `[data-element-id="..."]` matches two elements (the BDD node AND the
+  inspector). Always scope by the BDD-block test id in Playwright
+  selectors: `[data-testid="bdd-block-${id}"]`. Recorded after a strict-
+  mode locator violation in the #34 spec.
+
+- **2026-05-11** — `Project.diagrams` is the new persistence anchor for
+  per-view positions (`Diagram.positions: Record<ElementId,{x,y}>` round-
+  trips through the `InMemorySessionRepository`). On `load()`, missing
+  `diagrams` is normalised to `[]` for forward-compat with pre-#34
+  persisted entries; the workspace `bootstrap` then seeds a default Main
+  BDD diagram if the array is empty. ElementId branding is compile-time
+  only, so JSON.parse keeping the keys as plain strings is harmless for
+  lookups.
+
 - **2026-05-11** — The `github-pages` environment has a `branch_policy`
   protection rule with `custom_branch_policies: true`. Out of the box
   only the `main` branch is in the allow-list, so the release workflow

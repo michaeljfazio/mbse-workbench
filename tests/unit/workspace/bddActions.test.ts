@@ -112,6 +112,37 @@ describe('workspace store — BDD actions', () => {
     expect(useWorkspaceStore.getState().edges).toHaveLength(1);
   });
 
+  it('deleting then undoing restores the prior position (delete does not clear the position entry)', async () => {
+    await bootstrap();
+    const a = useWorkspaceStore.getState().createBlock({ x: 333, y: 222 })!;
+    const active = getActiveDiagram(useWorkspaceStore.getState())!;
+    expect(active.positions[a]).toEqual({ x: 333, y: 222 });
+
+    useWorkspaceStore.getState().deleteElement(a);
+    useWorkspaceStore.getState().undo();
+    const restored = getActiveDiagram(useWorkspaceStore.getState())!;
+    expect(restored.positions[a]).toEqual({ x: 333, y: 222 });
+  });
+
+  it('createBlock is one undo step: model version increments once, and undo clears both element and position', async () => {
+    await bootstrap();
+    const versionBefore = useWorkspaceStore.getState().modelVersion;
+    const id = useWorkspaceStore.getState().createBlock({ x: 90, y: 110 })!;
+    expect(useWorkspaceStore.getState().modelVersion).toBe(versionBefore + 1);
+    const active = getActiveDiagram(useWorkspaceStore.getState())!;
+    expect(active.positions[id]).toEqual({ x: 90, y: 110 });
+
+    useWorkspaceStore.getState().undo();
+    const afterUndo = getActiveDiagram(useWorkspaceStore.getState())!;
+    expect(useWorkspaceStore.getState().elements.find((e) => e.id === id)).toBeUndefined();
+    expect(afterUndo.positions[id]).toBeUndefined();
+
+    useWorkspaceStore.getState().redo();
+    const afterRedo = getActiveDiagram(useWorkspaceStore.getState())!;
+    expect(useWorkspaceStore.getState().elements.find((e) => e.id === id)).toBeDefined();
+    expect(afterRedo.positions[id]).toEqual({ x: 90, y: 110 });
+  });
+
   it('deleteSelection removes every selected element and clears the selection', async () => {
     await bootstrap();
     const a = useWorkspaceStore.getState().createBlock()!;
@@ -142,6 +173,100 @@ describe('workspace store — BDD actions', () => {
       .setNodePosition(active.id, id, { x: 240, y: 180 });
     const updated = getActiveDiagram(useWorkspaceStore.getState())!;
     expect(updated.positions[id]).toEqual({ x: 240, y: 180 });
+  });
+
+  it('setNodePosition dispatches a command and undo restores the prior position', async () => {
+    await bootstrap();
+    const id = useWorkspaceStore.getState().createBlock({ x: 50, y: 60 })!;
+    const active = getActiveDiagram(useWorkspaceStore.getState())!;
+
+    useWorkspaceStore
+      .getState()
+      .setNodePosition(active.id, id, { x: 240, y: 180 });
+    expect(
+      getActiveDiagram(useWorkspaceStore.getState())!.positions[id],
+    ).toEqual({ x: 240, y: 180 });
+
+    useWorkspaceStore.getState().undo();
+    expect(
+      getActiveDiagram(useWorkspaceStore.getState())!.positions[id],
+    ).toEqual({ x: 50, y: 60 });
+
+    useWorkspaceStore.getState().redo();
+    expect(
+      getActiveDiagram(useWorkspaceStore.getState())!.positions[id],
+    ).toEqual({ x: 240, y: 180 });
+  });
+
+  it('setNodePosition is a no-op when the position is unchanged', async () => {
+    await bootstrap();
+    const id = useWorkspaceStore.getState().createBlock({ x: 50, y: 60 })!;
+    const active = getActiveDiagram(useWorkspaceStore.getState())!;
+    const versionBefore = useWorkspaceStore.getState().modelVersion;
+    useWorkspaceStore
+      .getState()
+      .setNodePosition(active.id, id, { x: 50, y: 60 });
+    expect(useWorkspaceStore.getState().modelVersion).toBe(versionBefore);
+  });
+
+  it('runAutoLayout dispatches a compound command and undo reverts every position', async () => {
+    await bootstrap();
+    const a = useWorkspaceStore.getState().createBlock({ x: 0, y: 0 })!;
+    const b = useWorkspaceStore.getState().createBlock({ x: 10, y: 10 })!;
+    const c = useWorkspaceStore.getState().createBlock({ x: 20, y: 20 })!;
+    useWorkspaceStore.getState().linkBlocks(a, b, 'Composition');
+    useWorkspaceStore.getState().linkBlocks(a, c, 'Composition');
+
+    const active = getActiveDiagram(useWorkspaceStore.getState())!;
+    const versionBeforeLayout = useWorkspaceStore.getState().modelVersion;
+
+    useWorkspaceStore.getState().runAutoLayout(active.id);
+
+    const afterLayout = getActiveDiagram(useWorkspaceStore.getState())!;
+    const newA = afterLayout.positions[a];
+    const newB = afterLayout.positions[b];
+    const newC = afterLayout.positions[c];
+    expect(newA).toBeDefined();
+    expect(newB).toBeDefined();
+    expect(newC).toBeDefined();
+    // Parent A above its children B and C under default TB rankdir.
+    expect(newA!.y).toBeLessThan(newB!.y);
+    expect(newA!.y).toBeLessThan(newC!.y);
+    // One compound dispatch = exactly one model-version bump.
+    expect(useWorkspaceStore.getState().modelVersion).toBe(versionBeforeLayout + 1);
+
+    useWorkspaceStore.getState().undo();
+    const afterUndo = getActiveDiagram(useWorkspaceStore.getState())!;
+    expect(afterUndo.positions[a]).toEqual({ x: 0, y: 0 });
+    expect(afterUndo.positions[b]).toEqual({ x: 10, y: 10 });
+    expect(afterUndo.positions[c]).toEqual({ x: 20, y: 20 });
+  });
+
+  it('runAutoLayout on an empty diagram is a no-op', async () => {
+    await bootstrap();
+    const active = getActiveDiagram(useWorkspaceStore.getState())!;
+    const versionBefore = useWorkspaceStore.getState().modelVersion;
+    useWorkspaceStore.getState().runAutoLayout(active.id);
+    expect(useWorkspaceStore.getState().modelVersion).toBe(versionBefore);
+  });
+
+  it('persists positions through the repository on refresh', async () => {
+    const { storage, repository, user } = await bootstrap();
+    const a = useWorkspaceStore.getState().createBlock({ x: 0, y: 0 })!;
+    const active = getActiveDiagram(useWorkspaceStore.getState())!;
+    useWorkspaceStore.getState().setNodePosition(active.id, a, { x: 333, y: 222 });
+
+    // Wait for the autosave triggered by setNodePosition to flush.
+    await new Promise((r) => setTimeout(r, 5));
+
+    resetWorkspaceStoreForTests();
+    await useWorkspaceStore.getState().bootstrap({ repository, user, storage });
+
+    const reopened = getActiveDiagram(useWorkspaceStore.getState());
+    // The reopened diagram is the persisted one (same id), and the position
+    // survives the round-trip through the repository.
+    expect(reopened?.id).toBe(active.id);
+    expect(reopened?.positions[a]).toEqual({ x: 333, y: 222 });
   });
 
   it('undo restores the prior model version; redo replays it', async () => {

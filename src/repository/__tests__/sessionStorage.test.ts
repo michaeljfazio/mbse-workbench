@@ -176,6 +176,7 @@ function projectWithEverything(id: string): Project {
     modifiedAt: '2026-05-11T10:05:00.000Z',
     elements: ELEMENT_KINDS.map((kind, i) => elementOf(kind, `e-${i}`)),
     edges: EDGE_KINDS.map((kind, i) => edgeOf(kind, `g-${i}`)),
+    diagrams: [],
   };
 }
 
@@ -221,6 +222,7 @@ describe('InMemorySessionRepository', () => {
       modifiedAt: '2026-05-11T11:05:00.000Z',
       elements: [],
       edges: [],
+      diagrams: [],
     });
 
     const metadata = await repo.list();
@@ -284,6 +286,7 @@ describe('InMemorySessionRepository', () => {
       modifiedAt: '2026-05-11T12:00:00.000Z',
       elements: [],
       edges: [],
+      diagrams: [],
     };
     await repo.save(updated);
 
@@ -326,5 +329,57 @@ describe('InMemorySessionRepository', () => {
     await expect(repo.load('p1' as ProjectId)).rejects.toBeInstanceOf(
       ProjectNotFoundError,
     );
+  });
+
+  it('round-trips diagrams and per-diagram positions', async () => {
+    const repo = createInMemorySessionRepository({ storage });
+    const project: Project = {
+      id: 'p1' as ProjectId,
+      name: 'p1',
+      createdAt: '2026-05-11T10:00:00.000Z',
+      modifiedAt: '2026-05-11T10:05:00.000Z',
+      elements: [],
+      edges: [],
+      diagrams: [
+        {
+          id: 'd1' as unknown as Project['diagrams'][number]['id'],
+          viewpointId: 'bdd' as Project['diagrams'][number]['viewpointId'],
+          name: 'Main BDD',
+          positions: {
+            [mkElementId('a')]: { x: 100, y: 200 },
+            [mkElementId('b')]: { x: 300, y: 400 },
+          },
+        },
+      ],
+    };
+    await repo.save(project);
+    const loaded = await repo.load(project.id);
+    expect(loaded.diagrams).toHaveLength(1);
+    expect(loaded.diagrams[0]?.positions[mkElementId('a')]).toEqual({
+      x: 100,
+      y: 200,
+    });
+    expect(loaded.diagrams[0]?.positions[mkElementId('b')]).toEqual({
+      x: 300,
+      y: 400,
+    });
+  });
+
+  it('defaults `diagrams` to an empty array when missing from stored JSON', async () => {
+    // Simulate an older persisted entry that pre-dates the diagrams field.
+    storage.setItem(
+      'mbse:v1:project:legacy',
+      JSON.stringify({
+        id: 'legacy',
+        name: 'legacy',
+        createdAt: '2026-05-11T10:00:00.000Z',
+        modifiedAt: '2026-05-11T10:05:00.000Z',
+        elements: [],
+        edges: [],
+      }),
+    );
+    const repo = createInMemorySessionRepository({ storage });
+    const loaded = await repo.load('legacy' as ProjectId);
+    expect(loaded.diagrams).toEqual([]);
   });
 });

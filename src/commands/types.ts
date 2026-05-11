@@ -7,6 +7,8 @@ import type {
   ModelElement,
 } from '@/model';
 
+import type { DiagramId, NodePosition } from '@/workspace/diagram';
+
 export interface CreateElementCommand {
   readonly kind: 'create-element';
   readonly element: ModelElement;
@@ -33,6 +35,15 @@ export interface UnlinkCommand {
   readonly id: EdgeId;
 }
 
+export interface UpdateDiagramPositionCommand {
+  readonly kind: 'update-diagram-position';
+  readonly diagramId: DiagramId;
+  readonly elementId: ElementId;
+  // `undefined` removes the position entry from the diagram. This is required
+  // so the inverse of "set a position where there was none" can clear cleanly.
+  readonly position: NodePosition | undefined;
+}
+
 export interface CompoundCommand {
   readonly kind: 'compound';
   readonly commands: readonly Command[];
@@ -44,6 +55,7 @@ export type Command =
   | DeleteElementCommand
   | LinkCommand
   | UnlinkCommand
+  | UpdateDiagramPositionCommand
   | CompoundCommand;
 
 export type CommandKind = Command['kind'];
