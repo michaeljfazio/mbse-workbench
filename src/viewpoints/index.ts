@@ -74,6 +74,7 @@ export type {
 } from './ibd';
 
 export {
+  isTraceTargetKind,
   isValidRequirementTraceConnection,
   REQUIREMENT_NODE_HEIGHT,
   REQUIREMENT_NODE_WIDTH,
@@ -83,6 +84,7 @@ export {
   RequirementNode,
   RequirementTraceEdge,
   requirementsViewpoint,
+  TRACE_TARGET_KINDS,
   validTraceKindsFor,
 } from './requirements';
 

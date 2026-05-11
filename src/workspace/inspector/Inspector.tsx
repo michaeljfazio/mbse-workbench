@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type {
   ConnectionUsageElement,
@@ -15,8 +15,11 @@ import type {
   RequirementPriority,
   RequirementStatus,
   RequirementTraceEdge,
+  RequirementTraceKind,
 } from '@/model';
+import { isTraceTargetKind } from '@/viewpoints';
 import { useWorkspaceStore } from '../store';
+import { LinkRequirementPopover } from './LinkRequirementPopover';
 
 function findElement(
   elements: readonly ModelElement[],
@@ -146,6 +149,10 @@ function InspectorSingle({ element }: InspectorSingleProps): JSX.Element {
 
       {element.kind === 'Requirement' ? (
         <RequirementExtras element={element} />
+      ) : null}
+
+      {isTraceTargetKind(element.kind) ? (
+        <TraceLinksExtras element={element} />
       ) : null}
 
       <OwnerField element={element} />
@@ -962,5 +969,179 @@ function ItemFlowExtras({ element }: ItemFlowExtrasProps): JSX.Element {
         />
       </div>
     </>
+  );
+}
+
+interface TraceLinksExtrasProps {
+  readonly element: ModelElement;
+}
+
+function TraceLinksExtras({ element }: TraceLinksExtrasProps): JSX.Element {
+  const edges = useWorkspaceStore((s) => s.edges);
+  const elements = useWorkspaceStore((s) => s.elements);
+  const registry = useWorkspaceStore((s) => s.registry);
+  const linkRequirementTrace = useWorkspaceStore(
+    (s) => s.linkRequirementTrace,
+  );
+  const unlinkEdge = useWorkspaceStore((s) => s.unlinkEdge);
+
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const [popover, setPopover] = useState<{ x: number; y: number } | null>(null);
+
+  const incoming = useMemo(
+    () =>
+      edges.filter(
+        (e): e is RequirementTraceEdge =>
+          e.kind === 'RequirementTrace' && e.targetId === element.id,
+      ),
+    [edges, element.id],
+  );
+
+  const requirements = useMemo(
+    () =>
+      elements.filter(
+        (e): e is RequirementElement => e.kind === 'Requirement',
+      ),
+    [elements],
+  );
+
+  const allowedKindsFor = useMemo(() => {
+    return (requirement: RequirementElement): readonly RequirementTraceKind[] => {
+      if (!registry) return [];
+      if (requirement.id === element.id) return [];
+      // validTraceKindsFor in isValidConnection.ts only depends on the kind
+      // pair: Requirement→Requirement allows all four; Requirement→other
+      // allows only satisfy/verify per ADR 0004 § 3.
+      if (element.kind === 'Requirement') {
+        return ['derive', 'satisfy', 'verify', 'refine'];
+      }
+      return ['satisfy', 'verify'];
+    };
+  }, [element.id, element.kind, registry]);
+
+  const openPopover = (): void => {
+    const rect = triggerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const popoverWidth = 320;
+    const viewportWidth = window.innerWidth;
+    const x = Math.max(
+      8,
+      Math.min(rect.right - popoverWidth, viewportWidth - popoverWidth - 8),
+    );
+    const y = rect.bottom + 4;
+    setPopover({ x, y });
+  };
+
+  const handlePick = (
+    requirement: RequirementElement,
+    kind: RequirementTraceKind,
+  ): void => {
+    linkRequirementTrace(requirement.id, element.id, kind);
+    setPopover(null);
+  };
+
+  return (
+    <div
+      data-testid="inspector-trace-links"
+      className="flex flex-col gap-1.5"
+    >
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-muted-foreground">
+          Linked requirements
+        </span>
+        <button
+          ref={triggerRef}
+          type="button"
+          data-testid="inspector-add-trace-link"
+          onClick={openPopover}
+          className="rounded-md border border-border bg-card px-2 py-0.5 text-xs font-medium text-foreground shadow-sm transition hover:bg-accent focus:border-primary focus:outline-none"
+        >
+          + Link requirement
+        </button>
+      </div>
+      {incoming.length === 0 ? (
+        <p
+          data-testid="inspector-trace-links-empty"
+          className="rounded-md border border-dashed border-border bg-muted/40 px-2 py-1.5 text-xs text-foreground/75"
+        >
+          No requirement links
+        </p>
+      ) : (
+        <div
+          data-testid="inspector-trace-link-list"
+          className="flex flex-col gap-1"
+        >
+          {incoming.map((edge) => (
+            <TraceLinkRow
+              key={edge.id}
+              edge={edge}
+              source={
+                elements.find((e) => e.id === edge.sourceId) as
+                  | RequirementElement
+                  | undefined
+              }
+              onUnlink={() => unlinkEdge(edge.id)}
+            />
+          ))}
+        </div>
+      )}
+      {popover ? (
+        <LinkRequirementPopover
+          x={popover.x}
+          y={popover.y}
+          requirements={requirements}
+          allowedKindsFor={allowedKindsFor}
+          onPick={handlePick}
+          onCancel={() => setPopover(null)}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+interface TraceLinkRowProps {
+  readonly edge: RequirementTraceEdge;
+  readonly source: RequirementElement | undefined;
+  readonly onUnlink: () => void;
+}
+
+function TraceLinkRow({
+  edge,
+  source,
+  onUnlink,
+}: TraceLinkRowProps): JSX.Element {
+  return (
+    <div
+      data-testid={`inspector-trace-link-${edge.id}`}
+      data-trace-kind={edge.traceKind}
+      className="flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground/85"
+    >
+      <span className="font-mono text-[10px] text-foreground/75">
+        «{edge.traceKind}»
+      </span>
+      <span className="flex-1 truncate">
+        {source ? (
+          <>
+            {source.reqId ? (
+              <span className="mr-1 font-mono text-[10px] text-foreground/75">
+                {source.reqId}
+              </span>
+            ) : null}
+            <span className="font-medium text-foreground">{source.name}</span>
+          </>
+        ) : (
+          <span className="text-foreground/75">unknown</span>
+        )}
+      </span>
+      <button
+        type="button"
+        data-testid={`inspector-trace-link-delete-${edge.id}`}
+        aria-label={`Unlink ${edge.traceKind} requirement${source ? ` ${source.name}` : ''}`}
+        onClick={onUnlink}
+        className="rounded-sm px-1.5 py-0.5 text-xs text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive focus:bg-destructive/10 focus:text-destructive focus:outline-none"
+      >
+        ×
+      </button>
+    </div>
   );
 }

@@ -255,6 +255,9 @@ function CanvasInner(): JSX.Element {
   const navigateToElementOnDiagram = useWorkspaceStore(
     (s) => s.navigateToElementOnDiagram,
   );
+  const showRequirementTracesFor = useWorkspaceStore(
+    (s) => s.showRequirementTracesFor,
+  );
 
   const selectedSet = useMemo(() => new Set(selectedElementIds), [selectedElementIds]);
 
@@ -621,11 +624,13 @@ function CanvasInner(): JSX.Element {
         diagrams,
         activeDiagramId,
         elements,
+        edges,
         viewpoints: viewpointRegistry,
         actions: {
           openInternalDiagram,
           showDefinitionOnBdd,
           navigateToElementOnDiagram,
+          showRequirementTracesFor,
         },
       });
       if (targets.length === 0) return;
@@ -642,10 +647,12 @@ function CanvasInner(): JSX.Element {
       diagrams,
       activeDiagramId,
       elements,
+      edges,
       viewpointRegistry,
       openInternalDiagram,
       showDefinitionOnBdd,
       navigateToElementOnDiagram,
+      showRequirementTracesFor,
     ],
   );
 

@@ -36,7 +36,9 @@ export type {
   RequirementTraceFlowEdge,
 } from './RequirementTraceEdge';
 export {
+  isTraceTargetKind,
   isValidRequirementTraceConnection,
+  TRACE_TARGET_KINDS,
   validTraceKindsFor,
 } from './isValidConnection';
 

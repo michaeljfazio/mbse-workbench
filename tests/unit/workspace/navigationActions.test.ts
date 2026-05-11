@@ -2,7 +2,11 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { createSessionUser } from '@/collab';
 import { createInMemorySessionRepository } from '@/repository';
-import { BDD_VIEWPOINT_ID, IBD_VIEWPOINT_ID } from '@/viewpoints';
+import {
+  BDD_VIEWPOINT_ID,
+  IBD_VIEWPOINT_ID,
+  REQUIREMENTS_VIEWPOINT_ID,
+} from '@/viewpoints';
 import {
   resetWorkspaceStoreForTests,
   useWorkspaceStore,
@@ -153,6 +157,73 @@ describe('workspace store — navigation actions (issue #53)', () => {
       expect(useWorkspaceStore.getState().selectedElementIds).toEqual(
         beforeSelection,
       );
+    });
+  });
+
+  // Issue #73 — context menu's "Show requirement traces" action.
+  describe('showRequirementTracesFor', () => {
+    it('switches to the first Requirements diagram and selects the source Requirement of the first incoming trace', async () => {
+      await bootstrap();
+      const blockId = useWorkspaceStore.getState().createBlock()!;
+      const reqDiagramId = useWorkspaceStore
+        .getState()
+        .createDiagram(REQUIREMENTS_VIEWPOINT_ID, { name: 'Reqs' })!;
+      const r1Id = useWorkspaceStore
+        .getState()
+        .createRequirement(reqDiagramId, { x: 0, y: 0 }, { name: 'R1' })!;
+      useWorkspaceStore
+        .getState()
+        .linkRequirementTrace(r1Id, blockId, 'satisfy');
+
+      const result = useWorkspaceStore
+        .getState()
+        .showRequirementTracesFor(blockId);
+
+      expect(result).toBe(reqDiagramId);
+      const state = useWorkspaceStore.getState();
+      expect(state.activeDiagramId).toBe(reqDiagramId);
+      expect(state.selectedElementIds).toEqual([r1Id]);
+    });
+
+    it('returns null when there is no Requirements diagram', async () => {
+      await bootstrap();
+      const blockId = useWorkspaceStore.getState().createBlock()!;
+      const before = useWorkspaceStore.getState().activeDiagramId;
+
+      const result = useWorkspaceStore
+        .getState()
+        .showRequirementTracesFor(blockId);
+
+      expect(result).toBeNull();
+      expect(useWorkspaceStore.getState().activeDiagramId).toBe(before);
+    });
+
+    it('returns null when the element has no incoming trace edges', async () => {
+      await bootstrap();
+      const blockId = useWorkspaceStore.getState().createBlock()!;
+      useWorkspaceStore
+        .getState()
+        .createDiagram(REQUIREMENTS_VIEWPOINT_ID, { name: 'Reqs' });
+      const before = useWorkspaceStore.getState().activeDiagramId;
+
+      const result = useWorkspaceStore
+        .getState()
+        .showRequirementTracesFor(blockId);
+
+      expect(result).toBeNull();
+      expect(useWorkspaceStore.getState().activeDiagramId).toBe(before);
+    });
+
+    it('returns null when the element id is unknown', async () => {
+      await bootstrap();
+      const before = useWorkspaceStore.getState().activeDiagramId;
+
+      const result = useWorkspaceStore
+        .getState()
+        .showRequirementTracesFor(mkElementId('nope'));
+
+      expect(result).toBeNull();
+      expect(useWorkspaceStore.getState().activeDiagramId).toBe(before);
     });
   });
 });

@@ -1,7 +1,9 @@
-import type { ElementId, ModelElement } from '@/model';
+import type { ElementId, ModelEdge, ModelElement } from '@/model';
 import {
   BDD_VIEWPOINT_ID,
   IBD_VIEWPOINT_ID,
+  isTraceTargetKind,
+  REQUIREMENTS_VIEWPOINT_ID,
   type ViewpointRegistry,
 } from '@/viewpoints';
 
@@ -11,6 +13,7 @@ export interface NavTargetActions {
   openInternalDiagram(partDefinitionId: ElementId): DiagramId | null;
   showDefinitionOnBdd(partUsageId: ElementId): DiagramId | null;
   navigateToElementOnDiagram(elementId: ElementId, diagramId: DiagramId): void;
+  showRequirementTracesFor(elementId: ElementId): DiagramId | null;
 }
 
 export interface NavTarget {
@@ -25,6 +28,7 @@ export interface DeriveNavTargetsInput {
   readonly diagrams: readonly Diagram[];
   readonly activeDiagramId: DiagramId | null;
   readonly elements: readonly ModelElement[];
+  readonly edges: readonly ModelEdge[];
   readonly viewpoints: ViewpointRegistry;
   readonly actions: NavTargetActions;
 }
@@ -38,10 +42,39 @@ export function deriveNavTargets({
   diagrams,
   activeDiagramId,
   elements,
+  edges,
   viewpoints,
   actions,
 }: DeriveNavTargetsInput): readonly NavTarget[] {
   const targets: NavTarget[] = [];
+
+  if (
+    isTraceTargetKind(element.kind) &&
+    viewpoints.has(REQUIREMENTS_VIEWPOINT_ID)
+  ) {
+    const reqDiagram = diagrams.find(
+      (d) => d.viewpointId === REQUIREMENTS_VIEWPOINT_ID,
+    );
+    if (reqDiagram) {
+      const incoming = edges.filter(
+        (e) => e.kind === 'RequirementTrace' && e.targetId === element.id,
+      );
+      if (incoming.length > 0) {
+        const count = incoming.length;
+        targets.push({
+          id: 'show-requirement-traces',
+          label: 'Show requirement traces',
+          description:
+            count === 1
+              ? `1 trace on ${reqDiagram.name}`
+              : `${count} traces on ${reqDiagram.name}`,
+          perform: () => {
+            actions.showRequirementTracesFor(element.id);
+          },
+        });
+      }
+    }
+  }
 
   if (element.kind === 'PartDefinition') {
     if (viewpoints.has(IBD_VIEWPOINT_ID)) {

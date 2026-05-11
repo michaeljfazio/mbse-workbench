@@ -5,19 +5,23 @@ import type {
   PartDefinitionElement,
   PartUsageElement,
   PortDefinitionElement,
+  RequirementElement,
+  RequirementTraceEdge,
 } from '@/model';
 import {
   BDD_VIEWPOINT_ID,
   IBD_VIEWPOINT_ID,
+  REQUIREMENTS_VIEWPOINT_ID,
   bddViewpoint,
   createViewpointRegistry,
   ibdViewpoint,
+  requirementsViewpoint,
 } from '@/viewpoints';
 import { deriveNavTargets } from '@/workspace/contextMenu';
 import type { NavTargetActions } from '@/workspace/contextMenu';
 import type { Diagram, DiagramId } from '@/workspace';
 
-import { mkElementId } from '../model/helpers';
+import { mkEdgeId, mkElementId } from '../model/helpers';
 
 function makeRegistry() {
   const reg = createViewpointRegistry();
@@ -39,6 +43,10 @@ function recordingActions() {
     },
     navigateToElementOnDiagram: (elementId, diagramId) => {
       calls.push(['navigateToElementOnDiagram', [elementId, diagramId]]);
+    },
+    showRequirementTracesFor: (elementId) => {
+      calls.push(['showRequirementTracesFor', [elementId]]);
+      return null;
     },
   };
   return { actions, calls };
@@ -111,6 +119,7 @@ describe('deriveNavTargets', () => {
       diagrams: [bddDiagram, ibdDiagram],
       activeDiagramId: bddDiagram.id,
       elements: [partDef, portDef, partUsage],
+      edges: [],
       viewpoints: makeRegistry(),
       actions,
     });
@@ -128,6 +137,7 @@ describe('deriveNavTargets', () => {
       diagrams: [bddDiagram],
       activeDiagramId: bddDiagram.id,
       elements: [partDef, portDef],
+      edges: [],
       viewpoints: makeRegistry(),
       actions,
     });
@@ -142,6 +152,7 @@ describe('deriveNavTargets', () => {
       diagrams: [bddDiagram, ibdDiagram],
       activeDiagramId: ibdDiagram.id,
       elements: [partDef, portDef, partUsage],
+      edges: [],
       viewpoints: makeRegistry(),
       actions,
     });
@@ -161,6 +172,7 @@ describe('deriveNavTargets', () => {
       diagrams: [ibdDiagram],
       activeDiagramId: ibdDiagram.id,
       elements: [partDef, portDef, partUsage],
+      edges: [],
       viewpoints: reg,
       actions,
     });
@@ -180,6 +192,7 @@ describe('deriveNavTargets', () => {
       diagrams: [bddDiagram, ibdDiagram, otherBdd],
       activeDiagramId: bddDiagram.id,
       elements: [partDef, portDef, partUsage, otherDef],
+      edges: [],
       viewpoints: makeRegistry(),
       actions,
     });
@@ -200,6 +213,7 @@ describe('deriveNavTargets', () => {
       diagrams: [bddDiagram, ibdDiagram],
       activeDiagramId: bddDiagram.id,
       elements: [partDef, portDef, partUsage],
+      edges: [],
       viewpoints: makeRegistry(),
       actions,
     });
@@ -221,6 +235,7 @@ describe('deriveNavTargets', () => {
       diagrams: [bddDiagram, odd],
       activeDiagramId: bddDiagram.id,
       elements: [partDef],
+      edges: [],
       viewpoints: makeRegistry(),
       actions,
     });
@@ -236,6 +251,7 @@ describe('deriveNavTargets', () => {
       diagrams: [bddDiagram],
       activeDiagramId: bddDiagram.id,
       elements: [partDef, portDef],
+      edges: [],
       viewpoints: makeRegistry(),
       actions,
     });
@@ -264,11 +280,153 @@ describe('deriveNavTargets', () => {
       diagrams: [bddDiagram, inheritedDiagram],
       activeDiagramId: bddDiagram.id,
       elements: [partDef],
+      edges: [],
       viewpoints: makeRegistry(),
       actions,
     });
     expect(
       targets.find((t) => t.id === `show-in-${inheritedDiagram.id}`),
     ).toBeUndefined();
+  });
+
+  // Issue #73 — cross-diagram traceability via context menu.
+  describe('show-requirement-traces target', () => {
+    function makeRegistryWithReqs() {
+      const reg = createViewpointRegistry();
+      reg.register(bddViewpoint);
+      reg.register(ibdViewpoint);
+      reg.register(requirementsViewpoint);
+      return reg;
+    }
+
+    const reqId = mkElementId('req-1');
+    const req: RequirementElement = {
+      id: reqId,
+      kind: 'Requirement',
+      name: 'Stop on red',
+      reqId: 'R-001',
+      text: '',
+      priority: 'high',
+      status: 'draft',
+    };
+
+    const reqDiagram: Diagram = {
+      id: 'd-reqs' as DiagramId,
+      viewpointId: REQUIREMENTS_VIEWPOINT_ID,
+      name: 'System Requirements',
+      positions: { [reqId]: { x: 0, y: 0 } },
+    };
+
+    const satisfyEdge: RequirementTraceEdge = {
+      id: mkEdgeId('e-satisfy'),
+      kind: 'RequirementTrace',
+      sourceId: reqId,
+      targetId: defId,
+      traceKind: 'satisfy',
+    };
+
+    it('emits a "Show requirement traces" target when a target-kind element has at least one incoming trace', () => {
+      const { actions, calls } = recordingActions();
+      const targets = deriveNavTargets({
+        element: partDef,
+        diagrams: [bddDiagram, reqDiagram],
+        activeDiagramId: bddDiagram.id,
+        elements: [partDef, portDef, req],
+        edges: [satisfyEdge],
+        viewpoints: makeRegistryWithReqs(),
+        actions,
+      });
+      const target = targets.find((t) => t.id === 'show-requirement-traces');
+      expect(target).toBeDefined();
+      expect(target!.label).toBe('Show requirement traces');
+      expect(target!.description).toMatch(/1 trace on System Requirements/);
+      target!.perform();
+      expect(calls).toEqual([['showRequirementTracesFor', [defId]]]);
+    });
+
+    it('pluralises the count when more than one trace targets the element', () => {
+      const secondEdge: RequirementTraceEdge = {
+        id: mkEdgeId('e-verify'),
+        kind: 'RequirementTrace',
+        sourceId: reqId,
+        targetId: defId,
+        traceKind: 'verify',
+      };
+      const { actions } = recordingActions();
+      const targets = deriveNavTargets({
+        element: partDef,
+        diagrams: [bddDiagram, reqDiagram],
+        activeDiagramId: bddDiagram.id,
+        elements: [partDef, portDef, req],
+        edges: [satisfyEdge, secondEdge],
+        viewpoints: makeRegistryWithReqs(),
+        actions,
+      });
+      const target = targets.find((t) => t.id === 'show-requirement-traces');
+      expect(target!.description).toMatch(/2 traces on System Requirements/);
+    });
+
+    it('omits the entry when the element has zero incoming traces', () => {
+      const { actions } = recordingActions();
+      const targets = deriveNavTargets({
+        element: partDef,
+        diagrams: [bddDiagram, reqDiagram],
+        activeDiagramId: bddDiagram.id,
+        elements: [partDef, portDef, req],
+        edges: [],
+        viewpoints: makeRegistryWithReqs(),
+        actions,
+      });
+      expect(
+        targets.find((t) => t.id === 'show-requirement-traces'),
+      ).toBeUndefined();
+    });
+
+    it('omits the entry when there is no Requirements diagram', () => {
+      const { actions } = recordingActions();
+      const targets = deriveNavTargets({
+        element: partDef,
+        diagrams: [bddDiagram],
+        activeDiagramId: bddDiagram.id,
+        elements: [partDef, portDef, req],
+        edges: [satisfyEdge],
+        viewpoints: makeRegistryWithReqs(),
+        actions,
+      });
+      expect(
+        targets.find((t) => t.id === 'show-requirement-traces'),
+      ).toBeUndefined();
+    });
+
+    it('emits the entry on Requirement targets too (derive/refine case)', () => {
+      const req2: RequirementElement = {
+        id: mkElementId('req-2'),
+        kind: 'Requirement',
+        name: 'Brake',
+        text: '',
+        priority: 'medium',
+        status: 'draft',
+      };
+      const deriveEdge: RequirementTraceEdge = {
+        id: mkEdgeId('e-derive'),
+        kind: 'RequirementTrace',
+        sourceId: reqId,
+        targetId: req2.id,
+        traceKind: 'derive',
+      };
+      const { actions } = recordingActions();
+      const targets = deriveNavTargets({
+        element: req2,
+        diagrams: [bddDiagram, reqDiagram],
+        activeDiagramId: reqDiagram.id,
+        elements: [partDef, req, req2],
+        edges: [deriveEdge],
+        viewpoints: makeRegistryWithReqs(),
+        actions,
+      });
+      expect(
+        targets.find((t) => t.id === 'show-requirement-traces'),
+      ).toBeDefined();
+    });
   });
 });
