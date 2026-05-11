@@ -14,7 +14,13 @@ import {
   type NodeChange,
 } from '@xyflow/react';
 
-import type { EdgeId, ElementId, ModelEdge, ModelElement } from '@/model';
+import type {
+  EdgeId,
+  ElementId,
+  ElementKind,
+  ModelEdge,
+  ModelElement,
+} from '@/model';
 import {
   BDD_BLOCK_HEIGHT,
   BDD_BLOCK_WIDTH,
@@ -28,6 +34,7 @@ import {
   getActiveViewpoint,
   useWorkspaceStore,
 } from './store';
+import { PROJECT_TREE_DRAG_TYPE } from './tree/ProjectTree';
 
 interface PendingConnection {
   readonly connection: Connection;
@@ -221,6 +228,37 @@ function CanvasInner(): JSX.Element {
     runAutoLayout(diagram.id);
   }, [diagram, runAutoLayout]);
 
+  const handleDragOver = useCallback(
+    (event: React.DragEvent<HTMLDivElement>) => {
+      if (event.dataTransfer.types.includes(PROJECT_TREE_DRAG_TYPE)) {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'copy';
+      }
+    },
+    [],
+  );
+
+  const handleDrop = useCallback(
+    (event: React.DragEvent<HTMLDivElement>) => {
+      if (!viewpoint || !diagram) return;
+      const kind = event.dataTransfer.getData(PROJECT_TREE_DRAG_TYPE);
+      if (!kind) return;
+      if (!viewpoint.acceptedElementKinds.includes(kind as ElementKind)) return;
+      event.preventDefault();
+      const flowPos = reactFlow.screenToFlowPosition({
+        x: event.clientX,
+        y: event.clientY,
+      });
+      // Center the new block on the cursor.
+      const id = createBlock({
+        x: flowPos.x - BDD_BLOCK_WIDTH / 2,
+        y: flowPos.y - BDD_BLOCK_HEIGHT / 2,
+      });
+      if (id) setSelection([id]);
+    },
+    [viewpoint, diagram, reactFlow, createBlock, setSelection],
+  );
+
   const elementCount = elements.length;
 
   useEffect(() => {
@@ -297,7 +335,13 @@ function CanvasInner(): JSX.Element {
           Delete
         </button>
       </div>
-      <div ref={canvasRef} className="relative flex-1">
+      <div
+        ref={canvasRef}
+        data-testid="canvas-drop-target"
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+        className="relative flex-1"
+      >
         <ReactFlow
           nodes={flowNodes}
           edges={flowEdges}
