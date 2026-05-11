@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import type {
   ConnectionUsageElement,
   EdgeId,
+  EdgePatch,
   ElementId,
   ElementPatch,
   ElementRegistry,
@@ -17,6 +18,8 @@ import type {
   RequirementElement,
   RequirementPriority,
   RequirementStatus,
+  RequirementTraceEdge,
+  RequirementTraceKind,
 } from '@/model';
 import {
   createEdgeId,
@@ -218,6 +221,12 @@ export interface WorkspaceActions {
   setRequirementPriority(id: ElementId, priority: RequirementPriority): void;
   setRequirementStatus(id: ElementId, status: RequirementStatus): void;
   setRequirementRationale(id: ElementId, rationale: string): void;
+  linkRequirementTrace(
+    source: ElementId,
+    target: ElementId,
+    traceKind: RequirementTraceKind,
+  ): EdgeId | null;
+  setRequirementTraceLabel(id: EdgeId, label: string): void;
   undo(): void;
   redo(): void;
 }
@@ -1025,6 +1034,44 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
     if ((existing.rationale ?? undefined) === next) return;
     const patch: ElementPatch<'Requirement'> = { rationale: next };
     bus.dispatch({ kind: 'update-element', id, patch }, user);
+  },
+
+  linkRequirementTrace(source, target, traceKind) {
+    const { bus, user, registry } = get();
+    if (!bus || !user || !registry) return null;
+    if (source === target) return null;
+    const sourceEl = registry.get(source);
+    const targetEl = registry.get(target);
+    if (!sourceEl || !targetEl) return null;
+    if (sourceEl.kind !== 'Requirement') return null;
+    if (
+      (traceKind === 'derive' || traceKind === 'refine') &&
+      targetEl.kind !== 'Requirement'
+    ) {
+      return null;
+    }
+    const edgeId = createEdgeId();
+    const edge: RequirementTraceEdge = {
+      id: edgeId,
+      kind: 'RequirementTrace',
+      sourceId: source,
+      targetId: target,
+      traceKind,
+    };
+    bus.dispatch({ kind: 'link', edge }, user);
+    return edgeId;
+  },
+
+  setRequirementTraceLabel(id, label) {
+    const { bus, user, registry } = get();
+    if (!bus || !user || !registry) return;
+    const existing = registry.getEdge(id);
+    if (!existing || existing.kind !== 'RequirementTrace') return;
+    const trimmed = label.trim();
+    const next = trimmed.length === 0 ? undefined : trimmed;
+    if ((existing.label ?? undefined) === next) return;
+    const patch: EdgePatch<'RequirementTrace'> = { label: next };
+    bus.dispatch({ kind: 'update-edge', id, patch }, user);
   },
 
   undo() {

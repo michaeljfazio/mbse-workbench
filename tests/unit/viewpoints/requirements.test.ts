@@ -4,6 +4,7 @@ import type { PartDefinitionElement } from '@/model';
 import {
   createViewpointRegistry,
   REQUIREMENTS_REQUIREMENT_NODE_TYPE,
+  REQUIREMENTS_TRACE_EDGE_TYPE,
   REQUIREMENTS_VIEWPOINT_ID,
   requirementsViewpoint,
 } from '@/viewpoints';
@@ -33,7 +34,9 @@ describe('Requirements viewpoint', () => {
     expect(Object.keys(requirementsViewpoint.nodeTypes)).toEqual([
       REQUIREMENTS_REQUIREMENT_NODE_TYPE,
     ]);
-    expect(Object.keys(requirementsViewpoint.edgeTypes)).toEqual([]);
+    expect(Object.keys(requirementsViewpoint.edgeTypes)).toEqual([
+      REQUIREMENTS_TRACE_EDGE_TYPE,
+    ]);
   });
 
   it('can be registered in a viewpoint registry and looked up by id', () => {
@@ -71,14 +74,25 @@ describe('Requirements viewpoint', () => {
     );
   });
 
-  it('edgeTypeFor throws — edge renderers land in #72', () => {
-    expect(() =>
+  it('edgeTypeFor maps RequirementTrace → requirements-trace', () => {
+    expect(
       requirementsViewpoint.edgeTypeFor({
         id: 'e-1' as never,
         kind: 'RequirementTrace',
         sourceId: 'r-1' as never,
         targetId: 'r-2' as never,
         traceKind: 'derive',
+      }),
+    ).toBe(REQUIREMENTS_TRACE_EDGE_TYPE);
+  });
+
+  it('edgeTypeFor throws for non-RequirementTrace kinds', () => {
+    expect(() =>
+      requirementsViewpoint.edgeTypeFor({
+        id: 'e-1' as never,
+        kind: 'Composition',
+        sourceId: 'r-1' as never,
+        targetId: 'r-2' as never,
       }),
     ).toThrow(/requirements viewpoint cannot render edge kind/);
   });

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { type Node, type NodeProps } from '@xyflow/react';
+import { Handle, Position, type Node, type NodeProps } from '@xyflow/react';
 
 import type {
   ElementId,
@@ -90,6 +90,13 @@ export function RequirementNode({
       }`}
       style={{ width: REQUIREMENT_NODE_WIDTH, height: REQUIREMENT_NODE_HEIGHT }}
     >
+      <Handle
+        type="target"
+        position={Position.Top}
+        id="top"
+        data-testid={`requirements-handle-top-${data.elementId}`}
+        className="!z-10 !h-3 !w-3 !rounded-full !border-2 !border-card !bg-primary"
+      />
       <header className="flex items-center justify-between gap-2 border-b border-border bg-muted/40 px-2 py-1">
         <span
           data-testid={`requirements-req-id-${data.elementId}`}
@@ -156,6 +163,13 @@ export function RequirementNode({
           {data.status}
         </span>
       </footer>
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="bottom"
+        data-testid={`requirements-handle-bottom-${data.elementId}`}
+        className="!z-10 !h-3 !w-3 !rounded-full !border-2 !border-card !bg-primary"
+      />
     </div>
   );
 }

@@ -184,6 +184,54 @@ describe('createCommandBus — edge commands', () => {
   });
 });
 
+describe('createCommandBus — update-edge', () => {
+  it('updates an edge label and inverts on undo', () => {
+    const registry = createElementRegistry();
+    const bus = createCommandBus({ registry });
+    const user = mkUser();
+    const a = mkPartDef('A');
+    const b = mkPartDef('B');
+    bus.dispatch({ kind: 'create-element', element: a }, user);
+    bus.dispatch({ kind: 'create-element', element: b }, user);
+    const edge: ModelEdge = {
+      id: createEdgeId(),
+      kind: 'RequirementTrace',
+      sourceId: a.id,
+      targetId: b.id,
+      traceKind: 'satisfy',
+    };
+    bus.dispatch({ kind: 'link', edge }, user);
+
+    const event = bus.dispatch(
+      { kind: 'update-edge', id: edge.id, patch: { label: 'covers' } },
+      user,
+    );
+    expect(registry.getEdge(edge.id)?.label).toBe('covers');
+    expect(event.payload).toEqual({
+      kind: 'update-edge',
+      id: edge.id,
+      patch: { label: undefined },
+    });
+
+    bus.undo();
+    expect(registry.getEdge(edge.id)?.label).toBeUndefined();
+    bus.redo();
+    expect(registry.getEdge(edge.id)?.label).toBe('covers');
+  });
+
+  it('throws when targeting a missing edge id', () => {
+    const registry = createElementRegistry();
+    const bus = createCommandBus({ registry });
+    const user = mkUser();
+    expect(() =>
+      bus.dispatch(
+        { kind: 'update-edge', id: createEdgeId(), patch: { label: 'x' } },
+        user,
+      ),
+    ).toThrow();
+  });
+});
+
 describe('createCommandBus — undo/redo discipline', () => {
   it('drops the redo stack when a new command lands after an undo', () => {
     const registry = createElementRegistry();

@@ -1,5 +1,7 @@
 import {
   createElementId,
+  type EdgeKind,
+  type EdgePatch,
   type ElementKind,
   type ElementPatch,
   type ElementRegistry,
@@ -18,6 +20,7 @@ import type {
   Command,
   CompoundCommand,
   UpdateDiagramPositionCommand,
+  UpdateEdgeCommand,
   UpdateElementCommand,
 } from './types';
 import type { ModelEvent, Unsubscribe } from './events';
@@ -129,6 +132,13 @@ export function createCommandBus(options: CreateCommandBusOptions): CommandBus {
         }
         return;
       }
+      case 'update-edge': {
+        const target = registry.getEdge(command.id);
+        if (!can(actor, 'update', target)) {
+          throw new PermissionDeniedError('update', target);
+        }
+        return;
+      }
       case 'update-diagram-position':
         // Position changes are presentation, not model: not permission-gated.
         return;
@@ -196,6 +206,24 @@ export function createCommandBus(options: CreateCommandBusOptions): CommandBus {
         registry.removeEdge(command.id);
         return { kind: 'link', edge: existing };
       }
+      case 'update-edge': {
+        const existing = registry.getEdge(command.id);
+        if (!existing) {
+          throw new Error(`update-edge target not found: ${command.id}`);
+        }
+        const previousValues: Record<string, unknown> = {};
+        const source = existing as unknown as Record<string, unknown>;
+        for (const key of Object.keys(command.patch)) {
+          previousValues[key] = source[key];
+        }
+        registry.updateEdge(command.id, command.patch);
+        const inverse: UpdateEdgeCommand<EdgeKind> = {
+          kind: 'update-edge',
+          id: command.id,
+          patch: previousValues as EdgePatch<EdgeKind>,
+        };
+        return inverse;
+      }
       case 'update-diagram-position': {
         if (!positions) {
           throw new Error(
@@ -246,6 +274,9 @@ export function createCommandBus(options: CreateCommandBusOptions): CommandBus {
         return;
       case 'unlink':
         registry.removeEdge(command.id);
+        return;
+      case 'update-edge':
+        registry.updateEdge(command.id, command.patch);
         return;
       case 'update-diagram-position':
         if (!positions) {

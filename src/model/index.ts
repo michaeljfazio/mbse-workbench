@@ -67,6 +67,7 @@ export { EDGE_KINDS } from './edges';
 export type {
   ElementRegistry,
   ElementPatch,
+  EdgePatch,
   IntegrityResult,
   DanglingEdgeFinding,
   DanglingElementRefFinding,

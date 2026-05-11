@@ -4,6 +4,7 @@ import type {
   ConnectionUsageElement,
   ElementId,
   ItemFlowElement,
+  ModelEdge,
   ModelElement,
   PartDefinitionElement,
   PartUsageElement,
@@ -13,6 +14,7 @@ import type {
   RequirementElement,
   RequirementPriority,
   RequirementStatus,
+  RequirementTraceEdge,
 } from '@/model';
 import { useWorkspaceStore } from '../store';
 
@@ -22,6 +24,14 @@ function findElement(
 ): ModelElement | undefined {
   if (!id) return undefined;
   return elements.find((e) => e.id === id);
+}
+
+function findEdge(
+  edges: readonly ModelEdge[],
+  id: ElementId | undefined,
+): ModelEdge | undefined {
+  if (!id) return undefined;
+  return edges.find((e) => (e.id as unknown as ElementId) === id);
 }
 
 const PORT_DIRECTIONS: readonly { value: PortDirection; label: string }[] = [
@@ -54,6 +64,7 @@ const REQUIREMENT_STATUSES: readonly {
 export function Inspector(): JSX.Element {
   const selectedIds = useWorkspaceStore((s) => s.selectedElementIds);
   const elements = useWorkspaceStore((s) => s.elements);
+  const edges = useWorkspaceStore((s) => s.edges);
 
   if (selectedIds.length === 0) {
     return (
@@ -73,15 +84,18 @@ export function Inspector(): JSX.Element {
 
   const id = selectedIds[0]!;
   const element = findElement(elements, id);
-  if (!element) {
-    return (
-      <p data-testid="inspector-missing" className="text-muted-foreground">
-        Selected element no longer exists.
-      </p>
-    );
+  if (element) {
+    return <InspectorSingle element={element} />;
   }
-
-  return <InspectorSingle element={element} />;
+  const edge = findEdge(edges, id);
+  if (edge && edge.kind === 'RequirementTrace') {
+    return <InspectorTraceEdge edge={edge} />;
+  }
+  return (
+    <p data-testid="inspector-missing" className="text-muted-foreground">
+      Selected element no longer exists.
+    </p>
+  );
 }
 
 interface InspectorSingleProps {
@@ -440,6 +454,115 @@ function ConnectionUsageExtras({
       </dl>
     </div>
   );
+}
+
+interface InspectorTraceEdgeProps {
+  readonly edge: RequirementTraceEdge;
+}
+
+function InspectorTraceEdge({ edge }: InspectorTraceEdgeProps): JSX.Element {
+  const elements = useWorkspaceStore((s) => s.elements);
+  const setRequirementTraceLabel = useWorkspaceStore(
+    (s) => s.setRequirementTraceLabel,
+  );
+
+  const sourceLabel = useMemo(
+    () => describeTraceEndpoint(elements, edge.sourceId),
+    [elements, edge.sourceId],
+  );
+  const targetLabel = useMemo(
+    () => describeTraceEndpoint(elements, edge.targetId),
+    [elements, edge.targetId],
+  );
+
+  const [draft, setDraft] = useState(edge.label ?? '');
+  useEffect(() => {
+    setDraft(edge.label ?? '');
+  }, [edge.id, edge.label]);
+  const inputId = useMemo(
+    () => `inspector-trace-label-${edge.id}`,
+    [edge.id],
+  );
+
+  const commit = (): void => {
+    if (draft !== (edge.label ?? '')) {
+      setRequirementTraceLabel(edge.id, draft);
+    }
+  };
+
+  return (
+    <div
+      data-testid="inspector-trace-edge"
+      data-edge-id={edge.id}
+      className="flex flex-col gap-4"
+    >
+      <header className="flex flex-col gap-0.5">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-foreground/75">
+          RequirementTrace
+        </span>
+        <span className="text-sm font-medium text-foreground">
+          Trace properties
+        </span>
+      </header>
+      <dl
+        data-testid="inspector-trace-endpoints"
+        className="flex flex-col gap-1 rounded-md border border-dashed border-border bg-muted/40 px-2 py-1.5 text-xs text-foreground/75"
+      >
+        <div className="flex gap-2">
+          <dt className="font-semibold uppercase tracking-wide">Source</dt>
+          <dd data-testid="inspector-trace-source">{sourceLabel}</dd>
+        </div>
+        <div className="flex gap-2">
+          <dt className="font-semibold uppercase tracking-wide">Target</dt>
+          <dd data-testid="inspector-trace-target">{targetLabel}</dd>
+        </div>
+        <div className="flex gap-2">
+          <dt className="font-semibold uppercase tracking-wide">Kind</dt>
+          <dd data-testid="inspector-trace-kind">{`«${edge.traceKind}»`}</dd>
+        </div>
+      </dl>
+      <div className="flex flex-col gap-1.5">
+        <label
+          htmlFor={inputId}
+          className="text-xs font-medium text-muted-foreground"
+        >
+          Label
+        </label>
+        <input
+          id={inputId}
+          type="text"
+          value={draft}
+          data-testid="inspector-trace-label"
+          placeholder="Optional edge label"
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              (e.target as HTMLInputElement).blur();
+            } else if (e.key === 'Escape') {
+              e.preventDefault();
+              setDraft(edge.label ?? '');
+              (e.target as HTMLInputElement).blur();
+            }
+          }}
+          className="rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground shadow-sm focus:border-primary focus:outline-none"
+        />
+      </div>
+    </div>
+  );
+}
+
+function describeTraceEndpoint(
+  elements: readonly ModelElement[],
+  id: ElementId,
+): string {
+  const el = elements.find((e) => e.id === id);
+  if (!el) return 'unknown';
+  if (el.kind === 'Requirement' && el.reqId) {
+    return `${el.reqId} ${el.name}`;
+  }
+  return `${el.kind} · ${el.name}`;
 }
 
 function describeConnectionEndpoint(
