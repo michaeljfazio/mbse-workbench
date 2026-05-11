@@ -3,10 +3,15 @@ import { create } from 'zustand';
 import type {
   EdgeId,
   ElementId,
+  ElementPatch,
   ElementRegistry,
   ModelEdge,
   ModelElement,
   PartDefinitionElement,
+  PartUsageElement,
+  PortDefinitionElement,
+  PortDirection,
+  PortUsageElement,
 } from '@/model';
 import {
   createEdgeId,
@@ -26,6 +31,7 @@ import {
   bddViewpoint,
   createViewpointRegistry,
   dagreLayout,
+  IBD_VIEWPOINT_ID,
   ibdViewpoint,
   type BddEdgeKind,
   type Viewpoint,
@@ -50,6 +56,8 @@ export const MAX_PANE_WIDTH = 600;
 
 const NEW_BLOCK_DEFAULT_POSITION: NodePosition = { x: 80, y: 80 };
 const NEW_BLOCK_CASCADE_OFFSET = 48;
+
+const NEW_PORT_DIRECTION_DEFAULT: PortDirection = 'inout';
 
 export type InspectorTab = 'inspector' | 'chat';
 
@@ -169,6 +177,19 @@ export interface WorkspaceActions {
     position: NodePosition,
   ): void;
   runAutoLayout(diagramId: DiagramId): void;
+  addPortToDefinition(
+    definitionId: ElementId,
+    options?: { name?: string; direction?: PortDirection },
+  ): ElementId | null;
+  deletePort(portDefinitionId: ElementId): void;
+  setPortDirection(portDefinitionId: ElementId, direction: PortDirection): void;
+  createPartUsage(
+    diagramId: DiagramId,
+    definitionId: ElementId,
+    position: NodePosition,
+  ): ElementId | null;
+  setPartUsageMultiplicity(id: ElementId, multiplicity: string): void;
+  openInternalDiagram(partDefinitionId: ElementId): DiagramId | null;
   undo(): void;
   redo(): void;
 }
@@ -234,6 +255,39 @@ function nextBlockPosition(diagram: Diagram | null): NodePosition {
     x: NEW_BLOCK_DEFAULT_POSITION.x + count * NEW_BLOCK_CASCADE_OFFSET,
     y: NEW_BLOCK_DEFAULT_POSITION.y + count * NEW_BLOCK_CASCADE_OFFSET,
   };
+}
+
+function nextPortName(
+  parent: PartDefinitionElement,
+  elements: readonly ModelElement[],
+): string {
+  const portIds = new Set(parent.portIds);
+  const taken = new Set(
+    elements
+      .filter((e): e is PortDefinitionElement => e.kind === 'PortDefinition')
+      .filter((e) => portIds.has(e.id))
+      .map((e) => e.name),
+  );
+  let n = taken.size + 1;
+  while (taken.has(`port${n}`)) n += 1;
+  return `port${n}`;
+}
+
+function nextPartUsageName(
+  definition: PartDefinitionElement,
+  elements: readonly ModelElement[],
+): string {
+  const base = definition.name.length > 0 ? definition.name : 'part';
+  const lowered = base.charAt(0).toLowerCase() + base.slice(1);
+  const taken = new Set(
+    elements
+      .filter((e): e is PartUsageElement => e.kind === 'PartUsage')
+      .map((e) => e.name),
+  );
+  if (!taken.has(lowered)) return lowered;
+  let n = 2;
+  while (taken.has(`${lowered}${n}`)) n += 1;
+  return `${lowered}${n}`;
 }
 
 export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
@@ -543,6 +597,183 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       });
     }
     bus.dispatch({ kind: 'compound', commands }, user);
+  },
+
+  addPortToDefinition(definitionId, options) {
+    const { bus, user, registry, elements } = get();
+    if (!bus || !user || !registry) return null;
+    const parent = registry.get(definitionId);
+    if (!parent || parent.kind !== 'PartDefinition') return null;
+    const direction = options?.direction ?? NEW_PORT_DIRECTION_DEFAULT;
+    const portId = createElementId();
+    const port: PortDefinitionElement = {
+      id: portId,
+      kind: 'PortDefinition',
+      name: options?.name?.trim() ?? nextPortName(parent, elements),
+      direction,
+    };
+    const portIdsPatch: ElementPatch<'PartDefinition'> = {
+      portIds: [...parent.portIds, portId],
+    };
+    bus.dispatch(
+      {
+        kind: 'compound',
+        commands: [
+          { kind: 'create-element', element: port },
+          {
+            kind: 'update-element',
+            id: definitionId,
+            patch: portIdsPatch,
+          },
+        ],
+      },
+      user,
+    );
+    return portId;
+  },
+
+  deletePort(portDefinitionId) {
+    const { bus, user, registry } = get();
+    if (!bus || !user || !registry) return;
+    const port = registry.get(portDefinitionId);
+    if (!port || port.kind !== 'PortDefinition') return;
+    const parent = registry
+      .elements()
+      .find(
+        (e): e is PartDefinitionElement =>
+          e.kind === 'PartDefinition' && e.portIds.includes(portDefinitionId),
+      );
+    if (!parent) {
+      // Orphaned port — just remove it.
+      bus.dispatch({ kind: 'delete-element', id: portDefinitionId }, user);
+      return;
+    }
+    const nextPortIds = parent.portIds.filter((id) => id !== portDefinitionId);
+    const portIdsPatch: ElementPatch<'PartDefinition'> = { portIds: nextPortIds };
+    bus.dispatch(
+      {
+        kind: 'compound',
+        commands: [
+          {
+            kind: 'update-element',
+            id: parent.id,
+            patch: portIdsPatch,
+          },
+          { kind: 'delete-element', id: portDefinitionId },
+        ],
+      },
+      user,
+    );
+  },
+
+  setPortDirection(portDefinitionId, direction) {
+    const { bus, user, registry } = get();
+    if (!bus || !user || !registry) return;
+    const existing = registry.get(portDefinitionId);
+    if (!existing || existing.kind !== 'PortDefinition') return;
+    if (existing.direction === direction) return;
+    const patch: ElementPatch<'PortDefinition'> = { direction };
+    bus.dispatch(
+      {
+        kind: 'update-element',
+        id: portDefinitionId,
+        patch,
+      },
+      user,
+    );
+  },
+
+  createPartUsage(diagramId, definitionId, position) {
+    const { bus, user, registry, diagrams, elements } = get();
+    if (!bus || !user || !registry) return null;
+    if (!diagrams.some((d) => d.id === diagramId)) return null;
+    const definition = registry.get(definitionId);
+    if (!definition || definition.kind !== 'PartDefinition') return null;
+
+    // Materialise one PortUsage per PortDefinition on the type so the
+    // PartUsage carries a stable list of port endpoints. Skip ports whose
+    // PortDefinition is missing from the registry (defensive — should not
+    // happen under normal flow).
+    const portUsageCreates: Command[] = [];
+    const portUsageIds: ElementId[] = [];
+    for (const portId of definition.portIds) {
+      const portDef = registry.get(portId);
+      if (!portDef || portDef.kind !== 'PortDefinition') continue;
+      const portUsageId = createElementId();
+      portUsageIds.push(portUsageId);
+      const portUsage: PortUsageElement = {
+        id: portUsageId,
+        kind: 'PortUsage',
+        name: portDef.name,
+        definitionId: portDef.id,
+      };
+      portUsageCreates.push({ kind: 'create-element', element: portUsage });
+    }
+
+    const partUsageId = createElementId();
+    const partUsage: PartUsageElement = {
+      id: partUsageId,
+      kind: 'PartUsage',
+      name: nextPartUsageName(definition, elements),
+      definitionId,
+      portUsageIds,
+    };
+
+    const commands: Command[] = [
+      ...portUsageCreates,
+      { kind: 'create-element', element: partUsage },
+      {
+        kind: 'update-diagram-position',
+        diagramId,
+        elementId: partUsageId,
+        position,
+      },
+    ];
+    bus.dispatch({ kind: 'compound', commands }, user);
+    return partUsageId;
+  },
+
+  setPartUsageMultiplicity(id, multiplicity) {
+    const { bus, user, registry } = get();
+    if (!bus || !user || !registry) return;
+    const existing = registry.get(id);
+    if (!existing || existing.kind !== 'PartUsage') return;
+    const trimmed = multiplicity.trim();
+    const next = trimmed.length === 0 ? undefined : trimmed;
+    if ((existing.multiplicity ?? undefined) === next) return;
+    const patch: ElementPatch<'PartUsage'> = { multiplicity: next };
+    bus.dispatch(
+      {
+        kind: 'update-element',
+        id,
+        patch,
+      },
+      user,
+    );
+  },
+
+  openInternalDiagram(partDefinitionId) {
+    const { registry, diagrams, viewpoints } = get();
+    if (!registry) return null;
+    const partDef = registry.get(partDefinitionId);
+    if (!partDef || partDef.kind !== 'PartDefinition') return null;
+    if (!viewpoints.has(IBD_VIEWPOINT_ID)) return null;
+    const existing = diagrams.find(
+      (d) =>
+        d.viewpointId === IBD_VIEWPOINT_ID &&
+        d.context?.kind === 'partDefinition' &&
+        d.context.id === partDefinitionId,
+    );
+    if (existing) {
+      get().setActiveDiagram(existing.id);
+      return existing.id;
+    }
+    const id = get().createDiagram(IBD_VIEWPOINT_ID, {
+      name: `${partDef.name} IBD`,
+      context: { kind: 'partDefinition', id: partDefinitionId },
+    });
+    if (id) get().setActiveDiagram(id);
+    return id;
   },
 
   undo() {

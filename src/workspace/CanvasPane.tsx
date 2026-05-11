@@ -20,15 +20,25 @@ import type {
   ElementKind,
   ModelEdge,
   ModelElement,
+  PartDefinitionElement,
 } from '@/model';
 import {
   BDD_BLOCK_HEIGHT,
   BDD_BLOCK_WIDTH,
 } from '@/viewpoints/bdd/BlockNode';
-import { BDD_VIEWPOINT_ID, type BddEdgeKind, type Viewpoint } from '@/viewpoints';
+import {
+  BDD_VIEWPOINT_ID,
+  IBD_PART_USAGE_HEIGHT,
+  IBD_PART_USAGE_WIDTH,
+  IBD_VIEWPOINT_ID,
+  resolvePartHandles,
+  type BddEdgeKind,
+  type Viewpoint,
+} from '@/viewpoints';
 
 import { EdgeKindPopover } from './EdgeKindPopover';
 import { ExportMenu } from './ExportMenu';
+import { PartUsageTypePopover } from './PartUsageTypePopover';
 import type { Diagram } from './diagram';
 import { downloadDiagramPng, downloadDiagramSvg } from './export';
 import {
@@ -44,25 +54,59 @@ interface PendingConnection {
   readonly y: number;
 }
 
+interface PendingPartDrop {
+  readonly flowPosition: { x: number; y: number };
+  readonly popoverX: number;
+  readonly popoverY: number;
+}
+
+interface RegistryLookup {
+  get(id: ElementId): ModelElement | undefined;
+}
+
+function nodeSizeFor(viewpoint: Viewpoint): { width: number; height: number } {
+  if (viewpoint.id === IBD_VIEWPOINT_ID) {
+    return { width: IBD_PART_USAGE_WIDTH, height: IBD_PART_USAGE_HEIGHT };
+  }
+  return { width: BDD_BLOCK_WIDTH, height: BDD_BLOCK_HEIGHT };
+}
+
 function toFlowNodes(
   elements: readonly ModelElement[],
   viewpoint: Viewpoint,
   diagram: Diagram,
   selectedIds: ReadonlySet<ElementId>,
   onRename: (id: ElementId, name: string) => void,
+  registry: RegistryLookup | null,
 ): Node[] {
+  const { width, height } = nodeSizeFor(viewpoint);
   return elements
     .filter((el) => viewpoint.acceptedElementKinds.includes(el.kind))
     .map((el) => {
       const pos = diagram.positions[el.id] ?? { x: 0, y: 0 };
+      let data: Record<string, unknown>;
+      if (el.kind === 'PartUsage' && registry) {
+        const definition = registry.get(el.definitionId);
+        const definitionName =
+          definition?.kind === 'PartDefinition' ? definition.name : 'unknown';
+        const ports = resolvePartHandles({ partUsage: el, registry });
+        data = {
+          elementId: el.id,
+          name: el.name,
+          definitionName,
+          ports,
+        };
+      } else {
+        data = { elementId: el.id, name: el.name, onRename };
+      }
       const node: Node = {
         id: el.id,
         type: viewpoint.nodeTypeFor(el),
         position: pos,
-        width: BDD_BLOCK_WIDTH,
-        height: BDD_BLOCK_HEIGHT,
+        width,
+        height,
         selected: selectedIds.has(el.id),
-        data: { elementId: el.id, name: el.name, onRename },
+        data,
       };
       return node;
     });
@@ -106,15 +150,33 @@ function CanvasInner(): JSX.Element {
   const runAutoLayout = useWorkspaceStore((s) => s.runAutoLayout);
 
   const [pending, setPending] = useState<PendingConnection | null>(null);
+  const [pendingPart, setPendingPart] = useState<PendingPartDrop | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const reactFlow = useReactFlow();
+  const createPartUsage = useWorkspaceStore((s) => s.createPartUsage);
 
   const selectedSet = useMemo(() => new Set(selectedElementIds), [selectedElementIds]);
 
+  const partDefinitions = useMemo(
+    () =>
+      elements
+        .filter((e): e is PartDefinitionElement => e.kind === 'PartDefinition')
+        .slice()
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [elements],
+  );
+
   const flowNodes = useMemo(() => {
     if (!viewpoint || !diagram) return [];
-    return toFlowNodes(elements, viewpoint, diagram, selectedSet, renameElement);
-  }, [elements, viewpoint, diagram, selectedSet, renameElement]);
+    return toFlowNodes(
+      elements,
+      viewpoint,
+      diagram,
+      selectedSet,
+      renameElement,
+      registry,
+    );
+  }, [elements, viewpoint, diagram, selectedSet, renameElement, registry]);
 
   const flowEdges = useMemo(() => {
     if (!viewpoint) return [];
@@ -167,6 +229,9 @@ function CanvasInner(): JSX.Element {
 
   const onConnect = useCallback(
     (connection: Connection) => {
+      // BDD is the only viewpoint with edge creation in Phase 3; IBD's
+      // connection authoring lands in #51. Bail early for everything else.
+      if (!viewpoint || viewpoint.id !== BDD_VIEWPOINT_ID) return;
       // Show the edge-kind popover near the target node's top handle, projected
       // into screen coordinates via React Flow.
       const targetNode = flowNodes.find((n) => n.id === connection.target);
@@ -181,7 +246,7 @@ function CanvasInner(): JSX.Element {
       const y = screenPos.y - (rect?.top ?? 0);
       setPending({ connection, x, y });
     },
-    [flowNodes, reactFlow],
+    [viewpoint, flowNodes, reactFlow],
   );
 
   const isValidConnection = useCallback(
@@ -232,6 +297,7 @@ function CanvasInner(): JSX.Element {
 
   const handleExportPng = useCallback(() => {
     if (!viewpoint || !diagram) return;
+    const { width, height } = nodeSizeFor(viewpoint);
     void downloadDiagramPng({
       diagramName: diagram.name,
       svgInput: {
@@ -239,14 +305,15 @@ function CanvasInner(): JSX.Element {
         edges,
         positions: diagram.positions,
         viewpoint,
-        nodeWidth: BDD_BLOCK_WIDTH,
-        nodeHeight: BDD_BLOCK_HEIGHT,
+        nodeWidth: width,
+        nodeHeight: height,
       },
     });
   }, [viewpoint, diagram, elements, edges]);
 
   const handleExportSvg = useCallback(() => {
     if (!viewpoint || !diagram) return;
+    const { width, height } = nodeSizeFor(viewpoint);
     void downloadDiagramSvg({
       diagramName: diagram.name,
       svgInput: {
@@ -254,8 +321,8 @@ function CanvasInner(): JSX.Element {
         edges,
         positions: diagram.positions,
         viewpoint,
-        nodeWidth: BDD_BLOCK_WIDTH,
-        nodeHeight: BDD_BLOCK_HEIGHT,
+        nodeWidth: width,
+        nodeHeight: height,
       },
     });
   }, [viewpoint, diagram, elements, edges]);
@@ -281,7 +348,21 @@ function CanvasInner(): JSX.Element {
         x: event.clientX,
         y: event.clientY,
       });
-      // Center the new block on the cursor.
+      if (viewpoint.id === IBD_VIEWPOINT_ID && kind === 'PartUsage') {
+        // Defer creation: prompt the user for which PartDefinition to type
+        // this part as. The popover handles empty/cancel.
+        const rect = canvasRef.current?.getBoundingClientRect();
+        setPendingPart({
+          flowPosition: {
+            x: flowPos.x - IBD_PART_USAGE_WIDTH / 2,
+            y: flowPos.y - IBD_PART_USAGE_HEIGHT / 2,
+          },
+          popoverX: event.clientX - (rect?.left ?? 0),
+          popoverY: event.clientY - (rect?.top ?? 0),
+        });
+        return;
+      }
+      // BDD: drop creates a Block (PartDefinition) directly.
       const id = createBlock({
         x: flowPos.x - BDD_BLOCK_WIDTH / 2,
         y: flowPos.y - BDD_BLOCK_HEIGHT / 2,
@@ -290,6 +371,22 @@ function CanvasInner(): JSX.Element {
     },
     [viewpoint, diagram, reactFlow, createBlock, setSelection],
   );
+
+  const confirmPendingPart = useCallback(
+    (definitionId: ElementId) => {
+      if (!pendingPart || !diagram) return;
+      const id = createPartUsage(
+        diagram.id,
+        definitionId,
+        pendingPart.flowPosition,
+      );
+      setPendingPart(null);
+      if (id) setSelection([id]);
+    },
+    [pendingPart, diagram, createPartUsage, setSelection],
+  );
+
+  const cancelPendingPart = useCallback(() => setPendingPart(null), []);
 
   const elementCount = elements.length;
 
@@ -408,6 +505,15 @@ function CanvasInner(): JSX.Element {
             y={pending.y}
             onPick={confirmPending}
             onCancel={cancelPending}
+          />
+        ) : null}
+        {pendingPart ? (
+          <PartUsageTypePopover
+            x={pendingPart.popoverX}
+            y={pendingPart.popoverY}
+            definitions={partDefinitions}
+            onPick={confirmPendingPart}
+            onCancel={cancelPendingPart}
           />
         ) : null}
       </div>

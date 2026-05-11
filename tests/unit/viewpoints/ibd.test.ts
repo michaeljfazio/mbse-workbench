@@ -2,11 +2,12 @@ import { describe, expect, it } from 'vitest';
 
 import {
   createViewpointRegistry,
+  IBD_PART_USAGE_NODE_TYPE,
   IBD_VIEWPOINT_ID,
   ibdViewpoint,
 } from '@/viewpoints';
 
-describe('IBD viewpoint (issue #49)', () => {
+describe('IBD viewpoint', () => {
   it('exports the expected id, label, and accepted kinds', () => {
     expect(ibdViewpoint.id).toBe('ibd');
     expect(IBD_VIEWPOINT_ID).toBe('ibd');
@@ -16,14 +17,16 @@ describe('IBD viewpoint (issue #49)', () => {
     expect(ibdViewpoint.defaultLayout).toBe('dagre');
   });
 
-  it('starts with empty paletteItems — #50 introduces the Part palette entry', () => {
-    expect(ibdViewpoint.paletteItems).toEqual([]);
+  it('includes a Part palette item (PartUsage) — #50', () => {
+    expect(ibdViewpoint.paletteItems).toHaveLength(1);
+    expect(ibdViewpoint.paletteItems[0]?.elementKind).toBe('PartUsage');
+    expect(ibdViewpoint.paletteItems[0]?.label).toBe('Part');
   });
 
   it('exposes module-scoped (frozen) nodeTypes and edgeTypes records', () => {
     expect(Object.isFrozen(ibdViewpoint.nodeTypes)).toBe(true);
     expect(Object.isFrozen(ibdViewpoint.edgeTypes)).toBe(true);
-    expect(Object.keys(ibdViewpoint.nodeTypes)).toEqual([]);
+    expect(Object.keys(ibdViewpoint.nodeTypes)).toContain(IBD_PART_USAGE_NODE_TYPE);
     expect(Object.keys(ibdViewpoint.edgeTypes)).toEqual([]);
   });
 
@@ -34,15 +37,32 @@ describe('IBD viewpoint (issue #49)', () => {
     expect(registry.get(IBD_VIEWPOINT_ID)).toBe(ibdViewpoint);
   });
 
-  it('nodeTypeFor / edgeTypeFor throw — the IBD viewpoint has no renderers in #49', () => {
-    expect(() =>
+  it('nodeTypeFor returns the PartUsage node type for a PartUsage element', () => {
+    expect(
       ibdViewpoint.nodeTypeFor({
-        id: 'x' as never,
+        id: 'pu-1' as never,
         kind: 'PartUsage',
         name: 'p',
-        definitionId: 'y' as never,
+        definitionId: 'pd-1' as never,
+        portUsageIds: [],
       }),
-    ).toThrow(/ibd viewpoint cannot yet render/);
+    ).toBe(IBD_PART_USAGE_NODE_TYPE);
+  });
+
+  it('nodeTypeFor throws for any element kind other than PartUsage', () => {
+    expect(() =>
+      ibdViewpoint.nodeTypeFor({
+        id: 'pd-1' as never,
+        kind: 'PartDefinition',
+        name: 'V',
+        isAbstract: false,
+        propertyIds: [],
+        portIds: [],
+      }),
+    ).toThrow(/ibd viewpoint cannot render element kind/);
+  });
+
+  it('edgeTypeFor throws — IBD has no edge renderers until #51', () => {
     expect(() =>
       ibdViewpoint.edgeTypeFor({
         id: 'e' as never,
@@ -50,6 +70,6 @@ describe('IBD viewpoint (issue #49)', () => {
         sourceId: 'a' as never,
         targetId: 'b' as never,
       }),
-    ).toThrow(/ibd viewpoint cannot yet render/);
+    ).toThrow(/ibd viewpoint cannot render edge kind/);
   });
 });

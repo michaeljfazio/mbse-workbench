@@ -61,7 +61,13 @@ function elementOf(kind: ElementKind, id: string): ModelElement {
         portIds: [],
       };
     case 'PartUsage':
-      return { ...base, kind: 'PartUsage', definitionId: A, multiplicity: '1..*' };
+      return {
+        ...base,
+        kind: 'PartUsage',
+        definitionId: A,
+        portUsageIds: [],
+        multiplicity: '1..*',
+      };
     case 'PortDefinition':
       return { ...base, kind: 'PortDefinition', direction: 'inout' };
     case 'PortUsage':

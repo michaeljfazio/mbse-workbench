@@ -71,6 +71,7 @@ const sampleByKind: { [K in ElementKind]: () => Extract<ModelElement, { kind: K 
     kind: 'PartUsage',
     name: 'wheel',
     definitionId: mkElementId('pd-1'),
+    portUsageIds: [],
   }),
   PortDefinition: () => ({
     id: mkElementId('port-d-1'),

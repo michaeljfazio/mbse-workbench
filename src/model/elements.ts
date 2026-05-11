@@ -48,6 +48,10 @@ export interface PartDefinitionElement extends ElementBase {
 export interface PartUsageElement extends ElementBase {
   readonly kind: 'PartUsage';
   definitionId: ElementId;
+  // PortUsages exposed by this PartUsage. One per PortDefinition on the
+  // underlying PartDefinition. Mirrors the PartDefinition.portIds shape so
+  // IBD rendering can deterministically resolve handles to their PortUsages.
+  portUsageIds: ElementId[];
   multiplicity?: string;
 }
 
