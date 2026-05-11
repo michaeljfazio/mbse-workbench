@@ -463,16 +463,29 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
      regen** — instead, download the Playwright HTML report from the
      failed CI run (`gh run download <run-id> --name playwright-report
      --dir /tmp/...`) and lift the per-browser **actual** PNGs out of
-     `data/`. Identify them by file size (the *expected* PNG in the
-     report bit-exactly matches the committed baseline; the *diff* PNG
-     has red/yellow overlay; the *actual* is the third one, with subtly
-     different text rendering). Copy actuals over the baselines and
-     push.
+     `data/`. The reliable name→sha1 map lives in `test.trace` inside
+     the report's `data/<trace-hash>.zip`:
+     ```bash
+     unzip -p /tmp/<report>/data/<trace-hash>.zip test.trace \
+       | python3 -c "import json,sys
+     for line in sys.stdin:
+         atts=json.loads(line).get('attachments')
+         if atts:
+             for a in atts: print(a.get('name'),'->',a.get('sha1'))"
+     ```
+     The `*-actual.png` row's sha1 is the file under `data/` to copy
+     over the baseline. **Do NOT identify by file size** — the actual
+     can be either larger or smaller than the expected (anti-aliasing
+     differences sometimes compress worse, sometimes better). The
+     expected sha1 *does* match the committed baseline bit-exactly,
+     which is a useful cross-check.
   Both the chromium and webkit actuals from a single failed run are
   bit-exact representations of what CI will produce on the next run, so
   the second push will match within tolerance. Recorded after #51 PR
   #59's first CI run produced a 0.02-ratio diff that the arm64-regen
-  procedure had silently green-lit.
+  procedure had silently green-lit; refined after #52 PR #61's webkit-
+  only failure where the actual (54759 B) was 4KB *larger* than the
+  expected (50572 B), invalidating the original size-based heuristic.
 
 - **2026-05-12** — IBD ConnectionUsage (#51) wiring lessons:
   - **Element-as-edge layer.** `Viewpoint` gained
