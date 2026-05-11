@@ -446,6 +446,81 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
   container — then Playwright logs "A snapshot doesn't exist, writing
   actual" and the new file is written.
 
+- **2026-05-12** — **arm64 podman emulation is NOT reliable for visual
+  baselines on text-heavy screens.** Apple-Silicon-native arm64 rendering
+  of the Playwright Jammy image produces fonts with subtly different
+  hinting/anti-aliasing from the amd64 GitHub Actions runner. The
+  per-glyph delta is small enough to stay under `maxDiffPixelRatio: 0.01`
+  for screens with little text (the BDD baselines all passed), but the
+  IBD screen with two PartUsage cards + port labels + a connection-edge
+  label accumulates 9394 px of difference (ratio 0.02 — 2× the threshold).
+  The earlier "matches CI within tolerance" note was over-confident; it
+  only held for the screens that existed at the time. **Preferred
+  baseline-generation workflow going forward:**
+  1. First-time generation: regenerate in the arm64 container as before,
+     commit, push.
+  2. If CI fails on the new baseline, **do not retry the container
+     regen** — instead, download the Playwright HTML report from the
+     failed CI run (`gh run download <run-id> --name playwright-report
+     --dir /tmp/...`) and lift the per-browser **actual** PNGs out of
+     `data/`. Identify them by file size (the *expected* PNG in the
+     report bit-exactly matches the committed baseline; the *diff* PNG
+     has red/yellow overlay; the *actual* is the third one, with subtly
+     different text rendering). Copy actuals over the baselines and
+     push.
+  Both the chromium and webkit actuals from a single failed run are
+  bit-exact representations of what CI will produce on the next run, so
+  the second push will match within tolerance. Recorded after #51 PR
+  #59's first CI run produced a 0.02-ratio diff that the arm64-regen
+  procedure had silently green-lit.
+
+- **2026-05-12** — IBD ConnectionUsage (#51) wiring lessons:
+  - **Element-as-edge layer.** `Viewpoint` gained
+    `acceptedEdgeElementKinds: readonly ElementKind[]` and
+    `edgeTypeForElement(element)` so per-viewpoint elements that render
+    as ReactFlow edges (ConnectionUsage in IBD, ItemFlow next phase,
+    Transition in state-machine) plug in without core changes. BDD's
+    `acceptedEdgeElementKinds = []`. `CanvasPane.toFlowEdges` iterates
+    `elements` and emits one Edge per matching kind, with `sourceHandle`
+    / `targetHandle` set to the PortUsage ids. The PortUsage → PartUsage
+    lookup uses `buildPortUsageOwnership(elements)` (O(N+ports)) called
+    once per memo recompute.
+  - **Spurious `select=true` from React Flow after onConnect.** When the
+    user drags from a handle and drops on another handle, RF emits a
+    stray `{type:'select', selected:true}` for the SOURCE PartUsage a
+    few render ticks after onConnect. Without guarding, this leaks into
+    the workspace store via `onNodesChange` and Backspace then deletes
+    BOTH the new edge AND the source PartUsage. Fix: track
+    `isConnectingRef` via `onConnectStart` / `onConnectEnd`, and in
+    `onNodesChange` skip the select-diff branch while the ref is true.
+    The ref is reset on a `setTimeout(…, 100)` from `onConnectEnd` —
+    `queueMicrotask` is too short; RF fires the spurious select after
+    the first reconciliation tick. The next drag flips it back to true
+    synchronously, so the 100ms window is harmless.
+  - **`onNodesChange` / `onEdgesChange` selection diffs gated by
+    `hasSelectChange`.** Previously we computed `next.filter(selected)`
+    on EVERY change (positions, dimensions). When something else set
+    selection (e.g. `setSelection` from onConnect), the next
+    position/dimension change would clobber it back to `[]`. Now both
+    handlers only run the diff branch when `changes.some(c => c.type
+    === 'select')`. Preserves element-as-edge selections set from
+    outside RF.
+  - **`isValidIbdConnection` + canonicalisation.** `isValidIbdConnection`
+    enforces ADR-0003 typing (out↔in, inout↔anything, never in↔in or
+    out↔out). `canonicalizeIbdConnection` flips `in→out` drags into the
+    canonical `out→in` form before saving so persisted ConnectionUsage
+    elements always have `sourceId` on the providing port.
+  - **Workspace.tsx undo handler fires on metaKey OR ctrlKey.** Don't
+    press BOTH `Meta+z` and `Control+z` in a test unless you want two
+    undos. Pick `Control+z` for cross-platform single-undo tests.
+  - **Edge `click({force:true})` doesn't select edges in RF v12.** The
+    `BaseEdge` exposes a 1.5px stroke as its only hit target. Clicking
+    the path with `force` lands on whatever's behind (typically the
+    source node). For e2e selection of edges, rely on the auto-select
+    set by `onConnect` rather than synthesising clicks. If a click is
+    needed, add an `interactionWidth`-style wider invisible path to the
+    custom edge component.
+
 - **2026-05-12** — `@xyflow/react` v12.3.x multi-handle-per-node
   integration notes (verified via context7 against authoritative docs
   ahead of Phase 3 IBD first use, per AGENT.md directive 11):

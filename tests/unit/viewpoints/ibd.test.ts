@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   createViewpointRegistry,
+  IBD_CONNECTION_USAGE_EDGE_TYPE,
   IBD_PART_USAGE_NODE_TYPE,
   IBD_VIEWPOINT_ID,
   ibdViewpoint,
@@ -14,6 +15,7 @@ describe('IBD viewpoint', () => {
     expect(ibdViewpoint.label).toBe('Internal Block Diagram');
     expect(ibdViewpoint.acceptedElementKinds).toEqual(['PartUsage']);
     expect(ibdViewpoint.acceptedEdgeKinds).toEqual([]);
+    expect(ibdViewpoint.acceptedEdgeElementKinds).toEqual(['ConnectionUsage']);
     expect(ibdViewpoint.defaultLayout).toBe('dagre');
   });
 
@@ -27,7 +29,9 @@ describe('IBD viewpoint', () => {
     expect(Object.isFrozen(ibdViewpoint.nodeTypes)).toBe(true);
     expect(Object.isFrozen(ibdViewpoint.edgeTypes)).toBe(true);
     expect(Object.keys(ibdViewpoint.nodeTypes)).toContain(IBD_PART_USAGE_NODE_TYPE);
-    expect(Object.keys(ibdViewpoint.edgeTypes)).toEqual([]);
+    expect(Object.keys(ibdViewpoint.edgeTypes)).toEqual([
+      IBD_CONNECTION_USAGE_EDGE_TYPE,
+    ]);
   });
 
   it('can be registered in a viewpoint registry and looked up by id', () => {
@@ -62,7 +66,7 @@ describe('IBD viewpoint', () => {
     ).toThrow(/ibd viewpoint cannot render element kind/);
   });
 
-  it('edgeTypeFor throws — IBD has no edge renderers until #51', () => {
+  it('edgeTypeFor throws — IBD has no ModelEdge renderers (edges are elements)', () => {
     expect(() =>
       ibdViewpoint.edgeTypeFor({
         id: 'e' as never,
@@ -71,5 +75,30 @@ describe('IBD viewpoint', () => {
         targetId: 'b' as never,
       }),
     ).toThrow(/ibd viewpoint cannot render edge kind/);
+  });
+
+  it('edgeTypeForElement returns the ConnectionUsage edge type', () => {
+    expect(
+      ibdViewpoint.edgeTypeForElement({
+        id: 'cu' as never,
+        kind: 'ConnectionUsage',
+        name: 'connection1',
+        sourceId: 'pu-a' as never,
+        targetId: 'pu-b' as never,
+      }),
+    ).toBe(IBD_CONNECTION_USAGE_EDGE_TYPE);
+  });
+
+  it('edgeTypeForElement throws for non-edge element kinds', () => {
+    expect(() =>
+      ibdViewpoint.edgeTypeForElement({
+        id: 'pd' as never,
+        kind: 'PartDefinition',
+        name: 'V',
+        isAbstract: false,
+        propertyIds: [],
+        portIds: [],
+      }),
+    ).toThrow(/ibd viewpoint cannot render element-as-edge kind/);
   });
 });

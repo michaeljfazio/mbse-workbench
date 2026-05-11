@@ -21,12 +21,19 @@ export interface Viewpoint {
   readonly label: string;
   readonly acceptedElementKinds: readonly ElementKind[];
   readonly acceptedEdgeKinds: readonly EdgeKind[];
+  // SysMLv2 element kinds that render as ReactFlow edges (not nodes) in this
+  // viewpoint. Examples: ConnectionUsage / ItemFlow in IBD, Transition in a
+  // future state-machine viewpoint. BDD has none.
+  readonly acceptedEdgeElementKinds: readonly ElementKind[];
   readonly defaultLayout: LayoutEngine;
   readonly paletteItems: readonly PaletteItem[];
   readonly nodeTypes: ViewpointNodeTypes;
   readonly edgeTypes: ViewpointEdgeTypes;
   nodeTypeFor(element: ModelElement): string;
   edgeTypeFor(edge: ModelEdge): string;
+  // Maps an `acceptedEdgeElementKinds` element to its ReactFlow edge type.
+  // Throws for unsupported kinds — same contract as `edgeTypeFor`.
+  edgeTypeForElement(element: ModelElement): string;
 }
 
 export class DuplicateViewpointError extends Error {

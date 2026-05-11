@@ -2,6 +2,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { createSessionUser } from '@/collab';
 import type {
+  ConnectionUsageElement,
+  ElementId,
   PartDefinitionElement,
   PartUsageElement,
   PortDefinitionElement,
@@ -346,6 +348,190 @@ describe('workspace store — IBD actions (issue #50)', () => {
       useWorkspaceStore.getState().setPartUsageMultiplicity(id, '1');
 
       expect(useWorkspaceStore.getState().modelVersion).toBe(before);
+    });
+  });
+
+  describe('connectPorts', () => {
+    async function seedTwoParts(): Promise<{
+      partA: PartUsageElement;
+      partB: PartUsageElement;
+    }> {
+      await bootstrap();
+      // Two distinct PartDefinitions, each with one port of complementary
+      // direction. This is the minimum needed for a valid IBD connection.
+      const defA = useWorkspaceStore.getState().createBlock()!;
+      useWorkspaceStore.getState().renameElement(defA, 'Producer');
+      useWorkspaceStore
+        .getState()
+        .addPortToDefinition(defA, { name: 'p', direction: 'out' });
+      const defB = useWorkspaceStore.getState().createBlock()!;
+      useWorkspaceStore.getState().renameElement(defB, 'Consumer');
+      useWorkspaceStore
+        .getState()
+        .addPortToDefinition(defB, { name: 'p', direction: 'in' });
+
+      const ibdId = useWorkspaceStore.getState().openInternalDiagram(defA)!;
+      const a = useWorkspaceStore
+        .getState()
+        .createPartUsage(ibdId, defA, { x: 0, y: 0 })!;
+      const b = useWorkspaceStore
+        .getState()
+        .createPartUsage(ibdId, defB, { x: 200, y: 0 })!;
+      return {
+        partA: findPartUsage(a)!,
+        partB: findPartUsage(b)!,
+      };
+    }
+
+    it('creates a ConnectionUsage element when the drag passes typed validation', async () => {
+      const { partA, partB } = await seedTwoParts();
+      const id = useWorkspaceStore.getState().connectPorts({
+        source: partA.id,
+        target: partB.id,
+        sourceHandle: partA.portUsageIds[0]!,
+        targetHandle: partB.portUsageIds[0]!,
+      })!;
+
+      const connection = useWorkspaceStore
+        .getState()
+        .elements.find((e): e is ConnectionUsageElement => e.id === id);
+      expect(connection?.kind).toBe('ConnectionUsage');
+      expect(connection?.sourceId).toBe(partA.portUsageIds[0]);
+      expect(connection?.targetId).toBe(partB.portUsageIds[0]);
+    });
+
+    it('canonicalises in → out drags so the saved source is the out port', async () => {
+      await bootstrap();
+      const defA = useWorkspaceStore.getState().createBlock()!;
+      useWorkspaceStore
+        .getState()
+        .addPortToDefinition(defA, { name: 'p', direction: 'in' });
+      const defB = useWorkspaceStore.getState().createBlock()!;
+      useWorkspaceStore
+        .getState()
+        .addPortToDefinition(defB, { name: 'p', direction: 'out' });
+
+      const ibdId = useWorkspaceStore.getState().openInternalDiagram(defA)!;
+      const aId = useWorkspaceStore
+        .getState()
+        .createPartUsage(ibdId, defA, { x: 0, y: 0 })!;
+      const bId = useWorkspaceStore
+        .getState()
+        .createPartUsage(ibdId, defB, { x: 200, y: 0 })!;
+      const a = findPartUsage(aId)!;
+      const b = findPartUsage(bId)!;
+
+      const inPortUsage = a.portUsageIds[0]!;
+      const outPortUsage = b.portUsageIds[0]!;
+      const id = useWorkspaceStore.getState().connectPorts({
+        source: a.id,
+        target: b.id,
+        sourceHandle: inPortUsage,
+        targetHandle: outPortUsage,
+      })!;
+
+      const connection = useWorkspaceStore
+        .getState()
+        .elements.find((e): e is ConnectionUsageElement => e.id === id)!;
+      expect(connection.sourceId).toBe(outPortUsage);
+      expect(connection.targetId).toBe(inPortUsage);
+    });
+
+    it('rejects in ↔ in', async () => {
+      await bootstrap();
+      const defA = useWorkspaceStore.getState().createBlock()!;
+      useWorkspaceStore
+        .getState()
+        .addPortToDefinition(defA, { name: 'p', direction: 'in' });
+      const defB = useWorkspaceStore.getState().createBlock()!;
+      useWorkspaceStore
+        .getState()
+        .addPortToDefinition(defB, { name: 'p', direction: 'in' });
+
+      const ibdId = useWorkspaceStore.getState().openInternalDiagram(defA)!;
+      const a = findPartUsage(
+        useWorkspaceStore
+          .getState()
+          .createPartUsage(ibdId, defA, { x: 0, y: 0 })!,
+      )!;
+      const b = findPartUsage(
+        useWorkspaceStore
+          .getState()
+          .createPartUsage(ibdId, defB, { x: 200, y: 0 })!,
+      )!;
+
+      const id = useWorkspaceStore.getState().connectPorts({
+        source: a.id,
+        target: b.id,
+        sourceHandle: a.portUsageIds[0]!,
+        targetHandle: b.portUsageIds[0]!,
+      });
+      expect(id).toBeNull();
+    });
+
+    it('one undo step deletes the ConnectionUsage element', async () => {
+      const { partA, partB } = await seedTwoParts();
+      const id = useWorkspaceStore.getState().connectPorts({
+        source: partA.id,
+        target: partB.id,
+        sourceHandle: partA.portUsageIds[0]!,
+        targetHandle: partB.portUsageIds[0]!,
+      })!;
+      useWorkspaceStore.getState().undo();
+
+      expect(
+        useWorkspaceStore.getState().elements.find((e) => e.id === id),
+      ).toBeUndefined();
+    });
+
+    it('cascades default names connection1, connection2, …', async () => {
+      const { partA, partB } = await seedTwoParts();
+      // Add another out port and another in port so we can wire two connections.
+      const defA = partA.definitionId as ElementId;
+      const defB = partB.definitionId as ElementId;
+      useWorkspaceStore
+        .getState()
+        .addPortToDefinition(defA, { name: 'p2', direction: 'out' });
+      useWorkspaceStore
+        .getState()
+        .addPortToDefinition(defB, { name: 'p2', direction: 'in' });
+
+      // PartUsages created before the new ports were added do not gain new
+      // PortUsages — recreate fresh PartUsages so both ports are bound.
+      const ibdId = useWorkspaceStore
+        .getState()
+        .diagrams.find((d) => d.viewpointId === 'ibd')!.id;
+      const a2 = findPartUsage(
+        useWorkspaceStore
+          .getState()
+          .createPartUsage(ibdId, defA, { x: 0, y: 200 })!,
+      )!;
+      const b2 = findPartUsage(
+        useWorkspaceStore
+          .getState()
+          .createPartUsage(ibdId, defB, { x: 200, y: 200 })!,
+      )!;
+
+      const first = useWorkspaceStore.getState().connectPorts({
+        source: a2.id,
+        target: b2.id,
+        sourceHandle: a2.portUsageIds[0]!,
+        targetHandle: b2.portUsageIds[0]!,
+      })!;
+      const second = useWorkspaceStore.getState().connectPorts({
+        source: a2.id,
+        target: b2.id,
+        sourceHandle: a2.portUsageIds[1]!,
+        targetHandle: b2.portUsageIds[1]!,
+      })!;
+      const firstEl = useWorkspaceStore
+        .getState()
+        .elements.find((e): e is ConnectionUsageElement => e.id === first)!;
+      const secondEl = useWorkspaceStore
+        .getState()
+        .elements.find((e): e is ConnectionUsageElement => e.id === second)!;
+      expect(firstEl.name).toBe('connection1');
+      expect(secondEl.name).toBe('connection2');
     });
   });
 
