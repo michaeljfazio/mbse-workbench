@@ -1,21 +1,21 @@
 # STATUS
 
 ## Current phase
-phase:2 — BDD vertical slice (template for all viewpoints)
+phase:3 — IBD
 
 ## Current iteration
-- Iteration #: 17
+- Iteration #: 18
 - Started: 2026-05-11
-- Branch: issue/44-persist-undo-history
-- Working on: #44 — feat(commands): persist undo/redo history across page reload (PR #45 open, auto-merge queued)
+- Branch: main
+- Working on: (idle — Phase 2 closed, vphase-2 deployed; Phase 3 awaits decomposition next iteration)
 
 ## Last test run
-- Command: `pnpm run check` (darwin; @visual specs auto-skipped per playwright config — pinned in Linux CI)
-- Result: PASS — 204 unit specs across 23 files (4 new for command-bus history rehydration, 3 new for repository history round-trip + normalisation, 1 new for workspace bootstrap rehydration); 58 e2e (chromium + webkit; functional + a11y) all green
-- Failures: (none)
+- Command: `pnpm exec playwright test --project=chromium` plus `pnpm run typecheck && pnpm run lint && pnpm run test:unit`
+- Result: PASS — 30 chromium e2e specs (including the new Phase 2 gate `tests/e2e/phase-2-gate.spec.ts`), 203 unit tests across 22 files, typecheck and lint clean. CI run 25681274560 on PR #46 finished 72/72 green on chromium + webkit + visual + a11y. Release workflow 25681490005 (build + deploy-pages + github-release) green.
+- Failures: (none) — local darwin webkit reproduces a long-standing flake on the existing bdd-canvas `drag-create a Composition` test where SVG edge visibility settles slowly; CI Linux webkit is the source of truth and passed.
 
 ## Known issues / blockers
-- #36 (Phase 2 gate) is temporarily `status:blocked` on #44 landing. Picked back up next iteration.
+- (none)
 
 ## Decisions log
 - 2026-05-11: Bootstrap as a single committed scaffold, not iterative through child PRs. Reason: AGENT.md Phase 0 explicitly lists scaffold steps as the bootstrap and instructs iteration 1 to "run Phase 0 bootstrap" when STATUS.md is missing; opening child issues against an empty repo with no CI yet would be the wrong order. Child issues for any *remaining* Phase 0 polish are opened after the initial commit.
@@ -48,6 +48,7 @@ phase:2 — BDD vertical slice (template for all viewpoints)
 - 2026-05-11: Project tree (#33) — kind groups computed from union of (a) registry kinds and (b) `paletteItems[].elementKind` across all registered viewpoints; an empty BDD project still shows the "Blocks" affordance. `draggable` only when kind is in the *active* viewpoint's palette. Drag payload uses `application/x-mbse-element-kind` (`PROJECT_TREE_DRAG_TYPE`). Canvas drop validates against `acceptedElementKinds`, translates via `reactFlow.screenToFlowPosition`, centers on cursor, auto-selects new element. Roving-tabindex via derived focus key (`explicitFocusKey ?? visibleKeys[0]`) — no state-syncing useEffect. The pane wrapper now uses `aria-label="Project tree pane"` so the inner `role="tree"` keeps the canonical `Project tree` name that existing workspace-shell tests assert on (links: #33, PR #42).
 - 2026-05-11: Export (#35) — `src/workspace/export/` ships a pure `buildDiagramSvg` (XML built from `{elements, edges, positions, viewpoint}`), a thin PNG rasteriser that hands the SVG to a `<canvas>` at 2× DPR, and a slug helper. The two exporters share `BuildDiagramSvgInput`, so PNG and SVG always agree on geometry. `mbse-node` / `mbse-edge` class names are the contract for the spec's structural assertions. Toolbar `ExportMenu` is a split-button: closes on outside-pointerdown / Escape; menuitems trigger download then close. Visual baselines pass unchanged on the new button — the diff is well under `maxDiffPixelRatio: 0.01`, verified by running the Linux-container @visual suite; rationale captured in `docs/CONTEXT.md` so future single-button toolbar additions don't trigger needless regenerations (links: #35).
 - 2026-05-11: Iteration 17 — Drafted Phase 2 gate spec (#36) and discovered AGENT.md's "refresh → Cmd-Z → link gone" sequence is unsupported: the command bus's undo/redo stacks live in the bus's closure and are wiped on every bootstrap. Rather than reorder the gate (which would diverge from AGENT.md's verbatim wording) or fix it in #36's PR (would bundle two issues into one), opened **#44** ("feat(commands): persist undo/redo history across page reload") as a new Phase 2 child, marked #36 `status:blocked`, and implemented #44 this iteration. `Project` now carries `history: { undo: UndoEntry[]; redo: UndoEntry[] }`; `CommandBus` exposes `getHistory()` and accepts `initialUndoStack` / `initialRedoStack`. Legacy / malformed `history` fields normalise to `EMPTY_COMMAND_HISTORY` on load so older persisted entries don't break (links: #44, PR #45).
+- 2026-05-12: Phase 2 closed and **vphase-2 tagged at 0f93af0**. Phase 2 gate spec (#36) merged via PR #46 (CI run 25681274560, 72/72 green chromium + webkit + visual + a11y). Release workflow 25681490005 (build + deploy-pages + github-release) green; Pages https://michaeljfazio.github.io/mbse-workbench/ returns HTTP 200; smoke walkthrough of the live URL via headless Chromium captured four screenshots (shell → +Block ×2 → Auto-layout → Inspector rename to "Engine") uploaded as release assets on vphase-2. First release that the demo URL actually demos something — vphase-0 and vphase-1 only shipped an app shell. Phase 3 (IBD) begins next iteration; Viewpoint registry already shaped so adding it means writing one folder + one config (links: #3 epic closed, #47 release, PR #46).
 
 ## Next action
-Wait for PR #45 to merge. Next iteration: unblock #36, write the Phase 2 gate spec — should now pass cleanly since `Project.history` round-trips through reload and `undo()` continues from the rehydrated stack.
+Decompose Phase 3 (IBD) into child issues against epic #4: ports + port definitions on Block, connection usage with port-to-port wiring, item flow as a typed connection variant, IBD viewpoint config (acceptedElementKinds, nodeTypes for Part/Port, edgeTypes for ConnectionUsage/ItemFlow), and the Phase 3 cross-diagram gate spec (same Block appears in BDD and IBD; editing one reflects in the other). Then pick #30-equivalent first to seed the viewpoint, mirroring Phase 2's sequencing.

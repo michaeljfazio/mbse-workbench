@@ -236,3 +236,70 @@ the template for every other viewpoint — begins next iteration.
 - Next phase epic: https://github.com/michaeljfazio/mbse-workbench/issues/3
 
 ---
+
+## Iteration 18 — 2026-05-12 — vphase-2 released
+
+**Event:** release
+
+**Phase:** phase:2 — BDD vertical slice (template for all viewpoints)
+
+**Narrative:** The Phase 2 gate spec (#36) merged on green CI and I
+tagged `vphase-2` on `main` at commit 0f93af0. The release workflow
+ran clean — build, deploy-pages, and github-release in well under a
+minute combined — and https://michaeljfazio.github.io/mbse-workbench/
+now serves an honest piece of software: a three-pane workspace shell,
+a working BDD canvas, a selection-driven inspector, a draggable project
+tree, dagre auto-layout, PNG/SVG export, and undo/redo that survives a
+page reload. I drove the deployed app from a headless Chromium against
+the live URL: created two blocks, ran auto-layout, renamed one via the
+Inspector, and confirmed every change reflected across tree, canvas,
+and inspector. Four screenshots from that walk-through are attached to
+the release as evidence. This is the first release that the demo URL
+actually demos something — vphase-0 and vphase-1 only ever shipped an
+app shell.
+
+**Links:**
+- Tag: https://github.com/michaeljfazio/mbse-workbench/releases/tag/vphase-2
+- Release workflow: https://github.com/michaeljfazio/mbse-workbench/actions/runs/25681490005
+- Live deploy: https://michaeljfazio.github.io/mbse-workbench/
+- Release issue: #47
+
+---
+
+## Iteration 18 — 2026-05-12 — Phase 2 complete
+
+**Event:** phase-completion
+
+**Phase:** phase:2 — BDD vertical slice (template for all viewpoints)
+
+**Narrative:** Phase 2 closes with the BDD vertical slice that the rest
+of the demo gets to copy. The three-pane workspace shell, the
+ReactFlow-backed canvas with Block nodes and Composition / Generalization
+edges, the inspector that reflects canvas selection and edits flow back
+the other way, the project tree with drag-from-tree-to-canvas, dagre
+auto-layout with per-view position persistence, PNG/SVG export, and
+command-bus undo/redo whose history now round-trips through reload —
+all gated by chromium and webkit Playwright suites plus per-screen axe
+accessibility scans and a Linux-pinned visual-snapshot baseline tree.
+The single Phase 2 gate (#36) drives the whole slice end-to-end: create
+two blocks via toolbar, drag-create a Composition between them, reload
+the page, Cmd-Z removes the edge, Cmd-Shift-Z brings it back, Export →
+PNG downloads a valid PNG. The most useful architectural detail to come
+out of this phase was the realization in iteration 17 that the gate's
+"refresh → Cmd-Z → link gone" sequence was *unsupported* — the
+command-bus stacks were closure-local and reset on every bootstrap. The
+honest fix was to open #44 as a new Phase 2 child and persist the
+history through the repository rather than reorder the gate or paper
+over the gap. The result is that the bus is now a real long-lived
+component, ready for the multi-viewpoint phases ahead. Phase 3 (IBD)
+begins next iteration; the Viewpoint registry is already shaped so that
+adding it means writing one folder plus one config object.
+
+**Links:**
+- Phase 2 epic: https://github.com/michaeljfazio/mbse-workbench/issues/3 (closed)
+- Phase 2 gate PR: https://github.com/michaeljfazio/mbse-workbench/pull/46
+- Persistent-undo PR: https://github.com/michaeljfazio/mbse-workbench/pull/45
+- Release tag: https://github.com/michaeljfazio/mbse-workbench/releases/tag/vphase-2
+- Next phase epic: https://github.com/michaeljfazio/mbse-workbench/issues/4
+
+---
