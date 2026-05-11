@@ -10,6 +10,12 @@ export interface PaletteItem {
   readonly elementKind: ElementKind;
   readonly label: string;
   readonly description?: string;
+  // Optional defaults the palette item carries through to element creation
+  // (e.g. ActionUsage's `nodeType` discriminates the seven Activity
+  // pseudostates). Consumer-side code narrows the shape by element kind;
+  // this stays open so each viewpoint can encode its own per-kind extras
+  // without churning the shared interface.
+  readonly defaultData?: Readonly<Record<string, unknown>>;
 }
 
 export type ViewpointNodeTypes = NodeTypes;

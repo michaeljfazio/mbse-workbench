@@ -34,6 +34,7 @@ import { NoopCollaborationProvider } from '@/collab';
 import type { ModelRepository, Project } from '@/repository';
 import { EMPTY_COMMAND_HISTORY } from '@/repository';
 import {
+  activityViewpoint,
   BDD_BLOCK_HEIGHT,
   BDD_BLOCK_WIDTH,
   BDD_VIEWPOINT_ID,
@@ -124,6 +125,7 @@ function buildViewpointSingleton(): ViewpointRegistry {
   registry.register(bddViewpoint);
   registry.register(ibdViewpoint);
   registry.register(requirementsViewpoint);
+  registry.register(activityViewpoint);
   return registry;
 }
 

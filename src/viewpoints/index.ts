@@ -88,6 +88,20 @@ export {
   validTraceKindsFor,
 } from './requirements';
 
+export {
+  ACTIVITY_ACTION_NODE_TYPE,
+  ACTIVITY_CONTROL_FLOW_EDGE_TYPE,
+  ACTIVITY_DECISION_NODE_TYPE,
+  ACTIVITY_FINAL_NODE_TYPE,
+  ACTIVITY_FORK_NODE_TYPE,
+  ACTIVITY_INITIAL_NODE_TYPE,
+  ACTIVITY_JOIN_NODE_TYPE,
+  ACTIVITY_MERGE_NODE_TYPE,
+  ACTIVITY_OBJECT_FLOW_EDGE_TYPE,
+  ACTIVITY_VIEWPOINT_ID,
+  activityViewpoint,
+} from './activity';
+
 export type {
   RequirementNodeData,
   RequirementNodeType,
@@ -95,3 +109,5 @@ export type {
   RequirementTraceEdgeData,
   RequirementTraceFlowEdge,
 } from './requirements';
+
+
