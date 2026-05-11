@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 
 import type {
+  ConnectionUsageElement,
   ElementId,
   ModelElement,
   PartDefinitionElement,
   PartUsageElement,
   PortDefinitionElement,
   PortDirection,
+  PortUsageElement,
 } from '@/model';
 import { useWorkspaceStore } from '../store';
 
@@ -93,6 +95,10 @@ function InspectorSingle({ element }: InspectorSingleProps): JSX.Element {
 
       {element.kind === 'PartUsage' ? (
         <PartUsageExtras element={element} />
+      ) : null}
+
+      {element.kind === 'ConnectionUsage' ? (
+        <ConnectionUsageExtras element={element} />
       ) : null}
 
       <OwnerField element={element} />
@@ -361,6 +367,70 @@ function PortRow({ port }: PortRowProps): JSX.Element {
       </button>
     </li>
   );
+}
+
+interface ConnectionUsageExtrasProps {
+  readonly element: ConnectionUsageElement;
+}
+
+function ConnectionUsageExtras({
+  element,
+}: ConnectionUsageExtrasProps): JSX.Element {
+  const elements = useWorkspaceStore((s) => s.elements);
+
+  const sourceLabel = useMemo(
+    () => describeConnectionEndpoint(elements, element.sourceId),
+    [elements, element.sourceId],
+  );
+  const targetLabel = useMemo(
+    () => describeConnectionEndpoint(elements, element.targetId),
+    [elements, element.targetId],
+  );
+
+  return (
+    <div
+      data-testid="inspector-connection-endpoints"
+      className="flex flex-col gap-1.5"
+    >
+      <span className="text-xs font-medium text-muted-foreground">
+        Endpoints
+      </span>
+      <dl className="flex flex-col gap-1 rounded-md border border-dashed border-border bg-muted/40 px-2 py-1.5 text-xs text-muted-foreground">
+        <div className="flex gap-2">
+          <dt className="font-semibold uppercase tracking-wide">Source</dt>
+          <dd data-testid="inspector-connection-source">{sourceLabel}</dd>
+        </div>
+        <div className="flex gap-2">
+          <dt className="font-semibold uppercase tracking-wide">Target</dt>
+          <dd data-testid="inspector-connection-target">{targetLabel}</dd>
+        </div>
+      </dl>
+    </div>
+  );
+}
+
+function describeConnectionEndpoint(
+  elements: readonly ModelElement[],
+  portUsageId: ElementId,
+): string {
+  const portUsage = elements.find(
+    (e): e is PortUsageElement => e.kind === 'PortUsage' && e.id === portUsageId,
+  );
+  if (!portUsage) return 'unknown';
+  const def = elements.find(
+    (e): e is PortDefinitionElement =>
+      e.kind === 'PortDefinition' && e.id === portUsage.definitionId,
+  );
+  const owner = elements.find(
+    (e): e is PartUsageElement =>
+      e.kind === 'PartUsage' && e.portUsageIds.includes(portUsageId),
+  );
+  const parts = [
+    owner?.name ?? 'unknown',
+    portUsage.name,
+  ];
+  const direction = def?.direction;
+  return direction ? `${parts.join('.')} (${direction})` : parts.join('.');
 }
 
 interface PartUsageExtrasProps {

@@ -7,6 +7,10 @@ import type {
   ViewpointNodeTypes,
 } from '../types';
 
+import {
+  ConnectionUsageEdge,
+  IBD_CONNECTION_USAGE_EDGE_TYPE,
+} from './ConnectionUsageEdge';
 import { IBD_PART_USAGE_NODE_TYPE, PartUsageNode } from './PartUsageNode';
 
 export {
@@ -21,22 +25,43 @@ export type {
   IbdPartUsageNode,
 } from './PartUsageNode';
 export {
+  ConnectionUsageEdge,
+  IBD_CONNECTION_USAGE_EDGE_TYPE,
+} from './ConnectionUsageEdge';
+export type {
+  IbdConnectionUsageEdge,
+  IbdConnectionUsageEdgeData,
+} from './ConnectionUsageEdge';
+export {
   HANDLE_TYPE_BY_DIRECTION,
+  buildPortUsageOwnership,
   isPartDefinition,
   isPortDefinition,
   placeHandle,
+  resolveIbdEdgeEndpoints,
   resolvePartHandles,
 } from './partUsageHelpers';
-export type { SidePlacement, BuildPartHandleSpecsInput } from './partUsageHelpers';
+export type {
+  IbdEdgeEndpoints,
+  SidePlacement,
+  BuildPartHandleSpecsInput,
+} from './partUsageHelpers';
+export {
+  canonicalizeIbdConnection,
+  isValidIbdConnection,
+} from './isValidConnection';
+export type { IbdConnectionEndpoints } from './isValidConnection';
 
 export const IBD_VIEWPOINT_ID: ViewpointId = 'ibd';
 
 // Module-scoped (frozen) so React Flow can rely on referential stability.
-// #51 will add ConnectionUsage and #52 will add ItemFlow to `edgeTypes`.
+// #52 will add ItemFlow to `edgeTypes`.
 const IBD_NODE_TYPES = Object.freeze({
   [IBD_PART_USAGE_NODE_TYPE]: PartUsageNode,
 }) as unknown as ViewpointNodeTypes;
-const IBD_EDGE_TYPES = Object.freeze({}) as unknown as ViewpointEdgeTypes;
+const IBD_EDGE_TYPES = Object.freeze({
+  [IBD_CONNECTION_USAGE_EDGE_TYPE]: ConnectionUsageEdge,
+}) as unknown as ViewpointEdgeTypes;
 
 export const ibdViewpoint: Viewpoint = {
   id: IBD_VIEWPOINT_ID,
@@ -45,6 +70,7 @@ export const ibdViewpoint: Viewpoint = {
   // labelled Handle on its parent PartUsage, so it does not appear here.
   acceptedElementKinds: ['PartUsage'],
   acceptedEdgeKinds: [],
+  acceptedEdgeElementKinds: ['ConnectionUsage'],
   defaultLayout: 'dagre',
   paletteItems: [
     {
@@ -62,5 +88,11 @@ export const ibdViewpoint: Viewpoint = {
   },
   edgeTypeFor(edge: ModelEdge): string {
     throw new Error(`ibd viewpoint cannot render edge kind: ${edge.kind}`);
+  },
+  edgeTypeForElement(element: ModelElement): string {
+    if (element.kind === 'ConnectionUsage') return IBD_CONNECTION_USAGE_EDGE_TYPE;
+    throw new Error(
+      `ibd viewpoint cannot render element-as-edge kind: ${element.kind}`,
+    );
   },
 };

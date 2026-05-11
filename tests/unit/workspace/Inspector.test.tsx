@@ -141,6 +141,52 @@ describe('<Inspector />', () => {
     expect(screen.getByTestId('inspector-missing')).toBeInTheDocument();
   });
 
+  it('renders endpoint summary for a selected ConnectionUsage', async () => {
+    await bootstrap();
+    const defA = useWorkspaceStore.getState().createBlock()!;
+    useWorkspaceStore.getState().renameElement(defA, 'Engine');
+    useWorkspaceStore
+      .getState()
+      .addPortToDefinition(defA, { name: 'power', direction: 'out' });
+    const defB = useWorkspaceStore.getState().createBlock()!;
+    useWorkspaceStore.getState().renameElement(defB, 'Gearbox');
+    useWorkspaceStore
+      .getState()
+      .addPortToDefinition(defB, { name: 'input', direction: 'in' });
+    const ibdId = useWorkspaceStore.getState().openInternalDiagram(defA)!;
+    const partA = useWorkspaceStore
+      .getState()
+      .createPartUsage(ibdId, defA, { x: 0, y: 0 })!;
+    const partB = useWorkspaceStore
+      .getState()
+      .createPartUsage(ibdId, defB, { x: 200, y: 0 })!;
+    const portUsageA = useWorkspaceStore
+      .getState()
+      .elements.find((e) => e.id === partA && e.kind === 'PartUsage')!;
+    const portUsageB = useWorkspaceStore
+      .getState()
+      .elements.find((e) => e.id === partB && e.kind === 'PartUsage')!;
+    if (portUsageA.kind !== 'PartUsage' || portUsageB.kind !== 'PartUsage') {
+      throw new Error('seed failed');
+    }
+    const id = useWorkspaceStore.getState().connectPorts({
+      source: partA,
+      target: partB,
+      sourceHandle: portUsageA.portUsageIds[0]!,
+      targetHandle: portUsageB.portUsageIds[0]!,
+    })!;
+    useWorkspaceStore.getState().setSelection([id]);
+
+    render(<Inspector />);
+    expect(screen.getByTestId('inspector-connection-endpoints')).toBeInTheDocument();
+    expect(screen.getByTestId('inspector-connection-source')).toHaveTextContent(
+      /engine\.power \(out\)/i,
+    );
+    expect(screen.getByTestId('inspector-connection-target')).toHaveTextContent(
+      /gearbox\.input \(in\)/i,
+    );
+  });
+
   it('reflects an external name change (e.g. inline rename in BlockNode) without re-mount', async () => {
     await bootstrap();
     const id = useWorkspaceStore.getState().createBlock()!;

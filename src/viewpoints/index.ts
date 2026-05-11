@@ -41,7 +41,11 @@ export {
 } from './bdd/BlockNode';
 
 export {
+  buildPortUsageOwnership,
+  canonicalizeIbdConnection,
+  ConnectionUsageEdge,
   HANDLE_TYPE_BY_DIRECTION,
+  IBD_CONNECTION_USAGE_EDGE_TYPE,
   IBD_PART_USAGE_HEIGHT,
   IBD_PART_USAGE_NODE_TYPE,
   IBD_PART_USAGE_WIDTH,
@@ -49,11 +53,17 @@ export {
   ibdViewpoint,
   isPartDefinition,
   isPortDefinition,
+  isValidIbdConnection,
   placeHandle,
+  resolveIbdEdgeEndpoints,
   resolvePartHandles,
 } from './ibd';
 
 export type {
+  IbdConnectionEndpoints,
+  IbdConnectionUsageEdge,
+  IbdConnectionUsageEdgeData,
+  IbdEdgeEndpoints,
   IbdPartHandleSpec,
   IbdPartUsageData,
   IbdPartUsageNode,

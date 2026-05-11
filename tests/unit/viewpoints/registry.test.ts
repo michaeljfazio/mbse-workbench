@@ -14,6 +14,7 @@ function makeStub(id: string, label: string): Viewpoint {
     label,
     acceptedElementKinds: [],
     acceptedEdgeKinds: [],
+    acceptedEdgeElementKinds: [],
     defaultLayout: 'manual',
     paletteItems: [],
     nodeTypes: {},
@@ -23,6 +24,9 @@ function makeStub(id: string, label: string): Viewpoint {
     },
     edgeTypeFor() {
       throw new Error(`stub viewpoint ${id} cannot render edges`);
+    },
+    edgeTypeForElement() {
+      throw new Error(`stub viewpoint ${id} cannot render element-as-edge`);
     },
   };
 }

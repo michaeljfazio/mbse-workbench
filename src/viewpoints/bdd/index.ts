@@ -45,6 +45,7 @@ export const bddViewpoint: Viewpoint = {
   label: 'Block Definition Diagram',
   acceptedElementKinds: ['PartDefinition'],
   acceptedEdgeKinds: ['Composition', 'Generalization'],
+  acceptedEdgeElementKinds: [],
   defaultLayout: 'dagre',
   paletteItems: [
     {
@@ -68,5 +69,10 @@ export const bddViewpoint: Viewpoint = {
       default:
         throw new Error(`bdd viewpoint cannot render edge kind: ${edge.kind}`);
     }
+  },
+  edgeTypeForElement(element: ModelElement): string {
+    throw new Error(
+      `bdd viewpoint cannot render element-as-edge kind: ${element.kind}`,
+    );
   },
 };

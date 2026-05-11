@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 
 import type {
+  ConnectionUsageElement,
   EdgeId,
   ElementId,
   ElementPatch,
@@ -29,6 +30,7 @@ import {
   BDD_BLOCK_HEIGHT,
   BDD_BLOCK_WIDTH,
   bddViewpoint,
+  canonicalizeIbdConnection,
   createViewpointRegistry,
   dagreLayout,
   IBD_VIEWPOINT_ID,
@@ -38,6 +40,7 @@ import {
   type ViewpointId,
   type ViewpointRegistry,
 } from '@/viewpoints';
+import type { Connection } from '@xyflow/react';
 
 import {
   createDiagramId,
@@ -190,6 +193,7 @@ export interface WorkspaceActions {
   ): ElementId | null;
   setPartUsageMultiplicity(id: ElementId, multiplicity: string): void;
   openInternalDiagram(partDefinitionId: ElementId): DiagramId | null;
+  connectPorts(connection: Connection): ElementId | null;
   undo(): void;
   redo(): void;
 }
@@ -288,6 +292,17 @@ function nextPartUsageName(
   let n = 2;
   while (taken.has(`${lowered}${n}`)) n += 1;
   return `${lowered}${n}`;
+}
+
+function nextConnectionUsageName(elements: readonly ModelElement[]): string {
+  const taken = new Set(
+    elements
+      .filter((e): e is ConnectionUsageElement => e.kind === 'ConnectionUsage')
+      .map((e) => e.name),
+  );
+  let n = taken.size + 1;
+  while (taken.has(`connection${n}`)) n += 1;
+  return `connection${n}`;
 }
 
 export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
@@ -773,6 +788,23 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       context: { kind: 'partDefinition', id: partDefinitionId },
     });
     if (id) get().setActiveDiagram(id);
+    return id;
+  },
+
+  connectPorts(connection) {
+    const { bus, user, registry, elements } = get();
+    if (!bus || !user || !registry) return null;
+    const canonical = canonicalizeIbdConnection(connection, registry);
+    if (!canonical) return null;
+    const id = createElementId();
+    const element: ConnectionUsageElement = {
+      id,
+      kind: 'ConnectionUsage',
+      name: nextConnectionUsageName(elements),
+      sourceId: canonical.sourcePortUsageId,
+      targetId: canonical.targetPortUsageId,
+    };
+    bus.dispatch({ kind: 'create-element', element }, user);
     return id;
   },
 

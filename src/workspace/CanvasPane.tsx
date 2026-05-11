@@ -28,9 +28,12 @@ import {
 } from '@/viewpoints/bdd/BlockNode';
 import {
   BDD_VIEWPOINT_ID,
+  buildPortUsageOwnership,
   IBD_PART_USAGE_HEIGHT,
   IBD_PART_USAGE_WIDTH,
   IBD_VIEWPOINT_ID,
+  isValidIbdConnection,
+  resolveIbdEdgeEndpoints,
   resolvePartHandles,
   type BddEdgeKind,
   type Viewpoint,
@@ -114,12 +117,14 @@ function toFlowNodes(
 
 function toFlowEdges(
   edges: readonly ModelEdge[],
+  elements: readonly ModelElement[],
   viewpoint: Viewpoint,
   selectedIds: ReadonlySet<ElementId>,
 ): Edge[] {
-  return edges
-    .filter((e) => viewpoint.acceptedEdgeKinds.includes(e.kind))
-    .map((e) => ({
+  const out: Edge[] = [];
+  for (const e of edges) {
+    if (!viewpoint.acceptedEdgeKinds.includes(e.kind)) continue;
+    out.push({
       id: e.id,
       type: viewpoint.edgeTypeFor(e),
       source: e.sourceId,
@@ -128,7 +133,42 @@ function toFlowEdges(
       targetHandle: 'top',
       selected: selectedIds.has(e.id as unknown as ElementId),
       data: { edgeId: e.id },
-    }));
+    });
+  }
+
+  if (viewpoint.acceptedEdgeElementKinds.length > 0) {
+    const ownership = buildPortUsageOwnership(elements);
+    for (const el of elements) {
+      if (!viewpoint.acceptedEdgeElementKinds.includes(el.kind)) continue;
+      // The discriminated-union members that render as edges all carry
+      // `sourceId` / `targetId` directly (ConnectionUsage, ItemFlow, Transition).
+      if (
+        el.kind !== 'ConnectionUsage' &&
+        el.kind !== 'ItemFlow' &&
+        el.kind !== 'Transition'
+      ) {
+        continue;
+      }
+      const endpoints = resolveIbdEdgeEndpoints({
+        sourcePortUsageId: el.sourceId,
+        targetPortUsageId: el.targetId,
+        portUsageToPartUsage: ownership,
+      });
+      if (!endpoints) continue;
+      out.push({
+        id: el.id,
+        type: viewpoint.edgeTypeForElement(el),
+        source: endpoints.sourceNodeId,
+        target: endpoints.targetNodeId,
+        sourceHandle: endpoints.sourceHandleId,
+        targetHandle: endpoints.targetHandleId,
+        selected: selectedIds.has(el.id),
+        data: { elementId: el.id, name: el.name },
+      });
+    }
+  }
+
+  return out;
 }
 
 function CanvasInner(): JSX.Element {
@@ -148,10 +188,12 @@ function CanvasInner(): JSX.Element {
   const linkBlocks = useWorkspaceStore((s) => s.linkBlocks);
   const renameElement = useWorkspaceStore((s) => s.renameElement);
   const runAutoLayout = useWorkspaceStore((s) => s.runAutoLayout);
+  const connectPorts = useWorkspaceStore((s) => s.connectPorts);
 
   const [pending, setPending] = useState<PendingConnection | null>(null);
   const [pendingPart, setPendingPart] = useState<PendingPartDrop | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
+  const isConnectingRef = useRef(false);
   const reactFlow = useReactFlow();
   const createPartUsage = useWorkspaceStore((s) => s.createPartUsage);
 
@@ -180,20 +222,36 @@ function CanvasInner(): JSX.Element {
 
   const flowEdges = useMemo(() => {
     if (!viewpoint) return [];
-    return toFlowEdges(edges, viewpoint, selectedSet);
-  }, [edges, viewpoint, selectedSet]);
+    return toFlowEdges(edges, elements, viewpoint, selectedSet);
+  }, [edges, elements, viewpoint, selectedSet]);
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
-      const next = applyNodeChanges(changes, flowNodes);
-      const nextSelected: ElementId[] = next
-        .filter((n) => n.selected)
-        .map((n) => n.id as ElementId);
-      const prevSelected = selectedElementIds;
-      const same =
-        nextSelected.length === prevSelected.length &&
-        nextSelected.every((id, i) => id === prevSelected[i]);
-      if (!same) setSelection(nextSelected);
+      const hasSelectChange = changes.some((c) => c.type === 'select');
+      // React Flow emits a stray `{type:'select', selected:true}` for the
+      // connection-drag source node after a successful onConnect. Ignore node
+      // select changes while a connection drag is in progress so that pressing
+      // Backspace afterwards removes only the new edge, not the source node.
+      const shouldIgnoreNodeSelect = isConnectingRef.current;
+      if (hasSelectChange && !shouldIgnoreNodeSelect) {
+        // Only diff selection when ReactFlow actually emitted a node-select
+        // change. Otherwise (position/dimension/remove emits) we'd clobber
+        // selections that were set from outside RF — e.g. a newly-created
+        // ConnectionUsage that lives on the edge layer.
+        const next = applyNodeChanges(changes, flowNodes);
+        const nodeIds = new Set(next.map((n) => n.id as ElementId));
+        const nextNodeSelected: ElementId[] = next
+          .filter((n) => n.selected)
+          .map((n) => n.id as ElementId);
+        // Preserve any non-node selections (element-as-edge ids like a
+        // ConnectionUsage are not in `flowNodes`).
+        const preserved = selectedElementIds.filter((id) => !nodeIds.has(id));
+        const merged: ElementId[] = [...preserved, ...nextNodeSelected];
+        const same =
+          merged.length === selectedElementIds.length &&
+          merged.every((id, i) => id === selectedElementIds[i]);
+        if (!same) setSelection(merged);
+      }
 
       if (!diagram) return;
       for (const change of changes) {
@@ -217,49 +275,117 @@ function CanvasInner(): JSX.Element {
 
   const onEdgesChange = useCallback(
     (changes: EdgeChange[]) => {
-      applyEdgeChanges(changes, flowEdges);
+      // Edge ids can be either ModelEdge ids (BDD edges) or ElementId for
+      // element-as-edge kinds (ConnectionUsage / ItemFlow / Transition). We
+      // need to know which is which to (a) route deletions to the right
+      // store action and (b) reconcile selection across the two layers.
+      const elementEdgeIds = new Set(
+        flowEdges
+          .filter((e) => registry?.get(e.id as ElementId))
+          .map((e) => e.id as ElementId),
+      );
+
+      const hasSelectChange = changes.some((c) => c.type === 'select');
+      if (hasSelectChange) {
+        const next = applyEdgeChanges(changes, flowEdges);
+        const nextElementEdgeSelected: ElementId[] = next
+          .filter((e) => e.selected && elementEdgeIds.has(e.id as ElementId))
+          .map((e) => e.id as ElementId);
+        const preserved = selectedElementIds.filter(
+          (id) => !elementEdgeIds.has(id),
+        );
+        const merged: ElementId[] = [...preserved, ...nextElementEdgeSelected];
+        const same =
+          merged.length === selectedElementIds.length &&
+          merged.every((id, i) => id === selectedElementIds[i]);
+        if (!same) setSelection(merged);
+      }
+
       for (const change of changes) {
         if (change.type === 'remove') {
-          unlinkEdge(change.id as EdgeId);
+          const id = change.id as ElementId;
+          if (elementEdgeIds.has(id)) {
+            deleteElement(id);
+          } else {
+            unlinkEdge(change.id as EdgeId);
+          }
         }
       }
     },
-    [flowEdges, unlinkEdge],
+    [
+      flowEdges,
+      registry,
+      selectedElementIds,
+      setSelection,
+      deleteElement,
+      unlinkEdge,
+    ],
   );
+
+  const onConnectStart = useCallback(() => {
+    isConnectingRef.current = true;
+  }, []);
+
+  const onConnectEnd = useCallback(() => {
+    // React Flow emits a stray `{type:'select', selected:true}` for the
+    // connection-drag source node a few render ticks after onConnect/onConnectEnd.
+    // We keep `isConnecting` true long enough for those late emissions to be
+    // ignored. A short timeout (longer than typical React render flush) is
+    // sufficient; the next drag will set the flag back to true immediately.
+    setTimeout(() => {
+      isConnectingRef.current = false;
+    }, 100);
+  }, []);
 
   const onConnect = useCallback(
     (connection: Connection) => {
-      // BDD is the only viewpoint with edge creation in Phase 3; IBD's
-      // connection authoring lands in #51. Bail early for everything else.
-      if (!viewpoint || viewpoint.id !== BDD_VIEWPOINT_ID) return;
-      // Show the edge-kind popover near the target node's top handle, projected
-      // into screen coordinates via React Flow.
-      const targetNode = flowNodes.find((n) => n.id === connection.target);
-      const screenPos = targetNode
-        ? reactFlow.flowToScreenPosition({
-            x: targetNode.position.x + BDD_BLOCK_WIDTH / 2,
-            y: targetNode.position.y,
-          })
-        : { x: 0, y: 0 };
-      const rect = canvasRef.current?.getBoundingClientRect();
-      const x = screenPos.x - (rect?.left ?? 0);
-      const y = screenPos.y - (rect?.top ?? 0);
-      setPending({ connection, x, y });
+      if (!viewpoint) return;
+      if (viewpoint.id === BDD_VIEWPOINT_ID) {
+        // Show the edge-kind popover near the target node's top handle, projected
+        // into screen coordinates via React Flow.
+        const targetNode = flowNodes.find((n) => n.id === connection.target);
+        const screenPos = targetNode
+          ? reactFlow.flowToScreenPosition({
+              x: targetNode.position.x + BDD_BLOCK_WIDTH / 2,
+              y: targetNode.position.y,
+            })
+          : { x: 0, y: 0 };
+        const rect = canvasRef.current?.getBoundingClientRect();
+        const x = screenPos.x - (rect?.left ?? 0);
+        const y = screenPos.y - (rect?.top ?? 0);
+        setPending({ connection, x, y });
+        return;
+      }
+      if (viewpoint.id === IBD_VIEWPOINT_ID) {
+        const id = connectPorts(connection);
+        if (id) setSelection([id]);
+        return;
+      }
     },
-    [viewpoint, flowNodes, reactFlow],
+    [viewpoint, flowNodes, reactFlow, connectPorts, setSelection],
   );
 
   const isValidConnection = useCallback(
     (connection: Connection | Edge) => {
+      if (!viewpoint || !registry) return false;
       const { source, target } = connection;
       if (!source || !target || source === target) return false;
-      if (!registry) return false;
+      if (viewpoint.id === IBD_VIEWPOINT_ID) {
+        // IBD uses the typed port-direction check from ADR 0003.
+        // EdgeChange shapes lack sourceHandle/targetHandle, but a real drag
+        // connection always carries them — this branch only runs while the
+        // user is dragging from a Handle.
+        const conn = connection as Connection;
+        if (!conn.sourceHandle || !conn.targetHandle) return false;
+        return isValidIbdConnection(conn, registry);
+      }
+      // BDD: both endpoints must resolve to a PartDefinition.
       const s = registry.get(source as ElementId);
       const t = registry.get(target as ElementId);
       if (!s || !t) return false;
       return s.kind === 'PartDefinition' && t.kind === 'PartDefinition';
     },
-    [registry],
+    [viewpoint, registry],
   );
 
   const confirmPending = useCallback(
@@ -488,6 +614,8 @@ function CanvasInner(): JSX.Element {
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onConnect={onConnect}
+          onConnectStart={onConnectStart}
+          onConnectEnd={onConnectEnd}
           isValidConnection={isValidConnection}
           deleteKeyCode={['Delete', 'Backspace']}
           fitView={false}
