@@ -56,6 +56,19 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
   incident edge captured at apply time. Redo of delete re-applies the
   original forward command (registry cascades again).
 
+- **2026-05-11** — `ModelRepository` is a thin async port:
+  `load(projectId) / save(project) / list()` per AGENT.md directive § 3.
+  `InMemorySessionRepository` in `src/repository/sessionStorage.ts`
+  stores each project as plain JSON at `mbse:v1:project:<id>` and scans
+  matching keys for `list()`; key prefix is versioned so future
+  migrations bump `v1` → `v2`. `setItem` quota failures are detected by
+  `err.name === 'QuotaExceededError'` (or Firefox's
+  `NS_ERROR_DOM_QUOTA_REACHED`) and surfaced as `StorageQuotaError`.
+  `load()` of a missing OR malformed entry rejects with
+  `ProjectNotFoundError` — list() silently skips malformed entries so
+  one bad project does not blind the picker. Dates are stored as ISO
+  strings; the Repository never deals in live `Date` objects.
+
 - **2026-05-11** — The `github-pages` environment has a `branch_policy`
   protection rule with `custom_branch_policies: true`. Out of the box
   only the `main` branch is in the allow-list, so the release workflow
