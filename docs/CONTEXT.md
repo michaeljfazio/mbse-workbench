@@ -19,6 +19,44 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
   memoized; passing inline objects re-renders the canvas every state
   change and looks broken even when correct.
 
+- **2026-05-11** — `@xyflow/react` v12.3.x integration notes (verified
+  against pinned docs via context7 before Phase 2):
+  - **CSS import.** Must `import '@xyflow/react/dist/style.css'` once at
+    app entry. Without it, edges, handles, and selection boxes silently
+    don't render. The `<ReactFlow>` parent container also needs explicit
+    `width`/`height` — RF reads container size directly.
+  - **Zustand wiring.** Do NOT use `useNodesState`/`useEdgesState` (local
+    state). Drive `nodes` and `edges` as props from the store and expose
+    `onNodesChange` / `onEdgesChange` / `onConnect` from the store using
+    `applyNodeChanges` / `applyEdgeChanges` / `addEdge`. **But** in this
+    project every mutation goes through the command bus — RF's onChange
+    handlers translate node/edge changes into command-bus dispatches,
+    not direct state writes.
+  - **`onConnect` signature** is `(connection: Connection) => void`
+    where `Connection = { source, sourceHandle, target, targetHandle }`.
+    Validate before applying via the `isValidConnection` prop (typed
+    edge-kind compatibility check).
+  - **Node dimensions.** Use top-level `node.width` / `node.height` (not
+    `node.style.width/height`) — required for SSR and used by layout
+    engines. Forgetting this breaks dagre offset math silently.
+  - **Delete key.** Built-in. Default `deleteKeyCode` is `'Backspace'`;
+    override to `'Delete'` if needed. `onNodesDelete` / `onEdgesDelete`
+    fire on delete — wire them to command-bus delete commands.
+  - **`nodrag` / `nopan` CSS classes.** Any interactive element inside a
+    custom node or edge (input, button, handle) must carry `nodrag` (or
+    `nopan` where appropriate) or React Flow intercepts pointer events.
+  - **`ReactFlowProvider`.** `useReactFlow` (for `fitView`,
+    `screenToFlowPosition`, etc.) requires the calling component to be
+    a descendant of `<ReactFlowProvider>` *or* of `<ReactFlow>` itself.
+    Sibling toolbars need an explicit provider wrap.
+  - **Strict mode + dagre.** Construct a fresh `dagre.graphlib.Graph()`
+    per layout call — React 18 strict-mode double-invocation will
+    corrupt a reused graph instance.
+  - **NodeProps generic.** Type custom node components as
+    `NodeProps<MyNode>` where `MyNode = Node<DataShape, 'typeName'>`.
+    v12 adds `selectable` / `deletable` / `draggable` / `parentId` to
+    the props.
+
 - **2026-05-11** — `npm run check` is the canonical CI gate and runs
   typecheck + lint + unit + build + e2e in that order. The Playwright
   suite contains the functional, visual (`@visual`-tagged), and
