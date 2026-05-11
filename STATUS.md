@@ -4,14 +4,14 @@
 phase:2 — BDD vertical slice (template for all viewpoints)
 
 ## Current iteration
-- Iteration #: 12
+- Iteration #: 13
 - Started: 2026-05-11
-- Branch: issue/32-inspector-panel (PR #40 open, auto-merge enabled, CI in progress)
-- Working on: #32 — feat(workspace): inspector panel reflects BDD selection and edits properties
+- Branch: (none — on main at b102fff)
+- Working on: (idle — PR #40 merged, picking next Phase 2 child next iteration)
 
 ## Last test run
-- Command: pnpm run check (darwin, @visual skipped via `grepInvert` per docs/CONTEXT.md)
-- Result: PASS — 18 unit test files / 147 specs; vite build 0.9 s; 38 Playwright specs (19 chromium + 19 webkit, functional + a11y, @visual baselines committed for the Linux CI gate)
+- Command: CI on PR #40 post-rebase (run 25676867834)
+- Result: PASS — `check` job green; 46 Playwright specs (chromium + webkit, functional + visual + a11y)
 - Failures: (none)
 
 ## Known issues / blockers
@@ -41,6 +41,7 @@ phase:2 — BDD vertical slice (template for all viewpoints)
 - 2026-05-11: Block-node label is a non-interactive `<div onDoubleClick=...>` rather than a `<button>`. Reason: ReactFlow already exposes the node wrapper as `role="button" tabindex="0"`, and nesting a `<button>` inside fails axe-core's `nested-interactive` rule (serious). Inline rename is still reachable via mouse double-click today; #32 (inspector) will provide the keyboard route via name editing in the inspector (links: #31).
 - 2026-05-11: `vite.config.ts` honors `VITE_BASE_OVERRIDE` ahead of its `mode` check. Reason: `vite preview` re-reads the config to decide its mount path, so even an `--base=/` build still gets served at `/mbse-workbench/` under preview. The Linux baseline run-script sets `VITE_BASE_OVERRIDE=/` for both `vite build` and `vite preview` so `page.goto('/')` works. Production CI builds for Pages do NOT set the override (links: #31).
 - 2026-05-11: Inspector (#32) ships the canvas → inspector → edit → reflect loop. New file `src/workspace/inspector/Inspector.tsx` renders empty / single / multi states; single-selection has `Name` + `Description` + read-only `Owner`. Edits commit on blur (Enter for name); empty names roll back. New store action `setElementDescription` dispatches `update-element` with a `documentation` patch (or `undefined` to clear). Workspace autosaves to the repository on every bus event so refresh persists. Registry `update<K>` guard whitelists optional ElementBase fields (`ownerId`, `documentation`) so first-time documentation edits don't trip the kind-mismatch check. Global Cmd/Ctrl+Z and Cmd/Ctrl+Shift+Z keyboard shortcuts route through the workspace store's undo/redo; suppressed inside text inputs so native input-undo handles in-place edits. The R/L Inspector exits to a multi-selection message when more than one element is selected — multi-edit is intentionally out of scope. All new behaviour recorded in `docs/CONTEXT.md` (links: #32, PR #40).
+- 2026-05-11: PR #40 (inspector) needed a `gh pr update-branch --rebase` before auto-merge would fire — STATUS.md commit on main between PR open and CI completion put it in `mergeStateStatus: BEHIND` while branch protection has `strict: true`. Re-ran CI green (run 25676867834, 34.4 s e2e) and PR merged squash. Future iterations: if STATUS.md is pushed to main between PR-open and merge, expect a rebase round-trip. Merged at b102fff (links: #32, PR #40).
 
 ## Next action
-On iteration 13: verify PR #40 merged green on CI, then pick the next Phase 2 issue. Remaining ready: #33 (project tree drag-from-tree), #34 (dagre auto-layout + per-view positions), #35 (PNG/SVG export), #36 (Phase 2 gate e2e). #33–#35 are independent; #36 depends on all. Natural next pick is **#34 (dagre auto-layout)** — most architecturally load-bearing of the remaining trio (introduces the layout-engine seam every later viewpoint will reuse), and #33's drag-from-tree benefits from real BDD positioning. Consider Opus for the subagent on #34 if the dagre layout choice gets non-trivial (graph builder lifecycle in strict mode, position-vs-command-bus interaction). #33 and #35 are routine implementations — Sonnet.
+On iteration 14: pick the next Phase 2 child. Remaining open: #33 (project tree drag-from-tree), #34 (dagre auto-layout + per-view positions), #35 (PNG/SVG export), #36 (Phase 2 gate e2e). #33–#35 are independent; #36 depends on all. Natural next pick is **#34 (dagre auto-layout)** — most architecturally load-bearing of the remaining trio (introduces the layout-engine seam every later viewpoint will reuse), and #33's drag-from-tree benefits from real BDD positioning. Consider Opus for the subagent on #34 if the dagre layout choice gets non-trivial (graph builder lifecycle in strict mode, position-vs-command-bus interaction). #33 and #35 are routine implementations — Sonnet.
