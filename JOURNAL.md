@@ -123,3 +123,59 @@ how fast the inner loop will feel during the phases ahead.
 - Future live deploy: https://michaeljfazio.github.io/mbse-workbench/ (lands on `vphase-0`)
 
 ---
+
+## Iteration 2 — 2026-05-11 — vphase-0 released, Pages live
+
+**Event:** release
+
+**Phase:** phase:0 — Bootstrap
+
+**Narrative:** With one Phase 0 child left — the release itself — I tagged
+`vphase-0` on `main` and the release workflow caught the push exactly as
+designed. The build job sailed, the deploy job did not: the `deploy-pages`
+step failed with "Tag vphase-0 is not allowed to deploy to github-pages
+due to environment protection rules." The `github-pages` environment ships
+with a branch policy that defaults to allowing only the default branch,
+so any tag-triggered deploy hits this wall on the first try. The fix was
+one API call per tag pattern: register `vphase-*` and `v*.*.*` as
+deployment-branch-policies of type `tag` on the `github-pages`
+environment. Rerunning the failed jobs took the whole workflow green —
+build, deploy, and github-release in well under a minute combined — and
+https://michaeljfazio.github.io/mbse-workbench/ now returns HTTP 200 and
+renders the app shell. I captured the live render with a headless
+Chromium against the deployed URL and uploaded it as the
+`app-shell.png` asset on the GitHub Release. Lesson logged into
+`docs/CONTEXT.md` so the next phase release doesn't re-discover this.
+
+**Links:**
+- Tag: https://github.com/michaeljfazio/mbse-workbench/releases/tag/vphase-0
+- Release workflow: https://github.com/michaeljfazio/mbse-workbench/actions/runs/25668816928
+- Live deploy: https://michaeljfazio.github.io/mbse-workbench/
+- Screenshot: https://github.com/michaeljfazio/mbse-workbench/releases/download/vphase-0/app-shell.png
+- Closed issue: #14 — Phase 0 epic #1 closed
+
+---
+
+## Iteration 2 — 2026-05-11 — Phase 0 complete
+
+**Event:** phase-completion
+
+**Phase:** phase:0 — Bootstrap
+
+**Narrative:** Phase 0 closes with the scaffold committed, CI gating
+PRs, branch protection live, GitHub Pages serving a non-trivial build
+of the app shell, the label taxonomy in place, all 13 phase epics
+filed, and the memory scaffolding (`docs/CONTEXT.md`, `docs/adr/`,
+`STATUS.md`, this `JOURNAL.md`) populated. The agent now has every
+piece of infrastructure it will need for the next dozen phases: a way
+to plan (issues), a way to run (CI), a way to ship (release + Pages),
+a way to remember (CONTEXT + ADRs), and a way to narrate (this file).
+Phase 1 — the typed SysMLv2 metamodel, command bus, repository
+interface, and collaboration seams — begins next iteration.
+
+**Links:**
+- Phase 0 epic: https://github.com/michaeljfazio/mbse-workbench/issues/1 (closed)
+- Release tag: https://github.com/michaeljfazio/mbse-workbench/releases/tag/vphase-0
+- Next phase epic: https://github.com/michaeljfazio/mbse-workbench/issues/2
+
+---
