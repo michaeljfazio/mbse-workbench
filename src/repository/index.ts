@@ -4,7 +4,11 @@ export type {
   ProjectMetadata,
 } from './types';
 
-export { ProjectNotFoundError, StorageQuotaError } from './types';
+export {
+  EMPTY_COMMAND_HISTORY,
+  ProjectNotFoundError,
+  StorageQuotaError,
+} from './types';
 
 export type { CreateInMemorySessionRepositoryOptions } from './sessionStorage';
 

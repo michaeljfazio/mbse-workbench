@@ -16,7 +16,12 @@ export { createInMemoryDiagramPositionStore } from './diagramPositions';
 
 export type { ModelEvent, Unsubscribe } from './events';
 
-export type { CommandBus, CreateCommandBusOptions } from './bus';
+export type {
+  CommandBus,
+  CommandHistory,
+  CreateCommandBusOptions,
+  UndoEntry,
+} from './bus';
 
 export { createCommandBus } from './bus';
 

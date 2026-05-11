@@ -10,11 +10,13 @@ import {
 } from '@/model';
 import {
   createInMemorySessionRepository,
+  EMPTY_COMMAND_HISTORY,
   ProjectNotFoundError,
   StorageQuotaError,
   type Project,
 } from '@/repository';
-import { mkElementId, mkEdgeId } from '../../../tests/unit/model/helpers';
+import type { Command, UndoEntry } from '@/commands';
+import { mkElementId, mkEdgeId, mkUserId } from '../../../tests/unit/model/helpers';
 
 function createFakeStorage(): Storage {
   const map = new Map<string, string>();
@@ -177,6 +179,7 @@ function projectWithEverything(id: string): Project {
     elements: ELEMENT_KINDS.map((kind, i) => elementOf(kind, `e-${i}`)),
     edges: EDGE_KINDS.map((kind, i) => edgeOf(kind, `g-${i}`)),
     diagrams: [],
+    history: EMPTY_COMMAND_HISTORY,
   };
 }
 
@@ -223,6 +226,7 @@ describe('InMemorySessionRepository', () => {
       elements: [],
       edges: [],
       diagrams: [],
+      history: EMPTY_COMMAND_HISTORY,
     });
 
     const metadata = await repo.list();
@@ -287,6 +291,7 @@ describe('InMemorySessionRepository', () => {
       elements: [],
       edges: [],
       diagrams: [],
+      history: EMPTY_COMMAND_HISTORY,
     };
     await repo.save(updated);
 
@@ -351,6 +356,7 @@ describe('InMemorySessionRepository', () => {
           },
         },
       ],
+      history: EMPTY_COMMAND_HISTORY,
     };
     await repo.save(project);
     const loaded = await repo.load(project.id);
@@ -381,5 +387,75 @@ describe('InMemorySessionRepository', () => {
     const repo = createInMemorySessionRepository({ storage });
     const loaded = await repo.load('legacy' as ProjectId);
     expect(loaded.diagrams).toEqual([]);
+  });
+
+  it('round-trips command history losslessly', async () => {
+    const repo = createInMemorySessionRepository({ storage });
+    const elementId = mkElementId('h-block');
+    const createBlock: Command = {
+      kind: 'create-element',
+      element: {
+        id: elementId,
+        kind: 'PartDefinition',
+        name: 'Block-with-history',
+        isAbstract: false,
+        propertyIds: [],
+        portIds: [],
+      },
+    };
+    const deleteBlock: Command = { kind: 'delete-element', id: elementId };
+    const entry: UndoEntry = {
+      actor: { id: mkUserId('alice'), displayName: 'alice', color: '#abcdef' },
+      forward: createBlock,
+      inverse: deleteBlock,
+    };
+    const project: Project = {
+      ...projectWithEverything('p-history'),
+      history: { undo: [entry], redo: [] },
+    };
+
+    await repo.save(project);
+    const loaded = await repo.load(project.id);
+
+    expect(loaded.history.undo).toHaveLength(1);
+    expect(loaded.history.redo).toHaveLength(0);
+    expect(loaded.history.undo[0]).toEqual(entry);
+  });
+
+  it('defaults `history` to empty stacks when missing from stored JSON', async () => {
+    storage.setItem(
+      'mbse:v1:project:legacy-history',
+      JSON.stringify({
+        id: 'legacy-history',
+        name: 'legacy-history',
+        createdAt: '2026-05-11T10:00:00.000Z',
+        modifiedAt: '2026-05-11T10:05:00.000Z',
+        elements: [],
+        edges: [],
+        diagrams: [],
+      }),
+    );
+    const repo = createInMemorySessionRepository({ storage });
+    const loaded = await repo.load('legacy-history' as ProjectId);
+    expect(loaded.history).toEqual({ undo: [], redo: [] });
+  });
+
+  it('defaults `history` to empty stacks when present but malformed', async () => {
+    storage.setItem(
+      'mbse:v1:project:bad-history',
+      JSON.stringify({
+        id: 'bad-history',
+        name: 'bad-history',
+        createdAt: '2026-05-11T10:00:00.000Z',
+        modifiedAt: '2026-05-11T10:05:00.000Z',
+        elements: [],
+        edges: [],
+        diagrams: [],
+        history: { undo: 'not-an-array' },
+      }),
+    );
+    const repo = createInMemorySessionRepository({ storage });
+    const loaded = await repo.load('bad-history' as ProjectId);
+    expect(loaded.history).toEqual({ undo: [], redo: [] });
   });
 });

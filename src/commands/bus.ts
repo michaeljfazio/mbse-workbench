@@ -29,6 +29,7 @@ export interface CommandBus {
   subscribe(handler: (event: ModelEvent) => void): Unsubscribe;
   events(): readonly ModelEvent[];
   version(): number;
+  getHistory(): CommandHistory;
 }
 
 export interface CreateCommandBusOptions {
@@ -40,12 +41,21 @@ export interface CreateCommandBusOptions {
   // Required only for `update-diagram-position` commands. Bus throws if such
   // a command is dispatched without a positions store wired in.
   readonly positions?: DiagramPositionStore;
+  // Seed the undo/redo stacks from a persisted history. Used by the workspace
+  // bootstrap to rehydrate operation history across page reloads.
+  readonly initialUndoStack?: readonly UndoEntry[];
+  readonly initialRedoStack?: readonly UndoEntry[];
 }
 
-interface UndoEntry {
+export interface UndoEntry {
   readonly actor: User;
   readonly forward: Command;
   readonly inverse: Command;
+}
+
+export interface CommandHistory {
+  readonly undo: readonly UndoEntry[];
+  readonly redo: readonly UndoEntry[];
 }
 
 export function createCommandBus(options: CreateCommandBusOptions): CommandBus {
@@ -57,8 +67,12 @@ export function createCommandBus(options: CreateCommandBusOptions): CommandBus {
   const positions = options.positions;
 
   const eventLog: ModelEvent[] = [];
-  const undoStack: UndoEntry[] = [];
-  const redoStack: UndoEntry[] = [];
+  const undoStack: UndoEntry[] = options.initialUndoStack
+    ? options.initialUndoStack.slice()
+    : [];
+  const redoStack: UndoEntry[] = options.initialRedoStack
+    ? options.initialRedoStack.slice()
+    : [];
   const subscribers = new Set<(event: ModelEvent) => void>();
   let modelVersion = 0;
 
@@ -289,6 +303,10 @@ export function createCommandBus(options: CreateCommandBusOptions): CommandBus {
 
     version() {
       return modelVersion;
+    },
+
+    getHistory() {
+      return { undo: undoStack.slice(), redo: redoStack.slice() };
     },
   };
 }
