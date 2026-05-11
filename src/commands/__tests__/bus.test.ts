@@ -553,6 +553,115 @@ describe('createCommandBus — update-diagram-position', () => {
   });
 });
 
+describe('createCommandBus — history persistence', () => {
+  it('getHistory returns the current undo/redo stacks', () => {
+    const registry = createElementRegistry();
+    const bus = createCommandBus({ registry });
+    const user = mkUser();
+    const a = mkPartDef('A');
+    const b = mkPartDef('B');
+    bus.dispatch({ kind: 'create-element', element: a }, user);
+    bus.dispatch({ kind: 'create-element', element: b }, user);
+    bus.undo();
+
+    const history = bus.getHistory();
+    expect(history.undo).toHaveLength(1);
+    expect(history.redo).toHaveLength(1);
+    expect(history.undo[0]?.forward).toEqual({
+      kind: 'create-element',
+      element: a,
+    });
+    expect(history.redo[0]?.forward).toEqual({
+      kind: 'create-element',
+      element: b,
+    });
+  });
+
+  it('getHistory returns defensive copies — mutating them does not affect the bus', () => {
+    const registry = createElementRegistry();
+    const bus = createCommandBus({ registry });
+    const user = mkUser();
+    bus.dispatch({ kind: 'create-element', element: mkPartDef('A') }, user);
+
+    const snapshot = bus.getHistory();
+    (snapshot.undo as unknown[]).length = 0;
+    expect(bus.getHistory().undo).toHaveLength(1);
+  });
+
+  it('rehydrates from initialUndoStack so undo() reverts the last persisted operation', () => {
+    // Set up source bus, dispatch one command, snapshot history.
+    const source = createElementRegistry();
+    const block = mkPartDef('A');
+    const sourceBus = createCommandBus({ registry: source });
+    const user = mkUser();
+    sourceBus.dispatch({ kind: 'create-element', element: block }, user);
+    const history = sourceBus.getHistory();
+
+    // Create a fresh registry that already has the element (simulating a load
+    // from the repository) and rehydrate the bus with the snapshot.
+    const target = createElementRegistry();
+    target.add(block);
+    const targetBus = createCommandBus({
+      registry: target,
+      initialUndoStack: history.undo,
+      initialRedoStack: history.redo,
+    });
+
+    expect(target.get(block.id)).toEqual(block);
+    targetBus.undo();
+    expect(target.get(block.id)).toBeUndefined();
+    targetBus.redo();
+    expect(target.get(block.id)).toEqual(block);
+  });
+
+  it('rehydrates from initialRedoStack so redo() replays a pre-undone operation', () => {
+    const source = createElementRegistry();
+    const block = mkPartDef('A');
+    const sourceBus = createCommandBus({ registry: source });
+    const user = mkUser();
+    sourceBus.dispatch({ kind: 'create-element', element: block }, user);
+    sourceBus.undo();
+    const history = sourceBus.getHistory();
+    expect(history.undo).toHaveLength(0);
+    expect(history.redo).toHaveLength(1);
+
+    // The source has just undone the only operation, so the loaded state has
+    // no block. The target registry mirrors that empty state.
+    const target = createElementRegistry();
+    const targetBus = createCommandBus({
+      registry: target,
+      initialUndoStack: history.undo,
+      initialRedoStack: history.redo,
+    });
+
+    expect(target.get(block.id)).toBeUndefined();
+    targetBus.redo();
+    expect(target.get(block.id)).toEqual(block);
+  });
+
+  it('dispatch after rehydration clears the redo stack as usual', () => {
+    const registry = createElementRegistry();
+    const block = mkPartDef('A');
+    registry.add(block);
+    const seed = createCommandBus({ registry: createElementRegistry() });
+    const user = mkUser();
+    seed.dispatch({ kind: 'create-element', element: block }, user);
+    seed.undo();
+    const history = seed.getHistory();
+
+    const bus = createCommandBus({
+      registry,
+      initialUndoStack: history.undo,
+      initialRedoStack: history.redo,
+    });
+    expect(bus.getHistory().redo).toHaveLength(1);
+
+    bus.dispatch({ kind: 'create-element', element: mkPartDef('B') }, user);
+    expect(bus.getHistory().redo).toHaveLength(0);
+    expect(bus.getHistory().undo).toHaveLength(1);
+  });
+});
+
 describe('createCommandBus — every command kind', () => {
   // Phase-1 gate requires every command kind to be covered: create / update /
   // delete on the element side, link / unlink on the edge side. The other

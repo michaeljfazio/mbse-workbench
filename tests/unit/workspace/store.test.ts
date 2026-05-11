@@ -195,4 +195,35 @@ describe('workspace store', () => {
     await expect(useWorkspaceStore.getState().saveProject()).resolves.toBeUndefined();
     expect(useWorkspaceStore.getState().project).toBeNull();
   });
+
+  it('persists command-bus history through save and rehydrates it on reload (#44)', async () => {
+    const storage = makeMemoryStorage();
+    const repository = createInMemorySessionRepository({ storage });
+    const user = createSessionUser();
+
+    // Bootstrap, create a block (which goes through the command bus).
+    await useWorkspaceStore.getState().bootstrap({ repository, user, storage });
+    const blockId = useWorkspaceStore.getState().createBlock();
+    expect(blockId).not.toBeNull();
+    expect(useWorkspaceStore.getState().elements).toHaveLength(1);
+    // Confirm the bus has one undo entry to persist (compound: create + position).
+    expect(useWorkspaceStore.getState().bus!.getHistory().undo).toHaveLength(1);
+
+    // Reset store (simulates page reload). The underlying sessionStorage keeps
+    // the saved project — including its history.
+    resetWorkspaceStoreForTests();
+    await useWorkspaceStore.getState().bootstrap({ repository, user, storage });
+
+    // After rehydration the bus has the same undo entry; undo() reverts the
+    // block creation.
+    const rehydrated = useWorkspaceStore.getState();
+    expect(rehydrated.elements).toHaveLength(1);
+    expect(rehydrated.bus!.getHistory().undo).toHaveLength(1);
+    rehydrated.undo();
+    expect(useWorkspaceStore.getState().elements).toHaveLength(0);
+
+    // Redo restores the block.
+    useWorkspaceStore.getState().redo();
+    expect(useWorkspaceStore.getState().elements).toHaveLength(1);
+  });
 });

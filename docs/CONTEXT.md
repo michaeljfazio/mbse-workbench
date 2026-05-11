@@ -366,6 +366,20 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
   (whole-panel layout, new diagram regions, font/color tweaks) still
   need a deliberate baseline refresh per the recorded procedure.
 
+- **2026-05-11** — Command-bus undo/redo history survives `page.reload()`.
+  `Project.history: { undo: UndoEntry[]; redo: UndoEntry[] }` (in
+  `src/repository/types.ts`) round-trips through `InMemorySessionRepository`;
+  the workspace `saveProject()` snapshots `bus.getHistory()` on every
+  autosave, and `bootstrap()` passes the loaded stacks to `createCommandBus`
+  via `initialUndoStack` / `initialRedoStack`. `EMPTY_COMMAND_HISTORY` is
+  the exported default. Legacy persisted entries that pre-date the field —
+  and entries with a malformed `history` shape — normalise to empty stacks
+  on load. `UndoEntry`s are plain JSON (`{ actor, forward, inverse }`) so
+  no custom serialization is needed. Brand types like `ElementId` are
+  compile-time only; JSON parse → plain string keys still match registry
+  lookups by string equality. The Phase 2 gate (#36) depends on this so
+  that "refresh → Cmd-Z → link gone" works per AGENT.md.
+
 - **2026-05-11** — The `github-pages` environment has a `branch_policy`
   protection rule with `custom_branch_policies: true`. Out of the box
   only the `main` branch is in the allow-list, so the release workflow

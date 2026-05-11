@@ -1,4 +1,5 @@
 import {
+  EMPTY_COMMAND_HISTORY,
   ProjectNotFoundError,
   StorageQuotaError,
   type ModelRepository,
@@ -49,13 +50,17 @@ export function createInMemorySessionRepository(
     const raw = storage.getItem(projectKey(id));
     if (raw === null) return undefined;
     try {
-      const parsed = JSON.parse(raw) as Project;
-      // Forward-compat: older entries may not carry a `diagrams` field. Default
-      // to an empty array so the workspace bootstrap can seed a fresh diagram.
-      if (!Array.isArray(parsed.diagrams)) {
-        return { ...parsed, diagrams: [] };
-      }
-      return parsed;
+      const parsed = JSON.parse(raw) as Partial<Project> & { id: Project['id'] };
+      // Forward-compat: older entries may pre-date the `diagrams` and `history`
+      // fields. Default both so the workspace bootstrap can seed safely.
+      const diagrams = Array.isArray(parsed.diagrams) ? parsed.diagrams : [];
+      const history =
+        parsed.history &&
+        Array.isArray(parsed.history.undo) &&
+        Array.isArray(parsed.history.redo)
+          ? parsed.history
+          : EMPTY_COMMAND_HISTORY;
+      return { ...(parsed as Project), diagrams, history };
     } catch {
       return undefined;
     }

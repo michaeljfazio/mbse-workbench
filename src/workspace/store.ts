@@ -19,6 +19,7 @@ import { createCommandBus } from '@/commands';
 import type { CollaborationProvider, User } from '@/collab';
 import { NoopCollaborationProvider } from '@/collab';
 import type { ModelRepository, Project } from '@/repository';
+import { EMPTY_COMMAND_HISTORY } from '@/repository';
 import {
   BDD_BLOCK_HEIGHT,
   BDD_BLOCK_WIDTH,
@@ -192,6 +193,7 @@ function newEmptyProject(): Project {
     elements: [],
     edges: [],
     diagrams: [],
+    history: EMPTY_COMMAND_HISTORY,
   };
 }
 
@@ -280,6 +282,8 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       registry,
       provider: collaborationProvider,
       positions: positionStore,
+      initialUndoStack: project.history.undo,
+      initialRedoStack: project.history.redo,
     });
 
     bus.subscribe(() => {
@@ -348,7 +352,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   },
 
   async saveProject() {
-    const { repository, project, registry, diagrams } = get();
+    const { repository, project, registry, diagrams, bus } = get();
     if (!repository || !project || !registry) return;
     const updated: Project = {
       ...project,
@@ -356,6 +360,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       elements: registry.elements(),
       edges: registry.edges(),
       diagrams,
+      history: bus ? bus.getHistory() : project.history,
     };
     await repository.save(updated);
     set({ project: updated });
