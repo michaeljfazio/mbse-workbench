@@ -256,6 +256,37 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
      ensures it sits above the block's own children so a click on
      the very top edge actually hits the handle, not the content.
 
+- **2026-05-11** — `ElementRegistry.update<K>(id, patch)` whitelists the
+  optional ElementBase fields (`ownerId`, `documentation`) so a patch can
+  set them on an instance that was created without those properties. The
+  kind-mismatch guard intentionally checks `key in existing OR key in
+  ELEMENT_BASE_OPTIONAL_FIELDS` — without the whitelist, the first
+  documentation edit on a block would throw because the property literally
+  doesn't exist on the freshly-created object. Inverse capture in the
+  command bus still works: it reads `previousValues[key] = source[key]`,
+  which is `undefined` for unset optional fields, and undo applies that
+  undefined back. Adding a new optional base field in the future requires
+  adding its name to `ELEMENT_BASE_OPTIONAL_FIELDS`.
+
+- **2026-05-11** — Workspace autosave: after every committed `bus.dispatch`
+  / `bus.undo` / `bus.redo` event, the store's `bus.subscribe` handler
+  calls `get().saveProject()`. The repository is sessionStorage-backed so
+  the call is effectively synchronous; failures are swallowed in the
+  repository layer. Tests that spy on `repository.save` should attach the
+  spy AFTER `bootstrap()` returns, because bootstrap itself calls
+  `repository.save` once when creating a fresh "Untitled Project" and
+  that call happens before the spy is in place.
+
+- **2026-05-11** — Global Cmd/Ctrl+Z (undo) and Cmd/Ctrl+Shift+Z (redo)
+  are wired in `Workspace.tsx` via a `window.addEventListener('keydown')`
+  effect that checks `metaKey || ctrlKey`. Shortcuts are suppressed when
+  `document.activeElement` is an `INPUT`/`TEXTAREA`/`SELECT` or any
+  `contentEditable` host so that the browser's native input-undo handles
+  in-place text edits. The Inspector's name field and description
+  textarea therefore get native-undo for keystrokes; once focus leaves,
+  Cmd-Z falls through to the workspace's model undo stack. Cmd-Y is
+  treated as an alias for redo.
+
 - **2026-05-11** — The `github-pages` environment has a `branch_policy`
   protection rule with `custom_branch_policies: true`. Out of the box
   only the `main` branch is in the allow-list, so the release workflow
