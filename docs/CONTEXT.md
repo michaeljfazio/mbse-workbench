@@ -30,6 +30,23 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
   `gh pr merge --auto --squash`. Never push directly to `main` and
   never use `--no-verify` / `--force`.
 
+- **2026-05-11** — Metamodel is split: 19 element kinds in
+  `src/model/elements.ts` (`ModelElement` discriminated union), 9 pure
+  edge kinds in `src/model/edges.ts` (`ModelEdge`). `ConnectionUsage`,
+  `ItemFlow`, `Transition` stay in elements (named, selectable) but
+  carry `sourceId`/`targetId` directly — they render as edges without
+  being in `ModelEdge`. To add a new kind, follow the checklist in
+  `docs/adr/0002-metamodel-shape.md`. The exhaustive-switch tests in
+  `tests/unit/model/{elements,edges}.test.ts` make missing-kind drift
+  a compile-time error via `assertNever`.
+
+- **2026-05-11** — IDs are branded strings (`ElementId`, `EdgeId`,
+  `UserId`, `ProjectId`) defined in `src/model/id.ts`. The factory is
+  intentionally absent in #17 — issue #18 (registry) introduces
+  `crypto.randomUUID`-backed creators. Tests cast via
+  `tests/unit/model/helpers.ts` (`mkElementId`, `mkEdgeId`,
+  `mkUserId`); production `src/model/` code carries no `as` casts.
+
 - **2026-05-11** — The `github-pages` environment has a `branch_policy`
   protection rule with `custom_branch_policies: true`. Out of the box
   only the `main` branch is in the allow-list, so the release workflow
