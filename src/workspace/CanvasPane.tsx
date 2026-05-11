@@ -28,7 +28,9 @@ import {
 import type { BddEdgeKind, Viewpoint } from '@/viewpoints';
 
 import { EdgeKindPopover } from './EdgeKindPopover';
+import { ExportMenu } from './ExportMenu';
 import type { Diagram } from './diagram';
+import { downloadDiagramPng, downloadDiagramSvg } from './export';
 import {
   getActiveDiagram,
   getActiveViewpoint,
@@ -228,6 +230,36 @@ function CanvasInner(): JSX.Element {
     runAutoLayout(diagram.id);
   }, [diagram, runAutoLayout]);
 
+  const handleExportPng = useCallback(() => {
+    if (!viewpoint || !diagram) return;
+    void downloadDiagramPng({
+      diagramName: diagram.name,
+      svgInput: {
+        elements,
+        edges,
+        positions: diagram.positions,
+        viewpoint,
+        nodeWidth: BDD_BLOCK_WIDTH,
+        nodeHeight: BDD_BLOCK_HEIGHT,
+      },
+    });
+  }, [viewpoint, diagram, elements, edges]);
+
+  const handleExportSvg = useCallback(() => {
+    if (!viewpoint || !diagram) return;
+    void downloadDiagramSvg({
+      diagramName: diagram.name,
+      svgInput: {
+        elements,
+        edges,
+        positions: diagram.positions,
+        viewpoint,
+        nodeWidth: BDD_BLOCK_WIDTH,
+        nodeHeight: BDD_BLOCK_HEIGHT,
+      },
+    });
+  }, [viewpoint, diagram, elements, edges]);
+
   const handleDragOver = useCallback(
     (event: React.DragEvent<HTMLDivElement>) => {
       if (event.dataTransfer.types.includes(PROJECT_TREE_DRAG_TYPE)) {
@@ -334,6 +366,13 @@ function CanvasInner(): JSX.Element {
         >
           Delete
         </button>
+        <div className="ml-auto">
+          <ExportMenu
+            disabled={elementCount === 0}
+            onExportPng={handleExportPng}
+            onExportSvg={handleExportSvg}
+          />
+        </div>
       </div>
       <div
         ref={canvasRef}

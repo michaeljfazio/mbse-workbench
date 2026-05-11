@@ -342,6 +342,30 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
   `getByRole('tree', { name: 'Project tree' })` resolves to the inner
   element — keep these names in sync if either changes.
 
+- **2026-05-11** — Diagram export (`src/workspace/export/`): single source of
+  truth is `buildDiagramSvg` (pure function over `{elements, edges, positions,
+  viewpoint, nodeWidth, nodeHeight}`). PNG export rasterises that SVG through
+  a `<canvas>` at 2× pixel ratio via `URL.createObjectURL` + `Image.onload` →
+  `canvas.drawImage` → `canvas.toBlob`. The path is browser-only — jsdom
+  can't rasterise SVG so the unit suite covers only the SVG builder and the
+  slug helper. The Playwright spec (`tests/e2e/bdd-export.spec.ts`) is the
+  end-to-end gate; it intercepts the download and asserts PNG signature plus
+  SVG parse. Class names `mbse-node` / `mbse-edge` are the contract for the
+  spec's node/edge counts — do NOT rename without updating both ends. The
+  toolbar split-button (`ExportMenu`) closes on outside-pointerdown and
+  Escape; menuitems trigger the download then close the menu. Filenames go
+  through `slugifyDiagramName` (ASCII-only, dashes, ≤64 chars, falls back
+  to `diagram`).
+
+- **2026-05-11** — Visual-baseline tolerance is forgiving enough that
+  adding a single toolbar button does not require a baseline refresh —
+  the new ~80 px button width over the 1280×800 viewport is well under
+  the configured `maxDiffPixelRatio: 0.01` (≈10 240 allowed px). Verified
+  by running the visual suite in the Linux container after the Export
+  button landed: all 12 baselines passed unchanged. Larger UI changes
+  (whole-panel layout, new diagram regions, font/color tweaks) still
+  need a deliberate baseline refresh per the recorded procedure.
+
 - **2026-05-11** — The `github-pages` environment has a `branch_policy`
   protection rule with `custom_branch_policies: true`. Out of the box
   only the `main` branch is in the allow-list, so the release workflow
