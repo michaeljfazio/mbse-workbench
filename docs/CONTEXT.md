@@ -463,16 +463,29 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
      regen** — instead, download the Playwright HTML report from the
      failed CI run (`gh run download <run-id> --name playwright-report
      --dir /tmp/...`) and lift the per-browser **actual** PNGs out of
-     `data/`. Identify them by file size (the *expected* PNG in the
-     report bit-exactly matches the committed baseline; the *diff* PNG
-     has red/yellow overlay; the *actual* is the third one, with subtly
-     different text rendering). Copy actuals over the baselines and
-     push.
+     `data/`. The reliable name→sha1 map lives in `test.trace` inside
+     the report's `data/<trace-hash>.zip`:
+     ```bash
+     unzip -p /tmp/<report>/data/<trace-hash>.zip test.trace \
+       | python3 -c "import json,sys
+     for line in sys.stdin:
+         atts=json.loads(line).get('attachments')
+         if atts:
+             for a in atts: print(a.get('name'),'->',a.get('sha1'))"
+     ```
+     The `*-actual.png` row's sha1 is the file under `data/` to copy
+     over the baseline. **Do NOT identify by file size** — the actual
+     can be either larger or smaller than the expected (anti-aliasing
+     differences sometimes compress worse, sometimes better). The
+     expected sha1 *does* match the committed baseline bit-exactly,
+     which is a useful cross-check.
   Both the chromium and webkit actuals from a single failed run are
   bit-exact representations of what CI will produce on the next run, so
   the second push will match within tolerance. Recorded after #51 PR
   #59's first CI run produced a 0.02-ratio diff that the arm64-regen
-  procedure had silently green-lit.
+  procedure had silently green-lit; refined after #52 PR #61's webkit-
+  only failure where the actual (54759 B) was 4KB *larger* than the
+  expected (50572 B), invalidating the original size-based heuristic.
 
 - **2026-05-12** — IBD ConnectionUsage (#51) wiring lessons:
   - **Element-as-edge layer.** `Viewpoint` gained
@@ -520,6 +533,35 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
     set by `onConnect` rather than synthesising clicks. If a click is
     needed, add an `interactionWidth`-style wider invisible path to the
     custom edge component.
+
+- **2026-05-12** — IBD ItemFlow (#52) wiring notes:
+  - **Shift-modifier discrimination.** `IbdItemFlowEdge` rides the same
+    `Connection`/handle plumbing as `ConnectionUsage`. The choice between
+    the two is made in `CanvasPane.onConnect`: a `shiftHeldRef` (updated
+    by a window-level `keydown`/`keyup` listener AND seeded from the
+    `onConnectStart` native-event `shiftKey`) routes the drop to
+    `connectItemFlow` instead of `connectPorts`. **`onConnectStart`'s
+    event arg is a native DOM `MouseEvent | TouchEvent`, not React's
+    synthetic** — typing it as `ReactMouseEvent` fails the
+    `OnConnectStart` signature.
+  - **Same typing rules as ConnectionUsage.** ItemFlow validity is
+    enforced by the existing `canonicalizeIbdConnection`/`isValidIbdConnection`
+    pair — the model fork happens after the canonicalisation step.
+    `in` ↔ `in` and `out` ↔ `out` are still rejected; `in` → `out` is
+    normalised so the stored ItemFlow's `sourceId` is the out/inout side.
+  - **Edge visual: dashed stroke + arrowhead.** ItemFlow uses
+    `strokeDasharray: '6 4'` and a per-edge `<marker>` triangle
+    (`refX=11, refY=6, orient="auto-start-reverse"`, fill = stroke
+    colour). ConnectionUsage stays solid + unmarkered, so the two are
+    unambiguous on the canvas.
+  - **Label preference: itemType > name.** The edge label renders
+    `itemType` when set, falling back to the cascading default `flow1`,
+    `flow2`, … name. Inspector's `ItemFlowExtras` section lets the user
+    edit `itemType` (commits on blur or Enter). The Project tree
+    automatically groups ItemFlow elements under an "Item flows" header.
+  - **Registry already covers `itemType`.** `KIND_OPTIONAL_FIELDS.ItemFlow
+    = {'itemType'}` was in place from the metamodel split; no registry
+    change was needed for first-time itemType edits.
 
 - **2026-05-12** — `@xyflow/react` v12.3.x multi-handle-per-node
   integration notes (verified via context7 against authoritative docs

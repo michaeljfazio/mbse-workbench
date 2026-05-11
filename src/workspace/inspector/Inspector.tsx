@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type {
   ConnectionUsageElement,
   ElementId,
+  ItemFlowElement,
   ModelElement,
   PartDefinitionElement,
   PartUsageElement,
@@ -99,6 +100,10 @@ function InspectorSingle({ element }: InspectorSingleProps): JSX.Element {
 
       {element.kind === 'ConnectionUsage' ? (
         <ConnectionUsageExtras element={element} />
+      ) : null}
+
+      {element.kind === 'ItemFlow' ? (
+        <ItemFlowExtras element={element} />
       ) : null}
 
       <OwnerField element={element} />
@@ -502,6 +507,90 @@ function PartUsageExtras({ element }: PartUsageExtrasProps): JSX.Element {
             } else if (e.key === 'Escape') {
               e.preventDefault();
               setDraft(element.multiplicity ?? '');
+              (e.target as HTMLInputElement).blur();
+            }
+          }}
+          className="rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground shadow-sm focus:border-primary focus:outline-none"
+        />
+      </div>
+    </>
+  );
+}
+
+interface ItemFlowExtrasProps {
+  readonly element: ItemFlowElement;
+}
+
+function ItemFlowExtras({ element }: ItemFlowExtrasProps): JSX.Element {
+  const elements = useWorkspaceStore((s) => s.elements);
+  const setItemFlowType = useWorkspaceStore((s) => s.setItemFlowType);
+
+  const sourceLabel = useMemo(
+    () => describeConnectionEndpoint(elements, element.sourceId),
+    [elements, element.sourceId],
+  );
+  const targetLabel = useMemo(
+    () => describeConnectionEndpoint(elements, element.targetId),
+    [elements, element.targetId],
+  );
+
+  const [draft, setDraft] = useState(element.itemType ?? '');
+  useEffect(() => {
+    setDraft(element.itemType ?? '');
+  }, [element.id, element.itemType]);
+  const inputId = useMemo(
+    () => `inspector-item-type-${element.id}`,
+    [element.id],
+  );
+
+  const commit = (): void => {
+    if (draft !== (element.itemType ?? '')) {
+      setItemFlowType(element.id, draft);
+    }
+  };
+
+  return (
+    <>
+      <div
+        data-testid="inspector-itemflow-endpoints"
+        className="flex flex-col gap-1.5"
+      >
+        <span className="text-xs font-medium text-muted-foreground">
+          Endpoints
+        </span>
+        <dl className="flex flex-col gap-1 rounded-md border border-dashed border-border bg-muted/40 px-2 py-1.5 text-xs text-muted-foreground">
+          <div className="flex gap-2">
+            <dt className="font-semibold uppercase tracking-wide">Source</dt>
+            <dd data-testid="inspector-itemflow-source">{sourceLabel}</dd>
+          </div>
+          <div className="flex gap-2">
+            <dt className="font-semibold uppercase tracking-wide">Target</dt>
+            <dd data-testid="inspector-itemflow-target">{targetLabel}</dd>
+          </div>
+        </dl>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <label
+          htmlFor={inputId}
+          className="text-xs font-medium text-muted-foreground"
+        >
+          Item type
+        </label>
+        <input
+          id={inputId}
+          type="text"
+          value={draft}
+          data-testid="inspector-item-type"
+          placeholder="e.g. Fuel, kWh, Message"
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              (e.target as HTMLInputElement).blur();
+            } else if (e.key === 'Escape') {
+              e.preventDefault();
+              setDraft(element.itemType ?? '');
               (e.target as HTMLInputElement).blur();
             }
           }}

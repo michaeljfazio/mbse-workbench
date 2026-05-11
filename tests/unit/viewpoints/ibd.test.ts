@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   createViewpointRegistry,
   IBD_CONNECTION_USAGE_EDGE_TYPE,
+  IBD_ITEM_FLOW_EDGE_TYPE,
   IBD_PART_USAGE_NODE_TYPE,
   IBD_VIEWPOINT_ID,
   ibdViewpoint,
@@ -15,7 +16,10 @@ describe('IBD viewpoint', () => {
     expect(ibdViewpoint.label).toBe('Internal Block Diagram');
     expect(ibdViewpoint.acceptedElementKinds).toEqual(['PartUsage']);
     expect(ibdViewpoint.acceptedEdgeKinds).toEqual([]);
-    expect(ibdViewpoint.acceptedEdgeElementKinds).toEqual(['ConnectionUsage']);
+    expect(ibdViewpoint.acceptedEdgeElementKinds).toEqual([
+      'ConnectionUsage',
+      'ItemFlow',
+    ]);
     expect(ibdViewpoint.defaultLayout).toBe('dagre');
   });
 
@@ -31,6 +35,7 @@ describe('IBD viewpoint', () => {
     expect(Object.keys(ibdViewpoint.nodeTypes)).toContain(IBD_PART_USAGE_NODE_TYPE);
     expect(Object.keys(ibdViewpoint.edgeTypes)).toEqual([
       IBD_CONNECTION_USAGE_EDGE_TYPE,
+      IBD_ITEM_FLOW_EDGE_TYPE,
     ]);
   });
 
@@ -87,6 +92,19 @@ describe('IBD viewpoint', () => {
         targetId: 'pu-b' as never,
       }),
     ).toBe(IBD_CONNECTION_USAGE_EDGE_TYPE);
+  });
+
+  it('edgeTypeForElement returns the ItemFlow edge type — #52', () => {
+    expect(
+      ibdViewpoint.edgeTypeForElement({
+        id: 'if' as never,
+        kind: 'ItemFlow',
+        name: 'flow1',
+        sourceId: 'pu-a' as never,
+        targetId: 'pu-b' as never,
+        itemType: 'Fuel',
+      }),
+    ).toBe(IBD_ITEM_FLOW_EDGE_TYPE);
   });
 
   it('edgeTypeForElement throws for non-edge element kinds', () => {
