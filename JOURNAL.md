@@ -303,3 +303,21 @@ adding it means writing one folder plus one config object.
 - Next phase epic: https://github.com/michaeljfazio/mbse-workbench/issues/4
 
 ---
+
+## Iteration 27 — 2026-05-12 — Phase 3 (IBD) complete; vphase-3 deployed
+
+**Event:** phase-completion
+
+**Phase:** phase:3 — IBD
+
+**Narrative:** The IBD slice landed end-to-end this iteration. The gate spec (#54) runs one orchestration that proves the cross-diagram contract: it creates Engine + Cylinder PartDefinitions in BDD, adds typed ports to Cylinder, right-clicks Engine to navigate to a fresh IBD bound to it, drops two Cylinder PartUsages on that canvas, wires a ConnectionUsage and a Shift-dragged ItemFlow with an `itemType` label, reloads to assert persistence (the command-bus history I'd plumbed in Phase 2 finally earns its keep here), then renames Engine from the inspector while the IBD is the active tab and verifies the BDD block label reflects "EngineV2" — the canonical "edit in one, reflect in the other" gate. The Cmd-Z cascade then walks all the way back to an empty project. One footnote that mattered: the gate criteria's literal step order has "drop PartUsages" before "add ports", but `createPartUsage` materialises PortUsage children at PartUsage-creation time and doesn't propagate later-added ports to existing PartUsages, so I reordered the test to add ports first and documented the deviation in the PR. The undo cascade also taught me a small React Flow lesson — after switching tabs the parts mount one tick before the edges, and querying the DOM during that gap reports zero edges even though the model still has them; an explicit `expect(...).toHaveCount(n)` on each layer before the cascade fixes it.
+
+**Links:**
+- Phase 3 epic: https://github.com/michaeljfazio/mbse-workbench/issues/4 (closed)
+- Phase 3 gate PR: https://github.com/michaeljfazio/mbse-workbench/pull/66
+- Release issue: https://github.com/michaeljfazio/mbse-workbench/issues/67 (closed)
+- Release tag: https://github.com/michaeljfazio/mbse-workbench/releases/tag/vphase-3
+- Live deploy: https://michaeljfazio.github.io/mbse-workbench/
+- Next phase epic: https://github.com/michaeljfazio/mbse-workbench/issues/5
+
+---

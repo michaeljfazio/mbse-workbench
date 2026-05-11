@@ -598,6 +598,34 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
     intercepts this rather than calling `addEdge` directly. No v12.3-
     specific divergence found in docs.
 
+- **2026-05-12** — IBD Cmd-Z cascade after tab-switch needs an explicit
+  edge-layer wait. Reproducing the Phase 3 gate (#54) revealed that React
+  Flow rebuilds the edge layer **one render tick after** the parts mount
+  when you switch tabs: `[data-testid^="ibd-part-..."]` is in the DOM
+  before `[data-testid^="ibd-edge-..."]` shows up. Querying counts in
+  between (e.g. inside a tight Cmd-Z `undoUntilCount` loop) reports zero
+  edges even though the model still has them, and the loop returns early
+  thinking nothing is left to undo. Fix: after `await page.getByRole('tab', ...).click()`,
+  assert `expect(parts).toHaveCount(n)`, `expect(connectionEdges).toHaveCount(m)`,
+  AND `expect(itemFlowEdges).toHaveCount(k)` before starting any
+  count-driven loop. This is specifically a tab-switch concern; first-time
+  renders (e.g. after `page.goto('/')`) wait on the same Playwright
+  `expect` polling cycle and don't show the gap.
+
+- **2026-05-12** — PartUsage's PortUsage list is materialised at
+  `createPartUsage`-time and is NOT propagated when ports are later added
+  to the PartDefinition. So in workflows like "create the Cylinder block
+  → drop two Cylinder PartUsages → add a port to Cylinder", the existing
+  PartUsages do not gain a handle for the new port. The wiring step
+  `isValidIbdConnection` then rejects connections to that PortUsage
+  because the handle id isn't in either parent's `portUsageIds`. Tests
+  that exercise this slice should add ports BEFORE the parts that need
+  them. A future enhancement could either (a) extend
+  `addPortToDefinition` to cascade a PortUsage create into every existing
+  PartUsage typed by the definition, or (b) compute the PartUsage's port
+  list dynamically from the definition's `portIds` rather than caching it
+  — either would let the gate run in its literal order.
+
 - **2026-05-12** — Cross-diagram context menu (#53) wiring notes:
   - **ReactFlow context-menu hooks.** `<ReactFlow onNodeContextMenu>` and
     `onEdgeContextMenu` fire with `(event: React.MouseEvent, node|edge)`
