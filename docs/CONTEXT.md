@@ -317,6 +317,31 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
   only, so JSON.parse keeping the keys as plain strings is harmless for
   lookups.
 
+- **2026-05-11** — Project tree (issue #33): kind groups are computed from
+  the union of (a) kinds present in the registry's elements and (b)
+  `paletteItems[].elementKind` across **all** registered viewpoints, so an
+  empty BDD project still shows the "Blocks" group as a drop affordance.
+  A group is `draggable` only when its kind belongs to the **active**
+  viewpoint's `paletteItems`. The drag payload uses the custom MIME type
+  `application/x-mbse-element-kind` (exported as `PROJECT_TREE_DRAG_TYPE`
+  from `@/workspace/tree/ProjectTree`); the canvas drop target reads it
+  in `onDragOver` to call `event.preventDefault()` (without this the
+  browser refuses to fire `drop`), validates the kind against the
+  viewpoint's `acceptedElementKinds`, and translates the screen-space
+  drop coordinates via `reactFlow.screenToFlowPosition` before centering
+  the new node on the cursor (offset by `BDD_BLOCK_WIDTH/2` and
+  `BDD_BLOCK_HEIGHT/2`). The drop also auto-selects the new element so
+  the inspector reflects it immediately.
+
+- **2026-05-11** — `ProjectTree` uses a derived-not-state focus key
+  (`explicitFocusKey ?? visibleKeys[0]`) so the roving tabindex always
+  has a valid landing spot without a state-syncing `useEffect`. The pane
+  wrapper (`ProjectTreePane`, `aria-label="Project tree pane"`) is just
+  the chrome; the inner `<div role="tree" aria-label="Project tree">`
+  is the actual a11y tree node. Anything in tests looking for
+  `getByRole('tree', { name: 'Project tree' })` resolves to the inner
+  element — keep these names in sync if either changes.
+
 - **2026-05-11** — The `github-pages` environment has a `branch_policy`
   protection rule with `custom_branch_policies: true`. Out of the box
   only the `main` branch is in the allow-list, so the release workflow
