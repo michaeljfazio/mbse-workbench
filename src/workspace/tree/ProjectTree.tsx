@@ -316,6 +316,10 @@ export function ProjectTree(): JSX.Element {
                   const lKey = leafKey(element.id);
                   const isSelected = selectedSet.has(element.id);
                   const isLeafFocused = focusKey === lKey;
+                  const subtitle =
+                    element.kind === 'Requirement' && element.reqId
+                      ? element.reqId
+                      : undefined;
                   return (
                     <div
                       key={element.id}
@@ -331,11 +335,19 @@ export function ProjectTree(): JSX.Element {
                         handleSelectLeaf(element.id);
                       }}
                       ref={(el) => setRef(lKey, el)}
-                      className={`cursor-pointer select-none truncate rounded px-2 py-1 text-sm text-foreground hover:bg-accent focus:outline-none focus:ring-1 focus:ring-primary ${
+                      className={`flex cursor-pointer select-none items-center gap-1 rounded px-2 py-1 text-sm text-foreground hover:bg-accent focus:outline-none focus:ring-1 focus:ring-primary ${
                         isSelected ? 'bg-primary/10 text-foreground' : ''
                       }`}
                     >
-                      {element.name}
+                      <span className="truncate">{element.name}</span>
+                      {subtitle ? (
+                        <span
+                          data-testid={`project-tree-leaf-subtitle-${element.id}`}
+                          className="ml-auto truncate font-mono text-[10px] text-foreground/75"
+                        >
+                          {subtitle}
+                        </span>
+                      ) : null}
                     </div>
                   );
                 })}

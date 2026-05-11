@@ -33,6 +33,9 @@ import {
   IBD_PART_USAGE_WIDTH,
   IBD_VIEWPOINT_ID,
   isValidIbdConnection,
+  REQUIREMENT_NODE_HEIGHT,
+  REQUIREMENT_NODE_WIDTH,
+  REQUIREMENTS_VIEWPOINT_ID,
   resolveIbdEdgeEndpoints,
   resolvePartHandles,
   type BddEdgeKind,
@@ -78,6 +81,9 @@ function nodeSizeFor(viewpoint: Viewpoint): { width: number; height: number } {
   if (viewpoint.id === IBD_VIEWPOINT_ID) {
     return { width: IBD_PART_USAGE_WIDTH, height: IBD_PART_USAGE_HEIGHT };
   }
+  if (viewpoint.id === REQUIREMENTS_VIEWPOINT_ID) {
+    return { width: REQUIREMENT_NODE_WIDTH, height: REQUIREMENT_NODE_HEIGHT };
+  }
   return { width: BDD_BLOCK_WIDTH, height: BDD_BLOCK_HEIGHT };
 }
 
@@ -105,6 +111,16 @@ function toFlowNodes(
           name: el.name,
           definitionName,
           ports,
+        };
+      } else if (el.kind === 'Requirement') {
+        data = {
+          elementId: el.id,
+          name: el.name,
+          reqId: el.reqId,
+          text: el.text,
+          priority: el.priority,
+          status: el.status,
+          onRename,
         };
       } else {
         data = { elementId: el.id, name: el.name, onRename };
@@ -202,6 +218,7 @@ function CanvasInner(): JSX.Element {
   const runAutoLayout = useWorkspaceStore((s) => s.runAutoLayout);
   const connectPorts = useWorkspaceStore((s) => s.connectPorts);
   const connectItemFlow = useWorkspaceStore((s) => s.connectItemFlow);
+  const createRequirement = useWorkspaceStore((s) => s.createRequirement);
 
   const [pending, setPending] = useState<PendingConnection | null>(null);
   const [pendingPart, setPendingPart] = useState<PendingPartDrop | null>(null);
@@ -452,6 +469,21 @@ function CanvasInner(): JSX.Element {
     });
   }, [createBlock, diagram]);
 
+  const handleAddRequirement = useCallback(() => {
+    if (!diagram) return;
+    const cascadeIndex = Object.keys(diagram.positions).length;
+    const columns = 2;
+    const col = cascadeIndex % columns;
+    const row = Math.floor(cascadeIndex / columns);
+    const stepX = REQUIREMENT_NODE_WIDTH + 40;
+    const stepY = REQUIREMENT_NODE_HEIGHT + 40;
+    const id = createRequirement(diagram.id, {
+      x: 60 + col * stepX,
+      y: 60 + row * stepY,
+    });
+    if (id) setSelection([id]);
+  }, [createRequirement, diagram, setSelection]);
+
   const handleAutoLayout = useCallback(() => {
     if (!diagram) return;
     runAutoLayout(diagram.id);
@@ -578,6 +610,17 @@ function CanvasInner(): JSX.Element {
         });
         return;
       }
+      if (
+        viewpoint.id === REQUIREMENTS_VIEWPOINT_ID &&
+        kind === 'Requirement'
+      ) {
+        const id = createRequirement(diagram.id, {
+          x: flowPos.x - REQUIREMENT_NODE_WIDTH / 2,
+          y: flowPos.y - REQUIREMENT_NODE_HEIGHT / 2,
+        });
+        if (id) setSelection([id]);
+        return;
+      }
       // BDD: drop creates a Block (PartDefinition) directly.
       const id = createBlock({
         x: flowPos.x - BDD_BLOCK_WIDTH / 2,
@@ -585,7 +628,7 @@ function CanvasInner(): JSX.Element {
       });
       if (id) setSelection([id]);
     },
-    [viewpoint, diagram, reactFlow, createBlock, setSelection],
+    [viewpoint, diagram, reactFlow, createBlock, createRequirement, setSelection],
   );
 
   const confirmPendingPart = useCallback(
@@ -675,6 +718,16 @@ function CanvasInner(): JSX.Element {
             className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-foreground shadow-sm transition hover:bg-accent"
           >
             + Block
+          </button>
+        ) : null}
+        {viewpoint.id === REQUIREMENTS_VIEWPOINT_ID ? (
+          <button
+            type="button"
+            data-testid="toolbar-add-requirement"
+            onClick={handleAddRequirement}
+            className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-foreground shadow-sm transition hover:bg-accent"
+          >
+            + Requirement
           </button>
         ) : null}
         <button

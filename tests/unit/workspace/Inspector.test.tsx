@@ -201,4 +201,153 @@ describe('<Inspector />', () => {
     });
     expect(nameInput.value).toBe('Engine');
   });
+
+  describe('RequirementExtras (single Requirement selection)', () => {
+    async function seedRequirement() {
+      await bootstrap();
+      const s = useWorkspaceStore.getState();
+      const diagram = s.diagrams[0]!;
+      const id = s.createRequirement(diagram.id, { x: 0, y: 0 })!;
+      s.setSelection([id]);
+      return id;
+    }
+
+    it('renders all five RequirementExtras fields with the current values', async () => {
+      const id = await seedRequirement();
+
+      render(<Inspector />);
+      expect(screen.getByTestId('inspector-requirement')).toBeInTheDocument();
+      expect(
+        (screen.getByTestId('inspector-req-id') as HTMLInputElement).value,
+      ).toBe('R-001');
+      expect(
+        (screen.getByTestId('inspector-req-priority') as HTMLSelectElement).value,
+      ).toBe('medium');
+      expect(
+        (screen.getByTestId('inspector-req-status') as HTMLSelectElement).value,
+      ).toBe('draft');
+      expect(
+        (screen.getByTestId('inspector-req-text') as HTMLTextAreaElement).value,
+      ).toBe('');
+      expect(
+        (screen.getByTestId('inspector-req-rationale') as HTMLInputElement)
+          .value,
+      ).toBe('');
+      const after = useWorkspaceStore
+        .getState()
+        .elements.find((e) => e.id === id);
+      if (after?.kind !== 'Requirement') throw new Error('seed mismatch');
+    });
+
+    it('commits reqId on blur and clears it on empty', async () => {
+      const id = await seedRequirement();
+
+      render(<Inspector />);
+      const reqId = screen.getByTestId(
+        'inspector-req-id',
+      ) as HTMLInputElement;
+      fireEvent.change(reqId, { target: { value: 'SAFETY-42' } });
+      fireEvent.blur(reqId);
+      const after = useWorkspaceStore
+        .getState()
+        .elements.find((e) => e.id === id);
+      if (after?.kind !== 'Requirement') throw new Error('seed mismatch');
+      expect(after.reqId).toBe('SAFETY-42');
+
+      fireEvent.change(reqId, { target: { value: '' } });
+      fireEvent.blur(reqId);
+      const cleared = useWorkspaceStore
+        .getState()
+        .elements.find((e) => e.id === id);
+      if (cleared?.kind !== 'Requirement') throw new Error('seed mismatch');
+      expect(cleared.reqId).toBeUndefined();
+    });
+
+    it('commits text on blur', async () => {
+      const id = await seedRequirement();
+
+      render(<Inspector />);
+      const text = screen.getByTestId(
+        'inspector-req-text',
+      ) as HTMLTextAreaElement;
+      fireEvent.change(text, {
+        target: { value: 'The system shall stop.' },
+      });
+      fireEvent.blur(text);
+      const after = useWorkspaceStore
+        .getState()
+        .elements.find((e) => e.id === id);
+      if (after?.kind !== 'Requirement') throw new Error('seed mismatch');
+      expect(after.text).toBe('The system shall stop.');
+    });
+
+    it('commits priority change immediately on select change', async () => {
+      const id = await seedRequirement();
+
+      render(<Inspector />);
+      const priority = screen.getByTestId(
+        'inspector-req-priority',
+      ) as HTMLSelectElement;
+      fireEvent.change(priority, { target: { value: 'critical' } });
+      const after = useWorkspaceStore
+        .getState()
+        .elements.find((e) => e.id === id);
+      if (after?.kind !== 'Requirement') throw new Error('seed mismatch');
+      expect(after.priority).toBe('critical');
+    });
+
+    it('commits status change immediately on select change', async () => {
+      const id = await seedRequirement();
+
+      render(<Inspector />);
+      const status = screen.getByTestId(
+        'inspector-req-status',
+      ) as HTMLSelectElement;
+      fireEvent.change(status, { target: { value: 'verified' } });
+      const after = useWorkspaceStore
+        .getState()
+        .elements.find((e) => e.id === id);
+      if (after?.kind !== 'Requirement') throw new Error('seed mismatch');
+      expect(after.status).toBe('verified');
+    });
+
+    it('commits rationale on blur and clears it on whitespace-only input', async () => {
+      const id = await seedRequirement();
+
+      render(<Inspector />);
+      const rationale = screen.getByTestId(
+        'inspector-req-rationale',
+      ) as HTMLInputElement;
+      fireEvent.change(rationale, { target: { value: 'Required by spec' } });
+      fireEvent.blur(rationale);
+      const filled = useWorkspaceStore
+        .getState()
+        .elements.find((e) => e.id === id);
+      if (filled?.kind !== 'Requirement') throw new Error('seed mismatch');
+      expect(filled.rationale).toBe('Required by spec');
+
+      fireEvent.change(rationale, { target: { value: '   ' } });
+      fireEvent.blur(rationale);
+      const cleared = useWorkspaceStore
+        .getState()
+        .elements.find((e) => e.id === id);
+      if (cleared?.kind !== 'Requirement') throw new Error('seed mismatch');
+      expect(cleared.rationale).toBeUndefined();
+    });
+
+    it('reflects external priority changes on the live select element', async () => {
+      const id = await seedRequirement();
+
+      render(<Inspector />);
+      const priority = screen.getByTestId(
+        'inspector-req-priority',
+      ) as HTMLSelectElement;
+      expect(priority.value).toBe('medium');
+
+      act(() => {
+        useWorkspaceStore.getState().setRequirementPriority(id, 'high');
+      });
+      expect(priority.value).toBe('high');
+    });
+  });
 });
