@@ -39,6 +39,7 @@ import {
   type Viewpoint,
 } from '@/viewpoints';
 
+import { ContextMenu, deriveNavTargets, type NavTarget } from './contextMenu';
 import { EdgeKindPopover } from './EdgeKindPopover';
 import { ExportMenu } from './ExportMenu';
 import { PartUsageTypePopover } from './PartUsageTypePopover';
@@ -61,6 +62,12 @@ interface PendingPartDrop {
   readonly flowPosition: { x: number; y: number };
   readonly popoverX: number;
   readonly popoverY: number;
+}
+
+interface ContextMenuState {
+  readonly x: number;
+  readonly y: number;
+  readonly targets: readonly NavTarget[];
 }
 
 interface RegistryLookup {
@@ -198,11 +205,20 @@ function CanvasInner(): JSX.Element {
 
   const [pending, setPending] = useState<PendingConnection | null>(null);
   const [pendingPart, setPendingPart] = useState<PendingPartDrop | null>(null);
+  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const isConnectingRef = useRef(false);
   const shiftHeldRef = useRef(false);
   const reactFlow = useReactFlow();
   const createPartUsage = useWorkspaceStore((s) => s.createPartUsage);
+  const diagrams = useWorkspaceStore((s) => s.diagrams);
+  const activeDiagramId = useWorkspaceStore((s) => s.activeDiagramId);
+  const viewpointRegistry = useWorkspaceStore((s) => s.viewpoints);
+  const openInternalDiagram = useWorkspaceStore((s) => s.openInternalDiagram);
+  const showDefinitionOnBdd = useWorkspaceStore((s) => s.showDefinitionOnBdd);
+  const navigateToElementOnDiagram = useWorkspaceStore(
+    (s) => s.navigateToElementOnDiagram,
+  );
 
   const selectedSet = useMemo(() => new Set(selectedElementIds), [selectedElementIds]);
 
@@ -473,6 +489,60 @@ function CanvasInner(): JSX.Element {
     });
   }, [viewpoint, diagram, elements, edges]);
 
+  const openContextMenuForElement = useCallback(
+    (event: React.MouseEvent, elementId: ElementId): void => {
+      if (!registry) return;
+      const element = registry.get(elementId);
+      if (!element) return;
+      const targets = deriveNavTargets({
+        element,
+        diagrams,
+        activeDiagramId,
+        elements,
+        viewpoints: viewpointRegistry,
+        actions: {
+          openInternalDiagram,
+          showDefinitionOnBdd,
+          navigateToElementOnDiagram,
+        },
+      });
+      if (targets.length === 0) return;
+      event.preventDefault();
+      const rect = canvasRef.current?.getBoundingClientRect();
+      setContextMenu({
+        x: event.clientX - (rect?.left ?? 0),
+        y: event.clientY - (rect?.top ?? 0),
+        targets,
+      });
+    },
+    [
+      registry,
+      diagrams,
+      activeDiagramId,
+      elements,
+      viewpointRegistry,
+      openInternalDiagram,
+      showDefinitionOnBdd,
+      navigateToElementOnDiagram,
+    ],
+  );
+
+  const onNodeContextMenu = useCallback(
+    (event: React.MouseEvent, node: Node): void => {
+      openContextMenuForElement(event, node.id as ElementId);
+    },
+    [openContextMenuForElement],
+  );
+
+  const onEdgeContextMenu = useCallback(
+    (event: React.MouseEvent, edge: Edge): void => {
+      openContextMenuForElement(event, edge.id as ElementId);
+    },
+    [openContextMenuForElement],
+  );
+
+  const closeContextMenu = useCallback(() => setContextMenu(null), []);
+
   const handleDragOver = useCallback(
     (event: React.DragEvent<HTMLDivElement>) => {
       if (event.dataTransfer.types.includes(PROJECT_TREE_DRAG_TYPE)) {
@@ -651,6 +721,8 @@ function CanvasInner(): JSX.Element {
           onConnect={onConnect}
           onConnectStart={onConnectStart}
           onConnectEnd={onConnectEnd}
+          onNodeContextMenu={onNodeContextMenu}
+          onEdgeContextMenu={onEdgeContextMenu}
           isValidConnection={isValidConnection}
           deleteKeyCode={['Delete', 'Backspace']}
           fitView={false}
@@ -677,6 +749,14 @@ function CanvasInner(): JSX.Element {
             definitions={partDefinitions}
             onPick={confirmPendingPart}
             onCancel={cancelPendingPart}
+          />
+        ) : null}
+        {contextMenu ? (
+          <ContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            targets={contextMenu.targets}
+            onClose={closeContextMenu}
           />
         ) : null}
       </div>

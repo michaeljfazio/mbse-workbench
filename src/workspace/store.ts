@@ -30,6 +30,7 @@ import { EMPTY_COMMAND_HISTORY } from '@/repository';
 import {
   BDD_BLOCK_HEIGHT,
   BDD_BLOCK_WIDTH,
+  BDD_VIEWPOINT_ID,
   bddViewpoint,
   canonicalizeIbdConnection,
   createViewpointRegistry,
@@ -194,6 +195,11 @@ export interface WorkspaceActions {
   ): ElementId | null;
   setPartUsageMultiplicity(id: ElementId, multiplicity: string): void;
   openInternalDiagram(partDefinitionId: ElementId): DiagramId | null;
+  showDefinitionOnBdd(partUsageId: ElementId): DiagramId | null;
+  navigateToElementOnDiagram(
+    elementId: ElementId,
+    diagramId: DiagramId,
+  ): void;
   connectPorts(connection: Connection): ElementId | null;
   connectItemFlow(connection: Connection): ElementId | null;
   setItemFlowType(id: ElementId, itemType: string): void;
@@ -803,6 +809,32 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
     });
     if (id) get().setActiveDiagram(id);
     return id;
+  },
+
+  showDefinitionOnBdd(partUsageId) {
+    const { registry, diagrams } = get();
+    if (!registry) return null;
+    const part = registry.get(partUsageId);
+    if (!part || part.kind !== 'PartUsage') return null;
+    const definition = registry.get(part.definitionId);
+    if (!definition || definition.kind !== 'PartDefinition') return null;
+    const bdd = diagrams.find((d) => d.viewpointId === BDD_VIEWPOINT_ID);
+    if (!bdd) return null;
+    set({
+      activeDiagramId: bdd.id,
+      selectedElementIds: [part.definitionId],
+    });
+    return bdd.id;
+  },
+
+  navigateToElementOnDiagram(elementId, diagramId) {
+    const { diagrams, registry } = get();
+    if (!registry || !registry.get(elementId)) return;
+    if (!diagrams.some((d) => d.id === diagramId)) return;
+    set({
+      activeDiagramId: diagramId,
+      selectedElementIds: [elementId],
+    });
   },
 
   connectPorts(connection) {
