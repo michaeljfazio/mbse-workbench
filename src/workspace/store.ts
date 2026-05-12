@@ -728,7 +728,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       if (!r) return;
       const nextElements = r.elements();
       const nextEdges = r.edges();
-      const nextState: Partial<WorkspaceState> = {
+      const nextState: { -readonly [K in keyof WorkspaceState]?: WorkspaceState[K] } = {
         elements: nextElements,
         edges: nextEdges,
         modelVersion: get().bus?.version() ?? 0,
