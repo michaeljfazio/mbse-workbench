@@ -4,9 +4,9 @@
 phase:8 — Parametric Diagram (epic #9 open; decomposed into #135 viewpoint+ADR / #136 nodes+palette+inspector / #137 ParameterBinding edge / #138 gate spec)
 
 ## Current iteration
-- Iteration #: 68
+- Iteration #: 69
 - Started: 2026-05-13
-- Branch: chore/status-iter-66 (PR **#148** rebased onto main to resolve DIRTY mergeable; force-push pending). PR **#145** still awaiting CI 25749932655 on cde540f (in progress since 17:08Z). Both PRs in flight, no actionable failures.
+- Branch: chore/status-iter-66 — pure observation. PR **#145** CI 25750407281 IN_PROGRESS on cde540f. PR **#148** CI 25750377567 QUEUED. Both MERGEABLE/BLOCKED (awaiting required `check`). No failures.
 - Working on: **PR #145 + PR #148** (idle, awaiting CI on both).
 
 ## Last test run
@@ -94,6 +94,7 @@ phase:8 — Parametric Diagram (epic #9 open; decomposed into #135 viewpoint+ADR
 - 2026-05-13: Iteration 65 — PR #145 first CI red on a literal-mismatch in the gate spec: assertion expected `'Value1'` but the default cascading name from `createValueProperty` is lowercase `value1` (src/workspace/store.ts:606-607). Iter-61 renamed the kindLabel singular to "Value" but the *default name* pattern was unchanged, so the test author over-applied the rename. Fix is test-side (870ecfc) — change expected to `'value1'`; downstream `inlineRename(..., 'mass')` is unaffected. **Lesson:** ValueProperty default-name capitalisation diverges from its kindLabel; same pattern likely true elsewhere (BlockUsage/PartUsage cascading defaults are lowercase prefixed: `part1`, `port1`, etc.), so test authors should grep `name${n}` / `name\${` in store.ts rather than infer from chip labels.
 - 2026-05-13: Iteration 66 — After iter-65 STATUS PR #146 landed, PR #145 went BEHIND main; force-rebased onto main (870ecfc→cde540f, same content as 870ecfc with main's iter-65 STATUS commit underneath). CI 25749932655 running on cde540f. No code work this iteration; status-only commit.
 - 2026-05-13: Iteration 67 — Pure observation iteration. Both PR #145 (Phase 8 gate spec on cde540f) and PR #148 (iter-66 STATUS) are awaiting CI; no failures yet. Correction recorded: iter-65 STATUS landed as PR #147 (b179e35), not #146 as iter-66 STATUS narrated — iter-66 STATUS PR is the open one (#148), so the numbering shifted by one. Appended iter-67 commit to the existing chore/status-iter-66 branch rather than open a new status PR; updated PR #148 title to reflect both iterations.
+- 2026-05-13: Iteration 69 — Pure observation. PR #145 CI 25750407281 IN_PROGRESS; PR #148 CI 25750377567 QUEUED (rebase from iter-68 retriggered CI). No failures, no code work. Stacking another STATUS commit on chore/status-iter-66 per the iter-68 pattern.
 - 2026-05-13: Iteration 68 — PR #148 was DIRTY/CONFLICTING against main because chore/status-iter-66 contained iter-65 commit f90ba7b whose STATUS.md content already landed via PR #147 (b179e35). `git rebase origin/main` skipped f90ba7b as a duplicate cherry-pick and replayed iter-66 (71f65f8) + iter-67 (69296d6) cleanly. PR #145 still awaiting CI 25749932655 — no change in posture. **Lesson:** stacking iter-N STATUS commits onto an existing chore/status-iter-(N-1) branch is safe as long as we rebase whenever the prior iter's STATUS PR lands on main; the duplicate-cherry-pick skip handles the overlap.
 
 ## Next action
