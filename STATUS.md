@@ -4,9 +4,9 @@
 phase:8 — Parametric Diagram (epic #9 open; decomposed into #135 viewpoint+ADR / #136 nodes+palette+inspector / #137 ParameterBinding edge / #138 gate spec)
 
 ## Current iteration
-- Iteration #: 69
+- Iteration #: 70
 - Started: 2026-05-13
-- Branch: chore/status-iter-66 — pure observation. PR **#145** CI 25750407281 IN_PROGRESS on cde540f. PR **#148** CI 25750377567 QUEUED. Both MERGEABLE/BLOCKED (awaiting required `check`). No failures.
+- Branch: chore/status-iter-66 — pure observation. PR **#145** CI 25750407281 still IN_PROGRESS on cde540f. PR **#148** previous run 25750377567 cancelled; fresh run 25750451003 QUEUED (iter-69 rebase retriggered CI). Both MERGEABLE/BLOCKED (awaiting required `check`). No failures.
 - Working on: **PR #145 + PR #148** (idle, awaiting CI on both).
 
 ## Last test run
@@ -96,6 +96,7 @@ phase:8 — Parametric Diagram (epic #9 open; decomposed into #135 viewpoint+ADR
 - 2026-05-13: Iteration 67 — Pure observation iteration. Both PR #145 (Phase 8 gate spec on cde540f) and PR #148 (iter-66 STATUS) are awaiting CI; no failures yet. Correction recorded: iter-65 STATUS landed as PR #147 (b179e35), not #146 as iter-66 STATUS narrated — iter-66 STATUS PR is the open one (#148), so the numbering shifted by one. Appended iter-67 commit to the existing chore/status-iter-66 branch rather than open a new status PR; updated PR #148 title to reflect both iterations.
 - 2026-05-13: Iteration 69 — Pure observation. PR #145 CI 25750407281 IN_PROGRESS; PR #148 CI 25750377567 QUEUED (rebase from iter-68 retriggered CI). No failures, no code work. Stacking another STATUS commit on chore/status-iter-66 per the iter-68 pattern.
 - 2026-05-13: Iteration 68 — PR #148 was DIRTY/CONFLICTING against main because chore/status-iter-66 contained iter-65 commit f90ba7b whose STATUS.md content already landed via PR #147 (b179e35). `git rebase origin/main` skipped f90ba7b as a duplicate cherry-pick and replayed iter-66 (71f65f8) + iter-67 (69296d6) cleanly. PR #145 still awaiting CI 25749932655 — no change in posture. **Lesson:** stacking iter-N STATUS commits onto an existing chore/status-iter-(N-1) branch is safe as long as we rebase whenever the prior iter's STATUS PR lands on main; the duplicate-cherry-pick skip handles the overlap.
+- 2026-05-13: Iteration 70 — Pure observation. PR #145 CI 25750407281 still IN_PROGRESS (full Playwright matrix takes longer than unit-only checks); PR #148's previous run was cancelled and replaced by run 25750451003 QUEUED after iter-69's push triggered branch retest. No failures. Stacking iter-70 STATUS commit on chore/status-iter-66.
 
 ## Next action
 Continue to await CI on PR #145 (cde540f) and PR #148 (iter-66+67 STATUS). On PR #145 green, auto-merge lands #138, closes phase epic #9, and triggers `vphase-8` tag (5 of 8 → **6 of 8** viewpoints deployed). Then run the iter-59 post-release routine: smoke walkthrough scripts/smoke-vphase-8.mjs seeding a small parametric model (Newton + mass + accel + binding edges), capture release artifacts, append JOURNAL.md "phase-completion" entry, decompose Phase 9 (Package Diagram). On any further red, most likely cause is the inspector-value-default field rejecting `'9.8'` parse for valueType=number — fall back to defaultValue=1 (int) if so. Order-of-merges note: PR #148 (status) will likely land first because PR #145 runs full Playwright; if PR #145's CI fails, address that on its branch — do not block on PR #148.
