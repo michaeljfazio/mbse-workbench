@@ -28,6 +28,9 @@ function makeStub(id: string, label: string): Viewpoint {
     edgeTypeForElement() {
       throw new Error(`stub viewpoint ${id} cannot render element-as-edge`);
     },
+    nodeSizeFor() {
+      return { width: 100, height: 60 };
+    },
   };
 }
 

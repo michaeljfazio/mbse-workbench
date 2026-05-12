@@ -1,7 +1,12 @@
 import type { ModelEdge, ModelElement } from '@/model';
 import type { Viewpoint, ViewpointEdgeTypes, ViewpointId, ViewpointNodeTypes } from '../types';
 
-import { BDD_BLOCK_NODE_TYPE, BlockNode } from './BlockNode';
+import {
+  BDD_BLOCK_HEIGHT,
+  BDD_BLOCK_NODE_TYPE,
+  BDD_BLOCK_WIDTH,
+  BlockNode,
+} from './BlockNode';
 import {
   BDD_COMPOSITION_EDGE_TYPE,
   CompositionEdge,
@@ -74,5 +79,8 @@ export const bddViewpoint: Viewpoint = {
     throw new Error(
       `bdd viewpoint cannot render element-as-edge kind: ${element.kind}`,
     );
+  },
+  nodeSizeFor(): { readonly width: number; readonly height: number } {
+    return { width: BDD_BLOCK_WIDTH, height: BDD_BLOCK_HEIGHT };
   },
 };

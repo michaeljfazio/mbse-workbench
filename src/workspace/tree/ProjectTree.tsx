@@ -12,6 +12,10 @@ import { getActiveViewpoint, useWorkspaceStore } from '../store';
 import { kindLabel } from './kindLabels';
 
 export const PROJECT_TREE_DRAG_TYPE = 'application/x-mbse-element-kind';
+// Optional second MIME slot carried by viewpoint-specific palettes (Activity
+// pseudostates) that need to discriminate which sub-variant of an
+// `ElementKind` to create. Read by CanvasPane after PROJECT_TREE_DRAG_TYPE.
+export const PROJECT_TREE_DRAG_NODE_TYPE = 'application/x-mbse-action-node-type';
 
 interface TreeGroup {
   readonly kind: ElementKind;
@@ -320,6 +324,13 @@ export function ProjectTree(): JSX.Element {
                     element.kind === 'Requirement' && element.reqId
                       ? element.reqId
                       : undefined;
+                  // ActionUsage pseudostates (initial / final / fork / join)
+                  // commonly have empty names — show the nodeType in guillemets
+                  // so the leaf is identifiable in the tree.
+                  const displayName =
+                    element.name.length === 0 && element.kind === 'ActionUsage'
+                      ? `«${element.nodeType}»`
+                      : element.name;
                   return (
                     <div
                       key={element.id}
@@ -339,7 +350,7 @@ export function ProjectTree(): JSX.Element {
                         isSelected ? 'bg-primary/10 text-foreground' : ''
                       }`}
                     >
-                      <span className="truncate">{element.name}</span>
+                      <span className="truncate">{displayName}</span>
                       {subtitle ? (
                         <span
                           data-testid={`project-tree-leaf-subtitle-${element.id}`}

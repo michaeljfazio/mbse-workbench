@@ -2,15 +2,21 @@ import { describe, expect, it } from 'vitest';
 
 import type { ActionUsageElement, PartDefinitionElement } from '@/model';
 import {
+  ACTIVITY_ACTION_HEIGHT,
   ACTIVITY_ACTION_NODE_TYPE,
+  ACTIVITY_ACTION_WIDTH,
+  ACTIVITY_BAR_HEIGHT,
+  ACTIVITY_BAR_WIDTH,
   ACTIVITY_CONTROL_FLOW_EDGE_TYPE,
   ACTIVITY_DECISION_NODE_TYPE,
+  ACTIVITY_DIAMOND_SIZE,
   ACTIVITY_FINAL_NODE_TYPE,
   ACTIVITY_FORK_NODE_TYPE,
   ACTIVITY_INITIAL_NODE_TYPE,
   ACTIVITY_JOIN_NODE_TYPE,
   ACTIVITY_MERGE_NODE_TYPE,
   ACTIVITY_OBJECT_FLOW_EDGE_TYPE,
+  ACTIVITY_PSEUDOSTATE_CIRCLE_SIZE,
   ACTIVITY_VIEWPOINT_ID,
   activityViewpoint,
   createViewpointRegistry,
@@ -65,12 +71,53 @@ describe('Activity viewpoint', () => {
 
   it('keeps nodeTypes and edgeTypes frozen at module scope', () => {
     // Per docs/CONTEXT.md, React Flow needs referentially-stable
-    // nodeTypes/edgeTypes — frozen empty records satisfy that until #88/#89
-    // populate them with real renderers.
+    // nodeTypes/edgeTypes — frozen records (whether empty or populated).
     expect(Object.isFrozen(activityViewpoint.nodeTypes)).toBe(true);
     expect(Object.isFrozen(activityViewpoint.edgeTypes)).toBe(true);
-    expect(Object.keys(activityViewpoint.nodeTypes)).toEqual([]);
+    // #88 registers all seven ActionUsage renderers (one per nodeType).
+    expect(Object.keys(activityViewpoint.nodeTypes).sort()).toEqual(
+      [
+        ACTIVITY_ACTION_NODE_TYPE,
+        ACTIVITY_DECISION_NODE_TYPE,
+        ACTIVITY_FINAL_NODE_TYPE,
+        ACTIVITY_FORK_NODE_TYPE,
+        ACTIVITY_INITIAL_NODE_TYPE,
+        ACTIVITY_JOIN_NODE_TYPE,
+        ACTIVITY_MERGE_NODE_TYPE,
+      ].sort(),
+    );
+    // #89 will populate edgeTypes; until then the frozen empty record
+    // satisfies React Flow's referential-stability requirement.
     expect(Object.keys(activityViewpoint.edgeTypes)).toEqual([]);
+  });
+
+  it('nodeSizeFor returns per-pseudostate sizes (ADR 0005 / #88)', () => {
+    const cases: ReadonlyArray<
+      readonly [ActionUsageElement['nodeType'], { width: number; height: number }]
+    > = [
+      ['action', { width: ACTIVITY_ACTION_WIDTH, height: ACTIVITY_ACTION_HEIGHT }],
+      [
+        'initial',
+        {
+          width: ACTIVITY_PSEUDOSTATE_CIRCLE_SIZE,
+          height: ACTIVITY_PSEUDOSTATE_CIRCLE_SIZE,
+        },
+      ],
+      [
+        'final',
+        {
+          width: ACTIVITY_PSEUDOSTATE_CIRCLE_SIZE,
+          height: ACTIVITY_PSEUDOSTATE_CIRCLE_SIZE,
+        },
+      ],
+      ['fork', { width: ACTIVITY_BAR_WIDTH, height: ACTIVITY_BAR_HEIGHT }],
+      ['join', { width: ACTIVITY_BAR_WIDTH, height: ACTIVITY_BAR_HEIGHT }],
+      ['decision', { width: ACTIVITY_DIAMOND_SIZE, height: ACTIVITY_DIAMOND_SIZE }],
+      ['merge', { width: ACTIVITY_DIAMOND_SIZE, height: ACTIVITY_DIAMOND_SIZE }],
+    ];
+    for (const [nodeType, expected] of cases) {
+      expect(activityViewpoint.nodeSizeFor(makeAction(nodeType))).toEqual(expected);
+    }
   });
 
   it('can be registered in a viewpoint registry and looked up by id', () => {

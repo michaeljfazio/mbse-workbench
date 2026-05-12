@@ -23,11 +23,16 @@ import type {
   PartDefinitionElement,
   RequirementTraceKind,
 } from '@/model';
+import { isActionNodeType } from '@/model';
 import {
   BDD_BLOCK_HEIGHT,
   BDD_BLOCK_WIDTH,
 } from '@/viewpoints/bdd/BlockNode';
 import {
+  ACTIVITY_ACTION_HEIGHT,
+  ACTIVITY_ACTION_WIDTH,
+  ACTIVITY_VIEWPOINT_ID,
+  actionNodeSize,
   BDD_VIEWPOINT_ID,
   buildPortUsageOwnership,
   IBD_PART_USAGE_HEIGHT,
@@ -56,7 +61,11 @@ import {
   getActiveViewpoint,
   useWorkspaceStore,
 } from './store';
-import { PROJECT_TREE_DRAG_TYPE } from './tree/ProjectTree';
+import { ActivityPalette } from './ActivityPalette';
+import {
+  PROJECT_TREE_DRAG_NODE_TYPE,
+  PROJECT_TREE_DRAG_TYPE,
+} from './tree/ProjectTree';
 
 interface PendingConnection {
   readonly connection: Connection;
@@ -87,12 +96,17 @@ interface RegistryLookup {
   get(id: ElementId): ModelElement | undefined;
 }
 
-function nodeSizeFor(viewpoint: Viewpoint): { width: number; height: number } {
+function exportNodeSizeFor(viewpoint: Viewpoint): { width: number; height: number } {
+  // Export takes a single (width, height) pair per call. Until export grows
+  // per-element sizing (out of scope for #88), pick a viewpoint-wide default.
   if (viewpoint.id === IBD_VIEWPOINT_ID) {
     return { width: IBD_PART_USAGE_WIDTH, height: IBD_PART_USAGE_HEIGHT };
   }
   if (viewpoint.id === REQUIREMENTS_VIEWPOINT_ID) {
     return { width: REQUIREMENT_NODE_WIDTH, height: REQUIREMENT_NODE_HEIGHT };
+  }
+  if (viewpoint.id === ACTIVITY_VIEWPOINT_ID) {
+    return { width: ACTIVITY_ACTION_WIDTH, height: ACTIVITY_ACTION_HEIGHT };
   }
   return { width: BDD_BLOCK_WIDTH, height: BDD_BLOCK_HEIGHT };
 }
@@ -105,7 +119,6 @@ function toFlowNodes(
   onRename: (id: ElementId, name: string) => void,
   registry: RegistryLookup | null,
 ): Node[] {
-  const { width, height } = nodeSizeFor(viewpoint);
   return elements
     .filter((el) => viewpoint.acceptedElementKinds.includes(el.kind))
     .map((el) => {
@@ -132,9 +145,17 @@ function toFlowNodes(
           status: el.status,
           onRename,
         };
+      } else if (el.kind === 'ActionUsage') {
+        data = {
+          elementId: el.id,
+          name: el.name,
+          nodeType: el.nodeType,
+          onRename,
+        };
       } else {
         data = { elementId: el.id, name: el.name, onRename };
       }
+      const { width, height } = viewpoint.nodeSizeFor(el);
       const node: Node = {
         id: el.id,
         type: viewpoint.nodeTypeFor(el),
@@ -234,6 +255,7 @@ function CanvasInner(): JSX.Element {
   const connectPorts = useWorkspaceStore((s) => s.connectPorts);
   const connectItemFlow = useWorkspaceStore((s) => s.connectItemFlow);
   const createRequirement = useWorkspaceStore((s) => s.createRequirement);
+  const createActionUsage = useWorkspaceStore((s) => s.createActionUsage);
   const linkRequirementTrace = useWorkspaceStore(
     (s) => s.linkRequirementTrace,
   );
@@ -562,6 +584,22 @@ function CanvasInner(): JSX.Element {
     });
   }, [createBlock, diagram]);
 
+  const handleAddAction = useCallback(() => {
+    if (!diagram) return;
+    const cascadeIndex = Object.keys(diagram.positions).length;
+    const columns = 2;
+    const col = cascadeIndex % columns;
+    const row = Math.floor(cascadeIndex / columns);
+    const stepX = ACTIVITY_ACTION_WIDTH + 40;
+    const stepY = ACTIVITY_ACTION_HEIGHT + 40;
+    const id = createActionUsage(
+      diagram.id,
+      { x: 60 + col * stepX, y: 60 + row * stepY },
+      'action',
+    );
+    if (id) setSelection([id]);
+  }, [createActionUsage, diagram, setSelection]);
+
   const handleAddRequirement = useCallback(() => {
     if (!diagram) return;
     const cascadeIndex = Object.keys(diagram.positions).length;
@@ -584,7 +622,7 @@ function CanvasInner(): JSX.Element {
 
   const handleExportPng = useCallback(() => {
     if (!viewpoint || !diagram) return;
-    const { width, height } = nodeSizeFor(viewpoint);
+    const { width, height } = exportNodeSizeFor(viewpoint);
     void downloadDiagramPng({
       diagramName: diagram.name,
       svgInput: {
@@ -600,7 +638,7 @@ function CanvasInner(): JSX.Element {
 
   const handleExportSvg = useCallback(() => {
     if (!viewpoint || !diagram) return;
-    const { width, height } = nodeSizeFor(viewpoint);
+    const { width, height } = exportNodeSizeFor(viewpoint);
     void downloadDiagramSvg({
       diagramName: diagram.name,
       svgInput: {
@@ -718,6 +756,23 @@ function CanvasInner(): JSX.Element {
         if (id) setSelection([id]);
         return;
       }
+      if (viewpoint.id === ACTIVITY_VIEWPOINT_ID && kind === 'ActionUsage') {
+        // Pull the palette item's `defaultData.nodeType` to discriminate
+        // between the seven ActionUsage variants. Drag from outside the
+        // palette (no defaultData) falls back to a default action node.
+        const rawNodeType = event.dataTransfer.getData(
+          PROJECT_TREE_DRAG_NODE_TYPE,
+        );
+        const nodeType = isActionNodeType(rawNodeType) ? rawNodeType : 'action';
+        const { width, height } = actionNodeSize(nodeType);
+        const id = createActionUsage(
+          diagram.id,
+          { x: flowPos.x - width / 2, y: flowPos.y - height / 2 },
+          nodeType,
+        );
+        if (id) setSelection([id]);
+        return;
+      }
       // BDD: drop creates a Block (PartDefinition) directly.
       const id = createBlock({
         x: flowPos.x - BDD_BLOCK_WIDTH / 2,
@@ -725,7 +780,15 @@ function CanvasInner(): JSX.Element {
       });
       if (id) setSelection([id]);
     },
-    [viewpoint, diagram, reactFlow, createBlock, createRequirement, setSelection],
+    [
+      viewpoint,
+      diagram,
+      reactFlow,
+      createBlock,
+      createRequirement,
+      createActionUsage,
+      setSelection,
+    ],
   );
 
   const confirmPendingPart = useCallback(
@@ -827,6 +890,16 @@ function CanvasInner(): JSX.Element {
             + Requirement
           </button>
         ) : null}
+        {viewpoint.id === ACTIVITY_VIEWPOINT_ID ? (
+          <button
+            type="button"
+            data-testid="toolbar-add-action"
+            onClick={handleAddAction}
+            className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-foreground shadow-sm transition hover:bg-accent"
+          >
+            + Action
+          </button>
+        ) : null}
         <button
           type="button"
           data-testid="toolbar-auto-layout"
@@ -854,6 +927,7 @@ function CanvasInner(): JSX.Element {
           />
         </div>
       </div>
+      {viewpoint.id === ACTIVITY_VIEWPOINT_ID ? <ActivityPalette /> : null}
       <div
         ref={canvasRef}
         data-testid="canvas-drop-target"

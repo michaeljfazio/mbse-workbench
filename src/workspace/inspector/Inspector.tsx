@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 
 import type {
+  ActionDefinitionElement,
+  ActionUsageElement,
   ConnectionUsageElement,
   ElementId,
   ItemFlowElement,
@@ -16,6 +18,7 @@ import type {
   RequirementStatus,
   RequirementTraceEdge,
   RequirementTraceKind,
+  ValuePropertyElement,
 } from '@/model';
 import { isTraceTargetKind } from '@/viewpoints';
 import { useWorkspaceStore } from '../store';
@@ -149,6 +152,14 @@ function InspectorSingle({ element }: InspectorSingleProps): JSX.Element {
 
       {element.kind === 'Requirement' ? (
         <RequirementExtras element={element} />
+      ) : null}
+
+      {element.kind === 'ActionUsage' ? (
+        <ActionUsageExtras element={element} />
+      ) : null}
+
+      {element.kind === 'ActionDefinition' ? (
+        <ActionDefinitionExtras element={element} />
       ) : null}
 
       {isTraceTargetKind(element.kind) ? (
@@ -1142,6 +1153,187 @@ function TraceLinkRow({
       >
         ×
       </button>
+    </div>
+  );
+}
+
+interface ActionUsageExtrasProps {
+  readonly element: ActionUsageElement;
+}
+
+function ActionUsageExtras({ element }: ActionUsageExtrasProps): JSX.Element {
+  const elements = useWorkspaceStore((s) => s.elements);
+  const setActionDefinition = useWorkspaceStore((s) => s.setActionDefinition);
+
+  const definitions = useMemo(
+    () =>
+      elements
+        .filter(
+          (e): e is ActionDefinitionElement => e.kind === 'ActionDefinition',
+        )
+        .slice()
+        .sort((a, b) => a.name.localeCompare(b.name)),
+    [elements],
+  );
+
+  const defId = useMemo(
+    () => `inspector-action-definition-${element.id}`,
+    [element.id],
+  );
+
+  return (
+    <div data-testid="inspector-action" className="flex flex-col gap-3">
+      <div className="flex flex-col gap-1.5">
+        <span className="text-xs font-medium text-muted-foreground">
+          Node type
+        </span>
+        <span
+          data-testid="inspector-action-node-type"
+          className="self-start rounded-md border border-dashed border-border bg-muted/40 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-foreground/80"
+        >
+          {element.nodeType}
+        </span>
+      </div>
+      {element.nodeType === 'action' ? (
+        <div className="flex flex-col gap-1.5">
+          <label
+            htmlFor={defId}
+            className="text-xs font-medium text-muted-foreground"
+          >
+            Definition
+          </label>
+          <select
+            id={defId}
+            data-testid="inspector-action-definition"
+            value={element.definitionId ?? ''}
+            onChange={(e) =>
+              setActionDefinition(
+                element.id,
+                e.target.value.length === 0
+                  ? null
+                  : (e.target.value as ElementId),
+              )
+            }
+            className="rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground shadow-sm focus:border-primary focus:outline-none"
+          >
+            <option value="">— None —</option>
+            {definitions.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+interface ActionDefinitionExtrasProps {
+  readonly element: ActionDefinitionElement;
+}
+
+function ActionDefinitionExtras({
+  element,
+}: ActionDefinitionExtrasProps): JSX.Element {
+  const elements = useWorkspaceStore((s) => s.elements);
+  const addParam = useWorkspaceStore(
+    (s) => s.addActionDefinitionParameter,
+  );
+  const removeParam = useWorkspaceStore(
+    (s) => s.removeActionDefinitionParameter,
+  );
+
+  const params = useMemo(() => {
+    const paramSet = new Set(element.parameterIds);
+    return elements.filter(
+      (e): e is ValuePropertyElement =>
+        e.kind === 'ValueProperty' && paramSet.has(e.id),
+    );
+  }, [elements, element.parameterIds]);
+
+  const candidates = useMemo(() => {
+    const taken = new Set(element.parameterIds);
+    return elements.filter(
+      (e): e is ValuePropertyElement =>
+        e.kind === 'ValueProperty' && !taken.has(e.id),
+    );
+  }, [elements, element.parameterIds]);
+
+  const pickerId = useMemo(
+    () => `inspector-action-def-add-param-${element.id}`,
+    [element.id],
+  );
+
+  return (
+    <div
+      data-testid="inspector-action-def"
+      className="flex flex-col gap-1.5"
+    >
+      <span className="text-xs font-medium text-muted-foreground">
+        Parameters
+      </span>
+      {params.length === 0 ? (
+        <p
+          data-testid="inspector-action-params-empty"
+          className="rounded-md border border-dashed border-border bg-muted/40 px-2 py-1.5 text-xs text-foreground/75"
+        >
+          No parameters yet.
+        </p>
+      ) : (
+        <ul
+          data-testid="inspector-action-param-list"
+          className="flex flex-col gap-1"
+        >
+          {params.map((param) => (
+            <li
+              key={param.id}
+              data-testid={`inspector-action-param-${param.id}`}
+              className="flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground"
+            >
+              <span className="flex-1 truncate">{param.name}</span>
+              <button
+                type="button"
+                data-testid={`inspector-action-param-remove-${param.id}`}
+                aria-label={`Remove parameter ${param.name}`}
+                onClick={() => removeParam(element.id, param.id)}
+                className="rounded-sm px-1.5 py-0.5 text-xs text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive focus:bg-destructive/10 focus:text-destructive focus:outline-none"
+              >
+                ×
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <label
+        htmlFor={pickerId}
+        className="mt-1 text-[10px] font-medium uppercase tracking-wide text-muted-foreground"
+      >
+        Add parameter
+      </label>
+      <select
+        id={pickerId}
+        data-testid="inspector-action-param-add"
+        value=""
+        disabled={candidates.length === 0}
+        onChange={(e) => {
+          const v = e.target.value;
+          if (v.length === 0) return;
+          addParam(element.id, v as ElementId);
+        }}
+        className="rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground shadow-sm focus:border-primary focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <option value="">
+          {candidates.length === 0
+            ? 'No value properties available'
+            : '— Pick a value property —'}
+        </option>
+        {candidates.map((c) => (
+          <option key={c.id} value={c.id}>
+            {c.name}
+          </option>
+        ))}
+      </select>
     </div>
   );
 }
