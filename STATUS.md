@@ -1,17 +1,17 @@
 # STATUS
 
 ## Current phase
-phase:7 — Use Case Diagram (epic #8 open; #117 + #118 merged; #119/#120 ready)
+phase:7 — Use Case Diagram (epic #8 open; #117/#118/#119 merged; **#120 PR #131 in-flight**)
 
 ## Current iteration
-- Iteration #: 54
+- Iteration #: 57
 - Started: 2026-05-12
-- Branch: issue/119-use-case-edges → PR #127 (auto-merge enabled, CI in progress)
-- Working on: **#119** (Include + Extend + Generalization edges). Implementation complete: three new edge components, `UseCaseEdgeKindPopover` (3-kind popover, not shift-modifier), `linkUseCaseEdge` + `setExtendExtensionPoint` store actions, inspector dispatch for all three new edge kinds, `ActorNode` handle directions flipped to match `UseCaseNode` (top=target, bottom=source) so Generalization drag bottom→top works mechanically.
+- Branch: issue/120-phase-7-gate → PR #131 (auto-merge enabled, CI in progress)
+- Working on: **#120** (Phase 7 gate spec). One walkthrough + three @a11y tests in `tests/e2e/phase-7-gate.spec.ts` (545 lines). 8/8 local Playwright tests green across chromium + webkit; 300/300 full e2e suite green via `pnpm run check`. On merge, Phase 7 epic #8 closes and `vphase-7` gets tagged.
 
 ## Last test run
 - Command: `pnpm run check` locally
-- Result: PASS — 519 unit + 292 e2e green on darwin (visual specs CI-only per docs/CONTEXT.md). Awaiting PR #127 CI to confirm chromium + webkit visual baselines for `use-case-with-{include,extend,generalization}-edge.png`. Per iter-25 procedure, first CI failure on visuals → CI-extract `*-actual.png` from playwright-report and commit.
+- Result: PASS — 300 e2e (chromium + webkit) green on darwin. New `phase-7-gate.spec.ts` exercises the full vertical slice + extensionPoint round-trip + Cmd-Z/Cmd-Shift-Z cascade with 4-signal redo termination. No new visual baselines required per issue acceptance.
 
 ## Known issues / blockers
 - (none)
@@ -84,5 +84,7 @@ phase:7 — Use Case Diagram (epic #8 open; #117 + #118 merged; #119/#120 ready)
 - 2026-05-12: **Iteration 52 — #118 implemented.** Actor + UseCase custom nodes, `UseCasePalette` chip strip, `createActor`/`createUseCase` workspace actions (compound create-element + update-diagram-position; cascading `Actor1+`/`UC1+` names matching iter-30's reqId scan-from-1 gap-fill pattern), `setUseCaseText` store action, Inspector `UseCaseExtras` multi-line text textarea (Cmd-Enter to commit), CanvasPane toolbar `+ Actor` / `+ Use case` buttons. Two viewpoint constants extracted to `src/viewpoints/useCase/sizes.ts` to avoid circular imports between `ActorNode` / `UseCaseNode` and `./index`. ActorNode renders the stick-figure glyph as one inline SVG (head circle + body line + arms + legs) with `text-foreground` so theme switches recolor it. UseCaseNode uses `border-radius: 50%` on a 180×90 box for the ellipse — simpler than SVG and lets the centred label sit via flexbox. **The `use-case-empty` baseline stayed within `maxDiffPixelRatio: 0.01`** despite the new 36-px palette strip — the canvas-area pixels that shifted were within tolerance — so only the new `use-case-with-actor-and-usecase.{chromium,webkit}.png` pair was committed (iter-37's "chip strip stales sibling baseline" lesson did NOT trigger this time). Per iter-29/50 ritual, reverted 41 incidental baseline modifications via `git checkout -- tests/e2e/__screenshots__/`. Reinstalled host node_modules after the regen container wiped them (`rm -rf node_modules && pnpm install --frozen-lockfile`) (links: #118).
 - 2026-05-12: **Iteration 49 — Phase 7 decomposed into four child issues** (#117 viewpoint registration + ADR 0007, #118 Actor + UseCase custom nodes + palette chip strip + inspector basics, #119 Include + Extend + Generalization edges as ModelEdges with stereotype labels, #120 Phase 7 gate spec). Metamodel work was already done in Phase 1 — verified `UseCaseElement` (text?: string), `ActorElement`, `IncludeEdge`, `ExtendEdge` (extensionPoint?: string), and `GeneralizationEdge` all present. Phase 7 is UI-layer only. Each child issue carries the relevant iter-21/26/30/33/37/40/44/46 lessons inline. **Key Phase-7-specific decision**: three accepted edge kinds (Include/Extend/Generalization) means a popover picker at drop, NOT shift-modifier discrimination (shift only works for two kinds in Activity/IBD); defaults are UseCase↔UseCase → Include, Actor↔Actor → Generalization, mixed → reject silently (no Actor↔UseCase association edge in Phase 7 — system-boundary deferred to polish). Epic #8 task list updated with all four checkboxes (links: #8 epic, #117/#118/#119/#120).
 
+- 2026-05-12: **Iteration 57 — #120 PR #131 opened.** `tests/e2e/phase-7-gate.spec.ts` (545 lines) mirrors phase-4/5/6-gate templates: 1 walkthrough + 3 @a11y tests. Walkthrough exercises chip-drop of all 5 nodes (2 Actor + 3 UseCase), inline-rename via dblclick + Enter, three edge kinds (Include/Extend/Generalization) via popover, extensionPoint round-trip via inspector + reload, full Cmd-Z cascade, Cmd-Shift-Z forward with 4-signal termination (elements + edges + extensionPoint + renames), project-tree-leaf REPLACES selection (iter-33). Cascading default-name assertions on the 2nd/3rd UC and 2nd Actor are intentionally omitted because `nextUseCaseName`/`nextActorName` gap-fill freed names (after renaming UC1 → 'Start engine', the next chip drop default is 'UC1' again, not 'UC2'). 8/8 local Playwright tests green across chromium + webkit; 300/300 full e2e green via `pnpm run check`. No new visual baselines required per issue acceptance (links: #120, PR #131).
+
 ## Next action
-Watch PR #127 CI. If visual specs fail on `use-case-with-{include,extend,generalization}-edge.png`, follow iter-25 procedure (download playwright-report, lift `*-actual.png` over committed baselines, push, await second run). Once PR #127 lands, pick up **#120** (Phase 7 gate spec — full vertical slice walkthrough with Actor + UseCase + all three edge kinds, mirroring iter-33/40/47 gate-spec templates).
+Watch PR #131 CI. On green merge: close phase 7 epic #8, open a `type:release` issue, tag `vphase-7`, then exercise the deployed app per Ralph loop step 17 — capture smoke screenshots under `artifacts/release-vphase-7/`. Then decompose Phase 8 (Parametric Diagram) into child issues.
