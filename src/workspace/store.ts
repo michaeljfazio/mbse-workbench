@@ -26,6 +26,7 @@ import type {
   RequirementTraceKind,
   StateNodeType,
   StateUsageElement,
+  TransitionElement,
 } from '@/model';
 import {
   createEdgeId,
@@ -51,6 +52,7 @@ import {
   IBD_VIEWPOINT_ID,
   ibdViewpoint,
   isValidActivityConnection,
+  isValidStateMachineConnection,
   REQUIREMENTS_VIEWPOINT_ID,
   requirementsViewpoint,
   stateMachineViewpoint,
@@ -271,6 +273,10 @@ export interface WorkspaceActions {
   connectObjectFlow(connection: Connection): EdgeId | null;
   setControlFlowGuard(id: EdgeId, guard: string): void;
   setObjectFlowItemType(id: EdgeId, itemType: string): void;
+  connectStateTransition(connection: Connection): ElementId | null;
+  setTransitionTrigger(id: ElementId, value: string): void;
+  setTransitionGuard(id: ElementId, value: string): void;
+  setTransitionEffect(id: ElementId, value: string): void;
   undo(): void;
   redo(): void;
 }
@@ -463,6 +469,17 @@ function nextStateName(elements: readonly ModelElement[]): string {
   let n = taken.size + 1;
   while (taken.has(`State${n}`)) n += 1;
   return `State${n}`;
+}
+
+function nextTransitionName(elements: readonly ModelElement[]): string {
+  const taken = new Set(
+    elements
+      .filter((e): e is TransitionElement => e.kind === 'Transition')
+      .map((e) => e.name),
+  );
+  let n = taken.size + 1;
+  while (taken.has(`Transition${n}`)) n += 1;
+  return `Transition${n}`;
 }
 
 export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
@@ -1385,6 +1402,60 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
     if ((existing.itemType ?? undefined) === next) return;
     const patch: EdgePatch<'ObjectFlow'> = { itemType: next };
     bus.dispatch({ kind: 'update-edge', id, patch }, user);
+  },
+
+  connectStateTransition(connection) {
+    const { bus, user, registry, elements } = get();
+    if (!bus || !user || !registry) return null;
+    if (!isValidStateMachineConnection(connection, registry)) return null;
+    const { source, target } = connection;
+    if (!source || !target) return null;
+    const id = createElementId();
+    const element: TransitionElement = {
+      id,
+      kind: 'Transition',
+      name: nextTransitionName(elements),
+      sourceId: source as ElementId,
+      targetId: target as ElementId,
+    };
+    bus.dispatch({ kind: 'create-element', element }, user);
+    return id;
+  },
+
+  setTransitionTrigger(id, value) {
+    const { bus, user, registry } = get();
+    if (!bus || !user || !registry) return;
+    const existing = registry.get(id);
+    if (!existing || existing.kind !== 'Transition') return;
+    const trimmed = value.trim();
+    const next = trimmed.length === 0 ? undefined : trimmed;
+    if ((existing.trigger ?? undefined) === next) return;
+    const patch: ElementPatch<'Transition'> = { trigger: next };
+    bus.dispatch({ kind: 'update-element', id, patch }, user);
+  },
+
+  setTransitionGuard(id, value) {
+    const { bus, user, registry } = get();
+    if (!bus || !user || !registry) return;
+    const existing = registry.get(id);
+    if (!existing || existing.kind !== 'Transition') return;
+    const trimmed = value.trim();
+    const next = trimmed.length === 0 ? undefined : trimmed;
+    if ((existing.guard ?? undefined) === next) return;
+    const patch: ElementPatch<'Transition'> = { guard: next };
+    bus.dispatch({ kind: 'update-element', id, patch }, user);
+  },
+
+  setTransitionEffect(id, value) {
+    const { bus, user, registry } = get();
+    if (!bus || !user || !registry) return;
+    const existing = registry.get(id);
+    if (!existing || existing.kind !== 'Transition') return;
+    const trimmed = value.trim();
+    const next = trimmed.length === 0 ? undefined : trimmed;
+    if ((existing.effect ?? undefined) === next) return;
+    const patch: ElementPatch<'Transition'> = { effect: next };
+    bus.dispatch({ kind: 'update-element', id, patch }, user);
   },
 
   undo() {

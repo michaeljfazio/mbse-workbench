@@ -21,6 +21,7 @@ import type {
   RequirementTraceEdge,
   RequirementTraceKind,
   StateUsageElement,
+  TransitionElement,
   ValuePropertyElement,
 } from '@/model';
 import { isTraceTargetKind } from '@/viewpoints';
@@ -173,6 +174,10 @@ function InspectorSingle({ element }: InspectorSingleProps): JSX.Element {
 
       {element.kind === 'StateUsage' ? (
         <StateUsageExtras element={element} />
+      ) : null}
+
+      {element.kind === 'Transition' ? (
+        <TransitionExtras element={element} />
       ) : null}
 
       {isTraceTargetKind(element.kind) ? (
@@ -1545,6 +1550,153 @@ function ActionDefinitionExtras({
           </option>
         ))}
       </select>
+    </div>
+  );
+}
+
+function describeStateEndpoint(
+  elements: readonly ModelElement[],
+  id: ElementId,
+): string {
+  const el = elements.find((e) => e.id === id);
+  if (!el || el.kind !== 'StateUsage') return 'unknown';
+  if (el.name.length > 0) return el.name;
+  return `«${el.stateType}»`;
+}
+
+interface TransitionExtrasProps {
+  readonly element: TransitionElement;
+}
+
+function TransitionExtras({ element }: TransitionExtrasProps): JSX.Element {
+  const elements = useWorkspaceStore((s) => s.elements);
+  const setTransitionTrigger = useWorkspaceStore(
+    (s) => s.setTransitionTrigger,
+  );
+  const setTransitionGuard = useWorkspaceStore((s) => s.setTransitionGuard);
+  const setTransitionEffect = useWorkspaceStore((s) => s.setTransitionEffect);
+
+  const sourceLabel = useMemo(
+    () => describeStateEndpoint(elements, element.sourceId),
+    [elements, element.sourceId],
+  );
+  const targetLabel = useMemo(
+    () => describeStateEndpoint(elements, element.targetId),
+    [elements, element.targetId],
+  );
+
+  return (
+    <div
+      data-testid="inspector-transition"
+      data-element-id={element.id}
+      className="flex flex-col gap-3"
+    >
+      <div
+        data-testid="inspector-transition-endpoints"
+        className="flex flex-col gap-1.5"
+      >
+        <span className="text-xs font-medium text-muted-foreground">
+          Endpoints
+        </span>
+        <dl className="flex flex-col gap-1 rounded-md border border-dashed border-border bg-muted/40 px-2 py-1.5 text-xs text-foreground/75">
+          <div className="flex gap-2">
+            <dt className="font-semibold uppercase tracking-wide">Source</dt>
+            <dd data-testid="inspector-transition-source">{sourceLabel}</dd>
+          </div>
+          <div className="flex gap-2">
+            <dt className="font-semibold uppercase tracking-wide">Target</dt>
+            <dd data-testid="inspector-transition-target">{targetLabel}</dd>
+          </div>
+        </dl>
+      </div>
+      <TransitionField
+        element={element}
+        field="trigger"
+        label="Trigger"
+        placeholder="e.g. doorClosed"
+        testId="inspector-transition-trigger"
+        onCommit={(v) => setTransitionTrigger(element.id, v)}
+      />
+      <TransitionField
+        element={element}
+        field="guard"
+        label="Guard"
+        placeholder="e.g. temperature > 100"
+        testId="inspector-transition-guard"
+        onCommit={(v) => setTransitionGuard(element.id, v)}
+      />
+      <TransitionField
+        element={element}
+        field="effect"
+        label="Effect"
+        placeholder="e.g. logTransition()"
+        testId="inspector-transition-effect"
+        onCommit={(v) => setTransitionEffect(element.id, v)}
+      />
+    </div>
+  );
+}
+
+interface TransitionFieldProps {
+  readonly element: TransitionElement;
+  readonly field: 'trigger' | 'guard' | 'effect';
+  readonly label: string;
+  readonly placeholder: string;
+  readonly testId: string;
+  readonly onCommit: (value: string) => void;
+}
+
+function TransitionField({
+  element,
+  field,
+  label,
+  placeholder,
+  testId,
+  onCommit,
+}: TransitionFieldProps): JSX.Element {
+  const value = element[field] ?? '';
+  const [draft, setDraft] = useState(value);
+  useEffect(() => {
+    setDraft(element[field] ?? '');
+  }, [element, field]);
+  const inputId = useMemo(
+    () => `inspector-transition-${field}-${element.id}`,
+    [element.id, field],
+  );
+
+  const commit = (): void => {
+    if (draft === (element[field] ?? '')) return;
+    onCommit(draft);
+  };
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label
+        htmlFor={inputId}
+        className="text-xs font-medium text-muted-foreground"
+      >
+        {label}
+      </label>
+      <input
+        id={inputId}
+        type="text"
+        value={draft}
+        data-testid={testId}
+        placeholder={placeholder}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            (e.target as HTMLInputElement).blur();
+          } else if (e.key === 'Escape') {
+            e.preventDefault();
+            setDraft(element[field] ?? '');
+            (e.target as HTMLInputElement).blur();
+          }
+        }}
+        className="rounded-md border border-border bg-background px-2 py-1.5 font-mono text-sm text-foreground shadow-sm focus:border-primary focus:outline-none"
+      />
     </div>
   );
 }

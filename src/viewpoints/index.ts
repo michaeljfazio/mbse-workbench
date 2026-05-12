@@ -134,6 +134,8 @@ export type {
 } from './requirements';
 
 export {
+  composeTransitionLabel,
+  isValidStateMachineConnection,
   STATE_MACHINE_FINAL_NODE_TYPE,
   STATE_MACHINE_INITIAL_NODE_TYPE,
   STATE_MACHINE_PSEUDOSTATE_SIZE,
@@ -145,9 +147,12 @@ export {
   StateUsageNode,
   stateMachineViewpoint,
   stateNodeSize,
+  TransitionEdge,
 } from './stateMachine';
 
 export type {
+  StateMachineTransitionEdgeData,
+  StateMachineTransitionFlowEdge,
   StateRenameCallback,
   StateUsageFlowNode,
   StateUsageNodeData,
