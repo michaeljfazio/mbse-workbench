@@ -158,4 +158,15 @@ export type {
   StateUsageNodeData,
 } from './stateMachine';
 
+export {
+  USE_CASE_ACTOR_HEIGHT,
+  USE_CASE_ACTOR_NODE_TYPE,
+  USE_CASE_ACTOR_WIDTH,
+  USE_CASE_USE_CASE_HEIGHT,
+  USE_CASE_USE_CASE_NODE_TYPE,
+  USE_CASE_USE_CASE_WIDTH,
+  USE_CASE_VIEWPOINT_ID,
+  useCaseViewpoint,
+} from './useCase';
+
 

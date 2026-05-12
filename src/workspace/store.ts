@@ -56,6 +56,7 @@ import {
   REQUIREMENTS_VIEWPOINT_ID,
   requirementsViewpoint,
   stateMachineViewpoint,
+  useCaseViewpoint,
   type BddEdgeKind,
   type Viewpoint,
   type ViewpointId,
@@ -137,6 +138,7 @@ function buildViewpointSingleton(): ViewpointRegistry {
   registry.register(requirementsViewpoint);
   registry.register(activityViewpoint);
   registry.register(stateMachineViewpoint);
+  registry.register(useCaseViewpoint);
   return registry;
 }
 
