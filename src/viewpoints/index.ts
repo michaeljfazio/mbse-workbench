@@ -228,8 +228,10 @@ export type {
 } from './parametric';
 
 export {
+  isValidPackageConnection,
   PACKAGE_DEFAULT_NODE_HEIGHT,
   PACKAGE_DEFAULT_NODE_WIDTH,
+  PACKAGE_IMPORT_EDGE_TYPE,
   PACKAGE_MEMBER_ELEMENT_KINDS,
   PACKAGE_NODE_HEIGHT,
   PACKAGE_NODE_TYPE,
@@ -237,12 +239,15 @@ export {
   PACKAGE_TAB_HEIGHT,
   PACKAGE_TAB_WIDTH,
   PACKAGE_VIEWPOINT_ID,
+  PackageImportEdge,
   PackageNode,
   packageViewpoint,
 } from './package';
 
 export type {
   PackageFlowNode,
+  PackageImportEdgeData,
+  PackageImportFlowEdge,
   PackageNodeData,
   PackageRenameCallback,
 } from './package';

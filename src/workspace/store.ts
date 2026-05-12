@@ -21,6 +21,7 @@ import type {
   ModelElement,
   ObjectFlowEdge,
   PackageElement,
+  PackageImportEdge,
   ParameterBindingEdge,
   PartDefinitionElement,
   PartUsageElement,
@@ -64,6 +65,7 @@ import {
   IBD_VIEWPOINT_ID,
   ibdViewpoint,
   isValidActivityConnection,
+  isValidPackageConnection,
   isValidParametricConnection,
   isValidStateMachineConnection,
   canonicalizeParametricConnection,
@@ -340,6 +342,11 @@ export interface WorkspaceActions {
   setExtendExtensionPoint(id: EdgeId, extensionPoint: string): void;
   linkParameterBinding(connection: Connection): EdgeId | null;
   setParameterBindingLabel(id: EdgeId, label: string): void;
+  linkPackageImport(connection: Connection): EdgeId | null;
+  moveElementBetweenPackages(
+    elementId: ElementId,
+    targetPackageId: ElementId,
+  ): boolean;
   undo(): void;
   redo(): void;
 }
@@ -1948,6 +1955,63 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
     if ((existing.label ?? undefined) === next) return;
     const patch: EdgePatch<'ParameterBinding'> = { label: next };
     bus.dispatch({ kind: 'update-edge', id, patch }, user);
+  },
+
+  linkPackageImport(connection) {
+    const { bus, user, registry, edges } = get();
+    if (!bus || !user || !registry) return null;
+    if (!isValidPackageConnection(connection, registry, edges)) return null;
+    const source = connection.source;
+    const target = connection.target;
+    if (!source || !target) return null;
+    const edgeId = createEdgeId();
+    const edge: PackageImportEdge = {
+      id: edgeId,
+      kind: 'PackageImport',
+      sourceId: source as ElementId,
+      targetId: target as ElementId,
+    };
+    bus.dispatch({ kind: 'link', edge }, user);
+    return edgeId;
+  },
+
+  moveElementBetweenPackages(elementId, targetPackageId) {
+    const { bus, user, registry, elements } = get();
+    if (!bus || !user || !registry) return false;
+    const member = registry.get(elementId);
+    if (!member) return false;
+    const targetPkg = registry.get(targetPackageId);
+    if (!targetPkg || targetPkg.kind !== 'Package') return false;
+    if (member.id === targetPkg.id) return false;
+    // A Package itself cannot be a member of another Package per ADR 0009 § 2.
+    if (member.kind === 'Package') return false;
+    if (targetPkg.memberIds.includes(elementId)) return false;
+
+    // Find the (at most one) Package that currently owns this element.
+    const sourcePkg = elements.find(
+      (e): e is PackageElement =>
+        e.kind === 'Package' && e.memberIds.includes(elementId),
+    );
+
+    const commands: Command[] = [];
+    if (sourcePkg) {
+      commands.push({
+        kind: 'update-element',
+        id: sourcePkg.id,
+        patch: {
+          memberIds: sourcePkg.memberIds.filter((m) => m !== elementId),
+        } as ElementPatch<'Package'>,
+      });
+    }
+    commands.push({
+      kind: 'update-element',
+      id: targetPkg.id,
+      patch: {
+        memberIds: [...targetPkg.memberIds, elementId],
+      } as ElementPatch<'Package'>,
+    });
+    bus.dispatch({ kind: 'compound', commands }, user);
+    return true;
   },
 
   undo() {
