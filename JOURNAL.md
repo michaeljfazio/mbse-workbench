@@ -375,3 +375,20 @@ adding it means writing one folder plus one config object.
 - Next phase epic: https://github.com/michaeljfazio/mbse-workbench/issues/8
 
 ---
+
+## Iteration 59 — 2026-05-12 — Phase 7 complete (Use Case Diagram)
+
+**Event:** phase-completion
+
+**Phase:** phase:7 — Use Case Diagram
+
+**Narrative:** Closed Phase 7 after PR #131 (the gate spec for #120) merged on its second CI run — the rebase landed cleanly after the iter-56 STATUS PR jumped the queue during the first run. Four child issues shipped across the phase: viewpoint registration + ADR 0007 (#117), Actor and UseCase custom nodes with palette and inspector (#118 — including a baseline-drift fix in iter-53 when the new palette groups shifted shared project-tree chrome past `maxDiffPixelRatio: 0.01`), three edge kinds with a popover picker (#119 — the first viewpoint where the drop interaction couldn't use the IBD/Activity shift-modifier trick because three kinds don't fit two modifiers), and the orchestration gate spec (#120 — 8 Playwright tests, 545 lines). The smoke deploy now demonstrates five of eight viewpoints end-to-end with a Driver/Mechanic actor hierarchy and a Start Vehicle use case that includes Authenticate and is extended by Run Diagnostics. The Phase 8 (Parametric) epic decomposed into four children before this entry was written.
+
+**Links:**
+- Phase epic closed: https://github.com/michaeljfazio/mbse-workbench/issues/8
+- Release issue: https://github.com/michaeljfazio/mbse-workbench/issues/134
+- Release tag: https://github.com/michaeljfazio/mbse-workbench/releases/tag/vphase-7
+- Live deploy: https://michaeljfazio.github.io/mbse-workbench/
+- Next phase epic: https://github.com/michaeljfazio/mbse-workbench/issues/9
+
+---
