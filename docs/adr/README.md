@@ -13,3 +13,4 @@ to the index below in chronological order.
 - [0005 — Activity Diagram shape: scope, pseudostates, edge model, endpoint typing, onConnect discrimination](0005-activity-diagram-shape.md)
 - [0006 — State Machine Diagram shape: scope, pseudostates, edge model, endpoint typing, onConnect discrimination](0006-state-machine-diagram-shape.md)
 - [0007 — Use Case Diagram shape: scope, edge model, endpoint typing, onConnect discrimination](0007-use-case-diagram-shape.md)
+- [0008 — Parametric Diagram shape: scope, edge model, endpoint typing, equations](0008-parametric-diagram-shape.md)

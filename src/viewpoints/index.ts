@@ -196,4 +196,11 @@ export type {
   UseCaseRenameCallback,
 } from './useCase';
 
+export {
+  PARAMETRIC_DEFAULT_NODE_HEIGHT,
+  PARAMETRIC_DEFAULT_NODE_WIDTH,
+  PARAMETRIC_VIEWPOINT_ID,
+  parametricViewpoint,
+} from './parametric';
+
 
