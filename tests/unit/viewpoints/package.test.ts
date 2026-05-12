@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
+import type { Connection } from '@xyflow/react';
+
+import { createElementId, createElementRegistry, type ElementId } from '@/model';
 import {
   createViewpointRegistry,
+  isValidPackageConnection,
   PACKAGE_DEFAULT_NODE_HEIGHT,
   PACKAGE_DEFAULT_NODE_WIDTH,
+  PACKAGE_IMPORT_EDGE_TYPE,
   PACKAGE_MEMBER_ELEMENT_KINDS,
   PACKAGE_NODE_TYPE,
   PACKAGE_VIEWPOINT_ID,
@@ -43,11 +48,13 @@ describe('Package viewpoint', () => {
     ]);
   });
 
-  it('exposes module-scoped (frozen) nodeTypes including the Package node, and empty edgeTypes', () => {
+  it('exposes module-scoped (frozen) nodeTypes including the Package node, and the PackageImport edge type', () => {
     expect(Object.isFrozen(packageViewpoint.nodeTypes)).toBe(true);
     expect(Object.isFrozen(packageViewpoint.edgeTypes)).toBe(true);
     expect(Object.keys(packageViewpoint.nodeTypes)).toEqual([PACKAGE_NODE_TYPE]);
-    expect(Object.keys(packageViewpoint.edgeTypes)).toEqual([]);
+    expect(Object.keys(packageViewpoint.edgeTypes)).toEqual([
+      PACKAGE_IMPORT_EDGE_TYPE,
+    ]);
   });
 
   it('can be registered in a viewpoint registry and looked up by id', () => {
@@ -81,11 +88,22 @@ describe('Package viewpoint', () => {
     ).toThrow(/package viewpoint cannot render element kind/);
   });
 
-  it('edgeTypeFor throws — edge renderers land in #156', () => {
-    expect(() =>
+  it('edgeTypeFor resolves PackageImport edges to the PackageImport edge type', () => {
+    expect(
       packageViewpoint.edgeTypeFor({
         id: 'e-1' as never,
         kind: 'PackageImport',
+        sourceId: 'p-1' as never,
+        targetId: 'p-2' as never,
+      }),
+    ).toBe(PACKAGE_IMPORT_EDGE_TYPE);
+  });
+
+  it('edgeTypeFor throws for unsupported edge kinds', () => {
+    expect(() =>
+      packageViewpoint.edgeTypeFor({
+        id: 'e-2' as never,
+        kind: 'Composition',
         sourceId: 'p-1' as never,
         targetId: 'p-2' as never,
       }),
@@ -126,5 +144,89 @@ describe('Package viewpoint', () => {
         portIds: [],
       }),
     ).toEqual(expected);
+  });
+});
+
+describe('isValidPackageConnection', () => {
+  function seedTwoPackagesAndABlock() {
+    const registry = createElementRegistry();
+    const p1 = {
+      id: createElementId(),
+      kind: 'Package' as const,
+      name: 'P1',
+      memberIds: [],
+    };
+    const p2 = {
+      id: createElementId(),
+      kind: 'Package' as const,
+      name: 'P2',
+      memberIds: [],
+    };
+    const block = {
+      id: createElementId(),
+      kind: 'PartDefinition' as const,
+      name: 'B',
+      isAbstract: false,
+      propertyIds: [],
+      portIds: [],
+    };
+    registry.add(p1);
+    registry.add(p2);
+    registry.add(block);
+    return { registry, p1: p1.id, p2: p2.id, block: block.id };
+  }
+
+  function conn(source: ElementId, target: ElementId): Connection {
+    return { source, target, sourceHandle: null, targetHandle: null };
+  }
+
+  it('accepts a Package→Package connection between distinct packages', () => {
+    const { registry, p1, p2 } = seedTwoPackagesAndABlock();
+    expect(isValidPackageConnection(conn(p1, p2), registry, [])).toBe(true);
+  });
+
+  it('rejects self-loops', () => {
+    const { registry, p1 } = seedTwoPackagesAndABlock();
+    expect(isValidPackageConnection(conn(p1, p1), registry, [])).toBe(false);
+  });
+
+  it('rejects non-Package endpoints (either side)', () => {
+    const { registry, p1, block } = seedTwoPackagesAndABlock();
+    expect(isValidPackageConnection(conn(block, p1), registry, [])).toBe(false);
+    expect(isValidPackageConnection(conn(p1, block), registry, [])).toBe(false);
+  });
+
+  it('rejects duplicate PackageImport in the same direction but allows the reverse', () => {
+    const { registry, p1, p2 } = seedTwoPackagesAndABlock();
+    const existing = [
+      {
+        id: 'e-1' as never,
+        kind: 'PackageImport' as const,
+        sourceId: p1,
+        targetId: p2,
+      },
+    ];
+    expect(isValidPackageConnection(conn(p1, p2), registry, existing)).toBe(
+      false,
+    );
+    expect(isValidPackageConnection(conn(p2, p1), registry, existing)).toBe(
+      true,
+    );
+  });
+
+  it('rejects connections with missing source/target', () => {
+    const { registry, p1 } = seedTwoPackagesAndABlock();
+    expect(
+      isValidPackageConnection(
+        {
+          source: null,
+          target: p1,
+          sourceHandle: null,
+          targetHandle: null,
+        } as unknown as Connection,
+        registry,
+        [],
+      ),
+    ).toBe(false);
   });
 });

@@ -10,10 +10,17 @@ import type {
 
 import { PackageNode } from './PackageNode';
 import {
+  PACKAGE_IMPORT_EDGE_TYPE,
+  PackageImportEdge,
+} from './PackageImportEdge';
+import {
   PACKAGE_NODE_HEIGHT,
   PACKAGE_NODE_WIDTH,
 } from './sizes';
 
+export { isValidPackageConnection } from './isValidConnection';
+export { PACKAGE_IMPORT_EDGE_TYPE, PackageImportEdge };
+export type { PackageImportFlowEdge, PackageImportEdgeData } from './PackageImportEdge';
 export { PackageNode } from './PackageNode';
 export type {
   PackageFlowNode,
@@ -62,12 +69,13 @@ export const PACKAGE_MEMBER_ELEMENT_KINDS: readonly ElementKind[] = [
   'ValueProperty',
 ];
 
-// Module-scoped (frozen) so React Flow gets stable references. #156 will
-// add the PackageImport edge type.
+// Module-scoped (frozen) so React Flow gets stable references.
 const PACKAGE_NODE_TYPES = Object.freeze({
   [PACKAGE_NODE_TYPE]: PackageNode,
 }) as unknown as ViewpointNodeTypes;
-const PACKAGE_EDGE_TYPES = Object.freeze({}) as unknown as ViewpointEdgeTypes;
+const PACKAGE_EDGE_TYPES = Object.freeze({
+  [PACKAGE_IMPORT_EDGE_TYPE]: PackageImportEdge,
+}) as unknown as ViewpointEdgeTypes;
 
 const PACKAGE_PALETTE_ITEMS: readonly PaletteItem[] = [
   {
@@ -105,6 +113,7 @@ export const packageViewpoint: Viewpoint = {
     );
   },
   edgeTypeFor(edge: ModelEdge): string {
+    if (edge.kind === 'PackageImport') return PACKAGE_IMPORT_EDGE_TYPE;
     throw new Error(
       `package viewpoint cannot render edge kind: ${edge.kind}`,
     );

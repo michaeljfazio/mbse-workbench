@@ -17,6 +17,10 @@ export const PROJECT_TREE_DRAG_TYPE = 'application/x-mbse-element-kind';
 // `ElementKind` to create. Read by CanvasPane after PROJECT_TREE_DRAG_TYPE.
 export const PROJECT_TREE_DRAG_NODE_TYPE = 'application/x-mbse-action-node-type';
 export const PROJECT_TREE_DRAG_STATE_TYPE = 'application/x-mbse-state-node-type';
+// Drag MIME carried by tree LEAVES (existing element instances). Used by the
+// Package viewpoint to drop an existing element onto a Package node and
+// trigger a move-between-packages compound command (#156).
+export const PROJECT_TREE_DRAG_ELEMENT_ID = 'application/x-mbse-element-id';
 
 interface TreeGroup {
   readonly kind: ElementKind;
@@ -175,6 +179,14 @@ export function ProjectTree(): JSX.Element {
     (event: React.DragEvent<HTMLDivElement>, kind: ElementKind) => {
       event.dataTransfer.setData(PROJECT_TREE_DRAG_TYPE, kind);
       event.dataTransfer.effectAllowed = 'copy';
+    },
+    [],
+  );
+
+  const handleLeafDragStart = useCallback(
+    (event: React.DragEvent<HTMLDivElement>, id: ElementId) => {
+      event.dataTransfer.setData(PROJECT_TREE_DRAG_ELEMENT_ID, id);
+      event.dataTransfer.effectAllowed = 'move';
     },
     [],
   );
@@ -353,6 +365,8 @@ export function ProjectTree(): JSX.Element {
                       data-testid={`project-tree-leaf-${element.id}`}
                       data-element-id={element.id}
                       tabIndex={isLeafFocused ? 0 : -1}
+                      draggable
+                      onDragStart={(e) => handleLeafDragStart(e, element.id)}
                       onFocus={() => syncFocus(lKey)}
                       onClick={(e) => {
                         e.stopPropagation();

@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { createSessionUser } from '@/collab';
 import { createInMemorySessionRepository } from '@/repository';
-import type { PackageElement } from '@/model';
+import type { ElementId, PackageElement } from '@/model';
 import {
   getActiveDiagram,
   resetWorkspaceStoreForTests,
@@ -175,5 +175,181 @@ describe('workspace store — Package actions', () => {
     const { packageDiagramId } = await bootstrap();
     const active = getActiveDiagram(useWorkspaceStore.getState());
     expect(active?.id).toBe(packageDiagramId);
+  });
+
+  it('linkPackageImport round-trips with undo / redo', async () => {
+    const { packageDiagramId } = await bootstrap();
+    const a = useWorkspaceStore
+      .getState()
+      .createPackage(packageDiagramId, { x: 0, y: 0 })!;
+    const b = useWorkspaceStore
+      .getState()
+      .createPackage(packageDiagramId, { x: 200, y: 0 })!;
+    const edgeId = useWorkspaceStore
+      .getState()
+      .linkPackageImport({
+        source: a,
+        target: b,
+        sourceHandle: null,
+        targetHandle: null,
+      });
+    expect(edgeId).not.toBeNull();
+    const edge = useWorkspaceStore.getState().edges.find((e) => e.id === edgeId);
+    expect(edge?.kind).toBe('PackageImport');
+    expect(edge?.sourceId).toBe(a);
+    expect(edge?.targetId).toBe(b);
+
+    useWorkspaceStore.getState().undo();
+    expect(
+      useWorkspaceStore.getState().edges.find((e) => e.id === edgeId),
+    ).toBeUndefined();
+    useWorkspaceStore.getState().redo();
+    expect(
+      useWorkspaceStore.getState().edges.find((e) => e.id === edgeId),
+    ).toBeDefined();
+  });
+
+  it('linkPackageImport rejects non-Package endpoints, self-loops, and duplicates', async () => {
+    const { packageDiagramId } = await bootstrap();
+    const a = useWorkspaceStore
+      .getState()
+      .createPackage(packageDiagramId, { x: 0, y: 0 })!;
+    const b = useWorkspaceStore
+      .getState()
+      .createPackage(packageDiagramId, { x: 200, y: 0 })!;
+    // Block under default BDD diagram to exercise the non-Package rejection.
+    const defaultDiagramId = useWorkspaceStore
+      .getState()
+      .diagrams.find((d) => d.viewpointId !== packageViewpoint.id)!.id;
+    useWorkspaceStore.getState().setActiveDiagram(defaultDiagramId);
+    const blockId = useWorkspaceStore.getState().createBlock()!;
+
+    // Non-Package source
+    expect(
+      useWorkspaceStore.getState().linkPackageImport({
+        source: blockId,
+        target: a,
+        sourceHandle: null,
+        targetHandle: null,
+      }),
+    ).toBeNull();
+    // Self-loop
+    expect(
+      useWorkspaceStore.getState().linkPackageImport({
+        source: a,
+        target: a,
+        sourceHandle: null,
+        targetHandle: null,
+      }),
+    ).toBeNull();
+    // First import succeeds
+    const first = useWorkspaceStore.getState().linkPackageImport({
+      source: a,
+      target: b,
+      sourceHandle: null,
+      targetHandle: null,
+    });
+    expect(first).not.toBeNull();
+    // Duplicate (same direction) rejected
+    expect(
+      useWorkspaceStore.getState().linkPackageImport({
+        source: a,
+        target: b,
+        sourceHandle: null,
+        targetHandle: null,
+      }),
+    ).toBeNull();
+    // Reverse direction is a different edge — allowed.
+    const reverse = useWorkspaceStore.getState().linkPackageImport({
+      source: b,
+      target: a,
+      sourceHandle: null,
+      targetHandle: null,
+    });
+    expect(reverse).not.toBeNull();
+  });
+
+  it('moveElementBetweenPackages moves an element and is a single undo step', async () => {
+    const { packageDiagramId } = await bootstrap();
+    const p1 = useWorkspaceStore
+      .getState()
+      .createPackage(packageDiagramId, { x: 0, y: 0 })!;
+    const p2 = useWorkspaceStore
+      .getState()
+      .createPackage(packageDiagramId, { x: 300, y: 0 })!;
+    const defaultDiagramId = useWorkspaceStore
+      .getState()
+      .diagrams.find((d) => d.viewpointId !== packageViewpoint.id)!.id;
+    useWorkspaceStore.getState().setActiveDiagram(defaultDiagramId);
+    const blockId = useWorkspaceStore.getState().createBlock()!;
+    useWorkspaceStore.getState().addPackageMember(p1, blockId);
+    expect(pkgById(p1)?.memberIds).toEqual([blockId]);
+
+    const moved = useWorkspaceStore
+      .getState()
+      .moveElementBetweenPackages(blockId, p2);
+    expect(moved).toBe(true);
+    expect(pkgById(p1)?.memberIds).toEqual([]);
+    expect(pkgById(p2)?.memberIds).toEqual([blockId]);
+
+    useWorkspaceStore.getState().undo();
+    expect(pkgById(p1)?.memberIds).toEqual([blockId]);
+    expect(pkgById(p2)?.memberIds).toEqual([]);
+
+    useWorkspaceStore.getState().redo();
+    expect(pkgById(p2)?.memberIds).toEqual([blockId]);
+  });
+
+  it('moveElementBetweenPackages also handles the "no current owner" case', async () => {
+    const { packageDiagramId } = await bootstrap();
+    const p1 = useWorkspaceStore
+      .getState()
+      .createPackage(packageDiagramId, { x: 0, y: 0 })!;
+    const defaultDiagramId = useWorkspaceStore
+      .getState()
+      .diagrams.find((d) => d.viewpointId !== packageViewpoint.id)!.id;
+    useWorkspaceStore.getState().setActiveDiagram(defaultDiagramId);
+    const blockId = useWorkspaceStore.getState().createBlock()!;
+    const moved = useWorkspaceStore
+      .getState()
+      .moveElementBetweenPackages(blockId, p1);
+    expect(moved).toBe(true);
+    expect(pkgById(p1)?.memberIds).toEqual([blockId]);
+    useWorkspaceStore.getState().undo();
+    expect(pkgById(p1)?.memberIds).toEqual([]);
+  });
+
+  it('moveElementBetweenPackages rejects invalid moves', async () => {
+    const { packageDiagramId } = await bootstrap();
+    const p1 = useWorkspaceStore
+      .getState()
+      .createPackage(packageDiagramId, { x: 0, y: 0 })!;
+    const p2 = useWorkspaceStore
+      .getState()
+      .createPackage(packageDiagramId, { x: 300, y: 0 })!;
+    // Same target as current owner
+    useWorkspaceStore.getState().setActiveDiagram(
+      useWorkspaceStore
+        .getState()
+        .diagrams.find((d) => d.viewpointId !== packageViewpoint.id)!.id,
+    );
+    const blockId = useWorkspaceStore.getState().createBlock()!;
+    useWorkspaceStore.getState().addPackageMember(p1, blockId);
+    expect(
+      useWorkspaceStore.getState().moveElementBetweenPackages(blockId, p1),
+    ).toBe(false);
+    // Packages cannot be moved into other Packages
+    expect(
+      useWorkspaceStore.getState().moveElementBetweenPackages(p1, p2),
+    ).toBe(false);
+    // Unknown elements rejected
+    expect(
+      useWorkspaceStore
+        .getState()
+        .moveElementBetweenPackages(
+          'unknown' as unknown as ElementId,
+          p2,
+        ),
+    ).toBe(false);
   });
 });

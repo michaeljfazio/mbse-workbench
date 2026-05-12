@@ -43,6 +43,7 @@ import {
   IBD_VIEWPOINT_ID,
   isValidActivityConnection,
   isValidIbdConnection,
+  isValidPackageConnection,
   isValidParametricConnection,
   isValidStateMachineConnection,
   isValidUseCaseConnection,
@@ -89,6 +90,7 @@ import { ParametricPalette } from './ParametricPalette';
 import { StateMachinePalette } from './StateMachinePalette';
 import { UseCasePalette } from './UseCasePalette';
 import {
+  PROJECT_TREE_DRAG_ELEMENT_ID,
   PROJECT_TREE_DRAG_NODE_TYPE,
   PROJECT_TREE_DRAG_STATE_TYPE,
   PROJECT_TREE_DRAG_TYPE,
@@ -390,6 +392,10 @@ function CanvasInner(): JSX.Element {
   const linkParameterBinding = useWorkspaceStore(
     (s) => s.linkParameterBinding,
   );
+  const linkPackageImport = useWorkspaceStore((s) => s.linkPackageImport);
+  const moveElementBetweenPackages = useWorkspaceStore(
+    (s) => s.moveElementBetweenPackages,
+  );
 
   const [pending, setPending] = useState<PendingConnection | null>(null);
   const [pendingPart, setPendingPart] = useState<PendingPartDrop | null>(null);
@@ -649,6 +655,11 @@ function CanvasInner(): JSX.Element {
         if (id) setSelection([id as unknown as ElementId]);
         return;
       }
+      if (viewpoint.id === PACKAGE_VIEWPOINT_ID) {
+        const id = linkPackageImport(connection);
+        if (id) setSelection([id as unknown as ElementId]);
+        return;
+      }
       if (viewpoint.id === USE_CASE_VIEWPOINT_ID && registry) {
         // ADR 0007 § 4: three accepted edge kinds (Include/Extend/Generalization).
         // Popover picker at the drop site — shift-modifier discriminates only
@@ -693,6 +704,7 @@ function CanvasInner(): JSX.Element {
       connectObjectFlow,
       connectStateTransition,
       linkParameterBinding,
+      linkPackageImport,
       setSelection,
       registry,
     ],
@@ -736,6 +748,13 @@ function CanvasInner(): JSX.Element {
       }
       if (viewpoint.id === PARAMETRIC_VIEWPOINT_ID) {
         return isValidParametricConnection(
+          connection as Connection,
+          registry,
+          edges,
+        );
+      }
+      if (viewpoint.id === PACKAGE_VIEWPOINT_ID) {
+        return isValidPackageConnection(
           connection as Connection,
           registry,
           edges,
@@ -1000,6 +1019,11 @@ function CanvasInner(): JSX.Element {
       if (event.dataTransfer.types.includes(PROJECT_TREE_DRAG_TYPE)) {
         event.preventDefault();
         event.dataTransfer.dropEffect = 'copy';
+        return;
+      }
+      if (event.dataTransfer.types.includes(PROJECT_TREE_DRAG_ELEMENT_ID)) {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
       }
     },
     [],
@@ -1008,6 +1032,25 @@ function CanvasInner(): JSX.Element {
   const handleDrop = useCallback(
     (event: React.DragEvent<HTMLDivElement>) => {
       if (!viewpoint || !diagram) return;
+      const droppedElementId = event.dataTransfer.getData(
+        PROJECT_TREE_DRAG_ELEMENT_ID,
+      );
+      if (droppedElementId && viewpoint.id === PACKAGE_VIEWPOINT_ID) {
+        // Find the package node under the cursor. React Flow nodes carry a
+        // `data-id` attribute on the wrapping div; we use elementFromPoint
+        // and walk up to the nearest one. Drops on empty canvas no-op.
+        const point = document.elementFromPoint(event.clientX, event.clientY);
+        const nodeEl = point?.closest<HTMLElement>('[data-id]');
+        const targetPackageId = nodeEl?.getAttribute('data-id');
+        if (!targetPackageId) return;
+        event.preventDefault();
+        const moved = moveElementBetweenPackages(
+          droppedElementId as ElementId,
+          targetPackageId as ElementId,
+        );
+        if (moved) setSelection([droppedElementId as ElementId]);
+        return;
+      }
       const kind = event.dataTransfer.getData(PROJECT_TREE_DRAG_TYPE);
       if (!kind) return;
       if (!viewpoint.acceptedElementKinds.includes(kind as ElementKind)) return;
@@ -1146,6 +1189,7 @@ function CanvasInner(): JSX.Element {
       createConstraintUsage,
       createValueProperty,
       createPackage,
+      moveElementBetweenPackages,
       setSelection,
     ],
   );
