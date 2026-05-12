@@ -90,6 +90,7 @@ import {
   type DiagramId,
   type NodePosition,
 } from './diagram';
+import { computeImpactSet } from './impact/impact-set';
 
 export const LAYOUT_STORAGE_KEY = 'mbse:v1:workspace:layout';
 
@@ -191,6 +192,9 @@ export interface WorkspaceState {
   readonly inspectorTab: InspectorTab;
   readonly storage: Storage | null;
   readonly modelVersion: number;
+  readonly impactRootId: ElementId | null;
+  readonly impactHighlightedIds: ReadonlySet<ElementId>;
+  readonly impactHighlightedEdgeIds: ReadonlySet<EdgeId>;
 }
 
 export interface CreateDiagramOptions {
@@ -349,6 +353,8 @@ export interface WorkspaceActions {
   ): boolean;
   undo(): void;
   redo(): void;
+  runImpactAnalysis(rootId: ElementId): boolean;
+  clearImpactHighlight(): void;
 }
 
 export type WorkspaceStore = WorkspaceState & WorkspaceActions;
@@ -372,6 +378,9 @@ const INITIAL_STATE: WorkspaceState = {
   inspectorTab: 'inspector',
   storage: null,
   modelVersion: 0,
+  impactRootId: null,
+  impactHighlightedIds: new Set<ElementId>(),
+  impactHighlightedEdgeIds: new Set<EdgeId>(),
 };
 
 function newEmptyProject(): Project {
@@ -717,11 +726,30 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
     bus.subscribe(() => {
       const r = get().registry;
       if (!r) return;
-      set({
-        elements: r.elements(),
-        edges: r.edges(),
+      const nextElements = r.elements();
+      const nextEdges = r.edges();
+      const nextState: Partial<WorkspaceState> = {
+        elements: nextElements,
+        edges: nextEdges,
         modelVersion: get().bus?.version() ?? 0,
-      });
+      };
+      const activeRoot = get().impactRootId;
+      if (activeRoot !== null) {
+        if (!nextElements.some((e) => e.id === activeRoot)) {
+          nextState.impactRootId = null;
+          nextState.impactHighlightedIds = new Set<ElementId>();
+          nextState.impactHighlightedEdgeIds = new Set<EdgeId>();
+        } else {
+          const recomputed = computeImpactSet({
+            rootElementId: activeRoot,
+            elements: nextElements,
+            edges: nextEdges,
+          });
+          nextState.impactHighlightedIds = new Set(recomputed.elementIds);
+          nextState.impactHighlightedEdgeIds = new Set(recomputed.edgeIds);
+        }
+      }
+      set(nextState);
       // Autosave after every committed dispatch so a page refresh sees the
       // latest model. The repository is sessionStorage-backed; the call is
       // effectively synchronous and any failure is swallowed there.
@@ -2020,6 +2048,36 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
 
   redo() {
     get().bus?.redo();
+  },
+
+  runImpactAnalysis(rootId) {
+    const { elements, edges } = get();
+    if (!elements.some((e) => e.id === rootId)) {
+      set({
+        impactRootId: null,
+        impactHighlightedIds: new Set<ElementId>(),
+        impactHighlightedEdgeIds: new Set<EdgeId>(),
+      });
+      return false;
+    }
+    const result = computeImpactSet({ rootElementId: rootId, elements, edges });
+    set({
+      impactRootId: rootId,
+      impactHighlightedIds: new Set(result.elementIds),
+      impactHighlightedEdgeIds: new Set(result.edgeIds),
+    });
+    return true;
+  },
+
+  clearImpactHighlight() {
+    if (get().impactRootId === null && get().impactHighlightedIds.size === 0) {
+      return;
+    }
+    set({
+      impactRootId: null,
+      impactHighlightedIds: new Set<ElementId>(),
+      impactHighlightedEdgeIds: new Set<EdgeId>(),
+    });
   },
 }));
 
