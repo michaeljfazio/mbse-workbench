@@ -58,6 +58,7 @@ import {
   ibdViewpoint,
   isValidActivityConnection,
   isValidStateMachineConnection,
+  parametricViewpoint,
   REQUIREMENTS_VIEWPOINT_ID,
   requirementsViewpoint,
   stateMachineViewpoint,
@@ -145,6 +146,7 @@ function buildViewpointSingleton(): ViewpointRegistry {
   registry.register(activityViewpoint);
   registry.register(stateMachineViewpoint);
   registry.register(useCaseViewpoint);
+  registry.register(parametricViewpoint);
   return registry;
 }
 
