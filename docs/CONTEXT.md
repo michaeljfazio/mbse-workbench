@@ -875,3 +875,24 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
   diagram and select the first incoming trace's source Requirement. The
   context menu entry is omitted when the element has zero incoming traces
   or when no Requirements diagram exists yet.
+
+- **2026-05-12** — When a viewpoint phase ships persistent canvas chrome
+  (a palette chip strip, a toolbar overlay, a header band, etc.) that is
+  visible *whenever that viewpoint is active*, the previously-committed
+  `<viewpoint>-empty` baseline becomes stale too — not just the new
+  spec's baselines. Caught in iteration 37: #88 added the
+  `ActivityPalette` chip strip under the Activity toolbar, which pushed
+  ~9k pixels of difference into the existing `activity-empty.spec.ts`
+  baseline (committed in #87 before the strip existed). The first three
+  CI runs failed on a moving target: run 1 failed on the six new #88
+  baselines (arm64↔amd64 divergence — refreshed via the iter-25 CI
+  extract); run 2 still failed on the *pre-existing* activity-empty
+  baseline; run 3 finally cleared after refreshing it too. Lesson for
+  future viewpoint phases: when the node/palette PR introduces canvas
+  chrome, plan the baseline-refresh step to cover **every** committed
+  baseline that screenshots the same viewpoint, not only the new
+  spec's. The diff PNG in the failed run's `playwright-report` makes
+  the call obvious — wholesale text-region red overlay = anti-aliasing
+  divergence; localized red overlay over the new chrome region = stale
+  layout. Both are routine; both are fixed by copying CI's `*-actual.png`
+  over the baseline.
