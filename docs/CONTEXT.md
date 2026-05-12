@@ -956,3 +956,28 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
   `parametric-binding-edge-${id}`, label → `parametric-binding-label-${id}`).
   Generalizes to all custom edge components with `EdgeLabelRenderer`
   children.
+- **2026-05-13** — `pnpm typecheck` (`tsc --noEmit` from root) and
+  `pnpm run build` (`tsc -b` with project references) disagree on
+  readonly-property assignability. A `Partial<WorkspaceState>` local
+  whose properties are declared `readonly` is silently accepted by
+  `tsc --noEmit` but rejected by `tsc -b` with TS2540 ("Cannot assign
+  to '<prop>' because it is a read-only property"). Iteration 86 caught
+  this on PR #186: local typecheck green, CI build red. Fix: declare
+  patch locals as `{ -readonly [K in keyof T]?: T[K] }` so the
+  mapped-type strips readonly. Pre-PR: prefer `pnpm run build` over
+  bare `pnpm typecheck` when adding store-state patches via locals.
+
+- **2026-05-13 (iter-90): Playwright `--update-snapshots` is conditional,
+  not unconditional, in v1.48.** If an existing baseline already matches
+  the new render within `maxDiffPixelRatio` (we use 0.01), `--update-
+  snapshots` will NOT overwrite it. This means a stale baseline that
+  happens to fall within tolerance survives regen runs, accumulating
+  semantic drift until one more small change pushes total diff over
+  threshold and CI goes red on a seemingly-unrelated PR. Symptom on
+  iter-90: PR #189 added a single new menu item; CI failed on a baseline
+  that had been visually wrong for several phases (still showed the
+  pre-tree-groups project tree). Fix pattern when regenerating a known-
+  stale baseline: `rm -f tests/e2e/__screenshots__/.../<file>.png` BEFORE
+  running `playwright test --update-snapshots`. "Snapshot doesn't
+  exist, writing actual" is the line you want; an unannotated `✓
+  passed` under `--update-snapshots` means the file was NOT rewritten.
