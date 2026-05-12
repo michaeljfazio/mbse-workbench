@@ -4,10 +4,10 @@
 phase:10 — Requirements traceability. Phase 9 closed (epic #10) and `vphase-9` tagged at 82b8262 (release workflow run 25762425334 deployed successfully; live URL 200; smoke-walk artifacts captured under `artifacts/release-vphase-9/` via PR #180; release issue #171 closed iter-87). Phase 10 child issues open: #173 editor (in-progress), #175 link-via-inspector (in-progress as of recent slices), #176 coverage (in-progress), #177 impact (in-progress, current focus), #178 gate spec (ready), plus matrix #174 (closed).
 
 ## Current iteration
-- Iteration #: 87
+- Iteration #: 88
 - Started: 2026-05-13
-- Branch: chore/status-iter-84 (STATUS update folded onto existing chore PR #187; per iter-73 lesson, no new chore branch stacked while idle).
-- Working on: Idle on the slice — PR #186 CI still IN_PROGRESS (run 25765685575 started 22:22Z on `issue/177-impact-set-helpers` after 3d8db99). Closed vphase-9 release issue #171: smoke-walk PR #180 had already landed 2026-05-12 with four screenshots in `artifacts/release-vphase-9/` and on the GitHub Release; release tracker now off the open list. Slice 3/N (impact UI) is built on slice-2 store wiring in #186 — cannot start in parallel without rebase pain.
+- Branch: chore/status-iter-84 (STATUS PR #187, behind→merge main folded in this iteration).
+- Working on: #177 slice 3a/N landed as PR #189 (auto-merge --squash enabled) — context-menu "Show impact" nav target wired through CanvasPane to the slice-2 store action. PR #186 (slices 1+2/N consolidated) squash-merged at 22:29Z (commit a6722f7); base branch `issue/177-impact-set-helpers` deleted, so #189 was retargeted to main via `git merge origin/main` (no rebase per AGENT.md). Slice 3b/N (node ring + edge highlight + dismissible banner) follows.
 
 ## Last health check
 - Date: 2026-05-13 (iter-80)
@@ -18,11 +18,11 @@ phase:10 — Requirements traceability. Phase 9 closed (epic #10) and `vphase-9`
 - Result: PASS. Next health check due at iter-90.
 
 ## Last test run
-- Command: `pnpm run build && pnpm test:unit` (local, on `issue/177-impact-set-helpers` after merging origin/main + applying 3d8db99, iter-86)
-- Result: PASS — `tsc -b && vite build` clean (the failing mode), 645 unit tests / 58 files green.
+- Command: `pnpm run build && pnpm test:unit -- --run tests/unit/workspace/navTargets.test.ts` (local on `issue/177-impact-ui-slice-3`, iter-88)
+- Result: PASS — `tsc -b && vite build` clean, 647 unit tests / 58 files green (slice 3a adds two `show-impact target` cases on top of slice-2's 645).
 
 ## Known issues / blockers
-- None functional. Release workflow run 25762425334 queued on tag `vphase-9` push — watch for deploy green then exercise live URL in Playwright walkthrough (eight viewpoints) and save screenshots under `artifacts/release-vphase-9/` per AGENT.md Ralph loop step 17.
+- None functional. PR #189 auto-merge enabled; CI running on the slice-3a branch.
 
 ## Decisions log
 - 2026-05-11: Bootstrap as a single committed scaffold, not iterative through child PRs. Reason: AGENT.md Phase 0 explicitly lists scaffold steps as the bootstrap and instructs iteration 1 to "run Phase 0 bootstrap" when STATUS.md is missing; opening child issues against an empty repo with no CI yet would be the wrong order. Child issues for any *remaining* Phase 0 polish are opened after the initial commit.
@@ -70,6 +70,7 @@ phase:10 — Requirements traceability. Phase 9 closed (epic #10) and `vphase-9`
 - 2026-05-13: **Iteration 85 — #177 slice 2/N PR #188 opened.** Store wiring: three new readonly state fields (`impactRootId`, `impactHighlightedIds`, `impactHighlightedEdgeIds`); two new actions (`runImpactAnalysis(rootId)` returns false for unknown id and clears; `clearImpactHighlight()` is a no-op when already empty); bus-subscriber recompute when model changes under an active root (drops on root delete). +8 unit cases (645 total). PR base set to `issue/177-impact-set-helpers` so the diff is just the slice; will retarget to `main` after #186 lands. Auto-merge --squash enabled.
 - 2026-05-13: **Iteration 87 — vphase-9 release issue #171 closed.** Live deploy verified HTTP 200; smoke-walk PR #180 landed on 2026-05-12 with screenshots committed under `artifacts/release-vphase-9/` and attached to the GitHub Release. PR #186 CI for the consolidated slice-1+2 still IN_PROGRESS; no parallel work picked up (slice-3 UI depends on slice-2 store wiring inside #186).
 - 2026-05-13: **Iteration 86 — PR #186 CI red recovered (3d8db99).** PR #188 squash-merged into the slice-1 branch (its base), consolidating slices 1+2/N on `issue/177-impact-set-helpers`. CI then failed on `tsc -b`: TS2540 on five lines in the bus subscriber assigning to `readonly impactRootId`/`impactHighlightedIds`/`impactHighlightedEdgeIds` of a `Partial<WorkspaceState>` local. `pnpm typecheck` (`tsc --noEmit`) had silently accepted it — disagreement between root tsc and project-references tsc on mapped-type readonly. Fix: typed the patch local with `{ -readonly [K in keyof WorkspaceState]?: WorkspaceState[K] }`. Merged `origin/main` to clear BEHIND. Local `pnpm run build` green; 645 unit tests green. Lesson recorded in `docs/CONTEXT.md`: prefer `pnpm run build` over bare `pnpm typecheck` when patching store state through locals.
+- 2026-05-13: **Iteration 88 — #177 slice 3a/N PR #189 opened.** Context-menu "Show impact" nav target: `NavTargetActions.runImpactAnalysis(id)` added; `deriveNavTargets` appends a universal `show-impact` entry as the LAST target on every right-clicked element; CanvasPane selects the new action and threads it into `openContextMenuForElement`'s actions bag. 6 existing assertions in `tests/unit/workspace/navTargets.test.ts` updated for the universal append + 2 new `describe('show-impact target', ...)` cases (ordering + perform→runImpactAnalysis). PR #186 squash-merged at 22:29Z (commit a6722f7) while slice 3a was authored; the deleted base branch was handled by retargeting #189 to `main` via `git merge origin/main` (no rebase, no `--force`). Auto-merge --squash enabled.
 
 ## Next action
-Watch PR #186 (slices 1+2/N consolidated) CI run 25765685575; auto-merge lands it on main. Then pick up slice 3/N of #177 — UI surface: right-click "Show impact" on canvas nodes / tree leaves invokes `runImpactAnalysis(id)`; CanvasPane renders a glow/ring on highlighted nodes and a thicker stroke on highlighted edges; a dismissible banner shows "Impact: <root name> — N elements" with a Clear button wired to `clearImpactHighlight()`. Phase 10 gate spec (#178) follows.
+Watch PR #189 (slice 3a/N) auto-merge. Then pick up slice 3b/N of #177 — visible feedback for impact highlight: (a) node ring/glow on highlighted nodes via a new `isImpactHighlighted` prop fed from `impactHighlightedIds`; (b) thicker/coloured stroke on highlighted edges from `impactHighlightedEdgeIds`; (c) dismissible banner "Impact: <root name> — N elements" with a Clear button wired to `clearImpactHighlight()`. Phase 10 gate spec (#178) follows after slice 3b.
