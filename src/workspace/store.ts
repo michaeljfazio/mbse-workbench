@@ -4,6 +4,7 @@ import type {
   ActionNodeType,
   ActionUsageElement,
   ConnectionUsageElement,
+  ControlFlowEdge,
   EdgeId,
   EdgePatch,
   ElementId,
@@ -12,6 +13,7 @@ import type {
   ItemFlowElement,
   ModelEdge,
   ModelElement,
+  ObjectFlowEdge,
   PartDefinitionElement,
   PartUsageElement,
   PortDefinitionElement,
@@ -46,6 +48,7 @@ import {
   dagreLayout,
   IBD_VIEWPOINT_ID,
   ibdViewpoint,
+  isValidActivityConnection,
   REQUIREMENTS_VIEWPOINT_ID,
   requirementsViewpoint,
   type BddEdgeKind,
@@ -251,6 +254,10 @@ export interface WorkspaceActions {
     traceKind: RequirementTraceKind,
   ): EdgeId | null;
   setRequirementTraceLabel(id: EdgeId, label: string): void;
+  connectControlFlow(connection: Connection): EdgeId | null;
+  connectObjectFlow(connection: Connection): EdgeId | null;
+  setControlFlowGuard(id: EdgeId, guard: string): void;
+  setObjectFlowItemType(id: EdgeId, itemType: string): void;
   undo(): void;
   redo(): void;
 }
@@ -1217,6 +1224,64 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
     const next = trimmed.length === 0 ? undefined : trimmed;
     if ((existing.label ?? undefined) === next) return;
     const patch: EdgePatch<'RequirementTrace'> = { label: next };
+    bus.dispatch({ kind: 'update-edge', id, patch }, user);
+  },
+
+  connectControlFlow(connection) {
+    const { bus, user, registry } = get();
+    if (!bus || !user || !registry) return null;
+    if (!isValidActivityConnection(connection, registry)) return null;
+    const { source, target } = connection;
+    if (!source || !target) return null;
+    const edgeId = createEdgeId();
+    const edge: ControlFlowEdge = {
+      id: edgeId,
+      kind: 'ControlFlow',
+      sourceId: source as ElementId,
+      targetId: target as ElementId,
+    };
+    bus.dispatch({ kind: 'link', edge }, user);
+    return edgeId;
+  },
+
+  connectObjectFlow(connection) {
+    const { bus, user, registry } = get();
+    if (!bus || !user || !registry) return null;
+    if (!isValidActivityConnection(connection, registry)) return null;
+    const { source, target } = connection;
+    if (!source || !target) return null;
+    const edgeId = createEdgeId();
+    const edge: ObjectFlowEdge = {
+      id: edgeId,
+      kind: 'ObjectFlow',
+      sourceId: source as ElementId,
+      targetId: target as ElementId,
+    };
+    bus.dispatch({ kind: 'link', edge }, user);
+    return edgeId;
+  },
+
+  setControlFlowGuard(id, guard) {
+    const { bus, user, registry } = get();
+    if (!bus || !user || !registry) return;
+    const existing = registry.getEdge(id);
+    if (!existing || existing.kind !== 'ControlFlow') return;
+    const trimmed = guard.trim();
+    const next = trimmed.length === 0 ? undefined : trimmed;
+    if ((existing.guard ?? undefined) === next) return;
+    const patch: EdgePatch<'ControlFlow'> = { guard: next };
+    bus.dispatch({ kind: 'update-edge', id, patch }, user);
+  },
+
+  setObjectFlowItemType(id, itemType) {
+    const { bus, user, registry } = get();
+    if (!bus || !user || !registry) return;
+    const existing = registry.getEdge(id);
+    if (!existing || existing.kind !== 'ObjectFlow') return;
+    const trimmed = itemType.trim();
+    const next = trimmed.length === 0 ? undefined : trimmed;
+    if ((existing.itemType ?? undefined) === next) return;
+    const patch: EdgePatch<'ObjectFlow'> = { itemType: next };
     bus.dispatch({ kind: 'update-edge', id, patch }, user);
   },
 

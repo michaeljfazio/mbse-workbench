@@ -106,9 +106,12 @@ export {
   ACTIVITY_PSEUDOSTATE_CIRCLE_SIZE,
   ACTIVITY_VIEWPOINT_ID,
   ActionUsageNode,
+  ActivityControlFlowEdge,
+  ActivityObjectFlowEdge,
   actionNodeSize,
   activityViewpoint,
   isRenamablePseudostate,
+  isValidActivityConnection,
 } from './activity';
 
 export type {
@@ -116,6 +119,10 @@ export type {
   ActionRenameCallback,
   ActionUsageFlowNode,
   ActionUsageNodeData,
+  ActivityControlFlowEdgeData,
+  ActivityControlFlowFlowEdge,
+  ActivityObjectFlowEdgeData,
+  ActivityObjectFlowFlowEdge,
 } from './activity';
 
 export type {
