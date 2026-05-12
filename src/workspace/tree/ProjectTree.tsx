@@ -16,6 +16,7 @@ export const PROJECT_TREE_DRAG_TYPE = 'application/x-mbse-element-kind';
 // pseudostates) that need to discriminate which sub-variant of an
 // `ElementKind` to create. Read by CanvasPane after PROJECT_TREE_DRAG_TYPE.
 export const PROJECT_TREE_DRAG_NODE_TYPE = 'application/x-mbse-action-node-type';
+export const PROJECT_TREE_DRAG_STATE_TYPE = 'application/x-mbse-state-node-type';
 
 interface TreeGroup {
   readonly kind: ElementKind;
@@ -324,13 +325,16 @@ export function ProjectTree(): JSX.Element {
                     element.kind === 'Requirement' && element.reqId
                       ? element.reqId
                       : undefined;
-                  // ActionUsage pseudostates (initial / final / fork / join)
-                  // commonly have empty names — show the nodeType in guillemets
-                  // so the leaf is identifiable in the tree.
+                  // Pseudostates (Activity initial/final/fork/join,
+                  // State Machine initial/final) commonly have empty names —
+                  // show the discriminator in guillemets so the leaf is
+                  // identifiable in the tree.
                   const displayName =
                     element.name.length === 0 && element.kind === 'ActionUsage'
                       ? `«${element.nodeType}»`
-                      : element.name;
+                      : element.name.length === 0 && element.kind === 'StateUsage'
+                        ? `«${element.stateType}»`
+                        : element.name;
                   return (
                     <div
                       key={element.id}

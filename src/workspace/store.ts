@@ -24,6 +24,8 @@ import type {
   RequirementStatus,
   RequirementTraceEdge,
   RequirementTraceKind,
+  StateNodeType,
+  StateUsageElement,
 } from '@/model';
 import {
   createEdgeId,
@@ -233,6 +235,15 @@ export interface WorkspaceActions {
     nodeType: ActionNodeType,
     options?: CreateActionUsageOptions,
   ): ElementId | null;
+  createStateUsage(
+    diagramId: DiagramId,
+    position: NodePosition,
+    stateType: StateNodeType,
+    options?: CreateStateUsageOptions,
+  ): ElementId | null;
+  setStateEntryAction(id: ElementId, value: string): void;
+  setStateExitAction(id: ElementId, value: string): void;
+  setStateDoAction(id: ElementId, value: string): void;
   setActionDefinition(
     id: ElementId,
     definitionId: ElementId | null,
@@ -436,6 +447,22 @@ export interface CreateRequirementOptions {
 export interface CreateActionUsageOptions {
   readonly name?: string;
   readonly definitionId?: ElementId;
+}
+
+export interface CreateStateUsageOptions {
+  readonly name?: string;
+  readonly definitionId?: ElementId;
+}
+
+function nextStateName(elements: readonly ModelElement[]): string {
+  const taken = new Set(
+    elements
+      .filter((e): e is StateUsageElement => e.kind === 'StateUsage')
+      .map((e) => e.name),
+  );
+  let n = taken.size + 1;
+  while (taken.has(`State${n}`)) n += 1;
+  return `State${n}`;
 }
 
 export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
@@ -1085,6 +1112,79 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       user,
     );
     return id;
+  },
+
+  createStateUsage(diagramId, position, stateType, options) {
+    const { bus, user, registry, diagrams, elements } = get();
+    if (!bus || !user || !registry) return null;
+    if (!diagrams.some((d) => d.id === diagramId)) return null;
+    // Initial / final pseudostates have no displayed name. Skipping the
+    // default name keeps the canvas visually clean and matches the Activity
+    // pattern for the same pseudostates.
+    const isNameableByDefault = stateType === 'state';
+    const defaultName = isNameableByDefault ? nextStateName(elements) : '';
+    const id = createElementId();
+    const state: StateUsageElement = {
+      id,
+      kind: 'StateUsage',
+      name: options?.name?.trim() ?? defaultName,
+      stateType,
+      ...(options?.definitionId !== undefined
+        ? { definitionId: options.definitionId }
+        : {}),
+    };
+    bus.dispatch(
+      {
+        kind: 'compound',
+        commands: [
+          { kind: 'create-element', element: state },
+          {
+            kind: 'update-diagram-position',
+            diagramId,
+            elementId: id,
+            position,
+          },
+        ],
+      },
+      user,
+    );
+    return id;
+  },
+
+  setStateEntryAction(id, value) {
+    const { bus, user, registry } = get();
+    if (!bus || !user || !registry) return;
+    const existing = registry.get(id);
+    if (!existing || existing.kind !== 'StateUsage') return;
+    const trimmed = value.trim();
+    const next = trimmed.length === 0 ? undefined : trimmed;
+    if ((existing.entryAction ?? undefined) === next) return;
+    const patch: ElementPatch<'StateUsage'> = { entryAction: next };
+    bus.dispatch({ kind: 'update-element', id, patch }, user);
+  },
+
+  setStateExitAction(id, value) {
+    const { bus, user, registry } = get();
+    if (!bus || !user || !registry) return;
+    const existing = registry.get(id);
+    if (!existing || existing.kind !== 'StateUsage') return;
+    const trimmed = value.trim();
+    const next = trimmed.length === 0 ? undefined : trimmed;
+    if ((existing.exitAction ?? undefined) === next) return;
+    const patch: ElementPatch<'StateUsage'> = { exitAction: next };
+    bus.dispatch({ kind: 'update-element', id, patch }, user);
+  },
+
+  setStateDoAction(id, value) {
+    const { bus, user, registry } = get();
+    if (!bus || !user || !registry) return;
+    const existing = registry.get(id);
+    if (!existing || existing.kind !== 'StateUsage') return;
+    const trimmed = value.trim();
+    const next = trimmed.length === 0 ? undefined : trimmed;
+    if ((existing.doAction ?? undefined) === next) return;
+    const patch: ElementPatch<'StateUsage'> = { doAction: next };
+    bus.dispatch({ kind: 'update-element', id, patch }, user);
   },
 
   setActionDefinition(id, definitionId) {
