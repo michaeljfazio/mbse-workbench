@@ -6,6 +6,9 @@ import type {
   ConnectionUsageElement,
   ControlFlowEdge,
   ElementId,
+  ExtendEdge,
+  GeneralizationEdge,
+  IncludeEdge,
   ItemFlowElement,
   ModelEdge,
   ModelElement,
@@ -107,6 +110,15 @@ export function Inspector(): JSX.Element {
   }
   if (edge && edge.kind === 'ObjectFlow') {
     return <InspectorObjectFlowEdge edge={edge} />;
+  }
+  if (edge && edge.kind === 'Include') {
+    return <InspectorIncludeEdge edge={edge} />;
+  }
+  if (edge && edge.kind === 'Extend') {
+    return <InspectorExtendEdge edge={edge} />;
+  }
+  if (edge && edge.kind === 'Generalization') {
+    return <InspectorGeneralizationEdge edge={edge} />;
   }
   return (
     <p data-testid="inspector-missing" className="text-muted-foreground">
@@ -800,6 +812,205 @@ function InspectorObjectFlowEdge({
           className="rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground shadow-sm focus:border-primary focus:outline-none"
         />
       </div>
+    </div>
+  );
+}
+
+function describeUseCaseEndpoint(
+  elements: readonly ModelElement[],
+  id: ElementId,
+): string {
+  const el = elements.find((e) => e.id === id);
+  if (!el) return 'unknown';
+  if (el.kind === 'Actor' || el.kind === 'UseCase') {
+    return el.name.length > 0 ? el.name : `«${el.kind}»`;
+  }
+  return `${el.kind} · ${el.name}`;
+}
+
+interface InspectorIncludeEdgeProps {
+  readonly edge: IncludeEdge;
+}
+
+function InspectorIncludeEdge({ edge }: InspectorIncludeEdgeProps): JSX.Element {
+  const elements = useWorkspaceStore((s) => s.elements);
+  const sourceLabel = useMemo(
+    () => describeUseCaseEndpoint(elements, edge.sourceId),
+    [elements, edge.sourceId],
+  );
+  const targetLabel = useMemo(
+    () => describeUseCaseEndpoint(elements, edge.targetId),
+    [elements, edge.targetId],
+  );
+
+  return (
+    <div
+      data-testid="inspector-include-edge"
+      data-edge-id={edge.id}
+      className="flex flex-col gap-4"
+    >
+      <header className="flex flex-col gap-0.5">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-foreground/75">
+          Include
+        </span>
+        <span className="text-sm font-medium text-foreground">
+          «include» relationship
+        </span>
+      </header>
+      <dl
+        data-testid="inspector-include-endpoints"
+        className="flex flex-col gap-1 rounded-md border border-dashed border-border bg-muted/40 px-2 py-1.5 text-xs text-foreground/75"
+      >
+        <div className="flex gap-2">
+          <dt className="font-semibold uppercase tracking-wide">Source</dt>
+          <dd data-testid="inspector-include-source">{sourceLabel}</dd>
+        </div>
+        <div className="flex gap-2">
+          <dt className="font-semibold uppercase tracking-wide">Target</dt>
+          <dd data-testid="inspector-include-target">{targetLabel}</dd>
+        </div>
+      </dl>
+    </div>
+  );
+}
+
+interface InspectorExtendEdgeProps {
+  readonly edge: ExtendEdge;
+}
+
+function InspectorExtendEdge({ edge }: InspectorExtendEdgeProps): JSX.Element {
+  const elements = useWorkspaceStore((s) => s.elements);
+  const setExtendExtensionPoint = useWorkspaceStore(
+    (s) => s.setExtendExtensionPoint,
+  );
+
+  const sourceLabel = useMemo(
+    () => describeUseCaseEndpoint(elements, edge.sourceId),
+    [elements, edge.sourceId],
+  );
+  const targetLabel = useMemo(
+    () => describeUseCaseEndpoint(elements, edge.targetId),
+    [elements, edge.targetId],
+  );
+
+  const [draft, setDraft] = useState(edge.extensionPoint ?? '');
+  useEffect(() => {
+    setDraft(edge.extensionPoint ?? '');
+  }, [edge.id, edge.extensionPoint]);
+  const inputId = useMemo(
+    () => `inspector-extend-extension-point-${edge.id}`,
+    [edge.id],
+  );
+
+  const commit = (): void => {
+    if (draft !== (edge.extensionPoint ?? '')) {
+      setExtendExtensionPoint(edge.id, draft);
+    }
+  };
+
+  return (
+    <div
+      data-testid="inspector-extend-edge"
+      data-edge-id={edge.id}
+      className="flex flex-col gap-4"
+    >
+      <header className="flex flex-col gap-0.5">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-foreground/75">
+          Extend
+        </span>
+        <span className="text-sm font-medium text-foreground">
+          «extend» relationship
+        </span>
+      </header>
+      <dl
+        data-testid="inspector-extend-endpoints"
+        className="flex flex-col gap-1 rounded-md border border-dashed border-border bg-muted/40 px-2 py-1.5 text-xs text-foreground/75"
+      >
+        <div className="flex gap-2">
+          <dt className="font-semibold uppercase tracking-wide">Source</dt>
+          <dd data-testid="inspector-extend-source">{sourceLabel}</dd>
+        </div>
+        <div className="flex gap-2">
+          <dt className="font-semibold uppercase tracking-wide">Target</dt>
+          <dd data-testid="inspector-extend-target">{targetLabel}</dd>
+        </div>
+      </dl>
+      <div className="flex flex-col gap-1.5">
+        <label
+          htmlFor={inputId}
+          className="text-xs font-medium text-muted-foreground"
+        >
+          Extension point
+        </label>
+        <input
+          id={inputId}
+          type="text"
+          value={draft}
+          data-testid="inspector-extend-extension-point"
+          placeholder="e.g. afterPayment"
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              (e.target as HTMLInputElement).blur();
+            } else if (e.key === 'Escape') {
+              e.preventDefault();
+              setDraft(edge.extensionPoint ?? '');
+              (e.target as HTMLInputElement).blur();
+            }
+          }}
+          className="rounded-md border border-border bg-background px-2 py-1.5 font-mono text-sm text-foreground shadow-sm focus:border-primary focus:outline-none"
+        />
+      </div>
+    </div>
+  );
+}
+
+interface InspectorGeneralizationEdgeProps {
+  readonly edge: GeneralizationEdge;
+}
+
+function InspectorGeneralizationEdge({
+  edge,
+}: InspectorGeneralizationEdgeProps): JSX.Element {
+  const elements = useWorkspaceStore((s) => s.elements);
+  const sourceLabel = useMemo(
+    () => describeUseCaseEndpoint(elements, edge.sourceId),
+    [elements, edge.sourceId],
+  );
+  const targetLabel = useMemo(
+    () => describeUseCaseEndpoint(elements, edge.targetId),
+    [elements, edge.targetId],
+  );
+
+  return (
+    <div
+      data-testid="inspector-generalization-edge"
+      data-edge-id={edge.id}
+      className="flex flex-col gap-4"
+    >
+      <header className="flex flex-col gap-0.5">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-foreground/75">
+          Generalization
+        </span>
+        <span className="text-sm font-medium text-foreground">
+          Inheritance relationship
+        </span>
+      </header>
+      <dl
+        data-testid="inspector-generalization-endpoints"
+        className="flex flex-col gap-1 rounded-md border border-dashed border-border bg-muted/40 px-2 py-1.5 text-xs text-foreground/75"
+      >
+        <div className="flex gap-2">
+          <dt className="font-semibold uppercase tracking-wide">Source</dt>
+          <dd data-testid="inspector-generalization-source">{sourceLabel}</dd>
+        </div>
+        <div className="flex gap-2">
+          <dt className="font-semibold uppercase tracking-wide">Target</dt>
+          <dd data-testid="inspector-generalization-target">{targetLabel}</dd>
+        </div>
+      </dl>
     </div>
   );
 }

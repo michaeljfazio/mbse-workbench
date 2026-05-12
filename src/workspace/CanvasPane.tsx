@@ -23,6 +23,7 @@ import type {
   PartDefinitionElement,
   RequirementTraceKind,
 } from '@/model';
+import type { UseCaseEdgeKind } from '@/viewpoints';
 import { isActionNodeType, isStateNodeType } from '@/model';
 import {
   BDD_BLOCK_HEIGHT,
@@ -33,14 +34,17 @@ import {
   ACTIVITY_ACTION_WIDTH,
   ACTIVITY_VIEWPOINT_ID,
   actionNodeSize,
+  allowedUseCaseEdgeKindsFor,
   BDD_VIEWPOINT_ID,
   buildPortUsageOwnership,
+  defaultUseCaseEdgeKindFor,
   IBD_PART_USAGE_HEIGHT,
   IBD_PART_USAGE_WIDTH,
   IBD_VIEWPOINT_ID,
   isValidActivityConnection,
   isValidIbdConnection,
   isValidStateMachineConnection,
+  isValidUseCaseConnection,
   REQUIREMENT_NODE_HEIGHT,
   REQUIREMENT_NODE_WIDTH,
   REQUIREMENTS_VIEWPOINT_ID,
@@ -65,6 +69,7 @@ import { EdgeKindPopover } from './EdgeKindPopover';
 import { ExportMenu } from './ExportMenu';
 import { PartUsageTypePopover } from './PartUsageTypePopover';
 import { TraceKindPopover } from './TraceKindPopover';
+import { UseCaseEdgeKindPopover } from './UseCaseEdgeKindPopover';
 import type { Diagram } from './diagram';
 import { downloadDiagramPng, downloadDiagramSvg } from './export';
 import {
@@ -96,6 +101,14 @@ interface PendingPartDrop {
 interface PendingTrace {
   readonly connection: Connection;
   readonly allowedKinds: readonly RequirementTraceKind[];
+  readonly x: number;
+  readonly y: number;
+}
+
+interface PendingUseCaseEdge {
+  readonly connection: Connection;
+  readonly allowedKinds: readonly UseCaseEdgeKind[];
+  readonly defaultKind: UseCaseEdgeKind;
   readonly x: number;
   readonly y: number;
 }
@@ -223,6 +236,13 @@ function toFlowEdges(
       data.itemType = e.itemType;
       data.label = e.label;
     }
+    if (e.kind === 'Include') {
+      data.label = e.label;
+    }
+    if (e.kind === 'Extend') {
+      data.label = e.label;
+      data.extensionPoint = e.extensionPoint;
+    }
     out.push({
       id: e.id,
       type: viewpoint.edgeTypeFor(e),
@@ -327,10 +347,13 @@ function CanvasInner(): JSX.Element {
   const linkRequirementTrace = useWorkspaceStore(
     (s) => s.linkRequirementTrace,
   );
+  const linkUseCaseEdge = useWorkspaceStore((s) => s.linkUseCaseEdge);
 
   const [pending, setPending] = useState<PendingConnection | null>(null);
   const [pendingPart, setPendingPart] = useState<PendingPartDrop | null>(null);
   const [pendingTrace, setPendingTrace] = useState<PendingTrace | null>(null);
+  const [pendingUseCaseEdge, setPendingUseCaseEdge] =
+    useState<PendingUseCaseEdge | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const isConnectingRef = useRef(false);
@@ -577,6 +600,39 @@ function CanvasInner(): JSX.Element {
         setPendingTrace({ connection, allowedKinds: allowed, x, y });
         return;
       }
+      if (viewpoint.id === USE_CASE_VIEWPOINT_ID && registry) {
+        // ADR 0007 § 4: three accepted edge kinds (Include/Extend/Generalization).
+        // Popover picker at the drop site — shift-modifier discriminates only
+        // two kinds, so it's not enough here.
+        if (!isValidUseCaseConnection(connection, registry)) return;
+        const sourceEl = registry.get(connection.source as ElementId);
+        const targetEl = registry.get(connection.target as ElementId);
+        if (!sourceEl || !targetEl) return;
+        const allowed = allowedUseCaseEdgeKindsFor(sourceEl, targetEl);
+        if (allowed.length === 0) return;
+        const defaultKind = defaultUseCaseEdgeKindFor(sourceEl, targetEl);
+        if (!defaultKind) return;
+        const targetNode = flowNodes.find((n) => n.id === connection.target);
+        const isUseCase = targetEl.kind === 'UseCase';
+        const width = isUseCase ? USE_CASE_USE_CASE_WIDTH : USE_CASE_ACTOR_WIDTH;
+        const screenPos = targetNode
+          ? reactFlow.flowToScreenPosition({
+              x: targetNode.position.x + width / 2,
+              y: targetNode.position.y,
+            })
+          : { x: 0, y: 0 };
+        const rect = canvasRef.current?.getBoundingClientRect();
+        const x = screenPos.x - (rect?.left ?? 0);
+        const y = screenPos.y - (rect?.top ?? 0);
+        setPendingUseCaseEdge({
+          connection,
+          allowedKinds: allowed,
+          defaultKind,
+          x,
+          y,
+        });
+        return;
+      }
     },
     [
       viewpoint,
@@ -625,6 +681,9 @@ function CanvasInner(): JSX.Element {
           registry,
         );
       }
+      if (viewpoint.id === USE_CASE_VIEWPOINT_ID) {
+        return isValidUseCaseConnection(connection as Connection, registry);
+      }
       // BDD: both endpoints must resolve to a PartDefinition.
       const s = registry.get(source as ElementId);
       const t = registry.get(target as ElementId);
@@ -668,6 +727,30 @@ function CanvasInner(): JSX.Element {
   );
 
   const cancelPendingTrace = useCallback(() => setPendingTrace(null), []);
+
+  const confirmPendingUseCaseEdge = useCallback(
+    (kind: UseCaseEdgeKind) => {
+      if (!pendingUseCaseEdge) return;
+      const { source, target } = pendingUseCaseEdge.connection;
+      if (!source || !target) {
+        setPendingUseCaseEdge(null);
+        return;
+      }
+      const id = linkUseCaseEdge(
+        source as ElementId,
+        target as ElementId,
+        kind,
+      );
+      setPendingUseCaseEdge(null);
+      if (id) setSelection([id as unknown as ElementId]);
+    },
+    [pendingUseCaseEdge, linkUseCaseEdge, setSelection],
+  );
+
+  const cancelPendingUseCaseEdge = useCallback(
+    () => setPendingUseCaseEdge(null),
+    [],
+  );
 
   const handleAddBlock = useCallback(() => {
     if (!diagram) return;
@@ -1194,6 +1277,16 @@ function CanvasInner(): JSX.Element {
             allowedKinds={pendingTrace.allowedKinds}
             onPick={confirmPendingTrace}
             onCancel={cancelPendingTrace}
+          />
+        ) : null}
+        {pendingUseCaseEdge ? (
+          <UseCaseEdgeKindPopover
+            x={pendingUseCaseEdge.x}
+            y={pendingUseCaseEdge.y}
+            allowedKinds={pendingUseCaseEdge.allowedKinds}
+            defaultKind={pendingUseCaseEdge.defaultKind}
+            onPick={confirmPendingUseCaseEdge}
+            onCancel={cancelPendingUseCaseEdge}
           />
         ) : null}
         {contextMenu ? (

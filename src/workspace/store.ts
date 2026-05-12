@@ -11,6 +11,9 @@ import type {
   ElementId,
   ElementPatch,
   ElementRegistry,
+  ExtendEdge,
+  GeneralizationEdge,
+  IncludeEdge,
   ItemFlowElement,
   ModelEdge,
   ModelElement,
@@ -60,6 +63,7 @@ import {
   stateMachineViewpoint,
   useCaseViewpoint,
   type BddEdgeKind,
+  type UseCaseEdgeKind,
   type Viewpoint,
   type ViewpointId,
   type ViewpointRegistry,
@@ -292,6 +296,12 @@ export interface WorkspaceActions {
   setTransitionTrigger(id: ElementId, value: string): void;
   setTransitionGuard(id: ElementId, value: string): void;
   setTransitionEffect(id: ElementId, value: string): void;
+  linkUseCaseEdge(
+    source: ElementId,
+    target: ElementId,
+    kind: UseCaseEdgeKind,
+  ): EdgeId | null;
+  setExtendExtensionPoint(id: EdgeId, extensionPoint: string): void;
   undo(): void;
   redo(): void;
 }
@@ -1573,6 +1583,66 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
     if ((existing.effect ?? undefined) === next) return;
     const patch: ElementPatch<'Transition'> = { effect: next };
     bus.dispatch({ kind: 'update-element', id, patch }, user);
+  },
+
+  linkUseCaseEdge(source, target, kind) {
+    const { bus, user, registry } = get();
+    if (!bus || !user || !registry) return null;
+    if (source === target) return null;
+    const sourceEl = registry.get(source);
+    const targetEl = registry.get(target);
+    if (!sourceEl || !targetEl) return null;
+    // Per ADR 0007 § 4: UseCase↔UseCase for Include/Extend/Generalization;
+    // Actor↔Actor for Generalization only. Reject anything else.
+    if (kind === 'Include' || kind === 'Extend') {
+      if (sourceEl.kind !== 'UseCase' || targetEl.kind !== 'UseCase') return null;
+    } else {
+      const bothUseCase =
+        sourceEl.kind === 'UseCase' && targetEl.kind === 'UseCase';
+      const bothActor = sourceEl.kind === 'Actor' && targetEl.kind === 'Actor';
+      if (!bothUseCase && !bothActor) return null;
+    }
+    const edgeId = createEdgeId();
+    let edge: ModelEdge;
+    if (kind === 'Include') {
+      const e: IncludeEdge = {
+        id: edgeId,
+        kind: 'Include',
+        sourceId: source,
+        targetId: target,
+      };
+      edge = e;
+    } else if (kind === 'Extend') {
+      const e: ExtendEdge = {
+        id: edgeId,
+        kind: 'Extend',
+        sourceId: source,
+        targetId: target,
+      };
+      edge = e;
+    } else {
+      const e: GeneralizationEdge = {
+        id: edgeId,
+        kind: 'Generalization',
+        sourceId: source,
+        targetId: target,
+      };
+      edge = e;
+    }
+    bus.dispatch({ kind: 'link', edge }, user);
+    return edgeId;
+  },
+
+  setExtendExtensionPoint(id, extensionPoint) {
+    const { bus, user, registry } = get();
+    if (!bus || !user || !registry) return;
+    const existing = registry.getEdge(id);
+    if (!existing || existing.kind !== 'Extend') return;
+    const trimmed = extensionPoint.trim();
+    const next = trimmed.length === 0 ? undefined : trimmed;
+    if ((existing.extensionPoint ?? undefined) === next) return;
+    const patch: EdgePatch<'Extend'> = { extensionPoint: next };
+    bus.dispatch({ kind: 'update-edge', id, patch }, user);
   },
 
   undo() {

@@ -10,6 +10,18 @@ import type {
 
 import { ActorNode } from './ActorNode';
 import {
+  ExtendEdge,
+  USE_CASE_EXTEND_EDGE_TYPE,
+} from './ExtendEdge';
+import {
+  GeneralizationEdge,
+  USE_CASE_GENERALIZATION_EDGE_TYPE,
+} from './GeneralizationEdge';
+import {
+  IncludeEdge,
+  USE_CASE_INCLUDE_EDGE_TYPE,
+} from './IncludeEdge';
+import {
   USE_CASE_ACTOR_HEIGHT,
   USE_CASE_ACTOR_WIDTH,
   USE_CASE_USE_CASE_HEIGHT,
@@ -31,6 +43,36 @@ export type {
   UseCaseNodeData,
   UseCaseRenameCallback,
 } from './UseCaseNode';
+export {
+  ExtendEdge,
+  USE_CASE_EXTEND_EDGE_TYPE,
+} from './ExtendEdge';
+export type {
+  UseCaseExtendEdgeData,
+  UseCaseExtendFlowEdge,
+} from './ExtendEdge';
+export {
+  GeneralizationEdge as UseCaseGeneralizationEdge,
+  USE_CASE_GENERALIZATION_EDGE_TYPE,
+} from './GeneralizationEdge';
+export type {
+  UseCaseGeneralizationEdgeData,
+  UseCaseGeneralizationFlowEdge,
+} from './GeneralizationEdge';
+export {
+  IncludeEdge,
+  USE_CASE_INCLUDE_EDGE_TYPE,
+} from './IncludeEdge';
+export type {
+  UseCaseIncludeEdgeData,
+  UseCaseIncludeFlowEdge,
+} from './IncludeEdge';
+export {
+  allowedUseCaseEdgeKindsFor,
+  defaultUseCaseEdgeKindFor,
+  isValidUseCaseConnection,
+} from './isValidConnection';
+export type { UseCaseEdgeKind } from './isValidConnection';
 
 export const USE_CASE_VIEWPOINT_ID: ViewpointId = 'use-case';
 
@@ -42,7 +84,11 @@ const USE_CASE_NODE_TYPES = Object.freeze({
   [USE_CASE_ACTOR_NODE_TYPE]: ActorNode,
   [USE_CASE_USE_CASE_NODE_TYPE]: UseCaseNode,
 }) as unknown as ViewpointNodeTypes;
-const USE_CASE_EDGE_TYPES = Object.freeze({}) as ViewpointEdgeTypes;
+const USE_CASE_EDGE_TYPES = Object.freeze({
+  [USE_CASE_INCLUDE_EDGE_TYPE]: IncludeEdge,
+  [USE_CASE_EXTEND_EDGE_TYPE]: ExtendEdge,
+  [USE_CASE_GENERALIZATION_EDGE_TYPE]: GeneralizationEdge,
+}) as unknown as ViewpointEdgeTypes;
 
 const USE_CASE_PALETTE_ITEMS: readonly PaletteItem[] = [
   {
@@ -77,10 +123,11 @@ export const useCaseViewpoint: Viewpoint = {
     );
   },
   edgeTypeFor(edge: ModelEdge): string {
-    // #119 populates this with the Include / Extend / Generalization edge
-    // renderers. Until then, any edge query throws.
+    if (edge.kind === 'Include') return USE_CASE_INCLUDE_EDGE_TYPE;
+    if (edge.kind === 'Extend') return USE_CASE_EXTEND_EDGE_TYPE;
+    if (edge.kind === 'Generalization') return USE_CASE_GENERALIZATION_EDGE_TYPE;
     throw new Error(
-      `use case viewpoint edge renderer not registered yet: ${edge.kind}`,
+      `use case viewpoint cannot render edge kind: ${edge.kind}`,
     );
   },
   edgeTypeForElement(element: ModelElement): string {
