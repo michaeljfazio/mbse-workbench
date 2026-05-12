@@ -14,6 +14,7 @@ import type {
   ModelEdge,
   ModelElement,
   ObjectFlowEdge,
+  ParameterBindingEdge,
   PartDefinitionElement,
   PartUsageElement,
   PortDefinitionElement,
@@ -122,6 +123,9 @@ export function Inspector(): JSX.Element {
   }
   if (edge && edge.kind === 'Generalization') {
     return <InspectorGeneralizationEdge edge={edge} />;
+  }
+  if (edge && edge.kind === 'ParameterBinding') {
+    return <InspectorParameterBindingEdge edge={edge} />;
   }
   return (
     <p data-testid="inspector-missing" className="text-muted-foreground">
@@ -2276,6 +2280,113 @@ function ValuePropertyExtras({
             } else if (e.key === 'Escape') {
               e.preventDefault();
               setDraft(valueLiteralToInput(element.defaultValue));
+              (e.target as HTMLInputElement).blur();
+            }
+          }}
+          className="rounded-md border border-border bg-background px-2 py-1.5 font-mono text-sm text-foreground shadow-sm focus:border-primary focus:outline-none"
+        />
+      </div>
+    </div>
+  );
+}
+
+function describeParametricEndpoint(
+  elements: readonly ModelElement[],
+  id: ElementId,
+): string {
+  const el = elements.find((e) => e.id === id);
+  if (!el) return 'unknown';
+  if (el.kind === 'ConstraintUsage' || el.kind === 'ValueProperty') {
+    return el.name.length > 0 ? el.name : `«${el.kind}»`;
+  }
+  return `${el.kind} · ${el.name}`;
+}
+
+interface InspectorParameterBindingEdgeProps {
+  readonly edge: ParameterBindingEdge;
+}
+
+function InspectorParameterBindingEdge({
+  edge,
+}: InspectorParameterBindingEdgeProps): JSX.Element {
+  const elements = useWorkspaceStore((s) => s.elements);
+  const setParameterBindingLabel = useWorkspaceStore(
+    (s) => s.setParameterBindingLabel,
+  );
+
+  const sourceLabel = useMemo(
+    () => describeParametricEndpoint(elements, edge.sourceId),
+    [elements, edge.sourceId],
+  );
+  const targetLabel = useMemo(
+    () => describeParametricEndpoint(elements, edge.targetId),
+    [elements, edge.targetId],
+  );
+
+  const [draft, setDraft] = useState(edge.label ?? '');
+  useEffect(() => {
+    setDraft(edge.label ?? '');
+  }, [edge.id, edge.label]);
+  const inputId = useMemo(
+    () => `inspector-parameter-binding-label-${edge.id}`,
+    [edge.id],
+  );
+
+  const commit = (): void => {
+    if (draft !== (edge.label ?? '')) {
+      setParameterBindingLabel(edge.id, draft);
+    }
+  };
+
+  return (
+    <div
+      data-testid="inspector-parameter-binding-edge"
+      data-edge-id={edge.id}
+      className="flex flex-col gap-4"
+    >
+      <header className="flex flex-col gap-0.5">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-foreground/75">
+          ParameterBinding
+        </span>
+        <span className="text-sm font-medium text-foreground">
+          Parameter binding
+        </span>
+      </header>
+      <dl
+        data-testid="inspector-parameter-binding-endpoints"
+        className="flex flex-col gap-1 rounded-md border border-dashed border-border bg-muted/40 px-2 py-1.5 text-xs text-foreground/75"
+      >
+        <div className="flex gap-2">
+          <dt className="font-semibold uppercase tracking-wide">Source</dt>
+          <dd data-testid="inspector-parameter-binding-source">{sourceLabel}</dd>
+        </div>
+        <div className="flex gap-2">
+          <dt className="font-semibold uppercase tracking-wide">Target</dt>
+          <dd data-testid="inspector-parameter-binding-target">{targetLabel}</dd>
+        </div>
+      </dl>
+      <div className="flex flex-col gap-1.5">
+        <label
+          htmlFor={inputId}
+          className="text-xs font-medium text-muted-foreground"
+        >
+          Label
+        </label>
+        <input
+          id={inputId}
+          type="text"
+          value={draft}
+          data-testid="inspector-parameter-binding-label"
+          placeholder="optional parameter name"
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              (e.target as HTMLInputElement).blur();
+            } else if (e.key === 'Escape') {
+              e.preventDefault();
+              setDraft(edge.label ?? '');
               (e.target as HTMLInputElement).blur();
             }
           }}

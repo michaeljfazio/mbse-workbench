@@ -83,6 +83,7 @@ export function ConstraintUsageNode({
         type="target"
         position={Position.Top}
         id="top"
+        data-testid={`parametric-handle-top-${data.elementId}`}
         className={HANDLE_BASE_CLASS}
       />
       <header className="flex items-center justify-between gap-2 border-b border-border bg-muted/40 px-2 py-1">
@@ -135,6 +136,7 @@ export function ConstraintUsageNode({
         type="source"
         position={Position.Bottom}
         id="bottom"
+        data-testid={`parametric-handle-bottom-${data.elementId}`}
         className={HANDLE_BASE_CLASS}
       />
     </div>

@@ -166,3 +166,163 @@ describe('parametric workspace actions (#136)', () => {
     expect(useWorkspaceStore.getState().elements).toHaveLength(2);
   });
 });
+
+describe('parametric ParameterBinding linking (#137)', () => {
+  beforeEach(() => {
+    resetWorkspaceStoreForTests();
+  });
+  afterEach(() => {
+    resetWorkspaceStoreForTests();
+  });
+
+  it('linkParameterBinding(ConstraintUsage→ValueProperty) creates an edge', async () => {
+    const diagramId = await bootstrapParametric();
+    const cu = useWorkspaceStore
+      .getState()
+      .createConstraintUsage(diagramId, { x: 0, y: 0 })!;
+    const vp = useWorkspaceStore
+      .getState()
+      .createValueProperty(diagramId, { x: 200, y: 0 })!;
+    const id = useWorkspaceStore
+      .getState()
+      .linkParameterBinding({
+        source: cu,
+        target: vp,
+        sourceHandle: 'bottom',
+        targetHandle: 'top',
+      });
+    expect(id).not.toBeNull();
+    const edges = useWorkspaceStore.getState().edges;
+    expect(edges).toHaveLength(1);
+    expect(edges[0]!.kind).toBe('ParameterBinding');
+    expect(edges[0]!.sourceId).toBe(cu);
+    expect(edges[0]!.targetId).toBe(vp);
+  });
+
+  it('canonicalises ValueProperty→ConstraintUsage to ConstraintUsage→ValueProperty', async () => {
+    const diagramId = await bootstrapParametric();
+    const cu = useWorkspaceStore
+      .getState()
+      .createConstraintUsage(diagramId, { x: 0, y: 0 })!;
+    const vp = useWorkspaceStore
+      .getState()
+      .createValueProperty(diagramId, { x: 200, y: 0 })!;
+    useWorkspaceStore.getState().linkParameterBinding({
+      source: vp,
+      target: cu,
+      sourceHandle: 'bottom',
+      targetHandle: 'top',
+    });
+    const edges = useWorkspaceStore.getState().edges;
+    expect(edges).toHaveLength(1);
+    expect(edges[0]!.sourceId).toBe(cu);
+    expect(edges[0]!.targetId).toBe(vp);
+  });
+
+  it('rejects self-loops', async () => {
+    const diagramId = await bootstrapParametric();
+    const cu = useWorkspaceStore
+      .getState()
+      .createConstraintUsage(diagramId, { x: 0, y: 0 })!;
+    const id = useWorkspaceStore.getState().linkParameterBinding({
+      source: cu,
+      target: cu,
+      sourceHandle: 'bottom',
+      targetHandle: 'top',
+    });
+    expect(id).toBeNull();
+    expect(useWorkspaceStore.getState().edges).toHaveLength(0);
+  });
+
+  it('rejects duplicate edges between the same pair (either direction)', async () => {
+    const diagramId = await bootstrapParametric();
+    const cu = useWorkspaceStore
+      .getState()
+      .createConstraintUsage(diagramId, { x: 0, y: 0 })!;
+    const vp = useWorkspaceStore
+      .getState()
+      .createValueProperty(diagramId, { x: 200, y: 0 })!;
+    const first = useWorkspaceStore.getState().linkParameterBinding({
+      source: cu,
+      target: vp,
+      sourceHandle: 'bottom',
+      targetHandle: 'top',
+    });
+    expect(first).not.toBeNull();
+    const dup = useWorkspaceStore.getState().linkParameterBinding({
+      source: vp,
+      target: cu,
+      sourceHandle: 'bottom',
+      targetHandle: 'top',
+    });
+    expect(dup).toBeNull();
+    expect(useWorkspaceStore.getState().edges).toHaveLength(1);
+  });
+
+  it('rejects connections with non-parametric endpoints', async () => {
+    const diagramId = await bootstrapParametric();
+    const cu = useWorkspaceStore
+      .getState()
+      .createConstraintUsage(diagramId, { x: 0, y: 0 })!;
+    // Create a Requirement (foreign kind for the parametric viewpoint) by
+    // opening a Requirements diagram first.
+    const reqDiagram = useWorkspaceStore
+      .getState()
+      .createDiagram('requirements')!;
+    const reqId = useWorkspaceStore
+      .getState()
+      .createRequirement(reqDiagram, { x: 0, y: 0 })!;
+    const id = useWorkspaceStore.getState().linkParameterBinding({
+      source: cu,
+      target: reqId,
+      sourceHandle: 'bottom',
+      targetHandle: 'top',
+    });
+    expect(id).toBeNull();
+  });
+
+  it('setParameterBindingLabel round-trips with undo/redo', async () => {
+    const diagramId = await bootstrapParametric();
+    const cu = useWorkspaceStore
+      .getState()
+      .createConstraintUsage(diagramId, { x: 0, y: 0 })!;
+    const vp = useWorkspaceStore
+      .getState()
+      .createValueProperty(diagramId, { x: 0, y: 0 })!;
+    const edgeId = useWorkspaceStore.getState().linkParameterBinding({
+      source: cu,
+      target: vp,
+      sourceHandle: 'bottom',
+      targetHandle: 'top',
+    })!;
+    useWorkspaceStore.getState().setParameterBindingLabel(edgeId, 'm');
+    const findLabel = (): string | undefined =>
+      useWorkspaceStore
+        .getState()
+        .edges.find((e) => e.id === edgeId)?.label;
+    expect(findLabel()).toBe('m');
+    useWorkspaceStore.getState().undo();
+    expect(findLabel()).toBeUndefined();
+    useWorkspaceStore.getState().redo();
+    expect(findLabel()).toBe('m');
+  });
+
+  it('undo of linkParameterBinding removes the edge', async () => {
+    const diagramId = await bootstrapParametric();
+    const cu = useWorkspaceStore
+      .getState()
+      .createConstraintUsage(diagramId, { x: 0, y: 0 })!;
+    const vp = useWorkspaceStore
+      .getState()
+      .createValueProperty(diagramId, { x: 0, y: 0 })!;
+    useWorkspaceStore.getState().linkParameterBinding({
+      source: cu,
+      target: vp,
+      sourceHandle: 'bottom',
+      targetHandle: 'top',
+    });
+    expect(useWorkspaceStore.getState().edges).toHaveLength(1);
+    useWorkspaceStore.getState().undo();
+    expect(useWorkspaceStore.getState().edges).toHaveLength(0);
+  });
+});
