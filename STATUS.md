@@ -1,21 +1,28 @@
 # STATUS
 
 ## Current phase
-phase:9 — Package Diagram. Children: #154 (closed), #155 (PR #163 open, fix pushed), #156 (PackageImport edge + cross-package import), #157 (move-between-packages compound).
+phase:9 — Package Diagram. Children: #154 (closed), #155 (closed via PR #163), #156 (PR #167 open — this iteration), #157 (gate spec, status:ready).
 
 ## Current iteration
-- Iteration #: 79
+- Iteration #: 81
 - Started: 2026-05-13
-- Branch: issue/155-package-node-palette-inspector → PR #163.
-- Working on: Cleared PR #163's `DIRTY/CONFLICTING` mergeStateStatus by merging `origin/main` into the branch and taking main's STATUS.md verbatim (main carried iter-77 + iter-78 STATUS commits #164/#165 that landed via the status PRs while #163 was idle waiting on its first CI cycle). Auto-merge --squash is still armed; merging main in (rather than rebasing locally then force-pushing) honors the AGENT.md hard-constraint ban on `--force` to push, per the iter-46 lesson on `mergeStateStatus: BEHIND/DIRTY` recovery. The merge commit is the only new content this iteration — every functional/baseline file on the branch is unchanged. CI will now re-run against the merged tip; iter-80 will diagnose whatever remains red (expected: package-one baselines green after fix-1, plus shared-tree-chrome baseline drift across context-menu / ibd-parts / ibd-connection per iter-78 — those baselines were already CI-extracted on cc31135 and bf61668, so the extractions may now be self-sufficient).
+- Branch: chore/status-iter-81 (this STATUS update). Functional work on `issue/156-package-import-edge-containment`, PR #167 open with auto-merge --squash.
+- Working on: #156 — PackageImport edge + containment semantics. Full slice landed in one PR: edge renderer, validity rules, link action, move-between-packages compound, CanvasPane wiring, tree-leaf drag.
+
+## Last health check
+- Date: 2026-05-13 (iter-80)
+- Pages deploy: `https://michaeljfazio.github.io/mbse-workbench/` returns HTTP 200 ✓
+- Last 5 merged PRs (#165 #164 #160 #159 #152): all show merged status with referenced issues closed ✓
+- `status:needs-human` open issues: 0 (well under threshold of 3) ✓
+- Most recent 5 CI runs on `main`: all green ✓
+- Result: PASS. Next health check due at iter-90.
 
 ## Last test run
-- Command: `pnpm typecheck && pnpm lint && pnpm test:unit && pnpm build` (local, on fix branch)
-- Result: PASS — 575 unit tests / 53 files; tsc clean; eslint 0 errors (4 pre-existing react-refresh warnings); vite build 599 kB.
-- One unit test required adjustment in lock-step with fix-1: `tests/unit/viewpoints/package.test.ts:18` asserted the wide `acceptedElementKinds`. Updated to assert `['Package']` only.
+- Command: `pnpm typecheck && pnpm lint && pnpm test:unit && pnpm build` (local, on PR #167's branch)
+- Result: PASS — 586 unit tests / 53 files (was 575 — +11 new); tsc clean; eslint 0 errors (4 pre-existing react-refresh warnings); vite build 602 kB.
 
 ## Known issues / blockers
-- PR #163 CI re-run pending after the merge-main commit. Expected outcome: package-one baselines green (extracted at cc31135 + bf61668 from run 25758491542), shared-tree-chrome baseline drift on context-menu / ibd-parts / ibd-connection still TBD if it persists past the merge.
+- PR #167 awaiting CI to land #156. On green: phase:9 has only #157 (gate spec) left before the epic can close.
 
 ## Decisions log
 - 2026-05-11: Bootstrap as a single committed scaffold, not iterative through child PRs. Reason: AGENT.md Phase 0 explicitly lists scaffold steps as the bootstrap and instructs iteration 1 to "run Phase 0 bootstrap" when STATUS.md is missing; opening child issues against an empty repo with no CI yet would be the wrong order. Child issues for any *remaining* Phase 0 polish are opened after the initial commit.
@@ -54,8 +61,9 @@ phase:9 — Package Diagram. Children: #154 (closed), #155 (PR #163 open, fix pu
 - 2026-05-13: **Iteration 78 — TWO real bugs uncovered in #163's first CI red, both fixed in 14ef1b3.**
   - **`acceptedElementKinds` overreach landmine.** A viewpoint's `acceptedElementKinds` doubles as the *render set* (CanvasPane filters by it then calls `nodeTypeFor`, which throws for unsupported kinds). It is NOT a drop-affordance list. Future viewpoints with palettes broader than their renderers must keep these two concerns separate — list only renderable kinds in `acceptedElementKinds`, track drop-only kinds in a viewpoint-private constant. ADR 0009 § 1's "accepts the Package element plus every member kind" was the trap.
   - **Roving-tabindex without DOM-focus sync.** ProjectTree's `explicitFocusKey` was only written by `focusItem()` — not by native focus events. Any caller that bypasses React (test `el.focus()`, real Tab from outside the tree) puts DOM and state out of sync, and ArrowDown navigates from the stale state anchor. The fix is a 1-line `onFocus={() => syncFocus(key)}` on every focusable treeitem. Apply this pattern to any new roving-tabindex widget. Sympathetic with iter-37/iter-53 generalised lesson: shared chrome changes (new tree groups) move `visibleKeys[0]`, which is the *implicit* focus default, surfacing latent focus-sync gaps.
-
-- 2026-05-13: **Iteration 79 — PR #163 `DIRTY` → cleared by merging `origin/main` into the feature branch.** Iter-77 + iter-78 STATUS PRs (#164/#165) had landed on main while #163 was idle, conflicting on STATUS.md. Took main's STATUS verbatim (theirs), appended this iter-79 entry, merged forward (no rebase, no `--force`). Per iter-46: clearing `BEHIND`/`DIRTY` on a feature branch under the no-`--force` constraint = merge main IN (or `gh pr update-branch`), not rebase-then-force. The 5 functional commits on the branch (cbef574 + 14ef1b3 + ff7f0ce + bf61668 + cc31135) are unchanged.
+- 2026-05-13: **Iteration 79 — PR #163 `DIRTY` → cleared by merging `origin/main` into the feature branch.** Iter-77 + iter-78 STATUS PRs (#164/#165) had landed on main while #163 was idle, conflicting on STATUS.md. Took main's STATUS verbatim (theirs), merged forward (no rebase, no `--force`). Per iter-46: clearing `BEHIND`/`DIRTY` on a feature branch under the no-`--force` constraint = merge main IN (or `gh pr update-branch`), not rebase-then-force. The 5 functional commits on the branch are unchanged.
+- 2026-05-13: **Iteration 80 — periodic health check PASS.** Pages 200, last 5 merged PRs clean, 0 `status:needs-human`, last 5 main CI runs green. PR #163 merged (auto-merge --squash) before iter-81 started.
+- 2026-05-13: **Iteration 81 — #156 PackageImport edge + move-between-packages compound landed in PR #167.** Single-PR slice: dashed-arrow «import» edge renderer, `isValidPackageConnection` (Package→Package, no self-loops, no same-direction duplicates, reverse allowed), `linkPackageImport` (round-trip with undo), `moveElementBetweenPackages` typed compound (single Cmd-Z reverts), CanvasPane wiring for onConnect + isValidConnection, new `PROJECT_TREE_DRAG_ELEMENT_ID` MIME making tree leaves draggable, drop-on-Package-node detection via `elementFromPoint`. +11 unit tests, all 586 green.
 
 ## Next action
-Await PR #163's next CI cycle (triggered by the merge commit). Expected outcomes: (a) `package-empty.spec.ts` 4 failures → green (cc31135 + bf61668 added the chromium + webkit baselines after fix-1 produced real screenshots); (b) `project-tree.spec.ts` arrow-keys → passes outright (fix-2 in 14ef1b3); (c) `context-menu.spec.ts` / `ibd-parts.spec.ts` / `ibd-connection.spec.ts` baseline drift remains uncertain — if red, run the iter-62 sha1→browser extract on the new run and push the resulting `*-actual.png` payloads. On green, auto-merge --squash lands #155. After #155 closes, JIT-decompose what remains of phase 9 — #156 (PackageImport edge + cross-package drop semantics; this is the slot where `PACKAGE_MEMBER_ELEMENT_KINDS` finally pays off) and #157 (move-between-packages compound command per ADR 0009 § 4). Periodic health check due at iter-80 (next iteration).
+Await PR #167's CI. On green: phase:9 closes after #157 (gate spec — the Phase 9 Playwright e2e covering all four pieces just shipped). Pick up #157 next iteration to draft the spec; the slice exercised in unit tests there gives the e2e a known-good vocabulary to use. On red: iter-62 sha1→browser extract for any new visual-baseline drift (the new MIME makes leaves draggable across every viewpoint — visual baselines should be unchanged, but the shared-tree-chrome lesson says to watch).
