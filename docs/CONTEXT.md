@@ -904,6 +904,25 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
   tip, fast-forward push, then `gh pr update-branch --rebase`. Discovered
   while landing #106 in iteration 46.
 
+- **2026-05-12** — Declaring `paletteItems` for a new element kind in any
+  viewpoint stales baselines on **every** viewpoint's canvas, not just the
+  declaring viewpoint's. Reason: `ProjectTree` (`src/workspace/tree/ProjectTree.tsx:52`)
+  computes its kind-group list from the union of `paletteItems[].elementKind`
+  across all registered viewpoints, so adding `Actor` + `UseCase` palette
+  items in the Use Case viewpoint surfaces "ACTORS" and "USE CASES" groups
+  in the project tree pane on BDD, IBD, Requirements, Activity, and State
+  Machine canvases too. The added rows shift downstream layout enough to
+  push marginal baselines past `maxDiffPixelRatio: 0.01`. Caught in
+  iter-53: PR #125 failed CI on BDD inspector + IBD two-parts baselines
+  (which had been quietly accumulating drift since #82/#88/#94/#109/#117)
+  in addition to the new use-case baselines. **Generalization of the
+  iter-37 "chip strip stales sibling baseline" rule:** when a viewpoint
+  declares a new palette kind, audit every committed baseline that
+  screenshots ANY canvas — they may all need a CI-extracted refresh in
+  the same PR. Fix workflow is the standard iter-25 procedure (download
+  the failing CI's playwright-report and copy `*-actual.png` over the
+  baselines).
+
 - **2026-05-12** — When a viewpoint phase ships persistent canvas chrome
   (a palette chip strip, a toolbar overlay, a header band, etc.) that is
   visible *whenever that viewpoint is active*, the previously-committed
