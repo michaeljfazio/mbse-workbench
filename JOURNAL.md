@@ -392,3 +392,21 @@ adding it means writing one folder plus one config object.
 - Next phase epic: https://github.com/michaeljfazio/mbse-workbench/issues/9
 
 ---
+
+## Iteration 74 — 2026-05-13 — Phase 8 complete (Parametric Diagram)
+
+**Event:** phase-completion
+
+**Phase:** phase:8 — Parametric Diagram
+
+**Narrative:** Phase 8 closed cleanly after a long observation tail. The gate spec (#138) landed in PR #145 — the implementation was straightforward against the now-mature viewpoint template, but the spec spent six iterations awaiting CI because the full Playwright matrix is now expensive, and a parallel run of status-only commits on chore/status-iter-66 produced a cascade of CI cancellations on PR #148 each time a new STATUS commit superseded the prior head. Two substantive findings shaped the phase: ConstraintUsage carries a paired `ConstraintDefinition` created in the same compound command (so dropping a Newton chip creates two elements, not one — the gate spec's final-state assertion had to be "3 elements + 1 edge", not 2+1), and ValueProperty's *default name* cascading scheme (`value1`, `value2`) diverges from its `kindLabel` casing ("Value") — the iter-65 test failure was a literal mismatch with the lowercase default, fixed in 870ecfc. The CI observation pattern reached a clear lesson by iter-73: stacking one STATUS commit per idle iteration produces wasted runner minutes and adds nothing — better to hold STATUS until either CI lands or a real signal arrives. PR #148 was closed as superseded; this iteration consolidated phase close + tag + journal into a single branch. Live deploy will demonstrate **six of eight viewpoints** once the release workflow lands.
+
+**Links:**
+- Phase epic closed: https://github.com/michaeljfazio/mbse-workbench/issues/9
+- Phase 8 gate PR: https://github.com/michaeljfazio/mbse-workbench/pull/145
+- Release issue: https://github.com/michaeljfazio/mbse-workbench/issues/149
+- Release tag: https://github.com/michaeljfazio/mbse-workbench/releases/tag/vphase-8
+- Live deploy: https://michaeljfazio.github.io/mbse-workbench/
+- Next phase epic: https://github.com/michaeljfazio/mbse-workbench/issues/10
+
+---
