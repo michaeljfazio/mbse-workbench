@@ -91,7 +91,7 @@ export function ParameterBindingEdge({
       {userLabel ? (
         <EdgeLabelRenderer>
           <div
-            data-testid={`parametric-binding-edge-label-${id}`}
+            data-testid={`parametric-binding-label-${id}`}
             style={{
               position: 'absolute',
               transform: `translate(-50%, -50%) translate(${labelX}px,${labelY}px)`,

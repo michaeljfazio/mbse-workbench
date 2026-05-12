@@ -943,3 +943,16 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
   divergence; localized red overlay over the new chrome region = stale
   layout. Both are routine; both are fixed by copying CI's `*-actual.png`
   over the baseline.
+- **2026-05-13** — `data-testid` prefix collisions across React Flow
+  edge sub-elements: a custom edge component renders both an outer `<g>`
+  and (when present) an `EdgeLabelRenderer`-portaled `<div>`. If both
+  carry testids that share a prefix used in `[data-testid^="..."]`
+  selectors, the locator count flips from 1 → 2 the moment the label
+  appears. Caught iteration 64: `parametric-binding-edge-${id}` on the
+  `<g>` + `parametric-binding-edge-label-${id}` on the label `<div>`
+  both matched the parametric-binding count selector in the
+  reload-persistence e2e — so the test passed pre-label-edit and failed
+  after. Fix: pick disjoint prefixes per sub-element (e.g. `<g>` →
+  `parametric-binding-edge-${id}`, label → `parametric-binding-label-${id}`).
+  Generalizes to all custom edge components with `EdgeLabelRenderer`
+  children.
