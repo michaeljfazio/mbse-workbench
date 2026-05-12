@@ -889,6 +889,21 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
   Discovered while landing #105's `Cmd-Z reverts an action-field edit`
   spec.
 
+- **2026-05-12** — Clearing `mergeStateStatus: BEHIND` on a feature branch
+  under AGENT.md's hard-constraint ban on `--force` to push is **push-first,
+  then rebase via GitHub**, NOT rebase-locally-then-push. Concretely: any
+  new commits (e.g. baseline refreshes) must land as fast-forward additions
+  on top of the **remote** branch tip first (`git push` accepted), then run
+  `gh pr update-branch --rebase` to rebase onto main from GitHub's side.
+  Doing `git rebase origin/main` locally first rewrites history (the
+  commits get new parents → new SHAs) and the subsequent push is rejected;
+  `--force-with-lease` would clear it but the hard constraint forbids
+  `--force` to push. Recovery if the wrong order has already happened:
+  `git reset --hard origin/<branch>` to drop the local rebase, re-apply
+  the new files / changes as commits on top of the (unrebased) remote
+  tip, fast-forward push, then `gh pr update-branch --rebase`. Discovered
+  while landing #106 in iteration 46.
+
 - **2026-05-12** — When a viewpoint phase ships persistent canvas chrome
   (a palette chip strip, a toolbar overlay, a header band, etc.) that is
   visible *whenever that viewpoint is active*, the previously-committed
