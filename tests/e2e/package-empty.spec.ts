@@ -119,8 +119,16 @@ test.describe('Package node visual (issue #155)', () => {
 
   test.beforeEach(async ({ page }) => {
     await page.addInitScript((projectId) => {
+      // The file-level beforeEach seeds an empty `p-package-seed` first;
+      // its addInitScript runs before this one, so without clearing,
+      // repository.list() returns that project as metadata[0] and
+      // bootstrap loads it instead of the seeded-node project. Strip
+      // any prior mbse project keys so only this seed is visible.
+      for (let i = sessionStorage.length - 1; i >= 0; i -= 1) {
+        const k = sessionStorage.key(i);
+        if (k && k.startsWith('mbse:v1:project:')) sessionStorage.removeItem(k);
+      }
       const key = `mbse:v1:project:${projectId}`;
-      if (sessionStorage.getItem(key)) return;
       const project = {
         id: projectId,
         name: 'Package Node Seed',
