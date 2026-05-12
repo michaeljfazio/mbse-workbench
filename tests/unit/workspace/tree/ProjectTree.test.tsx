@@ -178,6 +178,9 @@ describe('<ProjectTree />', () => {
     const leafA = screen.getByTestId(`project-tree-leaf-${a}`);
     const leafB = screen.getByTestId(`project-tree-leaf-${b}`);
 
+    // Packages group sits above Blocks in ELEMENT_KINDS order, so step past
+    // its (empty) row to reach the Blocks group baseline used by this test.
+    fireEvent.keyDown(tree, { key: 'ArrowDown' });
     expect(group).toHaveAttribute('tabindex', '0');
     expect(leafA).toHaveAttribute('tabindex', '-1');
 
@@ -201,6 +204,9 @@ describe('<ProjectTree />', () => {
     const group = screen.getByTestId('project-tree-group-PartDefinition');
     const leaf = screen.getByTestId(`project-tree-leaf-${id}`);
 
+    // Step past the Packages group (empty, sits above Blocks) so this test
+    // focuses on the Blocks↔leaf interaction it actually exercises.
+    fireEvent.keyDown(tree, { key: 'ArrowDown' });
     expect(group).toHaveAttribute('tabindex', '0');
     fireEvent.keyDown(tree, { key: 'ArrowRight' });
     expect(leaf).toHaveAttribute('tabindex', '0');
@@ -218,6 +224,9 @@ describe('<ProjectTree />', () => {
     const group = screen.getByTestId('project-tree-group-PartDefinition');
 
     expect(group).toHaveAttribute('aria-expanded', 'true');
+    // Step past the Packages group so focus lands on Blocks before the
+    // collapse/expand toggle is exercised.
+    fireEvent.keyDown(tree, { key: 'ArrowDown' });
     fireEvent.keyDown(tree, { key: 'ArrowLeft' });
     expect(group).toHaveAttribute('aria-expanded', 'false');
     fireEvent.keyDown(tree, { key: 'ArrowRight' });
@@ -230,7 +239,10 @@ describe('<ProjectTree />', () => {
 
     render(<ProjectTree />);
     const tree = screen.getByTestId('project-tree');
-    fireEvent.keyDown(tree, { key: 'ArrowDown' }); // focus leaf
+    // Two ArrowDowns: skip past the (empty) Packages group, focus the Blocks
+    // group, then drop onto the first Blocks leaf.
+    fireEvent.keyDown(tree, { key: 'ArrowDown' });
+    fireEvent.keyDown(tree, { key: 'ArrowDown' });
     fireEvent.keyDown(tree, { key: 'Enter' });
 
     expect(useWorkspaceStore.getState().selectedElementIds).toEqual([id]);
@@ -247,9 +259,9 @@ describe('<ProjectTree />', () => {
 
     render(<ProjectTree />);
     const tree = screen.getByTestId('project-tree');
-    const blocksGroup = screen.getByTestId(
-      'project-tree-group-PartDefinition',
-    );
+    // Packages now sits at the top of the palette-driven list, so Home
+    // focuses Packages — not Blocks.
+    const firstGroup = screen.getByTestId('project-tree-group-Package');
     const groupItems = screen.getAllByRole('treeitem', { name: /^[A-Za-z]+ \(/ });
     const lastGroupItem = groupItems[groupItems.length - 1]!;
 
@@ -257,7 +269,7 @@ describe('<ProjectTree />', () => {
     expect(lastGroupItem).toHaveAttribute('tabindex', '0');
 
     fireEvent.keyDown(tree, { key: 'Home' });
-    expect(blocksGroup).toHaveAttribute('tabindex', '0');
+    expect(firstGroup).toHaveAttribute('tabindex', '0');
   });
 
   it('group element count reflects only its own kind', async () => {

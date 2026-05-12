@@ -129,6 +129,14 @@ export function ProjectTree(): JSX.Element {
     queueMicrotask(() => refs.current.get(key)?.focus());
   }, []);
 
+  // Sync roving-tabindex state when DOM focus enters a treeitem externally
+  // (Tab key, test-driven el.focus()). Without this, focusKey stays anchored
+  // at visibleKeys[0] (currently the empty Packages group) and ArrowDown
+  // navigates from there instead of the visibly focused item.
+  const syncFocus = useCallback((key: FocusKey) => {
+    setExplicitFocusKey(key);
+  }, []);
+
   const toggleGroup = useCallback((kind: ElementKind) => {
     setCollapsed((prev) => {
       const next = new Set(prev);
@@ -289,6 +297,7 @@ export function ProjectTree(): JSX.Element {
               data-kind={group.kind}
               data-collapsed={isCollapsed ? 'true' : 'false'}
               tabIndex={isFocused ? 0 : -1}
+              onFocus={() => syncFocus(gKey)}
               draggable={group.draggable}
               onDragStart={
                 group.draggable
@@ -344,6 +353,7 @@ export function ProjectTree(): JSX.Element {
                       data-testid={`project-tree-leaf-${element.id}`}
                       data-element-id={element.id}
                       tabIndex={isLeafFocused ? 0 : -1}
+                      onFocus={() => syncFocus(lKey)}
                       onClick={(e) => {
                         e.stopPropagation();
                         focusItem(lKey);

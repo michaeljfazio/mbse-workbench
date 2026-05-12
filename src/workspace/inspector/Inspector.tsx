@@ -14,6 +14,7 @@ import type {
   ModelEdge,
   ModelElement,
   ObjectFlowEdge,
+  PackageElement,
   ParameterBindingEdge,
   PartDefinitionElement,
   PartUsageElement,
@@ -163,6 +164,10 @@ function InspectorSingle({ element }: InspectorSingleProps): JSX.Element {
         element={element}
         onCommit={(desc) => setElementDescription(element.id, desc)}
       />
+
+      {element.kind === 'Package' ? (
+        <PackageExtras element={element} />
+      ) : null}
 
       {element.kind === 'PartDefinition' ? (
         <PartDefinitionExtras element={element} />
@@ -328,6 +333,125 @@ function OwnerField({ element }: { element: ModelElement }): JSX.Element {
       >
         {element.ownerId ?? 'unassigned'}
       </span>
+    </div>
+  );
+}
+
+interface PackageExtrasProps {
+  readonly element: PackageElement;
+}
+
+function PackageExtras({ element }: PackageExtrasProps): JSX.Element {
+  const elements = useWorkspaceStore((s) => s.elements);
+  const addPackageMember = useWorkspaceStore((s) => s.addPackageMember);
+  const removePackageMember = useWorkspaceStore((s) => s.removePackageMember);
+  const setSelection = useWorkspaceStore((s) => s.setSelection);
+
+  const members = useMemo(() => {
+    const ids = new Set(element.memberIds);
+    return elements
+      .filter((e) => ids.has(e.id))
+      .slice()
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [elements, element.memberIds]);
+
+  // Membership is exclusive across packages: an element belongs to at most
+  // one Package. Candidates for "add member" are elements not already
+  // claimed by any Package (and not the Package itself).
+  const candidates = useMemo(() => {
+    const claimed = new Set<ElementId>();
+    for (const e of elements) {
+      if (e.kind === 'Package') {
+        for (const mid of e.memberIds) claimed.add(mid);
+      }
+    }
+    return elements
+      .filter((e) => e.kind !== 'Package' && !claimed.has(e.id))
+      .slice()
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [elements]);
+
+  const [pick, setPick] = useState<ElementId | ''>('');
+
+  const handleAdd = (): void => {
+    if (!pick) return;
+    addPackageMember(element.id, pick as ElementId);
+    setPick('');
+  };
+
+  return (
+    <div data-testid="inspector-package-members" className="flex flex-col gap-1.5">
+      <span className="text-xs font-medium text-muted-foreground">Members</span>
+      {members.length === 0 ? (
+        <p
+          data-testid="inspector-package-members-empty"
+          className="rounded-md border border-dashed border-border bg-muted/40 px-2 py-1.5 text-xs text-muted-foreground"
+        >
+          No members — add an existing element to group it under this package.
+        </p>
+      ) : (
+        <ul
+          data-testid="inspector-package-member-list"
+          className="flex flex-col gap-1"
+        >
+          {members.map((m) => (
+            <li
+              key={m.id}
+              data-testid={`inspector-package-member-row-${m.id}`}
+              data-element-id={m.id}
+              className="flex items-center gap-1 rounded-md border border-border bg-background px-2 py-1"
+            >
+              <button
+                type="button"
+                onClick={() => setSelection([m.id])}
+                className="flex-1 truncate text-left text-sm text-foreground hover:underline focus:outline-none"
+              >
+                <span className="mr-1 text-[10px] uppercase tracking-wider text-muted-foreground">
+                  {m.kind}
+                </span>
+                {m.name}
+              </button>
+              <button
+                type="button"
+                data-testid={`inspector-package-member-remove-${m.id}`}
+                aria-label={`Remove member ${m.name}`}
+                onClick={() => removePackageMember(element.id, m.id)}
+                className="rounded-sm px-1.5 py-0.5 text-xs text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive focus:bg-destructive/10 focus:text-destructive focus:outline-none"
+              >
+                ×
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className="flex items-center gap-1">
+        <label htmlFor={`inspector-package-add-${element.id}`} className="sr-only">
+          Add member
+        </label>
+        <select
+          id={`inspector-package-add-${element.id}`}
+          data-testid="inspector-package-add-select"
+          value={pick}
+          onChange={(e) => setPick(e.target.value as ElementId | '')}
+          className="flex-1 rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground focus:border-primary focus:outline-none"
+        >
+          <option value="">Pick an element…</option>
+          {candidates.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.kind} — {c.name}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          data-testid="inspector-package-add"
+          onClick={handleAdd}
+          disabled={!pick}
+          className="rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-foreground shadow-sm transition hover:bg-accent focus:border-primary focus:outline-none disabled:opacity-50"
+        >
+          + Add member
+        </button>
+      </div>
     </div>
   );
 }

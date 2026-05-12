@@ -5,43 +5,48 @@ import {
   PACKAGE_DEFAULT_NODE_HEIGHT,
   PACKAGE_DEFAULT_NODE_WIDTH,
   PACKAGE_MEMBER_ELEMENT_KINDS,
+  PACKAGE_NODE_TYPE,
   PACKAGE_VIEWPOINT_ID,
   packageViewpoint,
 } from '@/viewpoints';
 
-describe('Package viewpoint (issue #154)', () => {
+describe('Package viewpoint', () => {
   it('exports the expected id, label, and accepted kinds', () => {
     expect(packageViewpoint.id).toBe('package');
     expect(PACKAGE_VIEWPOINT_ID).toBe('package');
     expect(packageViewpoint.label).toBe('Package Diagram');
-    expect(packageViewpoint.acceptedElementKinds).toEqual([
-      'Package',
-      ...PACKAGE_MEMBER_ELEMENT_KINDS,
-    ]);
+    // Only Package nodes render in this viewpoint. Member kinds are
+    // tracked separately via PACKAGE_MEMBER_ELEMENT_KINDS for #156's
+    // cross-package drop affordance; they are not rendered here.
+    expect(packageViewpoint.acceptedElementKinds).toEqual(['Package']);
     expect(packageViewpoint.acceptedEdgeKinds).toEqual(['PackageImport']);
-    // ADR 0009 § 2: containment is a memberIds list, not an element-as-edge.
     expect(packageViewpoint.acceptedEdgeElementKinds).toEqual([]);
     expect(packageViewpoint.defaultLayout).toBe('dagre');
   });
 
   it('accepts every kind that can be a Package member', () => {
-    // Keep this list in sync with PackageElement.memberIds admissible kinds.
     expect(PACKAGE_MEMBER_ELEMENT_KINDS).toContain('PartDefinition');
     expect(PACKAGE_MEMBER_ELEMENT_KINDS).toContain('Requirement');
     expect(PACKAGE_MEMBER_ELEMENT_KINDS).toContain('UseCase');
     expect(PACKAGE_MEMBER_ELEMENT_KINDS).toContain('ConstraintDefinition');
-    // Package itself is NOT in the member list — it's added separately.
     expect(PACKAGE_MEMBER_ELEMENT_KINDS).not.toContain('Package');
   });
 
-  it('ships with an empty palette (#155 adds Package palette item)', () => {
-    expect(packageViewpoint.paletteItems).toEqual([]);
+  it('palette exposes the Package item (issue #155)', () => {
+    expect(packageViewpoint.paletteItems).toEqual([
+      {
+        elementKind: 'Package',
+        label: 'Package',
+        description:
+          'A namespace that groups related model elements. Drop onto the canvas to create one.',
+      },
+    ]);
   });
 
-  it('exposes module-scoped (frozen) empty nodeTypes and edgeTypes records', () => {
+  it('exposes module-scoped (frozen) nodeTypes including the Package node, and empty edgeTypes', () => {
     expect(Object.isFrozen(packageViewpoint.nodeTypes)).toBe(true);
     expect(Object.isFrozen(packageViewpoint.edgeTypes)).toBe(true);
-    expect(Object.keys(packageViewpoint.nodeTypes)).toEqual([]);
+    expect(Object.keys(packageViewpoint.nodeTypes)).toEqual([PACKAGE_NODE_TYPE]);
     expect(Object.keys(packageViewpoint.edgeTypes)).toEqual([]);
   });
 
@@ -52,13 +57,26 @@ describe('Package viewpoint (issue #154)', () => {
     expect(registry.get(PACKAGE_VIEWPOINT_ID)).toBe(packageViewpoint);
   });
 
-  it('nodeTypeFor throws — node renderers land in #155', () => {
-    expect(() =>
+  it('nodeTypeFor resolves Package elements to the Package node type', () => {
+    expect(
       packageViewpoint.nodeTypeFor({
         id: 'p-1' as never,
         kind: 'Package',
         name: 'Root',
         memberIds: [],
+      }),
+    ).toBe(PACKAGE_NODE_TYPE);
+  });
+
+  it('nodeTypeFor throws for other element kinds — they only appear via membership, not as nodes', () => {
+    expect(() =>
+      packageViewpoint.nodeTypeFor({
+        id: 'pd-1' as never,
+        kind: 'PartDefinition',
+        name: 'Wheel',
+        isAbstract: false,
+        propertyIds: [],
+        portIds: [],
       }),
     ).toThrow(/package viewpoint cannot render element kind/);
   });
@@ -85,7 +103,7 @@ describe('Package viewpoint (issue #154)', () => {
     ).toThrow(/package viewpoint cannot render element-as-edge kind/);
   });
 
-  it('nodeSizeFor returns the placeholder layout box for every element', () => {
+  it('nodeSizeFor returns the Package layout box for every element', () => {
     const expected = {
       width: PACKAGE_DEFAULT_NODE_WIDTH,
       height: PACKAGE_DEFAULT_NODE_HEIGHT,
