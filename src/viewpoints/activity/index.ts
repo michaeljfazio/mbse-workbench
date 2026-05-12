@@ -9,6 +9,8 @@ import type {
 } from '../types';
 
 import { ActionUsageNode, actionNodeSize } from './ActionUsageNode';
+import { ActivityControlFlowEdge } from './ControlFlowEdge';
+import { ActivityObjectFlowEdge } from './ObjectFlowEdge';
 
 export {
   ACTIVITY_ACTION_HEIGHT,
@@ -27,6 +29,17 @@ export type {
   ActionUsageFlowNode,
   ActionUsageNodeData,
 } from './ActionUsageNode';
+export { ActivityControlFlowEdge } from './ControlFlowEdge';
+export type {
+  ActivityControlFlowEdgeData,
+  ActivityControlFlowFlowEdge,
+} from './ControlFlowEdge';
+export { ActivityObjectFlowEdge } from './ObjectFlowEdge';
+export type {
+  ActivityObjectFlowEdgeData,
+  ActivityObjectFlowFlowEdge,
+} from './ObjectFlowEdge';
+export { isValidActivityConnection } from './isValidConnection';
 
 export const ACTIVITY_VIEWPOINT_ID: ViewpointId = 'activity';
 
@@ -69,10 +82,10 @@ const ACTIVITY_NODE_TYPES = Object.freeze({
   [ACTIVITY_DECISION_NODE_TYPE]: ActionUsageNode,
   [ACTIVITY_MERGE_NODE_TYPE]: ActionUsageNode,
 }) as unknown as ViewpointNodeTypes;
-// #89 will populate `ACTIVITY_EDGE_TYPES` with the ControlFlow + ObjectFlow
-// renderers; until then, the frozen empty record satisfies React Flow's
-// stable-reference requirement.
-const ACTIVITY_EDGE_TYPES = Object.freeze({}) as unknown as ViewpointEdgeTypes;
+const ACTIVITY_EDGE_TYPES = Object.freeze({
+  [ACTIVITY_CONTROL_FLOW_EDGE_TYPE]: ActivityControlFlowEdge,
+  [ACTIVITY_OBJECT_FLOW_EDGE_TYPE]: ActivityObjectFlowEdge,
+}) as unknown as ViewpointEdgeTypes;
 
 const ACTIVITY_PALETTE_ITEMS: readonly PaletteItem[] = [
   {

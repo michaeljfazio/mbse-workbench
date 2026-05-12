@@ -86,9 +86,10 @@ describe('Activity viewpoint', () => {
         ACTIVITY_MERGE_NODE_TYPE,
       ].sort(),
     );
-    // #89 will populate edgeTypes; until then the frozen empty record
-    // satisfies React Flow's referential-stability requirement.
-    expect(Object.keys(activityViewpoint.edgeTypes)).toEqual([]);
+    // #89 registers ControlFlow + ObjectFlow renderers.
+    expect(Object.keys(activityViewpoint.edgeTypes).sort()).toEqual(
+      [ACTIVITY_CONTROL_FLOW_EDGE_TYPE, ACTIVITY_OBJECT_FLOW_EDGE_TYPE].sort(),
+    );
   });
 
   it('nodeSizeFor returns per-pseudostate sizes (ADR 0005 / #88)', () => {

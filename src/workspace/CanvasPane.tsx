@@ -38,6 +38,7 @@ import {
   IBD_PART_USAGE_HEIGHT,
   IBD_PART_USAGE_WIDTH,
   IBD_VIEWPOINT_ID,
+  isValidActivityConnection,
   isValidIbdConnection,
   REQUIREMENT_NODE_HEIGHT,
   REQUIREMENT_NODE_WIDTH,
@@ -183,6 +184,14 @@ function toFlowEdges(
       data.traceKind = e.traceKind;
       data.label = e.label;
     }
+    if (e.kind === 'ControlFlow') {
+      data.guard = e.guard;
+      data.label = e.label;
+    }
+    if (e.kind === 'ObjectFlow') {
+      data.itemType = e.itemType;
+      data.label = e.label;
+    }
     out.push({
       id: e.id,
       type: viewpoint.edgeTypeFor(e),
@@ -254,6 +263,8 @@ function CanvasInner(): JSX.Element {
   const runAutoLayout = useWorkspaceStore((s) => s.runAutoLayout);
   const connectPorts = useWorkspaceStore((s) => s.connectPorts);
   const connectItemFlow = useWorkspaceStore((s) => s.connectItemFlow);
+  const connectControlFlow = useWorkspaceStore((s) => s.connectControlFlow);
+  const connectObjectFlow = useWorkspaceStore((s) => s.connectObjectFlow);
   const createRequirement = useWorkspaceStore((s) => s.createRequirement);
   const createActionUsage = useWorkspaceStore((s) => s.createActionUsage);
   const linkRequirementTrace = useWorkspaceStore(
@@ -477,6 +488,16 @@ function CanvasInner(): JSX.Element {
         if (id) setSelection([id]);
         return;
       }
+      if (viewpoint.id === ACTIVITY_VIEWPOINT_ID) {
+        // Mirrors the IBD ConnectionUsage/ItemFlow split per ADR 0005 § 5:
+        // Shift-held drag creates an ObjectFlow (dashed, item-typed),
+        // unmodified drag creates a ControlFlow (solid, with optional guard).
+        const id = shiftHeldRef.current
+          ? connectObjectFlow(connection)
+          : connectControlFlow(connection);
+        if (id) setSelection([id as unknown as ElementId]);
+        return;
+      }
       if (viewpoint.id === REQUIREMENTS_VIEWPOINT_ID && registry) {
         const allowed = validTraceKindsFor(connection, registry);
         if (allowed.length === 0) return;
@@ -500,6 +521,8 @@ function CanvasInner(): JSX.Element {
       reactFlow,
       connectPorts,
       connectItemFlow,
+      connectControlFlow,
+      connectObjectFlow,
       setSelection,
       registry,
     ],
@@ -525,6 +548,12 @@ function CanvasInner(): JSX.Element {
         // the validity check is satisfied as long as *some* kind would work.
         const conn = connection as Connection;
         return validTraceKindsFor(conn, registry).length > 0;
+      }
+      if (viewpoint.id === ACTIVITY_VIEWPOINT_ID) {
+        // Activity viewpoint: same ADR-0005 §4 rules for ControlFlow and
+        // ObjectFlow — Shift only switches which edge kind gets created on
+        // commit, it does not change validity.
+        return isValidActivityConnection(connection as Connection, registry);
       }
       // BDD: both endpoints must resolve to a PartDefinition.
       const s = registry.get(source as ElementId);
