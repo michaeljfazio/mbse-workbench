@@ -4,18 +4,25 @@
 phase:7 — Use Case Diagram (epic #8 open; child #117 merged via PR #122; #118 in PR; #119/#120 ready)
 
 ## Current iteration
-- Iteration #: 52
+- Iteration #: 53
 - Started: 2026-05-12
-- Branch: issue/118-actor-usecase-nodes-palette-inspector (parented on 7169833)
-- Working on: **#118 implemented.** ActorNode (stick-figure SVG, 4 handles, inline rename), UseCaseNode (ellipse via `border-radius: 50%`, 4 handles, inline rename), `UseCasePalette` chip strip (Actor / Use case), workspace store `createActor` / `createUseCase` (compound create-element + update-diagram-position; cascading `Actor1+` / `UC1+` names that fill gaps after deletion — same scan-from-1 pattern as iter-30's reqId), `setUseCaseText`, CanvasPane `+ Actor` / `+ Use case` toolbar buttons + Use Case viewpoint drop handling, Inspector `UseCaseExtras` multi-line text textarea (Cmd-Enter commit). 6 new unit tests in `useCaseActions.test.ts`, 9 new e2e tests in `use-case-nodes.spec.ts` (7 functional + 1 @a11y + 1 @visual). The `use-case-empty` baseline stayed within `maxDiffPixelRatio: 0.01` after adding the new palette chip strip — only the new `use-case-with-actor-and-usecase.{chromium,webkit}.png` pair was committed. Per iter-29/50 ritual, the arm64 podman regen rewrote 41 unrelated baselines which were reverted via `git checkout -- tests/e2e/__screenshots__/` before staging. Reinstalled host node_modules after the regen container wiped them. Local: typecheck + lint + 499 unit tests + 11 chromium e2e + build all green. **PR #124 (iter-51 STATUS, docs/status-iteration-51 branch) is still open from a previous iteration** — if it lands during this PR's CI, expect the iter-46/48/51 push-then-rebase recovery.
+- Branch: issue/118-actor-usecase-nodes-palette-inspector (HEAD 513bd25 on top of 39d0a95)
+- Working on: **#118 PR #125 CI fix.** Iter-52 opened PR #125 from 39d0a95; CI run 25712607247 failed with 6 `@visual` snapshot diffs: `inspector-block-selected-chromium`, `ibd-two-parts-chromium`, `use-case-empty-{chromium,webkit}`, `use-case-with-actor-and-usecase-{chromium,webkit}`. Root cause: Use Case viewpoint now declares Actor + UseCase palette items, so `ProjectTree` (which groups by union of `paletteKinds` across all viewpoints — see `src/workspace/tree/ProjectTree.tsx:52`) now shows ACTORS + USE CASES groups on **every** diagram, shifting layout past `maxDiffPixelRatio: 0.01` on baselines that were already marginal post-#82 Linked-requirements addition. The `inspector-block-selected-chromium` baseline had not been regenerated since #58 and the unrelated PR #82 + #88 + #94 + #109 + #117 additions had accumulated pixel-shift just barely under threshold — this PR finally tipped it over. Webkit didn't flag inspector/ibd because its font rendering produced a smaller diff. Fix: copied the 6 `-actual.png` images from artifact 25712607247 (chromium retry-0 paths via report data/) over the existing baselines and committed at 513bd25 with a `test(use-case): update CI-rendered baselines for tree+inspector layout shift` message. Pushed; PR #125 commented; auto-merge still enabled — awaiting second CI run.
+
+**Attempt count on #118: 2** (initial push 39d0a95 failed; baseline-fix push 513bd25 in flight). Per AGENT.md escalation, 3 consecutive failed PR attempts → `status:needs-human`.
 
 ## Iter-51 carry-over (PR #122 / #117 outcome)
 - PR #122 (#117) merged at 7169833 after two `gh pr update-branch --rebase` cycles (iter-50 STATUS PR #123 landed during PR #122's original CI; second rebase ran fresh CI green). Issue #117 closed via `Closes #117` footer.
 
 ## Last test run
-- Command: pnpm typecheck && pnpm lint && pnpm test:unit && pnpm exec playwright test tests/e2e/use-case-nodes.spec.ts tests/e2e/use-case-empty.spec.ts --project=chromium && pnpm build
-- Result: PASS (499 unit; 11 chromium e2e; 0 type errors; lint clean except 3 pre-existing fast-refresh warnings; build succeeds)
-- Failures: none
+- Command: PR #125 CI run 25712607247 (chromium + webkit @visual + @a11y + unit + build)
+- Result: FAIL → 6 visual snapshot diffs; baselines updated at 513bd25; awaiting fresh CI
+- Failures (pre-fix):
+  - [chromium] ibd-parts.spec.ts:294 @visual IBD with two parts side-by-side (≈10012 px / 0.02)
+  - [chromium] inspector.spec.ts:148 @visual inspector-block-selected (≈10012 px / 0.02)
+  - [chromium,webkit] use-case-empty.spec.ts:104 @visual use-case-empty canvas baseline
+  - [chromium,webkit] use-case-nodes.spec.ts:218 @visual use-case-with-actor-and-usecase
+  - flaky pass: [chromium] phase-6-gate.spec.ts:174 (transitioned green on retry)
 
 ## Known issues / blockers
 - (none)
