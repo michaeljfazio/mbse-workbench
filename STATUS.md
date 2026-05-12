@@ -1,13 +1,13 @@
 # STATUS
 
 ## Current phase
-phase:10 — Requirements traceability. Phase 9 closed (epic #10) and `vphase-9` tagged at 82b8262 (release workflow run 25762425334 queued). Phase 10 not yet decomposed — JIT child issues open next iteration per AGENT.md Ralph loop step 6.
+phase:10 — Requirements traceability. Decomposed into 6 child issues (#173 editor, #174 drag-from-tree linking, #175 traceability matrix, #176 coverage report, #177 impact analysis, #178 gate spec). Release issue #171 (vphase-9 smoke walk) PR #180 also open in parallel.
 
 ## Current iteration
-- Iteration #: 83
+- Iteration #: 84
 - Started: 2026-05-13
-- Branch: chore/status-iter-83 (this STATUS update + journal entry for Phase 9 completion).
-- Working on: closing Phase 9 (epic #10, release issue #171, tag `vphase-9`). Idle on the functional ladder until Phase 10 decomposition.
+- Branch: chore/status-iter-84 (this STATUS update). Functional work on `issue/173-requirements-editor-helpers` — PR #179 open with auto-merge --squash, CI in progress (mergeable=BEHIND will resolve at squash time).
+- Working on: #173 slice 1/N — pure sort/filter/projection helpers (`src/workspace/requirements/editor.ts`). UI slice (table + form) follows in a subsequent PR.
 
 ## Last health check
 - Date: 2026-05-13 (iter-80)
@@ -18,11 +18,16 @@ phase:10 — Requirements traceability. Phase 9 closed (epic #10) and `vphase-9`
 - Result: PASS. Next health check due at iter-90.
 
 ## Last test run
-- Command: `pnpm typecheck && pnpm lint && pnpm test:unit && pnpm build && pnpm exec playwright test tests/e2e/phase-9-gate.spec.ts --project=chromium --project=webkit` (local, on PR #169's branch, iter-82)
-- Result: PASS — 586 unit tests / 53 files; 4 / 4 phase-9 specs pass on chromium AND webkit; tsc clean; eslint 0 errors; vite build 602 kB. PR #169 merged green on `main` at 82b8262.
+- Command: `pnpm typecheck && pnpm lint && pnpm test:unit && pnpm build` (local, on PR #179's branch, iter-84)
+- Result: PASS — 601 unit tests / 54 files (was 586, +15 for `requirementsEditor.test.ts`); tsc clean; eslint 0 errors (pre-existing react-refresh warnings only); vite build clean.
 
 ## Known issues / blockers
-- None functional. Release workflow run 25762425334 queued on tag `vphase-9` push — watch for deploy green then exercise live URL in Playwright walkthrough (eight viewpoints) and save screenshots under `artifacts/release-vphase-9/` per AGENT.md Ralph loop step 17.
+- PR #179 (issue/173 slice 1) — CI in progress, `mergeStateStatus: BEHIND` (auto-merge --squash will resolve at merge time; no rebase needed).
+- PR #180 (issue/171 release smoke walk for vphase-9) — CI in progress, mergeStateStatus BLOCKED pending checks.
+- #161 phase-6-gate inspector-transition flake on post-merge main remains open (type:bug, p2) — observed once, not yet reproduced; defer until after Phase 10 unless it recurs.
+
+## Next action
+On PR #179 green: iter-85 picks up the UI surface for #173 — table component reading `buildRequirementRows`, filter input wired to `filterRequirements`, header clicks to `sortRequirements`, form pane editing the selected Requirement via the command bus, `+ Add Requirement` / Delete buttons. Selection writes `selectedElementIds` so the canvas Inspector mirrors the form. On PR #180 green: walk the live `vphase-9` deploy and save screenshots under `artifacts/release-vphase-9/`. Health check due iter-90.
 
 ## Decisions log
 - 2026-05-11: Bootstrap as a single committed scaffold, not iterative through child PRs. Reason: AGENT.md Phase 0 explicitly lists scaffold steps as the bootstrap and instructs iteration 1 to "run Phase 0 bootstrap" when STATUS.md is missing; opening child issues against an empty repo with no CI yet would be the wrong order. Child issues for any *remaining* Phase 0 polish are opened after the initial commit.
@@ -66,6 +71,4 @@ phase:10 — Requirements traceability. Phase 9 closed (epic #10) and `vphase-9`
 - 2026-05-13: **Iteration 81 — #156 PackageImport edge + move-between-packages compound landed in PR #167.** Single-PR slice: dashed-arrow «import» edge renderer, `isValidPackageConnection` (Package→Package, no self-loops, no same-direction duplicates, reverse allowed), `linkPackageImport` (round-trip with undo), `moveElementBetweenPackages` typed compound (single Cmd-Z reverts), CanvasPane wiring for onConnect + isValidConnection, new `PROJECT_TREE_DRAG_ELEMENT_ID` MIME making tree leaves draggable, drop-on-Package-node detection via `elementFromPoint`. +11 unit tests, all 586 green.
 - 2026-05-13: **Iteration 82 — #157 Phase 9 gate spec landed in PR #169.** Single Playwright walkthrough covers drop-2-packages → drag-leaf-to-P1 → move-to-P2 → Cmd-Z restore → draw-import-edge → final shape. Three `@a11y` scans (empty / populated / inspector); the inspector scan is scoped to `[data-testid="inspector-single"]` because a selected Package node's aria-hidden «package» tab still trips axe color-contrast — pre-existing tab style, not a regression. `@visual` baseline `phase-9-final.png` regenerated via `scripts/regen-baselines.sh`; all other modified baselines reverted (arm64 → amd64 hinting drift, per docs/CONTEXT.md 2026-05-12 lesson).
 - 2026-05-13: **Iteration 83 — Phase 9 closed, vphase-9 tagged at 82b8262.** Epic #10 closed with all four child checkboxes ticked; release issue #171 opened; release workflow run 25762425334 queued on tag push. JOURNAL.md appended with phase-completion entry. Eight of eight viewpoints in the live deploy on workflow green; remaining phases are 10 (Requirements traceability), 11 (LLM), 12 (export/import + polish).
-
-## Next action
-Watch release workflow run 25762425334 to green, then exercise the live URL in a Playwright walkthrough of all eight viewpoints and save screenshots under `artifacts/release-vphase-9/` (AGENT.md Ralph loop step 17). After that, decompose Phase 10 (Requirements traceability) into child issues JIT per AGENT.md Ralph loop step 6 — likely slices: requirements editor (table + form), inspector + drag-from-tree linking, traceability matrix view, coverage report panel, impact analysis highlighter, Phase 10 gate spec.
+- 2026-05-13: **Iteration 84 — Phase 10 decomposed and slice 1/N of #173 opened as PR #179.** Six Phase 10 children opened JIT (#173 editor, #174 drag-link, #175 matrix, #176 coverage, #177 impact, #178 gate). PR #179 ships pure helpers only (`buildRequirementRows` / `filterRequirements` / `sortRequirements` in `src/workspace/requirements/editor.ts`) with 15 unit tests; UI surface follows in a subsequent slice. Helpers-first split chosen so the table+form UI lands on a tested data layer rather than coupling the two concerns in one large PR.
