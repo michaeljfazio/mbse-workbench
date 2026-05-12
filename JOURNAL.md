@@ -410,3 +410,19 @@ adding it means writing one folder plus one config object.
 - Next phase epic: https://github.com/michaeljfazio/mbse-workbench/issues/10
 
 ---
+## Iteration 83 — 2026-05-13 — Phase 9 complete (Package Diagram); vphase-9 tagged
+
+**Event:** phase-completion
+
+**Phase:** phase:9 — Package Diagram
+
+**Narrative:** Phase 9 closed in four child slices over iterations 75–82, each landing as a single PR on the by-now-routine viewpoint template, and the gate spec (#157) merged green at 82b8262. The phase produced two non-obvious lessons worth carrying forward. First, in iter-78 the very first CI red exposed an `acceptedElementKinds` overreach landmine: that field doubles as the canvas *render set* (CanvasPane filters by it then calls `nodeTypeFor`, which throws for unsupported kinds), so listing palette-droppable-but-unrenderable kinds there crashes the viewpoint at mount. The fix is to keep drop-affordance and render-set as separate concerns — list only renderable kinds in `acceptedElementKinds`, track drop-only kinds in a viewpoint-private constant. Second, the same iteration uncovered a roving-tabindex DOM-focus-sync gap in ProjectTree: `explicitFocusKey` was only written by the controlled `focusItem()` path, so any caller that bypassed React (Tab from outside the tree, `el.focus()` from a test) left DOM and state desynchronised and ArrowDown navigated from a stale anchor. A 1-line `onFocus` sync on every focusable treeitem cleared it, and the pattern is now documented for future roving-tabindex widgets. Iter-79 hit the familiar `DIRTY` PR state from two parallel STATUS PRs landing while the feature branch was idle — resolved per iter-46 by merging main IN, no rebase, no `--force`. Eighth of eight viewpoints, with only Phase 10 (Requirements traceability), 11 (LLM), and 12 (export/import + polish) remaining.
+
+**Links:**
+- Phase epic closed: https://github.com/michaeljfazio/mbse-workbench/issues/10
+- Phase 9 gate PR: https://github.com/michaeljfazio/mbse-workbench/pull/169
+- Release issue: https://github.com/michaeljfazio/mbse-workbench/issues/171
+- Release tag: https://github.com/michaeljfazio/mbse-workbench/releases/tag/vphase-9
+- Live deploy: https://michaeljfazio.github.io/mbse-workbench/
+
+---
