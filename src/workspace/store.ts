@@ -66,6 +66,7 @@ import {
   isValidParametricConnection,
   isValidStateMachineConnection,
   canonicalizeParametricConnection,
+  packageViewpoint,
   parametricViewpoint,
   REQUIREMENTS_VIEWPOINT_ID,
   requirementsViewpoint,
@@ -155,6 +156,7 @@ function buildViewpointSingleton(): ViewpointRegistry {
   registry.register(stateMachineViewpoint);
   registry.register(useCaseViewpoint);
   registry.register(parametricViewpoint);
+  registry.register(packageViewpoint);
   return registry;
 }
 

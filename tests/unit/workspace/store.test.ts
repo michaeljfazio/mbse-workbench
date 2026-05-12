@@ -7,6 +7,8 @@ import {
   bddViewpoint,
   IBD_VIEWPOINT_ID,
   ibdViewpoint,
+  PACKAGE_VIEWPOINT_ID,
+  packageViewpoint,
   PARAMETRIC_VIEWPOINT_ID,
   parametricViewpoint,
   REQUIREMENTS_VIEWPOINT_ID,
@@ -83,6 +85,12 @@ describe('workspace store', () => {
     const s = useWorkspaceStore.getState();
     expect(s.viewpoints.has(PARAMETRIC_VIEWPOINT_ID)).toBe(true);
     expect(s.viewpoints.get(PARAMETRIC_VIEWPOINT_ID)).toBe(parametricViewpoint);
+  });
+
+  it('registers the Package viewpoint at bootstrap (issue #154)', () => {
+    const s = useWorkspaceStore.getState();
+    expect(s.viewpoints.has(PACKAGE_VIEWPOINT_ID)).toBe(true);
+    expect(s.viewpoints.get(PACKAGE_VIEWPOINT_ID)).toBe(packageViewpoint);
   });
 
   it('bootstrap creates a new Untitled Project when storage is empty', async () => {
@@ -334,6 +342,37 @@ describe('workspace store', () => {
       .diagrams.find((d) => d.viewpointId === PARAMETRIC_VIEWPOINT_ID);
     expect(reloaded).toBeDefined();
     expect(reloaded!.name).toBe('Parametric Diagram');
+    expect(reloaded!.context).toBeUndefined();
+  });
+
+  it('createDiagram appends a Package diagram with no context and persists it (#154)', async () => {
+    const storage = makeMemoryStorage();
+    const repository = createInMemorySessionRepository({ storage });
+    const user = createSessionUser();
+    await useWorkspaceStore.getState().bootstrap({ repository, user, storage });
+
+    const id = useWorkspaceStore
+      .getState()
+      .createDiagram(PACKAGE_VIEWPOINT_ID);
+    expect(id).not.toBeNull();
+
+    const s = useWorkspaceStore.getState();
+    const pkg = s.diagrams.find((d) => d.id === id);
+    expect(pkg).toBeDefined();
+    expect(pkg!.viewpointId).toBe(PACKAGE_VIEWPOINT_ID);
+    // ADR 0009 § 1: no Diagram.context link for Package diagrams.
+    expect(pkg!.context).toBeUndefined();
+    expect(pkg!.name).toBe('Package Diagram');
+    expect(pkg!.positions).toEqual({});
+
+    // Persistence: simulate a reload and confirm the diagram is back.
+    resetWorkspaceStoreForTests();
+    await useWorkspaceStore.getState().bootstrap({ repository, user, storage });
+    const reloaded = useWorkspaceStore
+      .getState()
+      .diagrams.find((d) => d.viewpointId === PACKAGE_VIEWPOINT_ID);
+    expect(reloaded).toBeDefined();
+    expect(reloaded!.name).toBe('Package Diagram');
     expect(reloaded!.context).toBeUndefined();
   });
 

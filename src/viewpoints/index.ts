@@ -227,4 +227,12 @@ export type {
   ValuePropertyRenameCallback,
 } from './parametric';
 
+export {
+  PACKAGE_DEFAULT_NODE_HEIGHT,
+  PACKAGE_DEFAULT_NODE_WIDTH,
+  PACKAGE_MEMBER_ELEMENT_KINDS,
+  PACKAGE_VIEWPOINT_ID,
+  packageViewpoint,
+} from './package';
+
 
