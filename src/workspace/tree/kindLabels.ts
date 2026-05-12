@@ -24,7 +24,7 @@ const LABELS: Record<ElementKind, KindLabel> = {
   Actor: { group: 'Actors', singular: 'Actor' },
   ConstraintDefinition: { group: 'Constraint definitions', singular: 'Constraint definition' },
   ConstraintUsage: { group: 'Constraints', singular: 'Constraint' },
-  ValueProperty: { group: 'Value properties', singular: 'Value property' },
+  ValueProperty: { group: 'Values', singular: 'Value' },
 };
 
 export function kindLabel(kind: ElementKind): KindLabel {

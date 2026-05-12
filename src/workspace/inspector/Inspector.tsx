@@ -4,6 +4,7 @@ import type {
   ActionDefinitionElement,
   ActionUsageElement,
   ConnectionUsageElement,
+  ConstraintUsageElement,
   ControlFlowEdge,
   ElementId,
   ExtendEdge,
@@ -26,7 +27,9 @@ import type {
   StateUsageElement,
   TransitionElement,
   UseCaseElement,
+  ValueLiteral,
   ValuePropertyElement,
+  ValueType,
 } from '@/model';
 import { isTraceTargetKind } from '@/viewpoints';
 import { useWorkspaceStore } from '../store';
@@ -195,6 +198,14 @@ function InspectorSingle({ element }: InspectorSingleProps): JSX.Element {
 
       {element.kind === 'UseCase' ? (
         <UseCaseExtras element={element} />
+      ) : null}
+
+      {element.kind === 'ConstraintUsage' ? (
+        <ConstraintUsageExtras element={element} />
+      ) : null}
+
+      {element.kind === 'ValueProperty' ? (
+        <ValuePropertyExtras element={element} />
       ) : null}
 
       {isTraceTargetKind(element.kind) ? (
@@ -2088,6 +2099,189 @@ function StateActionField({
         }}
         className="rounded-md border border-border bg-background px-2 py-1.5 font-mono text-sm text-foreground shadow-sm focus:border-primary focus:outline-none"
       />
+    </div>
+  );
+}
+
+interface ConstraintUsageExtrasProps {
+  readonly element: ConstraintUsageElement;
+}
+
+function ConstraintUsageExtras({
+  element,
+}: ConstraintUsageExtrasProps): JSX.Element {
+  const elements = useWorkspaceStore((s) => s.elements);
+  const setConstraintExpression = useWorkspaceStore(
+    (s) => s.setConstraintExpression,
+  );
+
+  const definition = useMemo(() => {
+    const def = elements.find((e) => e.id === element.definitionId);
+    return def && def.kind === 'ConstraintDefinition' ? def : undefined;
+  }, [elements, element.definitionId]);
+
+  const initial = definition?.expression ?? '';
+  const [draft, setDraft] = useState(initial);
+  useEffect(() => {
+    setDraft(initial);
+  }, [element.id, initial]);
+
+  const inputId = useMemo(
+    () => `inspector-constraint-expression-${element.id}`,
+    [element.id],
+  );
+
+  const commit = (): void => {
+    if (draft !== initial) {
+      setConstraintExpression(element.id, draft);
+    }
+  };
+
+  return (
+    <div
+      data-testid="inspector-constraint"
+      className="flex flex-col gap-1.5"
+    >
+      <label
+        htmlFor={inputId}
+        className="text-xs font-medium text-muted-foreground"
+      >
+        Equation
+      </label>
+      <textarea
+        id={inputId}
+        value={draft}
+        data-testid="inspector-constraint-expression"
+        rows={3}
+        placeholder="e.g. mass = density * volume"
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+            e.preventDefault();
+            (e.target as HTMLTextAreaElement).blur();
+          }
+        }}
+        className="resize-y rounded-md border border-border bg-background px-2 py-1.5 font-mono text-sm text-foreground shadow-sm focus:border-primary focus:outline-none"
+      />
+    </div>
+  );
+}
+
+interface ValuePropertyExtrasProps {
+  readonly element: ValuePropertyElement;
+}
+
+const VALUE_TYPE_OPTIONS: readonly ValueType[] = ['string', 'number', 'boolean'];
+
+function valueLiteralToInput(value: ValueLiteral | undefined): string {
+  if (value === undefined) return '';
+  return String(value);
+}
+
+function parseValueLiteral(
+  raw: string,
+  valueType: ValueType,
+): ValueLiteral | undefined {
+  const trimmed = raw.trim();
+  if (trimmed.length === 0) return undefined;
+  if (valueType === 'number') {
+    const n = Number(trimmed);
+    return Number.isFinite(n) ? n : undefined;
+  }
+  if (valueType === 'boolean') {
+    if (trimmed === 'true') return true;
+    if (trimmed === 'false') return false;
+    return undefined;
+  }
+  return raw;
+}
+
+function ValuePropertyExtras({
+  element,
+}: ValuePropertyExtrasProps): JSX.Element {
+  const setValuePropertyType = useWorkspaceStore(
+    (s) => s.setValuePropertyType,
+  );
+  const setValuePropertyDefault = useWorkspaceStore(
+    (s) => s.setValuePropertyDefault,
+  );
+
+  const [draft, setDraft] = useState(valueLiteralToInput(element.defaultValue));
+  useEffect(() => {
+    setDraft(valueLiteralToInput(element.defaultValue));
+  }, [element.id, element.defaultValue]);
+
+  const typeId = useMemo(
+    () => `inspector-value-type-${element.id}`,
+    [element.id],
+  );
+  const defaultId = useMemo(
+    () => `inspector-value-default-${element.id}`,
+    [element.id],
+  );
+
+  const commitDefault = (): void => {
+    const next = parseValueLiteral(draft, element.valueType);
+    if (next === (element.defaultValue ?? undefined)) return;
+    setValuePropertyDefault(element.id, next);
+  };
+
+  return (
+    <div data-testid="inspector-value-property" className="flex flex-col gap-3">
+      <div className="flex flex-col gap-1.5">
+        <label
+          htmlFor={typeId}
+          className="text-xs font-medium text-muted-foreground"
+        >
+          Value type
+        </label>
+        <select
+          id={typeId}
+          data-testid="inspector-value-type"
+          value={element.valueType}
+          onChange={(e) =>
+            setValuePropertyType(element.id, e.target.value as ValueType)
+          }
+          className="rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground shadow-sm focus:border-primary focus:outline-none"
+        >
+          {VALUE_TYPE_OPTIONS.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+        </select>
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <label
+          htmlFor={defaultId}
+          className="text-xs font-medium text-muted-foreground"
+        >
+          Default value
+        </label>
+        <input
+          id={defaultId}
+          type="text"
+          value={draft}
+          data-testid="inspector-value-default"
+          placeholder={
+            element.valueType === 'boolean' ? 'true or false' : 'optional'
+          }
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commitDefault}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              (e.target as HTMLInputElement).blur();
+            } else if (e.key === 'Escape') {
+              e.preventDefault();
+              setDraft(valueLiteralToInput(element.defaultValue));
+              (e.target as HTMLInputElement).blur();
+            }
+          }}
+          className="rounded-md border border-border bg-background px-2 py-1.5 font-mono text-sm text-foreground shadow-sm focus:border-primary focus:outline-none"
+        />
+      </div>
     </div>
   );
 }

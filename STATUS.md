@@ -4,14 +4,14 @@
 phase:8 — Parametric Diagram (epic #9 open; decomposed into #135 viewpoint+ADR / #136 nodes+palette+inspector / #137 ParameterBinding edge / #138 gate spec)
 
 ## Current iteration
-- Iteration #: 59
+- Iteration #: 61
 - Started: 2026-05-12
-- Branch: chore/status-iter-59 (STATUS-only) opened from main after Phase 7 close
-- Working on: idle — Phase 7 closed and vphase-7 tagged; Phase 8 ready to begin next iteration starting with **#135** (viewpoint registration + ADR 0008)
+- Branch: issue/136-parametric-nodes-palette-inspector. PR #140 (#135) merged at 55139d6. This iteration implements **#136**: ConstraintUsage + ValueProperty custom nodes + palette chip strip + inspector extras + paired ConstraintDefinition (holds the equation) + createConstraintUsage/createValueProperty/setConstraintExpression/setValuePropertyType/setValuePropertyDefault store actions. Expect CI to red on visual baselines — adding palette items grows the project tree by two groups (Constraints + Values). Renamed ValueProperty kindLabel `Value properties` → `Values` so the ProjectTree Home/End test's single-word regex still matches the last group. Recovery plan if visual fails: extract `*-actual.png` from playwright-report and commit.
+- Working on: **#136 PR (to be opened)** with local checks green.
 
 ## Last test run
-- Command: GitHub Actions release workflow 25740684928 (vphase-7 tag)
-- Result: SUCCESS. Pages HTTP 200 at https://michaeljfazio.github.io/mbse-workbench/. Smoke walkthrough via scripts/smoke-vphase-7.mjs captured 4 PNGs under artifacts/release-vphase-7/.
+- Command: pnpm typecheck && pnpm lint && pnpm test:unit && pnpm build
+- Result: PASS — 536 unit tests; lint warnings only (fast-refresh export-shape on ValuePropertyNode + 3 pre-existing files); build 586 kB bundle.
 
 ## Known issues / blockers
 - (none)
@@ -86,5 +86,8 @@ phase:8 — Parametric Diagram (epic #9 open; decomposed into #135 viewpoint+ADR
 - 2026-05-12: Iteration 58 — PR #131 rebased after iter-56 STATUS PR #130 landed during first CI; iter-57 STATUS PR #132 was DIRTY (branched pre-#130) so closed and reopened fresh chore/status-iter-58 from updated main.
 - 2026-05-12: **Iteration 59 — Phase 7 closed, vphase-7 tagged.** Release workflow 25740684928 green; Pages HTTP 200; smoke walkthrough scripts/smoke-vphase-7.mjs seeded 2 Actors + 3 Use Cases with Include/Extend/Generalization — captured 4 PNGs in artifacts/release-vphase-7/. Live deploy demonstrates **five of eight viewpoints** (BDD/IBD/Requirements/Activity/State Machine/Use Case). Phase 8 (Parametric Diagram) decomposed into four children (#135 viewpoint+ADR 0008, #136 ConstraintUsage+ValueProperty nodes+palette+inspector, #137 ParameterBinding edge, #138 gate spec). Phase 8 metamodel pre-exists (links: #8 epic closed, #134 release closed, vphase-7 tag, #9 / #135-#138).
 
+- 2026-05-12: Iteration 60 — PR #140 (#135) merged at 55139d6 after extracting the missing `parametric-empty.{chromium,webkit}.png` baseline pair from a failing playwright-report (new-spec lesson). Iter-59 STATUS commit auto-ran iter-60 STATUS-only branch (chore/status-iter-60) which never merged.
+- 2026-05-12: Iteration 61 — Shipped #136 implementation. ConstraintUsage carries a paired `ConstraintDefinition` (created in the same compound command) which holds the equation string — Inspector's `ConstraintUsageExtras` edits the linked definition's `expression`. ValueProperty edits via `select` (string/number/boolean) + free-text `defaultValue` with kind-aware parsing. **Lesson:** ValueProperty kindLabel "Value properties" was multi-word and broke the ProjectTree Home/End test's single-word regex once the palette item added the group to every project tree. Renamed to "Values" (singular: "Value") — the cleanest fix without touching the test's accessibility-name regex. Generalizes: keep new tree-group labels single-word so existing tree tests stay green.
+
 ## Next action
-Start Phase 8 by picking up **#135** (viewpoint registration + ADR 0008). Follow iter-29/35/43/49 template: register `parametricViewpoint` with frozen module-scope empty `nodeTypes`/`edgeTypes`, author ADR 0008 (free-form scope; accepted element kinds ConstraintUsage + ValueProperty; ParameterBinding stays in `ModelEdge`; equations as plain strings, no evaluator), commit empty `parametric-empty.{chromium,webkit}.png` baseline pair.
+Push branch `issue/136-parametric-nodes-palette-inspector`, open PR closing #136 with auto-merge --squash, then handle expected visual-baseline failures by extracting `*-actual.png` from the failing Playwright report (iter-23/-60 procedure).
