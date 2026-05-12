@@ -428,6 +428,7 @@ function CanvasInner(): JSX.Element {
   const showRequirementTracesFor = useWorkspaceStore(
     (s) => s.showRequirementTracesFor,
   );
+  const runImpactAnalysis = useWorkspaceStore((s) => s.runImpactAnalysis);
   const impactHighlightedIds = useWorkspaceStore((s) => s.impactHighlightedIds);
   const impactHighlightedEdgeIds = useWorkspaceStore(
     (s) => s.impactHighlightedEdgeIds,
@@ -1001,6 +1002,7 @@ function CanvasInner(): JSX.Element {
           showDefinitionOnBdd,
           navigateToElementOnDiagram,
           showRequirementTracesFor,
+          runImpactAnalysis,
         },
       });
       if (targets.length === 0) return;
@@ -1023,6 +1025,7 @@ function CanvasInner(): JSX.Element {
       showDefinitionOnBdd,
       navigateToElementOnDiagram,
       showRequirementTracesFor,
+      runImpactAnalysis,
     ],
   );
 
