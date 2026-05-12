@@ -95,6 +95,7 @@ import {
   PROJECT_TREE_DRAG_STATE_TYPE,
   PROJECT_TREE_DRAG_TYPE,
 } from './tree/ProjectTree';
+import { resolveTreeDragTrace } from './treeDragTrace';
 
 interface PendingConnection {
   readonly connection: Connection;
@@ -1035,6 +1036,38 @@ function CanvasInner(): JSX.Element {
       const droppedElementId = event.dataTransfer.getData(
         PROJECT_TREE_DRAG_ELEMENT_ID,
       );
+      if (droppedElementId && registry) {
+        // Drag a Requirement from the project tree onto any canvas element to
+        // create a RequirementTrace. The drop target is the ReactFlow node
+        // under the cursor (data-id on the node wrapper); if the source is a
+        // Requirement and the pair admits at least one trace kind, defer to
+        // the existing TraceKindPopover. Viewpoint-agnostic — works on BDD,
+        // IBD, Activity, etc., not just the Requirements canvas.
+        const point = document.elementFromPoint(event.clientX, event.clientY);
+        const nodeEl = point?.closest<HTMLElement>('[data-id]');
+        const targetId = nodeEl?.getAttribute('data-id');
+        const resolved = resolveTreeDragTrace(
+          droppedElementId,
+          targetId,
+          registry,
+        );
+        if (resolved) {
+          event.preventDefault();
+          const rect = canvasRef.current?.getBoundingClientRect();
+          setPendingTrace({
+            connection: {
+              source: resolved.source,
+              target: resolved.target,
+              sourceHandle: null,
+              targetHandle: null,
+            },
+            allowedKinds: resolved.allowedKinds,
+            x: event.clientX - (rect?.left ?? 0),
+            y: event.clientY - (rect?.top ?? 0),
+          });
+          return;
+        }
+      }
       if (droppedElementId && viewpoint.id === PACKAGE_VIEWPOINT_ID) {
         // Find the package node under the cursor. React Flow nodes carry a
         // `data-id` attribute on the wrapping div; we use elementFromPoint
@@ -1191,6 +1224,7 @@ function CanvasInner(): JSX.Element {
       createPackage,
       moveElementBetweenPackages,
       setSelection,
+      registry,
     ],
   );
 
