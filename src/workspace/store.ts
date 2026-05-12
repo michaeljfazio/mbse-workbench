@@ -3,6 +3,7 @@ import { create } from 'zustand';
 import type {
   ActionNodeType,
   ActionUsageElement,
+  ActorElement,
   ConnectionUsageElement,
   ControlFlowEdge,
   EdgeId,
@@ -27,6 +28,7 @@ import type {
   StateNodeType,
   StateUsageElement,
   TransitionElement,
+  UseCaseElement,
 } from '@/model';
 import {
   createEdgeId,
@@ -245,6 +247,17 @@ export interface WorkspaceActions {
     stateType: StateNodeType,
     options?: CreateStateUsageOptions,
   ): ElementId | null;
+  createActor(
+    diagramId: DiagramId,
+    position: NodePosition,
+    options?: CreateActorOptions,
+  ): ElementId | null;
+  createUseCase(
+    diagramId: DiagramId,
+    position: NodePosition,
+    options?: CreateUseCaseOptions,
+  ): ElementId | null;
+  setUseCaseText(id: ElementId, value: string): void;
   setStateEntryAction(id: ElementId, value: string): void;
   setStateExitAction(id: ElementId, value: string): void;
   setStateDoAction(id: ElementId, value: string): void;
@@ -460,6 +473,37 @@ export interface CreateActionUsageOptions {
 export interface CreateStateUsageOptions {
   readonly name?: string;
   readonly definitionId?: ElementId;
+}
+
+export interface CreateActorOptions {
+  readonly name?: string;
+}
+
+export interface CreateUseCaseOptions {
+  readonly name?: string;
+  readonly text?: string;
+}
+
+function nextActorName(elements: readonly ModelElement[]): string {
+  const taken = new Set(
+    elements
+      .filter((e): e is ActorElement => e.kind === 'Actor')
+      .map((e) => e.name),
+  );
+  let n = 1;
+  while (taken.has(`Actor${n}`)) n += 1;
+  return `Actor${n}`;
+}
+
+function nextUseCaseName(elements: readonly ModelElement[]): string {
+  const taken = new Set(
+    elements
+      .filter((e): e is UseCaseElement => e.kind === 'UseCase')
+      .map((e) => e.name),
+  );
+  let n = 1;
+  while (taken.has(`UC${n}`)) n += 1;
+  return `UC${n}`;
 }
 
 function nextStateName(elements: readonly ModelElement[]): string {
@@ -1168,6 +1212,77 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       user,
     );
     return id;
+  },
+
+  createActor(diagramId, position, options) {
+    const { bus, user, registry, diagrams, elements } = get();
+    if (!bus || !user || !registry) return null;
+    if (!diagrams.some((d) => d.id === diagramId)) return null;
+    const id = createElementId();
+    const actor: ActorElement = {
+      id,
+      kind: 'Actor',
+      name: options?.name?.trim() ?? nextActorName(elements),
+    };
+    bus.dispatch(
+      {
+        kind: 'compound',
+        commands: [
+          { kind: 'create-element', element: actor },
+          {
+            kind: 'update-diagram-position',
+            diagramId,
+            elementId: id,
+            position,
+          },
+        ],
+      },
+      user,
+    );
+    return id;
+  },
+
+  createUseCase(diagramId, position, options) {
+    const { bus, user, registry, diagrams, elements } = get();
+    if (!bus || !user || !registry) return null;
+    if (!diagrams.some((d) => d.id === diagramId)) return null;
+    const id = createElementId();
+    const useCase: UseCaseElement = {
+      id,
+      kind: 'UseCase',
+      name: options?.name?.trim() ?? nextUseCaseName(elements),
+      ...(options?.text !== undefined && options.text.length > 0
+        ? { text: options.text }
+        : {}),
+    };
+    bus.dispatch(
+      {
+        kind: 'compound',
+        commands: [
+          { kind: 'create-element', element: useCase },
+          {
+            kind: 'update-diagram-position',
+            diagramId,
+            elementId: id,
+            position,
+          },
+        ],
+      },
+      user,
+    );
+    return id;
+  },
+
+  setUseCaseText(id, value) {
+    const { bus, user, registry } = get();
+    if (!bus || !user || !registry) return;
+    const existing = registry.get(id);
+    if (!existing || existing.kind !== 'UseCase') return;
+    const trimmed = value.trim();
+    const next = trimmed.length === 0 ? undefined : trimmed;
+    if ((existing.text ?? undefined) === next) return;
+    const patch: ElementPatch<'UseCase'> = { text: next };
+    bus.dispatch({ kind: 'update-element', id, patch }, user);
   },
 
   setStateEntryAction(id, value) {

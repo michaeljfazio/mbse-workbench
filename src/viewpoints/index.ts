@@ -159,6 +159,7 @@ export type {
 } from './stateMachine';
 
 export {
+  ActorNode,
   USE_CASE_ACTOR_HEIGHT,
   USE_CASE_ACTOR_NODE_TYPE,
   USE_CASE_ACTOR_WIDTH,
@@ -166,7 +167,17 @@ export {
   USE_CASE_USE_CASE_NODE_TYPE,
   USE_CASE_USE_CASE_WIDTH,
   USE_CASE_VIEWPOINT_ID,
+  UseCaseNode,
   useCaseViewpoint,
+} from './useCase';
+
+export type {
+  ActorFlowNode,
+  ActorNodeData,
+  ActorRenameCallback,
+  UseCaseFlowNode,
+  UseCaseNodeData,
+  UseCaseRenameCallback,
 } from './useCase';
 
 

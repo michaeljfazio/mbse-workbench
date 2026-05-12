@@ -52,11 +52,19 @@ describe('<ProjectTree />', () => {
     await bootstrap();
     render(<ProjectTree />);
 
-    expect(screen.queryByTestId('project-tree-group-UseCase')).toBeNull();
-    // Requirement now has a palette item from the Requirements viewpoint, so
-    // its group is always shown — see the dedicated test below.
+    // Constraint definitions have no palette item in any viewpoint yet, so
+    // the group stays hidden until one is created.
+    expect(
+      screen.queryByTestId('project-tree-group-ConstraintDefinition'),
+    ).toBeNull();
+    // Requirement and UseCase both have palette items now (Requirements and
+    // Use Case viewpoints respectively), so their groups are always shown —
+    // see the dedicated tests below.
     expect(
       screen.getByTestId('project-tree-group-Requirement'),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('project-tree-group-UseCase'),
     ).toBeInTheDocument();
   });
 

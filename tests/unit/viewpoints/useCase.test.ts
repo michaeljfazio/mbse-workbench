@@ -52,15 +52,20 @@ describe('Use Case viewpoint (ADR 0007)', () => {
     expect(useCaseViewpoint.defaultLayout).toBe('dagre');
   });
 
-  it('ships no palette items in #117 (populated by #118)', () => {
-    expect(useCaseViewpoint.paletteItems).toEqual([]);
+  it('ships Actor + Use case palette items (#118)', () => {
+    expect(useCaseViewpoint.paletteItems.map((p) => p.elementKind)).toEqual([
+      'Actor',
+      'UseCase',
+    ]);
   });
 
   it('keeps nodeTypes and edgeTypes frozen at module scope', () => {
     expect(Object.isFrozen(useCaseViewpoint.nodeTypes)).toBe(true);
     expect(Object.isFrozen(useCaseViewpoint.edgeTypes)).toBe(true);
-    // #117 registers empty records; #118/#119 populate them.
-    expect(Object.keys(useCaseViewpoint.nodeTypes)).toEqual([]);
+    // #118 populates Actor + UseCase node renderers; #119 populates edges.
+    expect(Object.keys(useCaseViewpoint.nodeTypes).sort()).toEqual(
+      [USE_CASE_ACTOR_NODE_TYPE, USE_CASE_USE_CASE_NODE_TYPE].sort(),
+    );
     expect(Object.keys(useCaseViewpoint.edgeTypes)).toEqual([]);
   });
 

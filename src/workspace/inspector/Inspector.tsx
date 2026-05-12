@@ -22,6 +22,7 @@ import type {
   RequirementTraceKind,
   StateUsageElement,
   TransitionElement,
+  UseCaseElement,
   ValuePropertyElement,
 } from '@/model';
 import { isTraceTargetKind } from '@/viewpoints';
@@ -178,6 +179,10 @@ function InspectorSingle({ element }: InspectorSingleProps): JSX.Element {
 
       {element.kind === 'Transition' ? (
         <TransitionExtras element={element} />
+      ) : null}
+
+      {element.kind === 'UseCase' ? (
+        <UseCaseExtras element={element} />
       ) : null}
 
       {isTraceTargetKind(element.kind) ? (
@@ -1696,6 +1701,56 @@ function TransitionField({
           }
         }}
         className="rounded-md border border-border bg-background px-2 py-1.5 font-mono text-sm text-foreground shadow-sm focus:border-primary focus:outline-none"
+      />
+    </div>
+  );
+}
+
+interface UseCaseExtrasProps {
+  readonly element: UseCaseElement;
+}
+
+function UseCaseExtras({ element }: UseCaseExtrasProps): JSX.Element {
+  const setUseCaseText = useWorkspaceStore((s) => s.setUseCaseText);
+
+  const [draft, setDraft] = useState(element.text ?? '');
+  useEffect(() => {
+    setDraft(element.text ?? '');
+  }, [element.id, element.text]);
+  const textId = useMemo(
+    () => `inspector-usecase-text-${element.id}`,
+    [element.id],
+  );
+
+  const commit = (): void => {
+    if (draft !== (element.text ?? '')) {
+      setUseCaseText(element.id, draft);
+    }
+  };
+
+  return (
+    <div data-testid="inspector-usecase" className="flex flex-col gap-1.5">
+      <label
+        htmlFor={textId}
+        className="text-xs font-medium text-muted-foreground"
+      >
+        Text
+      </label>
+      <textarea
+        id={textId}
+        value={draft}
+        data-testid="inspector-usecase-text"
+        rows={4}
+        placeholder="Summarise the use case scenario"
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+            e.preventDefault();
+            (e.target as HTMLTextAreaElement).blur();
+          }
+        }}
+        className="resize-y rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground shadow-sm focus:border-primary focus:outline-none"
       />
     </div>
   );
