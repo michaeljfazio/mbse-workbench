@@ -1,17 +1,17 @@
 # STATUS
 
 ## Current phase
-phase:8 — Parametric Diagram (epic #9 open; decomposed into #135 viewpoint+ADR / #136 nodes+palette+inspector / #137 ParameterBinding edge / #138 gate spec)
+phase:9 — Package Diagram (epic #10 open; not yet decomposed — JIT decomposition next iteration after release deploy verified)
 
 ## Current iteration
-- Iteration #: 65
+- Iteration #: 74
 - Started: 2026-05-13
-- Branch: chore/status-iter-65. PR **#145** (#138 gate spec) first CI 25749393967 failed on `[chromium|webkit] phase-8-gate.spec.ts:188 toHaveText('Value1')` — actual was lowercase `value1`. `createValueProperty` cascades default as `value${n+1}` (src/workspace/store.ts:606-607), not capitalised. Iter-61 renamed the kindLabel singular to "Value" but did not change the cascading default — they're distinct concerns. Pushed test-side fix at 870ecfc on issue/138-phase-8-gate-spec changing the expected to `'value1'`; downstream rename to `'mass'` is unchanged. CI awaiting on new HEAD.
-- Working on: **PR #145** (idle, awaiting CI rerun on 870ecfc).
+- Branch: chore/phase-8-close — Phase 8 closure consolidated. PR #145 merged (e5ef448); epic #9 closed; release issue #149 opened; **tag vphase-8 pushed** on e5ef448. Release workflow run **25750784828** queued on the tag. JOURNAL.md appended with iter-74 phase-completion entry. Stale PR #148 closed as superseded (its STATUS observation stack added no signal beyond what this consolidated entry captures).
+- Working on: phase 8 closure + journal (open PR pending push).
 
 ## Last test run
 - Command: pnpm typecheck && pnpm lint && pnpm test:unit && pnpm build
-- Result: PASS — 556 unit tests; lint warnings only (fast-refresh, 4 pre-existing); build 591 kB bundle.
+- Result: PASS (last run 2026-05-13 prior to PR #145 merge) — 556 unit tests; lint warnings only.
 
 ## Known issues / blockers
 - (none)
@@ -31,67 +31,22 @@ phase:8 — Parametric Diagram (epic #9 open; decomposed into #135 viewpoint+ADR
 - 2026-05-11: Phase 1 closed and vphase-1 tagged at c1214db.
 - 2026-05-11: Phase 2 decomposed into 7 child issues (#30–#36).
 - 2026-05-11: `@xyflow/react` v12.3.x research recorded in `docs/CONTEXT.md` ahead of Phase 2.
-- 2026-05-11: Workspace shell foundation (#30) at daa7c6f — three-pane resizable layout, Zustand `useWorkspaceStore`, `Viewpoint<T>` registry, project bootstrap via `InMemorySessionRepository`.
 - 2026-05-11: Visual snapshot baselines pinned to **Linux** renderer. Generation via `mcr.microsoft.com/playwright:v1.48.2-jammy` + `vite preview` (procedure in `docs/CONTEXT.md`).
-- 2026-05-11: `Viewpoint<T>` interface replaces placeholder `renderNode`/`renderEdge` with ReactFlow-native `nodeTypes` / `edgeTypes` (frozen module-scope).
-- 2026-05-11: Per-view positions live on `Diagram` (superseded by #34: positions are first-class commands).
 - 2026-05-11: Custom nodes must NEVER import `@/workspace/store` at module load — callbacks pass through ReactFlow node `data`.
-- 2026-05-11: Edge markers rendered as per-edge SVG `<marker>` defs with unique ids; ReactFlow's built-in `MarkerType` only covers open/closed arrows.
-- 2026-05-11: Block-node label uses non-interactive `<div onDoubleClick=...>` rather than `<button>` (axe nested-interactive rule).
-- 2026-05-11: `vite.config.ts` honors `VITE_BASE_OVERRIDE` for baseline regen.
-- 2026-05-11: Inspector (#32) ships the canvas → inspector → edit → reflect loop; autosave on every bus event.
-- 2026-05-11: PR #40 needed `gh pr update-branch --rebase` before auto-merge — STATUS.md on main between PR open and CI completion puts strict-protection PRs in BEHIND.
-- 2026-05-11: **Position-as-command-bus** (#34) — `update-diagram-position` is a first-class `Command`. `createBlock` wraps create+initial-position in a compound.
-- 2026-05-11: Auto-layout (#34) is a single compound command of N `update-diagram-position` sub-commands; one Cmd-Z reverts the whole layout.
-- 2026-05-11: Project tree (#33) — kind groups from union of (registry kinds, palette items across viewpoints); MIME `application/x-mbse-element-kind`; canvas drop validates against `acceptedElementKinds`.
-- 2026-05-11: Export (#35) — `src/workspace/export/` ships pure `buildDiagramSvg` + thin PNG rasteriser at 2× DPR.
-- 2026-05-11: Iteration 17 — `Project.history` round-trips through repository; CommandBus accepts `initialUndoStack` / `initialRedoStack`.
+- 2026-05-11: **Position-as-command-bus** (#34) — `update-diagram-position` is a first-class `Command`.
 - 2026-05-12: **Phase 2 closed, vphase-2 tagged at 0f93af0.**
-- 2026-05-12: Phase 3 decomposed into six children (#49–#54).
-- 2026-05-12: `@xyflow/react` v12.3.x multi-handle research recorded — multiple `<Handle>` per side with unique `id` + inline `style`.
-- 2026-05-12: IBD viewpoint (#49) — `Diagram.context?: { kind: 'partDefinition'; id }` per ADR 0003.
-- 2026-05-12: Axe `color-contrast` can sample tabs mid-CSS-transition — wait for `document.getAnimations().finished` before `AxeBuilder.analyze()`.
-- 2026-05-12: Iteration 21 — Shipped #50 (PartUsage node + PortUsage handles + port management). `KIND_OPTIONAL_FIELDS` whitelist table.
-- 2026-05-12: Iteration 22 — Shipped #51 (ConnectionUsage edge with typed compatibility). `acceptedEdgeElementKinds` + `edgeTypeForElement` on Viewpoint. Two RF selection-handling fixes.
-- 2026-05-12: Iteration 23 — arm64-podman emulation produces font hinting that diverges from amd64 GitHub Actions runner beyond `maxDiffPixelRatio: 0.01`. Recovery: copy CI `*-actual.png` over committed baselines via trace-metadata mapping.
-- 2026-05-12: Iteration 24 — Shipped #52 (ItemFlow edge variant). Shift-modifier discriminates two element-as-edge kinds via `shiftHeldRef` seeded by `onConnectStart`'s native event.
-- 2026-05-12: Iteration 26 — Shipped #53 (cross-diagram navigation — Show in BDD/IBD). Pure `navTargets.ts` + presentational `ContextMenu.tsx`.
-- 2026-05-12: Iteration 27 — **Phase 3 closed, vphase-3 tagged at f14d6a1.** Two findings: `addPortToDefinition` does NOT cascade to existing PartUsages; React Flow rebuilds edge layer one render tick AFTER parts mount.
-- 2026-05-12: **Phase 4 decomposed into five children** (#70–#74).
-- 2026-05-12: **ADR 0004** — free-form Requirements diagrams; RequirementTrace stays in `ModelEdge`; endpoint typing per kind; cross-diagram visibility via the #73 inspector seam.
-- 2026-05-12: Iteration 29 — Shipped #70 (Requirements viewpoint registration + ADR 0004). `scripts/regen-baselines.sh` rewrites ANY changed baseline — revert unintended modifications before staging.
-- 2026-05-12: Iteration 30 — Shipped #71 (Requirement custom node + palette + RequirementExtras). reqId gap-fill scan from `R-001` upwards.
-- 2026-05-12: Iteration 31 — Shipped #72 (RequirementTrace edges + traceKind picker). Added `update-edge` command. `EdgeLabelRenderer` portals labels — use SVG-side discriminator like `g[data-trace-kind]` for counts.
-- 2026-05-12: Iteration 32 — Shipped #73 (inspector "+ Link requirement"). Two gotchas: `<ul role="radiogroup">` + `<li>` fails axe `listitem`; Playwright's `toContainText` does not include `<input value="...">`.
-- 2026-05-12: Iteration 33 — Shipped #74 (Phase 4 gate spec). Selection-merge gotcha: project-tree-leaf REPLACES selection vs canvas-node-click MERGES.
+- 2026-05-12: **Phase 3 closed, vphase-3 tagged at f14d6a1.**
 - 2026-05-12: **Phase 4 closed, vphase-4 tagged at 4b69312.**
-- 2026-05-12: **Phase 5 decomposed into four children** (#87–#90).
-- 2026-05-12: Iteration 35 — Shipped #87 (Activity viewpoint + ADR 0005). `PaletteItem.defaultData` field added.
-- 2026-05-12: Iteration 37 — Shipped #88. **Lesson:** viewpoint palette chip strip stales the earlier `*-empty` baseline on the same canvas.
-- 2026-05-12: Iteration 39 — Shipped #89. **Lesson:** brand-new spec file with @visual specs needs its parallel `tests/e2e/__screenshots__/<spec>.spec.ts/` directory created and populated.
-- 2026-05-12: Iteration 40 — Opened PR #100 for #90. (a) redo termination on 4 signals not 2; (b) Canvas drop target ~540 px tall on 1280×800.
 - 2026-05-12: **Phase 5 closed, vphase-5 tagged at ea62765.**
-- 2026-05-12: Iteration 42 — Phase 6 decomposed into four children (#104–#107). UI-layer only.
-- 2026-05-12: #104 merged — first viewpoint with `acceptedEdgeElementKinds` set without `acceptedEdgeKinds` (Transitions are elements-as-edge).
-- 2026-05-12: Iteration 45 — #105 merged (StateUsage + pseudostate nodes + palette + inspector StateExtras).
-- 2026-05-12: Iteration 46 — #106 merged (Transition element-as-edge + isValidStateMachineConnection). Push-then-rebase workflow for clearing BEHIND under AGENT.md's no-force constraint.
-- 2026-05-12: Iteration 47 — PR #113 opened for #107 (Phase 6 gate spec).
-- 2026-05-12: **Iteration 48 — Phase 6 closed, vphase-6 tagged at 845918d.** PR #113 went BEHIND main twice; recovery via push-then-rebase. Live deploy demonstrates four of eight viewpoints.
-- 2026-05-12: **Iteration 49 — Phase 7 decomposed into four children** (#117–#120). Key decision: three accepted edge kinds means a popover picker at drop, NOT shift-modifier discrimination.
-- 2026-05-12: Iteration 50 — #117 merged at PR #122 (Use Case viewpoint registered + ADR 0007).
-- 2026-05-12: Iteration 52 — #118 implemented (Actor + UseCase custom nodes + palette).
-- 2026-05-12: Iteration 53 — #118 PR #125 merged at 29aef6a after baseline fix. **Generalized lesson:** any change to viewpoint palette declarations may stale baselines across ALL viewpoints, because the project-tree pane is shared chrome — iter-37 chip-strip rule generalizes (recorded in `docs/CONTEXT.md`).
-- 2026-05-12: Iteration 54 — #119 merged at PR #127 (Include + Extend + Generalization edges). ActorNode handle-direction bug caught: flipped to top=target/bottom=source to match UseCaseNode.
-- 2026-05-12: Iteration 57 — #120 PR #131 opened (Phase 7 gate spec, 545 lines, 8 tests).
-- 2026-05-12: Iteration 58 — PR #131 rebased after iter-56 STATUS PR #130 landed during first CI; iter-57 STATUS PR #132 was DIRTY (branched pre-#130) so closed and reopened fresh chore/status-iter-58 from updated main.
-- 2026-05-12: **Iteration 59 — Phase 7 closed, vphase-7 tagged.** Release workflow 25740684928 green; Pages HTTP 200; smoke walkthrough scripts/smoke-vphase-7.mjs seeded 2 Actors + 3 Use Cases with Include/Extend/Generalization — captured 4 PNGs in artifacts/release-vphase-7/. Live deploy demonstrates **five of eight viewpoints** (BDD/IBD/Requirements/Activity/State Machine/Use Case). Phase 8 (Parametric Diagram) decomposed into four children (#135 viewpoint+ADR 0008, #136 ConstraintUsage+ValueProperty nodes+palette+inspector, #137 ParameterBinding edge, #138 gate spec). Phase 8 metamodel pre-exists (links: #8 epic closed, #134 release closed, vphase-7 tag, #9 / #135-#138).
-
-- 2026-05-12: Iteration 60 — PR #140 (#135) merged at 55139d6 after extracting the missing `parametric-empty.{chromium,webkit}.png` baseline pair from a failing playwright-report (new-spec lesson). Iter-59 STATUS commit auto-ran iter-60 STATUS-only branch (chore/status-iter-60) which never merged.
-- 2026-05-12: Iteration 61 — Shipped #136 implementation. ConstraintUsage carries a paired `ConstraintDefinition` (created in the same compound command) which holds the equation string — Inspector's `ConstraintUsageExtras` edits the linked definition's `expression`. ValueProperty edits via `select` (string/number/boolean) + free-text `defaultValue` with kind-aware parsing. **Lesson:** ValueProperty kindLabel "Value properties" was multi-word and broke the ProjectTree Home/End test's single-word regex once the palette item added the group to every project tree. Renamed to "Values" (singular: "Value") — the cleanest fix without touching the test's accessibility-name regex. Generalizes: keep new tree-group labels single-word so existing tree tests stay green.
-- 2026-05-12: Iteration 62 — PR #142 (#136) baseline-refresh cycle: first CI red on three predicted visual baselines (one webkit color-comparison + two new-baseline writes). Recovery via iter-25 procedure with a twist — the new-baseline failures do NOT write a `trace.zip` to the playwright-report, so the trace-attachment lookup only resolved the IBD case. For the parametric actuals, decoded the report's embedded `window.playwrightReportBase64` zip and scanned per-project report JSONs to map sha1→browser. Baselines committed at b7d6bdc; CI 25746011271 went green and PR #142 merged at c935454.
-- 2026-05-13: Iteration 63 — Shipped #137 (ParameterBinding edge). `ParameterBindingEdge` uses two `<marker>` defs with a `<circle>` glyph (filled binding dot) on each end — distinct from RequirementTrace's open-triangle. `linkParameterBinding(connection)` accepts a Connection (not source/target/kind) because the canonicalisation flips the connection itself before unpacking. Inspector's endpoint dl mirrors `InspectorIncludeEdge`'s pattern; describeParametricEndpoint falls back to `«kind»` for unnamed nodes. Lesson: jsdom doesn't render `EdgeLabelRenderer` children — the portal target isn't created without a real ReactFlow viewport, so label tests are e2e-only. PR #143 first CI green but went BEHIND main on a status-only commit — recovered via `gh pr update-branch --rebase`; second CI green and PR merged.
-- 2026-05-13: Iteration 64 — Opened PR #145 for #138 (Phase 8 gate spec). Tracks phase-7-gate template: walkthrough + 3 @a11y. Chip drops use `parametric-${kind}-` testid prefix with `[data-element-id]` filter (matches existing parametric-nodes/binding spec patterns). ConstraintUsage chip compounds 2 elements (CD + CU) so final-state expectation is **3 elements + 1 edge**, not 2 + 1. Expression lives on the linked ConstraintDefinition (looked up via `kind === 'ConstraintDefinition'` rather than `definitionId` chase) — kept the redo-state check robust to definition id allocation.
-- 2026-05-13: Iteration 65 — PR #145 first CI red on a literal-mismatch in the gate spec: assertion expected `'Value1'` but the default cascading name from `createValueProperty` is lowercase `value1` (src/workspace/store.ts:606-607). Iter-61 renamed the kindLabel singular to "Value" but the *default name* pattern was unchanged, so the test author over-applied the rename. Fix is test-side (870ecfc) — change expected to `'value1'`; downstream `inlineRename(..., 'mass')` is unaffected. **Lesson:** ValueProperty default-name capitalisation diverges from its kindLabel; same pattern likely true elsewhere (BlockUsage/PartUsage cascading defaults are lowercase prefixed: `part1`, `port1`, etc.), so test authors should grep `name${n}` / `name\${` in store.ts rather than infer from chip labels.
+- 2026-05-12: **Phase 6 closed, vphase-6 tagged at 845918d.**
+- 2026-05-12: **Phase 7 closed, vphase-7 tagged.**
+- 2026-05-12: Iter-37 / iter-53 generalised lesson: viewpoint palette declarations live in shared project-tree chrome; any new palette item may stale baselines across ALL viewpoints, not just the one being changed.
+- 2026-05-12: Iter-61: keep new tree-group `kindLabel`s single-word so existing tree tests (Home/End regex) stay green; ValueProperty kindLabel singular "Value".
+- 2026-05-12: Iter-62 baseline-refresh: new-baseline failures do NOT write `trace.zip` — decode `window.playwrightReportBase64` and scan per-project report JSONs to map sha1→browser.
+- 2026-05-13: Iter-63 ParameterBinding edge — `<marker>` defs with `<circle>` glyph for filled binding dot; `linkParameterBinding(connection)` canonicalises by flipping the Connection.
+- 2026-05-13: Iter-65 ValueProperty default-name capitalisation lesson — default name is lowercase `value1` while kindLabel is "Value". Grep `name${n}` / `name\${` in `store.ts` rather than infer from chip labels.
+- 2026-05-13: Iter-73 STATUS-stacking lesson: stacking one STATUS commit per idle iteration cascades CI cancellations on the status PR. Hold STATUS commits until CI lands or a real signal arrives.
+- 2026-05-13: **Iteration 74 — Phase 8 closed, vphase-8 tagged at e5ef448.** Release workflow 25750784828 queued. Stale PR #148 (5-deep STATUS stack) closed as superseded. Live deploy on workflow green will demonstrate **six of eight viewpoints**.
 
 ## Next action
-Await PR #145 CI rerun on 870ecfc. On green, auto-merge lands #138, closes phase epic #9, and triggers `vphase-8` tag (5 of 8 → **6 of 8** viewpoints deployed). Then run the iter-59 post-release routine: smoke walkthrough scripts/smoke-vphase-8.mjs seeding a small parametric model (Newton + mass + accel + binding edges), capture release artifacts, append JOURNAL.md "phase-completion" entry, decompose Phase 9 (Package Diagram). On any further red, most likely cause is the inspector-value-default field rejecting `'9.8'` parse for valueType=number — fall back to defaultValue=1 (int) if so.
+Push chore/phase-8-close, open PR, auto-merge. Then await release workflow 25750784828: on green, write `scripts/smoke-vphase-8.mjs` (Newton constraint + mass + accel ValueProperties + two ParameterBinding edges), capture artifacts/release-vphase-8/, decompose Phase 9 (Package Diagram) into JIT children. **Periodic health check is due (iteration 80 is the next 10x boundary; iter-74 is fine to defer until then).**
