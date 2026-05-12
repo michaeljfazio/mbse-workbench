@@ -185,7 +185,7 @@ test.describe('Phase 8 gate (issue #138)', () => {
     const valueId = await dragChip(page, 'value', { x: 220, y: 340 });
     await expect(
       page.getByTestId(`parametric-value-name-${valueId}`),
-    ).toHaveText('Value1');
+    ).toHaveText('value1');
     await inlineRename(page, 'value', valueId, 'mass');
 
     // Step 3 — edit equation on Constraint via inspector. Select first to
