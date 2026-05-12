@@ -154,4 +154,158 @@ describe('workspace store — Use Case actions', () => {
     useWorkspaceStore.getState().setUseCaseText(id!, '');
     expect(findUseCase(id!)?.text).toBeUndefined();
   });
+
+  it('linkUseCaseEdge(Include) creates an IncludeEdge for UseCase→UseCase (#119)', async () => {
+    await bootstrap();
+    const diagramId = ensureUseCaseDiagram();
+    const a = useWorkspaceStore
+      .getState()
+      .createUseCase(diagramId, { x: 0, y: 0 });
+    const b = useWorkspaceStore
+      .getState()
+      .createUseCase(diagramId, { x: 0, y: 100 });
+    const edgeId = useWorkspaceStore
+      .getState()
+      .linkUseCaseEdge(a!, b!, 'Include');
+    expect(edgeId).not.toBeNull();
+    const edge = useWorkspaceStore
+      .getState()
+      .edges.find((e) => e.id === edgeId);
+    expect(edge?.kind).toBe('Include');
+    expect(edge?.sourceId).toBe(a);
+    expect(edge?.targetId).toBe(b);
+  });
+
+  it('linkUseCaseEdge(Extend) creates an ExtendEdge for UseCase→UseCase (#119)', async () => {
+    await bootstrap();
+    const diagramId = ensureUseCaseDiagram();
+    const a = useWorkspaceStore
+      .getState()
+      .createUseCase(diagramId, { x: 0, y: 0 });
+    const b = useWorkspaceStore
+      .getState()
+      .createUseCase(diagramId, { x: 0, y: 100 });
+    const edgeId = useWorkspaceStore
+      .getState()
+      .linkUseCaseEdge(a!, b!, 'Extend');
+    expect(edgeId).not.toBeNull();
+    const edge = useWorkspaceStore
+      .getState()
+      .edges.find((e) => e.id === edgeId);
+    expect(edge?.kind).toBe('Extend');
+  });
+
+  it('linkUseCaseEdge(Generalization) accepts Actor→Actor (#119)', async () => {
+    await bootstrap();
+    const diagramId = ensureUseCaseDiagram();
+    const a = useWorkspaceStore
+      .getState()
+      .createActor(diagramId, { x: 0, y: 0 });
+    const b = useWorkspaceStore
+      .getState()
+      .createActor(diagramId, { x: 0, y: 100 });
+    const edgeId = useWorkspaceStore
+      .getState()
+      .linkUseCaseEdge(a!, b!, 'Generalization');
+    expect(edgeId).not.toBeNull();
+  });
+
+  it('linkUseCaseEdge rejects mixed Actor↔UseCase pairings (#119)', async () => {
+    await bootstrap();
+    const diagramId = ensureUseCaseDiagram();
+    const actor = useWorkspaceStore
+      .getState()
+      .createActor(diagramId, { x: 0, y: 0 });
+    const useCase = useWorkspaceStore
+      .getState()
+      .createUseCase(diagramId, { x: 0, y: 100 });
+    expect(
+      useWorkspaceStore
+        .getState()
+        .linkUseCaseEdge(actor!, useCase!, 'Include'),
+    ).toBeNull();
+    expect(
+      useWorkspaceStore
+        .getState()
+        .linkUseCaseEdge(actor!, useCase!, 'Generalization'),
+    ).toBeNull();
+  });
+
+  it('linkUseCaseEdge rejects Include/Extend for Actor↔Actor (#119)', async () => {
+    await bootstrap();
+    const diagramId = ensureUseCaseDiagram();
+    const a = useWorkspaceStore
+      .getState()
+      .createActor(diagramId, { x: 0, y: 0 });
+    const b = useWorkspaceStore
+      .getState()
+      .createActor(diagramId, { x: 0, y: 100 });
+    expect(
+      useWorkspaceStore.getState().linkUseCaseEdge(a!, b!, 'Include'),
+    ).toBeNull();
+    expect(
+      useWorkspaceStore.getState().linkUseCaseEdge(a!, b!, 'Extend'),
+    ).toBeNull();
+  });
+
+  it('linkUseCaseEdge rejects self-loops (#119)', async () => {
+    await bootstrap();
+    const diagramId = ensureUseCaseDiagram();
+    const a = useWorkspaceStore
+      .getState()
+      .createUseCase(diagramId, { x: 0, y: 0 });
+    expect(
+      useWorkspaceStore.getState().linkUseCaseEdge(a!, a!, 'Include'),
+    ).toBeNull();
+  });
+
+  it('setExtendExtensionPoint round-trips and clears on empty (#119)', async () => {
+    await bootstrap();
+    const diagramId = ensureUseCaseDiagram();
+    const a = useWorkspaceStore
+      .getState()
+      .createUseCase(diagramId, { x: 0, y: 0 });
+    const b = useWorkspaceStore
+      .getState()
+      .createUseCase(diagramId, { x: 0, y: 100 });
+    const edgeId = useWorkspaceStore
+      .getState()
+      .linkUseCaseEdge(a!, b!, 'Extend')!;
+    useWorkspaceStore
+      .getState()
+      .setExtendExtensionPoint(edgeId, 'afterPayment');
+    const e1 = useWorkspaceStore
+      .getState()
+      .edges.find((e) => e.id === edgeId);
+    expect(e1?.kind).toBe('Extend');
+    expect(e1?.kind === 'Extend' ? e1.extensionPoint : undefined).toBe(
+      'afterPayment',
+    );
+    useWorkspaceStore.getState().setExtendExtensionPoint(edgeId, '');
+    const e2 = useWorkspaceStore
+      .getState()
+      .edges.find((e) => e.id === edgeId);
+    expect(e2?.kind === 'Extend' ? e2.extensionPoint : 'X').toBeUndefined();
+  });
+
+  it('linkUseCaseEdge create + Cmd-Z undo removes the edge (#119)', async () => {
+    await bootstrap();
+    const diagramId = ensureUseCaseDiagram();
+    const a = useWorkspaceStore
+      .getState()
+      .createUseCase(diagramId, { x: 0, y: 0 });
+    const b = useWorkspaceStore
+      .getState()
+      .createUseCase(diagramId, { x: 0, y: 100 });
+    const edgeId = useWorkspaceStore
+      .getState()
+      .linkUseCaseEdge(a!, b!, 'Include')!;
+    expect(
+      useWorkspaceStore.getState().edges.find((e) => e.id === edgeId),
+    ).toBeDefined();
+    useWorkspaceStore.getState().undo();
+    expect(
+      useWorkspaceStore.getState().edges.find((e) => e.id === edgeId),
+    ).toBeUndefined();
+  });
 });

@@ -49,13 +49,13 @@ export function ActorNode({
       style={{ width: USE_CASE_ACTOR_WIDTH, height: USE_CASE_ACTOR_HEIGHT }}
     >
       <Handle
-        type="source"
+        type="target"
         position={Position.Top}
         id="top"
         className={HANDLE_BASE_CLASS}
       />
       <Handle
-        type="source"
+        type="target"
         position={Position.Left}
         id="left"
         className={HANDLE_BASE_CLASS}
@@ -145,13 +145,13 @@ export function ActorNode({
         )}
       </div>
       <Handle
-        type="target"
+        type="source"
         position={Position.Right}
         id="right"
         className={HANDLE_BASE_CLASS}
       />
       <Handle
-        type="target"
+        type="source"
         position={Position.Bottom}
         id="bottom"
         className={HANDLE_BASE_CLASS}
