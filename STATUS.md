@@ -1,13 +1,18 @@
 # STATUS
 
 ## Current phase
-phase:8 — Parametric Diagram **closed**, vphase-8 tagged. Two PRs awaiting CI on `main`: **#150** (`chore(phase-8): close epic, tag vphase-8, append journal`) and **#152** (smoke walk script for #151).
+phase:9 — Package Diagram. Just-in-time decomposed into four children (#154–#157) per AGENT.md Ralph loop step 6. Phase 8 closed at iter-66; vphase-8 tagged; PRs #150 / #152 / #153 from iter-66 still in CI on `main`.
 
 ## Current iteration
-- Iteration #: 66
+- Iteration #: 67
 - Started: 2026-05-13
-- Branch: chore/status-iter-66.
-- Working on: idle, awaiting CI on PR #150 (phase-8 closure + journal) and PR #152 (smoke walk script, closes #151). Both BLOCKED on CI in_progress (runs 25750892629 / 25751127838). `vphase-8` release tag is already published; live Pages now shows **6 of 8** viewpoints. Release artifacts captured locally in `artifacts/release-vphase-8/` (4 PNGs: shell, parametric-graph, inspector-constraint, inspector-value).
+- Branch: chore/status-iter-67 (based on chore/status-iter-66 so iter-66 STATUS edits aren't double-applied).
+- Working on: Phase 9 JIT decomposition. Opened four child issues following the established viewpoint template (cf. iter-49, iter-42, iter-28):
+  - #154 — Package viewpoint registration + ADR 0009
+  - #155 — Package node + palette + inspector PackageExtras
+  - #156 — PackageImport edge + containment semantics (PackageImportEdge already exists in `src/model/edges.ts`)
+  - #157 — Phase 9 gate spec (move-element-between-packages e2e)
+  Phase 9 epic (#10) body updated with the four-item task list. Iter-66 PRs still in flight in CI; this iteration does not depend on them.
 
 ## Last test run
 - Command: pnpm typecheck && pnpm lint && pnpm test:unit && pnpm build
@@ -93,6 +98,7 @@ phase:8 — Parametric Diagram **closed**, vphase-8 tagged. Two PRs awaiting CI 
 - 2026-05-13: Iteration 64 — Opened PR #145 for #138 (Phase 8 gate spec). Tracks phase-7-gate template: walkthrough + 3 @a11y. Chip drops use `parametric-${kind}-` testid prefix with `[data-element-id]` filter (matches existing parametric-nodes/binding spec patterns). ConstraintUsage chip compounds 2 elements (CD + CU) so final-state expectation is **3 elements + 1 edge**, not 2 + 1. Expression lives on the linked ConstraintDefinition (looked up via `kind === 'ConstraintDefinition'` rather than `definitionId` chase) — kept the redo-state check robust to definition id allocation.
 - 2026-05-13: Iteration 65 — PR #145 first CI red on a literal-mismatch in the gate spec: assertion expected `'Value1'` but the default cascading name from `createValueProperty` is lowercase `value1` (src/workspace/store.ts:606-607). Iter-61 renamed the kindLabel singular to "Value" but the *default name* pattern was unchanged, so the test author over-applied the rename. Fix is test-side (870ecfc) — change expected to `'value1'`; downstream `inlineRename(..., 'mass')` is unaffected. **Lesson:** ValueProperty default-name capitalisation diverges from its kindLabel; same pattern likely true elsewhere (BlockUsage/PartUsage cascading defaults are lowercase prefixed: `part1`, `port1`, etc.), so test authors should grep `name${n}` / `name\${` in store.ts rather than infer from chip labels.
 - 2026-05-13: Iteration 66 — PR #145 merged at e5ef448; phase 8 epic #9 closed and `vphase-8` tag published. Smoke walk script `scripts/smoke-vphase-8.mjs` landed on branch `issue/151-smoke-vphase-8` (PR #152, closes #151) seeding ConstraintDefinition + ConstraintUsage `newton` with `f = m * a`, two ValueProperty nodes (mass=12, accel=9.81), two ParameterBinding edges; 4 release PNGs captured. PR #150 carries the journal entry + epic close. Both PRs in CI (in_progress). Next iteration picks up post-merge: decompose Phase 9 (Package Diagram, epic #10), JIT.
+- 2026-05-13: **Iteration 67 — Phase 9 (Package) JIT-decomposed.** Four children opened (#154 viewpoint+ADR 0009, #155 node+palette+inspector, #156 PackageImport edge + move-between-packages semantics, #157 gate spec) tracking the established four-child template (cf. Phase 6 / Phase 7 / Phase 8). Notable shape decisions deferred to ADR 0009 in #154: (a) whether Package containment renders as a group node enclosing members or a badge with no visual nesting; (b) whether move-between-packages is one atomic update over two memberId lists or a typed compound — current preference is the latter (single Cmd-Z, consistent with iter-17's `update-diagram-position` pattern). PackageElement (`memberIds: ElementId[]`) and `PackageImportEdge` already exist in the metamodel — no Phase 1 work is reopened.
 
 ## Next action
-Wait for CI on PR #150 and PR #152 to complete. On green: both auto-merge, JOURNAL.md gets the Phase 8 phase-completion entry, and issues #149/#151 close. Then this iteration ends and the next loop iteration decomposes Phase 9 (Package — epic #10) per AGENT.md JIT rule. If either PR fails CI, diagnose on its own branch (visual baseline drift from the smoke script touching no UI is unlikely; more likely surface is a lint/typecheck regression on the new mjs script which is gitignored at runtime but linted).
+Next loop iteration: pick up #154 (Package viewpoint registration + ADR 0009) — highest priority `status:ready` in current phase. Create branch `issue/154-package-viewpoint`, write ADR 0009 first (it pins the open shape questions above), then register the viewpoint per the iter-29 / iter-50 / iter-60 template, then commit empty-canvas visual baselines under Linux renderer. If iter-66 PRs (#150 / #152 / #153) are still in flight, this iter-67 PR will stack behind them — its base is chore/status-iter-66 so it auto-rebases as that merges.
