@@ -967,6 +967,18 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
   mapped-type strips readonly. Pre-PR: prefer `pnpm run build` over
   bare `pnpm typecheck` when adding store-state patches via locals.
 
+- **2026-05-13 (iter-96)** — **`aria-controls` ⇄ panel `id` symmetry crosses
+  files.** Tab JSX (typically in a shell component like `CanvasPane.tsx`)
+  declares `aria-controls="some-panel-id"`; the matching `id` lives on the
+  panel component (here `RequirementsSurface.tsx`), often in a different
+  source file. A single-file mental review misses the dangle and only
+  axe (or a follow-up `@a11y` spec) catches it. When introducing a new
+  `role="tab"` element, also: (a) confirm the panel section has the
+  matching `id`, `role="tabpanel"`, and `aria-labelledby="<tab id>"`;
+  (b) include both files in the same PR diff so review surfaces them
+  together. Caught by a sonnet pre-merge review subagent on PR #191
+  before the slice 3 a11y scan would have flagged it.
+
 - **2026-05-13 (iter-90): Playwright `--update-snapshots` is conditional,
   not unconditional, in v1.48.** If an existing baseline already matches
   the new render within `maxDiffPixelRatio` (we use 0.01), `--update-
