@@ -48,6 +48,10 @@ function recordingActions() {
       calls.push(['showRequirementTracesFor', [elementId]]);
       return null;
     },
+    runImpactAnalysis: (elementId) => {
+      calls.push(['runImpactAnalysis', [elementId]]);
+      return true;
+    },
   };
   return { actions, calls };
 }
@@ -123,7 +127,7 @@ describe('deriveNavTargets', () => {
       viewpoints: makeRegistry(),
       actions,
     });
-    expect(targets.map((t) => t.id)).toEqual(['show-in-ibd']);
+    expect(targets.map((t) => t.id)).toEqual(['show-in-ibd', 'show-impact']);
     expect(targets[0]!.label).toBe('Show in IBD');
     expect(targets[0]!.description).toContain('Engine IBD');
     targets[0]!.perform();
@@ -141,7 +145,7 @@ describe('deriveNavTargets', () => {
       viewpoints: makeRegistry(),
       actions,
     });
-    expect(targets.map((t) => t.id)).toEqual(['show-in-ibd']);
+    expect(targets.map((t) => t.id)).toEqual(['show-in-ibd', 'show-impact']);
     expect(targets[0]!.description).toMatch(/create/i);
   });
 
@@ -156,7 +160,10 @@ describe('deriveNavTargets', () => {
       viewpoints: makeRegistry(),
       actions,
     });
-    expect(targets.map((t) => t.id)).toEqual(['show-definition-in-bdd']);
+    expect(targets.map((t) => t.id)).toEqual([
+      'show-definition-in-bdd',
+      'show-impact',
+    ]);
     expect(targets[0]!.label).toBe('Show definition in BDD');
     expect(targets[0]!.description).toBe('Engine');
     targets[0]!.perform();
@@ -176,7 +183,7 @@ describe('deriveNavTargets', () => {
       viewpoints: reg,
       actions,
     });
-    expect(targets).toHaveLength(0);
+    expect(targets.map((t) => t.id)).toEqual(['show-impact']);
   });
 
   it('emits a same-element nav target for every other diagram where the element is placed', () => {
@@ -199,6 +206,7 @@ describe('deriveNavTargets', () => {
     expect(targets.map((t) => t.id)).toEqual([
       'show-in-ibd',
       `show-in-${otherBdd.id}`,
+      'show-impact',
     ]);
     targets[1]!.perform();
     expect(calls).toEqual([
@@ -255,7 +263,7 @@ describe('deriveNavTargets', () => {
       viewpoints: makeRegistry(),
       actions,
     });
-    expect(targets).toHaveLength(0);
+    expect(targets.map((t) => t.id)).toEqual(['show-impact']);
   });
 
   // Forward-compat: confirm we do not accidentally match elements that share
@@ -287,6 +295,43 @@ describe('deriveNavTargets', () => {
     expect(
       targets.find((t) => t.id === `show-in-${inheritedDiagram.id}`),
     ).toBeUndefined();
+  });
+
+  // Slice 3a of #177 — context-menu entry that drives impact analysis.
+  describe('show-impact target', () => {
+    it('appends a show-impact entry last for every element', () => {
+      const { actions } = recordingActions();
+      const targets = deriveNavTargets({
+        element: partDef,
+        diagrams: [bddDiagram, ibdDiagram],
+        activeDiagramId: bddDiagram.id,
+        elements: [partDef, portDef, partUsage],
+        edges: [],
+        viewpoints: makeRegistry(),
+        actions,
+      });
+      expect(targets.at(-1)).toMatchObject({
+        id: 'show-impact',
+        label: 'Show impact',
+      });
+    });
+
+    it('invokes runImpactAnalysis with the element id when performed', () => {
+      const { actions, calls } = recordingActions();
+      const targets = deriveNavTargets({
+        element: partDef,
+        diagrams: [],
+        activeDiagramId: null,
+        elements: [partDef],
+        edges: [],
+        viewpoints: makeRegistry(),
+        actions,
+      });
+      const impact = targets.find((t) => t.id === 'show-impact');
+      expect(impact).toBeDefined();
+      impact!.perform();
+      expect(calls).toEqual([['runImpactAnalysis', [defId]]]);
+    });
   });
 
   // Issue #73 — cross-diagram traceability via context menu.

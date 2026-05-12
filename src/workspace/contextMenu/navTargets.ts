@@ -14,6 +14,7 @@ export interface NavTargetActions {
   showDefinitionOnBdd(partUsageId: ElementId): DiagramId | null;
   navigateToElementOnDiagram(elementId: ElementId, diagramId: DiagramId): void;
   showRequirementTracesFor(elementId: ElementId): DiagramId | null;
+  runImpactAnalysis(elementId: ElementId): boolean;
 }
 
 export interface NavTarget {
@@ -128,6 +129,15 @@ export function deriveNavTargets({
       },
     });
   }
+
+  targets.push({
+    id: 'show-impact',
+    label: 'Show impact',
+    description: 'Highlight downstream elements & traces',
+    perform: () => {
+      actions.runImpactAnalysis(element.id);
+    },
+  });
 
   return targets;
 }
