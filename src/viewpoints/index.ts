@@ -133,4 +133,17 @@ export type {
   RequirementTraceFlowEdge,
 } from './requirements';
 
+export {
+  STATE_MACHINE_FINAL_NODE_TYPE,
+  STATE_MACHINE_INITIAL_NODE_TYPE,
+  STATE_MACHINE_PSEUDOSTATE_SIZE,
+  STATE_MACHINE_STATE_HEIGHT,
+  STATE_MACHINE_STATE_NODE_TYPE,
+  STATE_MACHINE_STATE_WIDTH,
+  STATE_MACHINE_TRANSITION_EDGE_TYPE,
+  STATE_MACHINE_VIEWPOINT_ID,
+  stateMachineViewpoint,
+  stateNodeSize,
+} from './stateMachine';
+
 

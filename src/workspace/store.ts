@@ -51,6 +51,7 @@ import {
   isValidActivityConnection,
   REQUIREMENTS_VIEWPOINT_ID,
   requirementsViewpoint,
+  stateMachineViewpoint,
   type BddEdgeKind,
   type Viewpoint,
   type ViewpointId,
@@ -131,6 +132,7 @@ function buildViewpointSingleton(): ViewpointRegistry {
   registry.register(ibdViewpoint);
   registry.register(requirementsViewpoint);
   registry.register(activityViewpoint);
+  registry.register(stateMachineViewpoint);
   return registry;
 }
 
