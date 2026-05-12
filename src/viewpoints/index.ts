@@ -231,8 +231,20 @@ export {
   PACKAGE_DEFAULT_NODE_HEIGHT,
   PACKAGE_DEFAULT_NODE_WIDTH,
   PACKAGE_MEMBER_ELEMENT_KINDS,
+  PACKAGE_NODE_HEIGHT,
+  PACKAGE_NODE_TYPE,
+  PACKAGE_NODE_WIDTH,
+  PACKAGE_TAB_HEIGHT,
+  PACKAGE_TAB_WIDTH,
   PACKAGE_VIEWPOINT_ID,
+  PackageNode,
   packageViewpoint,
+} from './package';
+
+export type {
+  PackageFlowNode,
+  PackageNodeData,
+  PackageRenameCallback,
 } from './package';
 
 

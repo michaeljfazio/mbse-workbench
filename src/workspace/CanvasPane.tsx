@@ -57,6 +57,7 @@ import {
   PARAMETRIC_CONSTRAINT_USAGE_WIDTH,
   PARAMETRIC_VALUE_PROPERTY_HEIGHT,
   PARAMETRIC_VALUE_PROPERTY_WIDTH,
+  PACKAGE_VIEWPOINT_ID,
   PARAMETRIC_VIEWPOINT_ID,
   STATE_MACHINE_VIEWPOINT_ID,
   stateNodeSize,
@@ -204,6 +205,13 @@ function toFlowNodes(
         };
       } else if (el.kind === 'Actor' || el.kind === 'UseCase') {
         data = { elementId: el.id, name: el.name, onRename };
+      } else if (el.kind === 'Package') {
+        data = {
+          elementId: el.id,
+          name: el.name,
+          memberCount: el.memberIds.length,
+          onRename,
+        };
       } else if (el.kind === 'ConstraintUsage') {
         const def = registry?.get(el.definitionId);
         const expression =
@@ -374,6 +382,7 @@ function CanvasInner(): JSX.Element {
   const createUseCase = useWorkspaceStore((s) => s.createUseCase);
   const createConstraintUsage = useWorkspaceStore((s) => s.createConstraintUsage);
   const createValueProperty = useWorkspaceStore((s) => s.createValueProperty);
+  const createPackage = useWorkspaceStore((s) => s.createPackage);
   const linkRequirementTrace = useWorkspaceStore(
     (s) => s.linkRequirementTrace,
   );
@@ -1087,6 +1096,20 @@ function CanvasInner(): JSX.Element {
         if (id) setSelection([id]);
         return;
       }
+      if (viewpoint.id === PACKAGE_VIEWPOINT_ID && kind === 'Package') {
+        const { width, height } = viewpoint.nodeSizeFor({
+          id: '' as ElementId,
+          kind: 'Package',
+          name: '',
+          memberIds: [],
+        });
+        const id = createPackage(diagram.id, {
+          x: flowPos.x - width / 2,
+          y: flowPos.y - height / 2,
+        });
+        if (id) setSelection([id]);
+        return;
+      }
       if (viewpoint.id === STATE_MACHINE_VIEWPOINT_ID && kind === 'StateUsage') {
         // Same two-MIME pattern as Activity: the palette carries the
         // StateNodeType discriminator; tree-only drops fall back to 'state'.
@@ -1122,6 +1145,7 @@ function CanvasInner(): JSX.Element {
       createUseCase,
       createConstraintUsage,
       createValueProperty,
+      createPackage,
       setSelection,
     ],
   );

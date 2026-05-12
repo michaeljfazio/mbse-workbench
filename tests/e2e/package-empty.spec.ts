@@ -111,3 +111,79 @@ test.describe('Package viewpoint (issue #154)', () => {
     });
   });
 });
+
+// Issue #155 — seeds a project with a single Package node + member so the
+// custom node + "N members" subline are visible.
+test.describe('Package node visual (issue #155)', () => {
+  const SEEDED_NODE_PROJECT_ID = 'p-package-node-seed';
+
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript((projectId) => {
+      const key = `mbse:v1:project:${projectId}`;
+      if (sessionStorage.getItem(key)) return;
+      const project = {
+        id: projectId,
+        name: 'Package Node Seed',
+        createdAt: '2026-05-13T10:00:00.000Z',
+        modifiedAt: '2026-05-13T10:05:00.000Z',
+        elements: [
+          {
+            id: 'block-1',
+            kind: 'PartDefinition',
+            name: 'Wheel',
+            isAbstract: false,
+            propertyIds: [],
+            portIds: [],
+          },
+          {
+            id: 'pkg-1',
+            kind: 'Package',
+            name: 'Vehicle',
+            memberIds: ['block-1'],
+          },
+        ],
+        edges: [],
+        diagrams: [
+          {
+            id: 'd-package',
+            viewpointId: 'package',
+            name: 'System Packages',
+            positions: { 'pkg-1': { x: 120, y: 80 } },
+          },
+        ],
+        history: { undo: [], redo: [] },
+      };
+      sessionStorage.setItem(key, JSON.stringify(project));
+    }, SEEDED_NODE_PROJECT_ID);
+  });
+
+  test('renders the Package custom node with its member count', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    const node = page.getByTestId('package-node-pkg-1');
+    await expect(node).toBeVisible();
+    await expect(
+      page.getByTestId('package-node-label-pkg-1'),
+    ).toHaveText('Vehicle');
+    await expect(
+      page.getByTestId('package-node-members-pkg-1'),
+    ).toHaveText('1 member');
+  });
+
+  test('@visual package-one canvas baseline', async ({ page }) => {
+    await page.goto('/');
+    const node = page.getByTestId('package-node-pkg-1');
+    await expect(node).toBeVisible();
+    // Deselect by clicking empty pane.
+    const pane = page.locator('.react-flow__pane');
+    const paneBox = await pane.boundingBox();
+    if (paneBox) {
+      await page.mouse.click(paneBox.x + paneBox.width - 80, paneBox.y + 40);
+    }
+    await page.mouse.move(0, 0);
+    await expect(page).toHaveScreenshot('package-one.png', {
+      fullPage: false,
+    });
+  });
+});

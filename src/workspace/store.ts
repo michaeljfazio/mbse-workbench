@@ -20,6 +20,7 @@ import type {
   ModelEdge,
   ModelElement,
   ObjectFlowEdge,
+  PackageElement,
   ParameterBindingEdge,
   PartDefinitionElement,
   PartUsageElement,
@@ -268,6 +269,13 @@ export interface WorkspaceActions {
     position: NodePosition,
     options?: CreateActorOptions,
   ): ElementId | null;
+  createPackage(
+    diagramId: DiagramId,
+    position: NodePosition,
+    options?: CreatePackageOptions,
+  ): ElementId | null;
+  addPackageMember(packageId: ElementId, memberId: ElementId): void;
+  removePackageMember(packageId: ElementId, memberId: ElementId): void;
   createUseCase(
     diagramId: DiagramId,
     position: NodePosition,
@@ -519,6 +527,11 @@ export interface CreateActorOptions {
   readonly name?: string;
 }
 
+export interface CreatePackageOptions {
+  readonly name?: string;
+  readonly memberIds?: readonly ElementId[];
+}
+
 export interface CreateUseCaseOptions {
   readonly name?: string;
   readonly text?: string;
@@ -537,6 +550,17 @@ export interface CreateValuePropertyOptions {
 }
 
 const VALUE_PROPERTY_TYPE_DEFAULT: ValueType = 'number';
+
+function nextPackageName(elements: readonly ModelElement[]): string {
+  const taken = new Set(
+    elements
+      .filter((e): e is PackageElement => e.kind === 'Package')
+      .map((e) => e.name),
+  );
+  let n = 1;
+  while (taken.has(`Package${n}`)) n += 1;
+  return `Package${n}`;
+}
 
 function nextActorName(elements: readonly ModelElement[]): string {
   const taken = new Set(
@@ -1332,6 +1356,67 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       user,
     );
     return id;
+  },
+
+  createPackage(diagramId, position, options) {
+    const { bus, user, registry, diagrams, elements } = get();
+    if (!bus || !user || !registry) return null;
+    if (!diagrams.some((d) => d.id === diagramId)) return null;
+    const id = createElementId();
+    const pkg: PackageElement = {
+      id,
+      kind: 'Package',
+      name: options?.name?.trim() ?? nextPackageName(elements),
+      memberIds: options?.memberIds ? [...options.memberIds] : [],
+    };
+    bus.dispatch(
+      {
+        kind: 'compound',
+        commands: [
+          { kind: 'create-element', element: pkg },
+          {
+            kind: 'update-diagram-position',
+            diagramId,
+            elementId: id,
+            position,
+          },
+        ],
+      },
+      user,
+    );
+    return id;
+  },
+
+  addPackageMember(packageId, memberId) {
+    const { bus, user, registry } = get();
+    if (!bus || !user || !registry) return;
+    const pkg = registry.get(packageId);
+    if (!pkg || pkg.kind !== 'Package') return;
+    const member = registry.get(memberId);
+    if (!member) return;
+    if (pkg.memberIds.includes(memberId)) return;
+    const patch: ElementPatch<'Package'> = {
+      memberIds: [...pkg.memberIds, memberId],
+    };
+    bus.dispatch(
+      { kind: 'update-element', id: packageId, patch },
+      user,
+    );
+  },
+
+  removePackageMember(packageId, memberId) {
+    const { bus, user, registry } = get();
+    if (!bus || !user || !registry) return;
+    const pkg = registry.get(packageId);
+    if (!pkg || pkg.kind !== 'Package') return;
+    if (!pkg.memberIds.includes(memberId)) return;
+    const patch: ElementPatch<'Package'> = {
+      memberIds: pkg.memberIds.filter((m) => m !== memberId),
+    };
+    bus.dispatch(
+      { kind: 'update-element', id: packageId, patch },
+      user,
+    );
   },
 
   createUseCase(diagramId, position, options) {
