@@ -4,14 +4,14 @@
 phase:8 — Parametric Diagram (epic #9 open; decomposed into #135 viewpoint+ADR / #136 nodes+palette+inspector / #137 ParameterBinding edge / #138 gate spec)
 
 ## Current iteration
-- Iteration #: 59
+- Iteration #: 60
 - Started: 2026-05-12
-- Branch: chore/status-iter-59 (STATUS-only) opened from main after Phase 7 close
-- Working on: idle — Phase 7 closed and vphase-7 tagged; Phase 8 ready to begin next iteration starting with **#135** (viewpoint registration + ADR 0008)
+- Branch: chore/status-iter-60 (STATUS-only). PR #140 (#135 Parametric viewpoint + ADR 0008) in-flight: first CI run 25741283262 failed because new `parametric-empty.spec.ts` had no committed baselines. Recovered by pulling chromium + webkit `*-actual.png` from playwright-report attachments, `gh pr update-branch --rebase` to clear BEHIND, then pushing the two baseline PNGs as commit f2a6341. Auto-merge SQUASH still armed; second CI now running.
+- Working on: **#135 PR #140** awaiting CI re-run. On green merge: pick up **#136** (ConstraintUsage + ValueProperty custom nodes + palette + inspector extras).
 
 ## Last test run
-- Command: GitHub Actions release workflow 25740684928 (vphase-7 tag)
-- Result: SUCCESS. Pages HTTP 200 at https://michaeljfazio.github.io/mbse-workbench/. Smoke walkthrough via scripts/smoke-vphase-7.mjs captured 4 PNGs under artifacts/release-vphase-7/.
+- Command: GitHub Actions run 25741283262 (PR #140 first CI)
+- Result: FAILURE on 2 / 386 specs — `parametric-empty.spec.ts:104 @visual parametric-empty canvas baseline` on chromium + webkit (snapshot doesn't exist). Other 384 green. Baseline pair landed in commit f2a6341; awaiting re-run conclusion.
 
 ## Known issues / blockers
 - (none)
@@ -84,7 +84,8 @@ phase:8 — Parametric Diagram (epic #9 open; decomposed into #135 viewpoint+ADR
 - 2026-05-12: Iteration 54 — #119 merged at PR #127 (Include + Extend + Generalization edges). ActorNode handle-direction bug caught: flipped to top=target/bottom=source to match UseCaseNode.
 - 2026-05-12: Iteration 57 — #120 PR #131 opened (Phase 7 gate spec, 545 lines, 8 tests).
 - 2026-05-12: Iteration 58 — PR #131 rebased after iter-56 STATUS PR #130 landed during first CI; iter-57 STATUS PR #132 was DIRTY (branched pre-#130) so closed and reopened fresh chore/status-iter-58 from updated main.
+- 2026-05-12: Iteration 60 — PR #140 (#135) first CI red on missing `parametric-empty.spec.ts` baselines (new spec, no committed PNGs). Recovered by extracting chromium+webkit `*-actual.png` from playwright-report attachments and committing them as `tests/e2e/__screenshots__/parametric-empty.spec.ts/parametric-empty-{chromium,webkit}.png`. Generalises iter-39 lesson: any new spec file with `@visual` tests needs its baseline directory created and populated; agent should pre-extract from a prior failing run rather than expect local generation (Linux renderer pin).
 - 2026-05-12: **Iteration 59 — Phase 7 closed, vphase-7 tagged.** Release workflow 25740684928 green; Pages HTTP 200; smoke walkthrough scripts/smoke-vphase-7.mjs seeded 2 Actors + 3 Use Cases with Include/Extend/Generalization — captured 4 PNGs in artifacts/release-vphase-7/. Live deploy demonstrates **five of eight viewpoints** (BDD/IBD/Requirements/Activity/State Machine/Use Case). Phase 8 (Parametric Diagram) decomposed into four children (#135 viewpoint+ADR 0008, #136 ConstraintUsage+ValueProperty nodes+palette+inspector, #137 ParameterBinding edge, #138 gate spec). Phase 8 metamodel pre-exists (links: #8 epic closed, #134 release closed, vphase-7 tag, #9 / #135-#138).
 
 ## Next action
-Start Phase 8 by picking up **#135** (viewpoint registration + ADR 0008). Follow iter-29/35/43/49 template: register `parametricViewpoint` with frozen module-scope empty `nodeTypes`/`edgeTypes`, author ADR 0008 (free-form scope; accepted element kinds ConstraintUsage + ValueProperty; ParameterBinding stays in `ModelEdge`; equations as plain strings, no evaluator), commit empty `parametric-empty.{chromium,webkit}.png` baseline pair.
+Wait for PR #140 second CI; on green merge, start **#136** (ConstraintUsage + ValueProperty custom nodes + palette chip strip + inspector extras).
