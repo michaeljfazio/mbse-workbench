@@ -4,10 +4,10 @@
 phase:10 — Requirements traceability. Phase 9 closed (epic #10) and `vphase-9` tagged at 82b8262 (release workflow run 25762425334 queued). Phase 10 not yet decomposed — JIT child issues open next iteration per AGENT.md Ralph loop step 6.
 
 ## Current iteration
-- Iteration #: 85
+- Iteration #: 86
 - Started: 2026-05-13
-- Branch: chore/status-iter-84 (this STATUS update; iter-85 reuses the chore branch so #187 carries forward instead of stacking — per iter-73 lesson).
-- Working on: #177 slice 2/N — PR #188 (store wiring: `impactRootId` + `impactHighlightedIds` + `impactHighlightedEdgeIds` state, `runImpactAnalysis` + `clearImpactHighlight` actions, bus-subscriber recompute on model change) opened against `issue/177-impact-set-helpers` base, labelled `phase:10,type:feature,p1`, auto-merge --squash enabled. PR #186 (slice 1/N) CI still in progress; #188 stacks behind it and will retarget to main after #186 lands.
+- Branch: chore/status-iter-84 (STATUS update; #187 carries forward per iter-73 lesson).
+- Working on: #177 slices 1+2/N consolidated on `issue/177-impact-set-helpers` after #188 squash-merged into that branch. CI on PR #186 had failed: `tsc -b` (project-references build) flagged the bus-subscriber's `Partial<WorkspaceState>` local for assigning to `readonly impactRootId` / `impactHighlightedIds` / `impactHighlightedEdgeIds`. The non-build `tsc --noEmit` typecheck script missed it. Fixed in 3d8db99 by switching the patch local to a `-readonly` mapped Partial. Merged `origin/main` to clear BEHIND. Local `pnpm run build` green; 645 unit tests green. Pushed; waiting for PR #186 CI re-run.
 
 ## Last health check
 - Date: 2026-05-13 (iter-80)
@@ -18,8 +18,8 @@ phase:10 — Requirements traceability. Phase 9 closed (epic #10) and `vphase-9`
 - Result: PASS. Next health check due at iter-90.
 
 ## Last test run
-- Command: `pnpm typecheck && pnpm lint && pnpm test:unit` (local, on PR #188's branch, iter-85)
-- Result: PASS — 645 unit tests / 58 files (+8 new in `tests/unit/workspace/impactActions.test.ts`); tsc clean; eslint 0 errors / 4 warnings (pre-existing react-refresh). No UI surface in this slice → no Playwright run required locally; CI Playwright matrix runs on the PR.
+- Command: `pnpm run build && pnpm test:unit` (local, on `issue/177-impact-set-helpers` after merging origin/main + applying 3d8db99, iter-86)
+- Result: PASS — `tsc -b && vite build` clean (the failing mode), 645 unit tests / 58 files green.
 
 ## Known issues / blockers
 - None functional. Release workflow run 25762425334 queued on tag `vphase-9` push — watch for deploy green then exercise live URL in Playwright walkthrough (eight viewpoints) and save screenshots under `artifacts/release-vphase-9/` per AGENT.md Ralph loop step 17.
@@ -68,6 +68,7 @@ phase:10 — Requirements traceability. Phase 9 closed (epic #10) and `vphase-9`
 - 2026-05-13: **Iteration 83 — Phase 9 closed, vphase-9 tagged at 82b8262.** Epic #10 closed with all four child checkboxes ticked; release issue #171 opened; release workflow run 25762425334 queued on tag push. JOURNAL.md appended with phase-completion entry. Eight of eight viewpoints in the live deploy on workflow green; remaining phases are 10 (Requirements traceability), 11 (LLM), 12 (export/import + polish).
 - 2026-05-13: **Iteration 84 — #177 slice 1/N PR #186 opened.** Pure `computeImpactSet(rootElementId, elements, edges)` helper under `src/workspace/impact/` plus 9 unit cases (empty, single root, outgoing composition, incoming RequirementTrace, mixed, cycle-safety, disconnected components, malformed map guard, edge-type filtering). Pure module → no UI surface, no visual/a11y delta this slice. Phase 10 decomposition is already in flight (PRs #182 matrix-helpers slice and #185 tree-drag-trace merged on main; #179 editor-helpers merged); ladder is: impact helpers → context-menu + store flag → node-ring + banner UI → Phase 10 gate spec.
 - 2026-05-13: **Iteration 85 — #177 slice 2/N PR #188 opened.** Store wiring: three new readonly state fields (`impactRootId`, `impactHighlightedIds`, `impactHighlightedEdgeIds`); two new actions (`runImpactAnalysis(rootId)` returns false for unknown id and clears; `clearImpactHighlight()` is a no-op when already empty); bus-subscriber recompute when model changes under an active root (drops on root delete). +8 unit cases (645 total). PR base set to `issue/177-impact-set-helpers` so the diff is just the slice; will retarget to `main` after #186 lands. Auto-merge --squash enabled.
+- 2026-05-13: **Iteration 86 — PR #186 CI red recovered (3d8db99).** PR #188 squash-merged into the slice-1 branch (its base), consolidating slices 1+2/N on `issue/177-impact-set-helpers`. CI then failed on `tsc -b`: TS2540 on five lines in the bus subscriber assigning to `readonly impactRootId`/`impactHighlightedIds`/`impactHighlightedEdgeIds` of a `Partial<WorkspaceState>` local. `pnpm typecheck` (`tsc --noEmit`) had silently accepted it — disagreement between root tsc and project-references tsc on mapped-type readonly. Fix: typed the patch local with `{ -readonly [K in keyof WorkspaceState]?: WorkspaceState[K] }`. Merged `origin/main` to clear BEHIND. Local `pnpm run build` green; 645 unit tests green. Lesson recorded in `docs/CONTEXT.md`: prefer `pnpm run build` over bare `pnpm typecheck` when patching store state through locals.
 
 ## Next action
-Watch PR #186 (slice 1/N) CI to green; auto-merge lands it on main, which auto-retargets #188's base to main. After both land, pick up slice 3/N of #177 — UI surface: right-click "Show impact" on canvas nodes / tree leaves invokes `runImpactAnalysis(id)`; CanvasPane renders a glow/ring on highlighted nodes and a thicker stroke on highlighted edges; a dismissible banner shows "Impact: <root name> — N elements" with a Clear button wired to `clearImpactHighlight()`. Phase 10 gate spec (#178) follows. Release workflow run 25762425334 (vphase-9) still pending live walkthrough — `artifacts/release-vphase-9/` capture deferred, not blocking.
+Watch PR #186 (slices 1+2/N consolidated) CI re-run after 3d8db99; auto-merge lands it on main. Then pick up slice 3/N of #177 — UI surface: right-click "Show impact" on canvas nodes / tree leaves invokes `runImpactAnalysis(id)`; CanvasPane renders a glow/ring on highlighted nodes and a thicker stroke on highlighted edges; a dismissible banner shows "Impact: <root name> — N elements" with a Clear button wired to `clearImpactHighlight()`. Phase 10 gate spec (#178) follows. Release workflow run 25762425334 (vphase-9) still pending live walkthrough — `artifacts/release-vphase-9/` capture deferred, not blocking.
