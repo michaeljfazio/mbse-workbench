@@ -15,17 +15,19 @@ export interface ComputeImpactSetInput {
 function toElementMap(
   source: ReadonlyMap<ElementId, ModelElement> | readonly ModelElement[],
 ): ReadonlyMap<ElementId, ModelElement> {
-  if (source instanceof Map) return source;
-  const map = new Map<ElementId, ModelElement>();
-  for (const el of source) map.set(el.id, el);
-  return map;
+  if (Array.isArray(source)) {
+    const map = new Map<ElementId, ModelElement>();
+    for (const el of source) map.set(el.id, el);
+    return map;
+  }
+  return source as ReadonlyMap<ElementId, ModelElement>;
 }
 
 function toEdgeList(
   source: ReadonlyMap<EdgeId, ModelEdge> | readonly ModelEdge[],
 ): readonly ModelEdge[] {
-  if (source instanceof Map) return Array.from(source.values());
-  return source;
+  if (Array.isArray(source)) return source;
+  return Array.from((source as ReadonlyMap<EdgeId, ModelEdge>).values());
 }
 
 /**
