@@ -1,17 +1,21 @@
 # STATUS
 
 ## Current phase
-phase:9 — Package Diagram (epic #10 open; not yet decomposed — JIT decomposition next iteration after release deploy verified)
+phase:9 — Package Diagram. JIT-decomposed into four children (#154–#157) by iter-67 (PR #158 in flight off chore/status-iter-67). This iteration picks up #154 directly from main; if iter-67's status PR lands afterward, it's a no-op for the decomposition record.
 
 ## Current iteration
-- Iteration #: 74
+- Iteration #: 75
 - Started: 2026-05-13
-- Branch: chore/phase-8-close — Phase 8 closure consolidated. PR #145 merged (e5ef448); epic #9 closed; release issue #149 opened; **tag vphase-8 pushed** on e5ef448. Release workflow run **25750784828** queued on the tag. JOURNAL.md appended with iter-74 phase-completion entry. Stale PR #148 closed as superseded (its STATUS observation stack added no signal beyond what this consolidated entry captures).
-- Working on: phase 8 closure + journal (open PR pending push).
+- Branch: issue/154-package-viewpoint → PR #159 opened with auto-merge --squash. STATUS update on chore/status-iter-75 follow-on.
+- Working on: #154 — Package viewpoint registration + ADR 0009. Shipped:
+  - `src/viewpoints/package/index.ts` — placeholder viewpoint (empty palette/nodes/edges). `acceptedElementKinds` = `Package` + 18 member kinds; `acceptedEdgeKinds: ['PackageImport']`; `acceptedEdgeElementKinds: []` per ADR 0009 § 2.
+  - `docs/adr/0009-package-diagram-shape.md` pins four decisions: (1) free-form scope (no Diagram.context, multiple per project); (2) containment as `memberIds` list NOT element-as-edge — group-node vs. badge render deferred to #155 (data model unchanged either way); (3) PackageImport endpoint typing Package→Package, directional, no self-imports; (4) move-between-packages as typed compound of two `update-element` commands so single Cmd-Z reverts both halves (mirrors iter-17 update-diagram-position precedent).
+  - `tests/unit/viewpoints/package.test.ts` (10 cases) + 2 cases in `tests/unit/workspace/store.test.ts`.
+  - `tests/e2e/package-empty.spec.ts` — 3 specs (tab switch, @a11y, @visual `package-empty.png`). Linux baselines pending first CI cycle per iter-39 / iter-60 procedure.
 
 ## Last test run
 - Command: pnpm typecheck && pnpm lint && pnpm test:unit && pnpm build
-- Result: PASS (last run 2026-05-13 prior to PR #145 merge) — 556 unit tests; lint warnings only.
+- Result: PASS — 567 unit tests; lint warnings only (4 pre-existing fast-refresh); build 592 kB bundle.
 
 ## Known issues / blockers
 - (none)
@@ -47,6 +51,7 @@ phase:9 — Package Diagram (epic #10 open; not yet decomposed — JIT decomposi
 - 2026-05-13: Iter-65 ValueProperty default-name capitalisation lesson — default name is lowercase `value1` while kindLabel is "Value". Grep `name${n}` / `name\${` in `store.ts` rather than infer from chip labels.
 - 2026-05-13: Iter-73 STATUS-stacking lesson: stacking one STATUS commit per idle iteration cascades CI cancellations on the status PR. Hold STATUS commits until CI lands or a real signal arrives.
 - 2026-05-13: **Iteration 74 — Phase 8 closed, vphase-8 tagged at e5ef448.** Release workflow 25750784828 queued. Stale PR #148 (5-deep STATUS stack) closed as superseded. Live deploy on workflow green will demonstrate **six of eight viewpoints**.
+- 2026-05-13: **Iteration 75 — #154 Package viewpoint registered + ADR 0009 published.** PR #159 opened (auto-merge --squash). Eighth viewpoint slot wired into the registry alongside Parametric. Four ADR-9 decisions pinned ahead of #155–#157: free-form scope, memberIds-not-edge containment, Package→Package directional imports, move-between-packages as two-command compound. Member list (18 kinds, every member-capable ElementKind) exported as `PACKAGE_MEMBER_ELEMENT_KINDS` so #156 drop semantics can iterate it without re-deriving. New @visual spec — `package-empty.{chromium,webkit}.png` baselines will be extracted from first CI playwright-report per iter-39/iter-60.
 
 ## Next action
-Push chore/phase-8-close, open PR, auto-merge. Then await release workflow 25750784828: on green, write `scripts/smoke-vphase-8.mjs` (Newton constraint + mass + accel ValueProperties + two ParameterBinding edges), capture artifacts/release-vphase-8/, decompose Phase 9 (Package Diagram) into JIT children. **Periodic health check is due (iteration 80 is the next 10x boundary; iter-74 is fine to defer until then).**
+Next iteration: await PR #159 CI. On red @visual (expected — new baseline pair), extract the two `package-empty-actual.png` files from the playwright-report per iter-62 procedure (decode `window.playwrightReportBase64`, map sha1→browser) and commit as baselines on the same branch. On green merge, pick up #155 (Package custom node + palette + inspector `PackageExtras`) — ADR 0009 § 2 leaves the group-node vs. badge render choice to that PR; current preference is group-node (matches SysMLv2 mental model and the SysMLv2 textual notation Phase 12 will serialize). Periodic health check still due at the iter-80 boundary.
