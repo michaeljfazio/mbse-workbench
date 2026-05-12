@@ -993,3 +993,17 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
   running `playwright test --update-snapshots`. "Snapshot doesn't
   exist, writing actual" is the line you want; an unannotated `✓
   passed` under `--update-snapshots` means the file was NOT rewritten.
+
+- **2026-05-13** — **Chrome changes drift ~all canvas baselines.** Adding
+  or removing a row in shared chrome (tablist, toolbar, header) shifts
+  the canvas region vertically and pushes every `@visual` spec that
+  captures the canvas over `maxDiffPixelRatio: 0.01` on the amd64 CI
+  runner — typically ~80 baselines (40 specs × 2 browsers), not 1.
+  Budget for a full bulk-refresh round in the same PR that lands the
+  chrome change. Recovery is scripted (iter-92 / iter-97): pull
+  `playwright-report` artifact, base64-extract `index.html`'s
+  `window.playwrightReportBase64` into `report.zip`, unzip, parse each
+  spec's JSON for `attachments[]` (path → `resources/<sha1>.png`),
+  bucket by `(spec,title,project,base)`, take `failed`-status results
+  only, copy each `actual` SHA1 over the matching baseline. Verify
+  `missing=0` (no accidental new baselines).
