@@ -50,6 +50,11 @@ import {
   STATE_MACHINE_STATE_WIDTH,
   STATE_MACHINE_VIEWPOINT_ID,
   stateNodeSize,
+  USE_CASE_ACTOR_HEIGHT,
+  USE_CASE_ACTOR_WIDTH,
+  USE_CASE_USE_CASE_HEIGHT,
+  USE_CASE_USE_CASE_WIDTH,
+  USE_CASE_VIEWPOINT_ID,
   validTraceKindsFor,
   type BddEdgeKind,
   type Viewpoint,
@@ -69,6 +74,7 @@ import {
 } from './store';
 import { ActivityPalette } from './ActivityPalette';
 import { StateMachinePalette } from './StateMachinePalette';
+import { UseCasePalette } from './UseCasePalette';
 import {
   PROJECT_TREE_DRAG_NODE_TYPE,
   PROJECT_TREE_DRAG_STATE_TYPE,
@@ -118,6 +124,9 @@ function exportNodeSizeFor(viewpoint: Viewpoint): { width: number; height: numbe
   }
   if (viewpoint.id === STATE_MACHINE_VIEWPOINT_ID) {
     return { width: STATE_MACHINE_STATE_WIDTH, height: STATE_MACHINE_STATE_HEIGHT };
+  }
+  if (viewpoint.id === USE_CASE_VIEWPOINT_ID) {
+    return { width: USE_CASE_USE_CASE_WIDTH, height: USE_CASE_USE_CASE_HEIGHT };
   }
   return { width: BDD_BLOCK_WIDTH, height: BDD_BLOCK_HEIGHT };
 }
@@ -173,6 +182,8 @@ function toFlowNodes(
           doAction: el.doAction,
           onRename,
         };
+      } else if (el.kind === 'Actor' || el.kind === 'UseCase') {
+        data = { elementId: el.id, name: el.name, onRename };
       } else {
         data = { elementId: el.id, name: el.name, onRename };
       }
@@ -311,6 +322,8 @@ function CanvasInner(): JSX.Element {
   const createRequirement = useWorkspaceStore((s) => s.createRequirement);
   const createActionUsage = useWorkspaceStore((s) => s.createActionUsage);
   const createStateUsage = useWorkspaceStore((s) => s.createStateUsage);
+  const createActor = useWorkspaceStore((s) => s.createActor);
+  const createUseCase = useWorkspaceStore((s) => s.createUseCase);
   const linkRequirementTrace = useWorkspaceStore(
     (s) => s.linkRequirementTrace,
   );
@@ -717,6 +730,36 @@ function CanvasInner(): JSX.Element {
     if (id) setSelection([id]);
   }, [createStateUsage, diagram, setSelection]);
 
+  const handleAddActor = useCallback(() => {
+    if (!diagram) return;
+    const cascadeIndex = Object.keys(diagram.positions).length;
+    const columns = 2;
+    const col = cascadeIndex % columns;
+    const row = Math.floor(cascadeIndex / columns);
+    const stepX = USE_CASE_ACTOR_WIDTH + 40;
+    const stepY = USE_CASE_ACTOR_HEIGHT + 40;
+    const id = createActor(diagram.id, {
+      x: 60 + col * stepX,
+      y: 60 + row * stepY,
+    });
+    if (id) setSelection([id]);
+  }, [createActor, diagram, setSelection]);
+
+  const handleAddUseCase = useCallback(() => {
+    if (!diagram) return;
+    const cascadeIndex = Object.keys(diagram.positions).length;
+    const columns = 2;
+    const col = cascadeIndex % columns;
+    const row = Math.floor(cascadeIndex / columns);
+    const stepX = USE_CASE_USE_CASE_WIDTH + 40;
+    const stepY = USE_CASE_USE_CASE_HEIGHT + 40;
+    const id = createUseCase(diagram.id, {
+      x: 60 + col * stepX,
+      y: 60 + row * stepY,
+    });
+    if (id) setSelection([id]);
+  }, [createUseCase, diagram, setSelection]);
+
   const handleAutoLayout = useCallback(() => {
     if (!diagram) return;
     runAutoLayout(diagram.id);
@@ -875,6 +918,22 @@ function CanvasInner(): JSX.Element {
         if (id) setSelection([id]);
         return;
       }
+      if (viewpoint.id === USE_CASE_VIEWPOINT_ID && kind === 'Actor') {
+        const id = createActor(diagram.id, {
+          x: flowPos.x - USE_CASE_ACTOR_WIDTH / 2,
+          y: flowPos.y - USE_CASE_ACTOR_HEIGHT / 2,
+        });
+        if (id) setSelection([id]);
+        return;
+      }
+      if (viewpoint.id === USE_CASE_VIEWPOINT_ID && kind === 'UseCase') {
+        const id = createUseCase(diagram.id, {
+          x: flowPos.x - USE_CASE_USE_CASE_WIDTH / 2,
+          y: flowPos.y - USE_CASE_USE_CASE_HEIGHT / 2,
+        });
+        if (id) setSelection([id]);
+        return;
+      }
       if (viewpoint.id === STATE_MACHINE_VIEWPOINT_ID && kind === 'StateUsage') {
         // Same two-MIME pattern as Activity: the palette carries the
         // StateNodeType discriminator; tree-only drops fall back to 'state'.
@@ -906,6 +965,8 @@ function CanvasInner(): JSX.Element {
       createRequirement,
       createActionUsage,
       createStateUsage,
+      createActor,
+      createUseCase,
       setSelection,
     ],
   );
@@ -1029,6 +1090,26 @@ function CanvasInner(): JSX.Element {
             + State
           </button>
         ) : null}
+        {viewpoint.id === USE_CASE_VIEWPOINT_ID ? (
+          <>
+            <button
+              type="button"
+              data-testid="toolbar-add-actor"
+              onClick={handleAddActor}
+              className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-foreground shadow-sm transition hover:bg-accent"
+            >
+              + Actor
+            </button>
+            <button
+              type="button"
+              data-testid="toolbar-add-usecase"
+              onClick={handleAddUseCase}
+              className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-foreground shadow-sm transition hover:bg-accent"
+            >
+              + Use case
+            </button>
+          </>
+        ) : null}
         <button
           type="button"
           data-testid="toolbar-auto-layout"
@@ -1058,6 +1139,7 @@ function CanvasInner(): JSX.Element {
       </div>
       {viewpoint.id === ACTIVITY_VIEWPOINT_ID ? <ActivityPalette /> : null}
       {viewpoint.id === STATE_MACHINE_VIEWPOINT_ID ? <StateMachinePalette /> : null}
+      {viewpoint.id === USE_CASE_VIEWPOINT_ID ? <UseCasePalette /> : null}
       <div
         ref={canvasRef}
         data-testid="canvas-drop-target"
