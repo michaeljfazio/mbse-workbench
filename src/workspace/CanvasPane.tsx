@@ -86,6 +86,7 @@ import {
   useWorkspaceStore,
 } from './store';
 import { ActivityPalette } from './ActivityPalette';
+import { ImpactBanner } from './ImpactBanner';
 import { ParametricPalette } from './ParametricPalette';
 import { StateMachinePalette } from './StateMachinePalette';
 import { UseCasePalette } from './UseCasePalette';
@@ -162,6 +163,7 @@ function toFlowNodes(
   selectedIds: ReadonlySet<ElementId>,
   onRename: (id: ElementId, name: string) => void,
   registry: RegistryLookup | null,
+  impactHighlightedIds: ReadonlySet<ElementId>,
 ): Node[] {
   return elements
     .filter((el) => viewpoint.acceptedElementKinds.includes(el.kind))
@@ -237,6 +239,7 @@ function toFlowNodes(
         data = { elementId: el.id, name: el.name, onRename };
       }
       const { width, height } = viewpoint.nodeSizeFor(el);
+      const isImpact = impactHighlightedIds.has(el.id);
       const node: Node = {
         id: el.id,
         type: viewpoint.nodeTypeFor(el),
@@ -245,6 +248,7 @@ function toFlowNodes(
         height,
         selected: selectedIds.has(el.id),
         data,
+        className: isImpact ? 'mbse-impact-node' : undefined,
       };
       return node;
     });
@@ -255,6 +259,7 @@ function toFlowEdges(
   elements: readonly ModelElement[],
   viewpoint: Viewpoint,
   selectedIds: ReadonlySet<ElementId>,
+  impactHighlightedEdgeIds: ReadonlySet<EdgeId>,
 ): Edge[] {
   const out: Edge[] = [];
   for (const e of edges) {
@@ -291,6 +296,9 @@ function toFlowEdges(
       targetHandle: 'top',
       selected: selectedIds.has(e.id as unknown as ElementId),
       data,
+      className: impactHighlightedEdgeIds.has(e.id)
+        ? 'mbse-impact-edge'
+        : undefined,
     });
   }
 
@@ -421,6 +429,10 @@ function CanvasInner(): JSX.Element {
     (s) => s.showRequirementTracesFor,
   );
   const runImpactAnalysis = useWorkspaceStore((s) => s.runImpactAnalysis);
+  const impactHighlightedIds = useWorkspaceStore((s) => s.impactHighlightedIds);
+  const impactHighlightedEdgeIds = useWorkspaceStore(
+    (s) => s.impactHighlightedEdgeIds,
+  );
 
   const selectedSet = useMemo(() => new Set(selectedElementIds), [selectedElementIds]);
 
@@ -442,13 +454,28 @@ function CanvasInner(): JSX.Element {
       selectedSet,
       renameElement,
       registry,
+      impactHighlightedIds,
     );
-  }, [elements, viewpoint, diagram, selectedSet, renameElement, registry]);
+  }, [
+    elements,
+    viewpoint,
+    diagram,
+    selectedSet,
+    renameElement,
+    registry,
+    impactHighlightedIds,
+  ]);
 
   const flowEdges = useMemo(() => {
     if (!viewpoint) return [];
-    return toFlowEdges(edges, elements, viewpoint, selectedSet);
-  }, [edges, elements, viewpoint, selectedSet]);
+    return toFlowEdges(
+      edges,
+      elements,
+      viewpoint,
+      selectedSet,
+      impactHighlightedEdgeIds,
+    );
+  }, [edges, elements, viewpoint, selectedSet, impactHighlightedEdgeIds]);
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
@@ -1397,6 +1424,7 @@ function CanvasInner(): JSX.Element {
           />
         </div>
       </div>
+      <ImpactBanner />
       {viewpoint.id === ACTIVITY_VIEWPOINT_ID ? <ActivityPalette /> : null}
       {viewpoint.id === STATE_MACHINE_VIEWPOINT_ID ? <StateMachinePalette /> : null}
       {viewpoint.id === USE_CASE_VIEWPOINT_ID ? <UseCasePalette /> : null}

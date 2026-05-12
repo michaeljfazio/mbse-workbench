@@ -48,3 +48,16 @@
     font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   }
 }
+
+.mbse-impact-node {
+  outline: 3px solid rgb(245 158 11);
+  outline-offset: 2px;
+  border-radius: 6px;
+  box-shadow: 0 0 0 4px rgb(254 243 199);
+}
+
+.mbse-impact-edge .react-flow__edge-path {
+  stroke: rgb(217 119 6);
+  stroke-width: 3px;
+}
+
