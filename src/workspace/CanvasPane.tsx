@@ -52,6 +52,11 @@ import {
   resolvePartHandles,
   STATE_MACHINE_STATE_HEIGHT,
   STATE_MACHINE_STATE_WIDTH,
+  PARAMETRIC_CONSTRAINT_USAGE_HEIGHT,
+  PARAMETRIC_CONSTRAINT_USAGE_WIDTH,
+  PARAMETRIC_VALUE_PROPERTY_HEIGHT,
+  PARAMETRIC_VALUE_PROPERTY_WIDTH,
+  PARAMETRIC_VIEWPOINT_ID,
   STATE_MACHINE_VIEWPOINT_ID,
   stateNodeSize,
   USE_CASE_ACTOR_HEIGHT,
@@ -78,6 +83,7 @@ import {
   useWorkspaceStore,
 } from './store';
 import { ActivityPalette } from './ActivityPalette';
+import { ParametricPalette } from './ParametricPalette';
 import { StateMachinePalette } from './StateMachinePalette';
 import { UseCasePalette } from './UseCasePalette';
 import {
@@ -197,6 +203,24 @@ function toFlowNodes(
         };
       } else if (el.kind === 'Actor' || el.kind === 'UseCase') {
         data = { elementId: el.id, name: el.name, onRename };
+      } else if (el.kind === 'ConstraintUsage') {
+        const def = registry?.get(el.definitionId);
+        const expression =
+          def && def.kind === 'ConstraintDefinition' ? def.expression : '';
+        data = {
+          elementId: el.id,
+          name: el.name,
+          expression,
+          onRename,
+        };
+      } else if (el.kind === 'ValueProperty') {
+        data = {
+          elementId: el.id,
+          name: el.name,
+          valueType: el.valueType,
+          defaultValue: el.defaultValue,
+          onRename,
+        };
       } else {
         data = { elementId: el.id, name: el.name, onRename };
       }
@@ -344,6 +368,8 @@ function CanvasInner(): JSX.Element {
   const createStateUsage = useWorkspaceStore((s) => s.createStateUsage);
   const createActor = useWorkspaceStore((s) => s.createActor);
   const createUseCase = useWorkspaceStore((s) => s.createUseCase);
+  const createConstraintUsage = useWorkspaceStore((s) => s.createConstraintUsage);
+  const createValueProperty = useWorkspaceStore((s) => s.createValueProperty);
   const linkRequirementTrace = useWorkspaceStore(
     (s) => s.linkRequirementTrace,
   );
@@ -1017,6 +1043,28 @@ function CanvasInner(): JSX.Element {
         if (id) setSelection([id]);
         return;
       }
+      if (
+        viewpoint.id === PARAMETRIC_VIEWPOINT_ID &&
+        kind === 'ConstraintUsage'
+      ) {
+        const id = createConstraintUsage(diagram.id, {
+          x: flowPos.x - PARAMETRIC_CONSTRAINT_USAGE_WIDTH / 2,
+          y: flowPos.y - PARAMETRIC_CONSTRAINT_USAGE_HEIGHT / 2,
+        });
+        if (id) setSelection([id]);
+        return;
+      }
+      if (
+        viewpoint.id === PARAMETRIC_VIEWPOINT_ID &&
+        kind === 'ValueProperty'
+      ) {
+        const id = createValueProperty(diagram.id, {
+          x: flowPos.x - PARAMETRIC_VALUE_PROPERTY_WIDTH / 2,
+          y: flowPos.y - PARAMETRIC_VALUE_PROPERTY_HEIGHT / 2,
+        });
+        if (id) setSelection([id]);
+        return;
+      }
       if (viewpoint.id === STATE_MACHINE_VIEWPOINT_ID && kind === 'StateUsage') {
         // Same two-MIME pattern as Activity: the palette carries the
         // StateNodeType discriminator; tree-only drops fall back to 'state'.
@@ -1050,6 +1098,8 @@ function CanvasInner(): JSX.Element {
       createStateUsage,
       createActor,
       createUseCase,
+      createConstraintUsage,
+      createValueProperty,
       setSelection,
     ],
   );
@@ -1223,6 +1273,7 @@ function CanvasInner(): JSX.Element {
       {viewpoint.id === ACTIVITY_VIEWPOINT_ID ? <ActivityPalette /> : null}
       {viewpoint.id === STATE_MACHINE_VIEWPOINT_ID ? <StateMachinePalette /> : null}
       {viewpoint.id === USE_CASE_VIEWPOINT_ID ? <UseCasePalette /> : null}
+      {viewpoint.id === PARAMETRIC_VIEWPOINT_ID ? <ParametricPalette /> : null}
       <div
         ref={canvasRef}
         data-testid="canvas-drop-target"

@@ -5,6 +5,8 @@ import type {
   ActionUsageElement,
   ActorElement,
   ConnectionUsageElement,
+  ConstraintDefinitionElement,
+  ConstraintUsageElement,
   ControlFlowEdge,
   EdgeId,
   EdgePatch,
@@ -32,6 +34,9 @@ import type {
   StateUsageElement,
   TransitionElement,
   UseCaseElement,
+  ValueLiteral,
+  ValuePropertyElement,
+  ValueType,
 } from '@/model';
 import {
   createEdgeId,
@@ -263,6 +268,22 @@ export interface WorkspaceActions {
     position: NodePosition,
     options?: CreateUseCaseOptions,
   ): ElementId | null;
+  createConstraintUsage(
+    diagramId: DiagramId,
+    position: NodePosition,
+    options?: CreateConstraintUsageOptions,
+  ): ElementId | null;
+  createValueProperty(
+    diagramId: DiagramId,
+    position: NodePosition,
+    options?: CreateValuePropertyOptions,
+  ): ElementId | null;
+  setConstraintExpression(constraintUsageId: ElementId, expression: string): void;
+  setValuePropertyType(id: ElementId, valueType: ValueType): void;
+  setValuePropertyDefault(
+    id: ElementId,
+    defaultValue: ValueLiteral | undefined,
+  ): void;
   setUseCaseText(id: ElementId, value: string): void;
   setStateEntryAction(id: ElementId, value: string): void;
   setStateExitAction(id: ElementId, value: string): void;
@@ -496,6 +517,20 @@ export interface CreateUseCaseOptions {
   readonly text?: string;
 }
 
+export interface CreateConstraintUsageOptions {
+  readonly name?: string;
+  readonly definitionName?: string;
+  readonly expression?: string;
+}
+
+export interface CreateValuePropertyOptions {
+  readonly name?: string;
+  readonly valueType?: ValueType;
+  readonly defaultValue?: ValueLiteral;
+}
+
+const VALUE_PROPERTY_TYPE_DEFAULT: ValueType = 'number';
+
 function nextActorName(elements: readonly ModelElement[]): string {
   const taken = new Set(
     elements
@@ -527,6 +562,44 @@ function nextStateName(elements: readonly ModelElement[]): string {
   let n = taken.size + 1;
   while (taken.has(`State${n}`)) n += 1;
   return `State${n}`;
+}
+
+function nextConstraintUsageName(elements: readonly ModelElement[]): string {
+  const taken = new Set(
+    elements
+      .filter((e): e is ConstraintUsageElement => e.kind === 'ConstraintUsage')
+      .map((e) => e.name),
+  );
+  let n = 1;
+  while (taken.has(`Constraint${n}`)) n += 1;
+  return `Constraint${n}`;
+}
+
+function nextConstraintDefinitionName(
+  elements: readonly ModelElement[],
+): string {
+  const taken = new Set(
+    elements
+      .filter(
+        (e): e is ConstraintDefinitionElement =>
+          e.kind === 'ConstraintDefinition',
+      )
+      .map((e) => e.name),
+  );
+  let n = 1;
+  while (taken.has(`ConstraintDef${n}`)) n += 1;
+  return `ConstraintDef${n}`;
+}
+
+function nextValuePropertyName(elements: readonly ModelElement[]): string {
+  const taken = new Set(
+    elements
+      .filter((e): e is ValuePropertyElement => e.kind === 'ValueProperty')
+      .map((e) => e.name),
+  );
+  let n = 1;
+  while (taken.has(`value${n}`)) n += 1;
+  return `value${n}`;
 }
 
 function nextTransitionName(elements: readonly ModelElement[]): string {
@@ -1294,6 +1367,111 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
     const next = trimmed.length === 0 ? undefined : trimmed;
     if ((existing.text ?? undefined) === next) return;
     const patch: ElementPatch<'UseCase'> = { text: next };
+    bus.dispatch({ kind: 'update-element', id, patch }, user);
+  },
+
+  createConstraintUsage(diagramId, position, options) {
+    const { bus, user, registry, diagrams, elements } = get();
+    if (!bus || !user || !registry) return null;
+    if (!diagrams.some((d) => d.id === diagramId)) return null;
+    const usageName = options?.name?.trim() ?? nextConstraintUsageName(elements);
+    const definitionName =
+      options?.definitionName?.trim() ?? nextConstraintDefinitionName(elements);
+    const definitionId = createElementId();
+    const definition: ConstraintDefinitionElement = {
+      id: definitionId,
+      kind: 'ConstraintDefinition',
+      name: definitionName,
+      expression: options?.expression ?? '',
+      parameterIds: [],
+    };
+    const usageId = createElementId();
+    const usage: ConstraintUsageElement = {
+      id: usageId,
+      kind: 'ConstraintUsage',
+      name: usageName,
+      definitionId,
+    };
+    bus.dispatch(
+      {
+        kind: 'compound',
+        commands: [
+          { kind: 'create-element', element: definition },
+          { kind: 'create-element', element: usage },
+          {
+            kind: 'update-diagram-position',
+            diagramId,
+            elementId: usageId,
+            position,
+          },
+        ],
+      },
+      user,
+    );
+    return usageId;
+  },
+
+  createValueProperty(diagramId, position, options) {
+    const { bus, user, registry, diagrams, elements } = get();
+    if (!bus || !user || !registry) return null;
+    if (!diagrams.some((d) => d.id === diagramId)) return null;
+    const id = createElementId();
+    const valueProperty: ValuePropertyElement = {
+      id,
+      kind: 'ValueProperty',
+      name: options?.name?.trim() ?? nextValuePropertyName(elements),
+      valueType: options?.valueType ?? VALUE_PROPERTY_TYPE_DEFAULT,
+      ...(options?.defaultValue !== undefined
+        ? { defaultValue: options.defaultValue }
+        : {}),
+    };
+    bus.dispatch(
+      {
+        kind: 'compound',
+        commands: [
+          { kind: 'create-element', element: valueProperty },
+          {
+            kind: 'update-diagram-position',
+            diagramId,
+            elementId: id,
+            position,
+          },
+        ],
+      },
+      user,
+    );
+    return id;
+  },
+
+  setConstraintExpression(constraintUsageId, expression) {
+    const { bus, user, registry } = get();
+    if (!bus || !user || !registry) return;
+    const usage = registry.get(constraintUsageId);
+    if (!usage || usage.kind !== 'ConstraintUsage') return;
+    const def = registry.get(usage.definitionId);
+    if (!def || def.kind !== 'ConstraintDefinition') return;
+    if (def.expression === expression) return;
+    const patch: ElementPatch<'ConstraintDefinition'> = { expression };
+    bus.dispatch({ kind: 'update-element', id: def.id, patch }, user);
+  },
+
+  setValuePropertyType(id, valueType) {
+    const { bus, user, registry } = get();
+    if (!bus || !user || !registry) return;
+    const existing = registry.get(id);
+    if (!existing || existing.kind !== 'ValueProperty') return;
+    if (existing.valueType === valueType) return;
+    const patch: ElementPatch<'ValueProperty'> = { valueType };
+    bus.dispatch({ kind: 'update-element', id, patch }, user);
+  },
+
+  setValuePropertyDefault(id, defaultValue) {
+    const { bus, user, registry } = get();
+    if (!bus || !user || !registry) return;
+    const existing = registry.get(id);
+    if (!existing || existing.kind !== 'ValueProperty') return;
+    if ((existing.defaultValue ?? undefined) === defaultValue) return;
+    const patch: ElementPatch<'ValueProperty'> = { defaultValue };
     bus.dispatch({ kind: 'update-element', id, patch }, user);
   },
 
