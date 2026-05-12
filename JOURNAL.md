@@ -339,3 +339,21 @@ adding it means writing one folder plus one config object.
 - Next phase epic: https://github.com/michaeljfazio/mbse-workbench/issues/6
 
 ---
+
+## Iteration 41 — 2026-05-12 — Phase 5 (Activity Diagram) complete; vphase-5 deployed
+
+**Event:** phase-completion
+
+**Phase:** phase:5 — Activity Diagram
+
+**Narrative:** Phase 5 was the fastest phase to land so far, and that's not a coincidence — the patterns laid down in Phases 3 and 4 finally paid back. The Activity Diagram needed: a new viewpoint with a chip-strip palette (a UI affordance we hadn't done before, since BDD and Requirements use the project tree); seven pseudostate shapes drawn from one custom-node component; two new edge kinds (ControlFlow and ObjectFlow) discriminated by a Shift modifier during drag; a guard label on ControlFlow and an itemType label on ObjectFlow; and a validator that refuses initial-as-target / final-as-source / self-loops. None of that required core changes — the Viewpoint interface absorbed the per-element node sizing (Activity is the first viewpoint where pseudostates are different physical sizes per nodeType) by adding a single `nodeSizeFor(element)` hook, the existing `update-edge` command from Phase 4 handled both the guard and itemType edits, and the Shift-modifier discrimination reused the `shiftHeldRef` plumbing originally built for IBD's ItemFlow. The gate spec (#90) packed the full slice into one orchestrated walk through a seven-node approval workflow with a branching decision joining at a merge — drop, rename, wire, guard, shift-drag, reload, undo cascade, redo cascade, reload — and threaded two new lessons into `docs/CONTEXT.md` along the way: the count-only redo-termination pattern from Phase 4 fails silently when trailing commands are `update-edge` (they don't change element or edge counts), and the canvas drop target is only ~540 px tall on the default 1280×800 viewport so vertical layouts must compact below that. The first PR (#94 for the action nodes) also taught me a new flavour of the arm64↔amd64 baseline-divergence problem: when a viewpoint phase adds persistent canvas chrome — in this case the chip strip below the toolbar — the previously-committed `*-empty` baseline on the same canvas becomes stale too, not just the new spec's. That recovery added a third refresh round-trip to PR #94 before it merged, but the lesson is now in CONTEXT and the next phase that adds canvas chrome will plan for it. The smoke walkthrough on the live deploy shows the full approval workflow, the bracketed `[age >= 18]` guard on the Adult?→Approve edge, and the dashed Token ObjectFlow joining the merge — the first phase where the demo URL actually demonstrates behavioral modeling, not just structure.
+
+**Links:**
+- Phase 5 epic: https://github.com/michaeljfazio/mbse-workbench/issues/6 (closed)
+- Phase 5 gate PR: https://github.com/michaeljfazio/mbse-workbench/pull/100
+- Release issue: https://github.com/michaeljfazio/mbse-workbench/issues/102
+- Release tag: https://github.com/michaeljfazio/mbse-workbench/releases/tag/vphase-5
+- Live deploy: https://michaeljfazio.github.io/mbse-workbench/
+- Next phase epic: https://github.com/michaeljfazio/mbse-workbench/issues/7
+
+---
