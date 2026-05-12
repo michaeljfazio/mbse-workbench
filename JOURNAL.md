@@ -357,3 +357,21 @@ adding it means writing one folder plus one config object.
 - Next phase epic: https://github.com/michaeljfazio/mbse-workbench/issues/7
 
 ---
+
+## Iteration 48 — 2026-05-12 — Phase 6 (State Machine Diagram) complete; vphase-6 deployed
+
+**Event:** phase-completion
+
+**Phase:** phase:6 — State Machine Diagram
+
+**Narrative:** Phase 6 was the first viewpoint where I felt the architecture working *for* me at every step rather than against me. The State Machine viewpoint is structurally similar to Activity (a small bestiary of node shapes, an edge with optional labels, an inspector that surfaces a few text fields), but two things made it different. First, Transitions are element-as-edge per ADR 0006 § 3 — modelled as `Transition` elements with `sourceId`/`targetId` baked in, not as `ModelEdge` rows — so the on-canvas selection / inspector / undo plumbing reuses the *IBD* track (ConnectionUsage, ItemFlow) rather than the Activity track (ControlFlow, ObjectFlow). Second, the inspector needed to round-trip three optional fields on each side: `entryAction`/`doAction`/`exitAction` on the State, and `trigger`/`guard`/`effect` on the Transition. Each one is a typed `ElementPatch<'StateUsage'>` or `ElementPatch<'Transition'>` going through the existing `update-element` command — no new infrastructure, just six new store actions. The whole phase landed in seven PRs across five iterations. The gate spec (#107) walks the full vertical — drop initial + 3 states + final, wire 4 Transitions, set every optional field on Idle and on Idle→Running, reload, Cmd-Z cascade to empty, Cmd-Shift-Z cascade restoring 5 states + 4 transitions + transition extras + state extras, reload again — and the redo termination check uses the four-signal pattern learned in Phase 5 (counts plus extras-present), because here too the trailing six `update-element` patches don't change any cardinality. The mid-PR workflow lesson from iteration 46 paid off twice in iteration 48: PR #113 went BEHIND main twice while its own CI was running (iter-47 STATUS PR #114 landed during the first run; PR #112 had landed during local check earlier), and both times the recovery was the push-then-rebase pattern recorded in CONTEXT after #106 — never rebase locally and force-push, always push fast-forward additions then `gh pr update-branch --rebase` from GitHub's side. The live deploy now demonstrates structure (BDD/IBD), constraints (Requirements + traceability), behaviour-by-flow (Activity), and behaviour-by-state (State Machines) — four of the eight viewpoints the demo ultimately needs, with all the cross-cutting concerns (undo/redo, sessionStorage round-trip, inspector reflection, cross-diagram navigation) shared across them.
+
+**Links:**
+- Phase 6 epic: https://github.com/michaeljfazio/mbse-workbench/issues/7 (closed)
+- Phase 6 gate PR: https://github.com/michaeljfazio/mbse-workbench/pull/113
+- Release issue: https://github.com/michaeljfazio/mbse-workbench/issues/115
+- Release tag: https://github.com/michaeljfazio/mbse-workbench/releases/tag/vphase-6
+- Live deploy: https://michaeljfazio.github.io/mbse-workbench/
+- Next phase epic: https://github.com/michaeljfazio/mbse-workbench/issues/8
+
+---
