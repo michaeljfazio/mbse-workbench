@@ -142,8 +142,15 @@ export {
   STATE_MACHINE_STATE_WIDTH,
   STATE_MACHINE_TRANSITION_EDGE_TYPE,
   STATE_MACHINE_VIEWPOINT_ID,
+  StateUsageNode,
   stateMachineViewpoint,
   stateNodeSize,
+} from './stateMachine';
+
+export type {
+  StateRenameCallback,
+  StateUsageFlowNode,
+  StateUsageNodeData,
 } from './stateMachine';
 
 

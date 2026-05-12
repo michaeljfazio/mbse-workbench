@@ -20,6 +20,7 @@ import type {
   RequirementStatus,
   RequirementTraceEdge,
   RequirementTraceKind,
+  StateUsageElement,
   ValuePropertyElement,
 } from '@/model';
 import { isTraceTargetKind } from '@/viewpoints';
@@ -168,6 +169,10 @@ function InspectorSingle({ element }: InspectorSingleProps): JSX.Element {
 
       {element.kind === 'ActionDefinition' ? (
         <ActionDefinitionExtras element={element} />
+      ) : null}
+
+      {element.kind === 'StateUsage' ? (
+        <StateUsageExtras element={element} />
       ) : null}
 
       {isTraceTargetKind(element.kind) ? (
@@ -1540,6 +1545,131 @@ function ActionDefinitionExtras({
           </option>
         ))}
       </select>
+    </div>
+  );
+}
+
+interface StateUsageExtrasProps {
+  readonly element: StateUsageElement;
+}
+
+function StateUsageExtras({ element }: StateUsageExtrasProps): JSX.Element {
+  return (
+    <div data-testid="inspector-state" className="flex flex-col gap-3">
+      <div className="flex flex-col gap-1.5">
+        <span className="text-xs font-medium text-muted-foreground">
+          State type
+        </span>
+        <span
+          data-testid="inspector-state-type"
+          className="self-start rounded-md border border-dashed border-border bg-muted/40 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-foreground/80"
+        >
+          {element.stateType}
+        </span>
+      </div>
+      {element.stateType === 'state' ? (
+        <StateActionFields element={element} />
+      ) : null}
+    </div>
+  );
+}
+
+interface StateActionFieldsProps {
+  readonly element: StateUsageElement;
+}
+
+function StateActionFields({ element }: StateActionFieldsProps): JSX.Element {
+  return (
+    <>
+      <StateActionField
+        element={element}
+        field="entryAction"
+        label="Entry action"
+        placeholder="e.g. turnOn()"
+        testId="inspector-state-entry"
+      />
+      <StateActionField
+        element={element}
+        field="doAction"
+        label="Do action"
+        placeholder="e.g. monitorTemperature()"
+        testId="inspector-state-do"
+      />
+      <StateActionField
+        element={element}
+        field="exitAction"
+        label="Exit action"
+        placeholder="e.g. turnOff()"
+        testId="inspector-state-exit"
+      />
+    </>
+  );
+}
+
+interface StateActionFieldProps {
+  readonly element: StateUsageElement;
+  readonly field: 'entryAction' | 'exitAction' | 'doAction';
+  readonly label: string;
+  readonly placeholder: string;
+  readonly testId: string;
+}
+
+function StateActionField({
+  element,
+  field,
+  label,
+  placeholder,
+  testId,
+}: StateActionFieldProps): JSX.Element {
+  const setStateEntryAction = useWorkspaceStore((s) => s.setStateEntryAction);
+  const setStateExitAction = useWorkspaceStore((s) => s.setStateExitAction);
+  const setStateDoAction = useWorkspaceStore((s) => s.setStateDoAction);
+
+  const value = element[field] ?? '';
+  const [draft, setDraft] = useState(value);
+  useEffect(() => {
+    setDraft(element[field] ?? '');
+  }, [element, field]);
+  const inputId = useMemo(
+    () => `inspector-state-${field}-${element.id}`,
+    [element.id, field],
+  );
+
+  const commit = (): void => {
+    if (draft === (element[field] ?? '')) return;
+    if (field === 'entryAction') setStateEntryAction(element.id, draft);
+    else if (field === 'exitAction') setStateExitAction(element.id, draft);
+    else setStateDoAction(element.id, draft);
+  };
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <label
+        htmlFor={inputId}
+        className="text-xs font-medium text-muted-foreground"
+      >
+        {label}
+      </label>
+      <input
+        id={inputId}
+        type="text"
+        value={draft}
+        data-testid={testId}
+        placeholder={placeholder}
+        onChange={(e) => setDraft(e.target.value)}
+        onBlur={commit}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            (e.target as HTMLInputElement).blur();
+          } else if (e.key === 'Escape') {
+            e.preventDefault();
+            setDraft(element[field] ?? '');
+            (e.target as HTMLInputElement).blur();
+          }
+        }}
+        className="rounded-md border border-border bg-background px-2 py-1.5 font-mono text-sm text-foreground shadow-sm focus:border-primary focus:outline-none"
+      />
     </div>
   );
 }

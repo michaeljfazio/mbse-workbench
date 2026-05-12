@@ -23,7 +23,7 @@ import type {
   PartDefinitionElement,
   RequirementTraceKind,
 } from '@/model';
-import { isActionNodeType } from '@/model';
+import { isActionNodeType, isStateNodeType } from '@/model';
 import {
   BDD_BLOCK_HEIGHT,
   BDD_BLOCK_WIDTH,
@@ -45,6 +45,10 @@ import {
   REQUIREMENTS_VIEWPOINT_ID,
   resolveIbdEdgeEndpoints,
   resolvePartHandles,
+  STATE_MACHINE_STATE_HEIGHT,
+  STATE_MACHINE_STATE_WIDTH,
+  STATE_MACHINE_VIEWPOINT_ID,
+  stateNodeSize,
   validTraceKindsFor,
   type BddEdgeKind,
   type Viewpoint,
@@ -63,8 +67,10 @@ import {
   useWorkspaceStore,
 } from './store';
 import { ActivityPalette } from './ActivityPalette';
+import { StateMachinePalette } from './StateMachinePalette';
 import {
   PROJECT_TREE_DRAG_NODE_TYPE,
+  PROJECT_TREE_DRAG_STATE_TYPE,
   PROJECT_TREE_DRAG_TYPE,
 } from './tree/ProjectTree';
 
@@ -109,6 +115,9 @@ function exportNodeSizeFor(viewpoint: Viewpoint): { width: number; height: numbe
   if (viewpoint.id === ACTIVITY_VIEWPOINT_ID) {
     return { width: ACTIVITY_ACTION_WIDTH, height: ACTIVITY_ACTION_HEIGHT };
   }
+  if (viewpoint.id === STATE_MACHINE_VIEWPOINT_ID) {
+    return { width: STATE_MACHINE_STATE_WIDTH, height: STATE_MACHINE_STATE_HEIGHT };
+  }
   return { width: BDD_BLOCK_WIDTH, height: BDD_BLOCK_HEIGHT };
 }
 
@@ -151,6 +160,16 @@ function toFlowNodes(
           elementId: el.id,
           name: el.name,
           nodeType: el.nodeType,
+          onRename,
+        };
+      } else if (el.kind === 'StateUsage') {
+        data = {
+          elementId: el.id,
+          name: el.name,
+          stateType: el.stateType,
+          entryAction: el.entryAction,
+          exitAction: el.exitAction,
+          doAction: el.doAction,
           onRename,
         };
       } else {
@@ -267,6 +286,7 @@ function CanvasInner(): JSX.Element {
   const connectObjectFlow = useWorkspaceStore((s) => s.connectObjectFlow);
   const createRequirement = useWorkspaceStore((s) => s.createRequirement);
   const createActionUsage = useWorkspaceStore((s) => s.createActionUsage);
+  const createStateUsage = useWorkspaceStore((s) => s.createStateUsage);
   const linkRequirementTrace = useWorkspaceStore(
     (s) => s.linkRequirementTrace,
   );
@@ -644,6 +664,22 @@ function CanvasInner(): JSX.Element {
     if (id) setSelection([id]);
   }, [createRequirement, diagram, setSelection]);
 
+  const handleAddState = useCallback(() => {
+    if (!diagram) return;
+    const cascadeIndex = Object.keys(diagram.positions).length;
+    const columns = 2;
+    const col = cascadeIndex % columns;
+    const row = Math.floor(cascadeIndex / columns);
+    const stepX = STATE_MACHINE_STATE_WIDTH + 40;
+    const stepY = STATE_MACHINE_STATE_HEIGHT + 40;
+    const id = createStateUsage(
+      diagram.id,
+      { x: 60 + col * stepX, y: 60 + row * stepY },
+      'state',
+    );
+    if (id) setSelection([id]);
+  }, [createStateUsage, diagram, setSelection]);
+
   const handleAutoLayout = useCallback(() => {
     if (!diagram) return;
     runAutoLayout(diagram.id);
@@ -802,6 +838,22 @@ function CanvasInner(): JSX.Element {
         if (id) setSelection([id]);
         return;
       }
+      if (viewpoint.id === STATE_MACHINE_VIEWPOINT_ID && kind === 'StateUsage') {
+        // Same two-MIME pattern as Activity: the palette carries the
+        // StateNodeType discriminator; tree-only drops fall back to 'state'.
+        const rawStateType = event.dataTransfer.getData(
+          PROJECT_TREE_DRAG_STATE_TYPE,
+        );
+        const stateType = isStateNodeType(rawStateType) ? rawStateType : 'state';
+        const { width, height } = stateNodeSize(stateType);
+        const id = createStateUsage(
+          diagram.id,
+          { x: flowPos.x - width / 2, y: flowPos.y - height / 2 },
+          stateType,
+        );
+        if (id) setSelection([id]);
+        return;
+      }
       // BDD: drop creates a Block (PartDefinition) directly.
       const id = createBlock({
         x: flowPos.x - BDD_BLOCK_WIDTH / 2,
@@ -816,6 +868,7 @@ function CanvasInner(): JSX.Element {
       createBlock,
       createRequirement,
       createActionUsage,
+      createStateUsage,
       setSelection,
     ],
   );
@@ -929,6 +982,16 @@ function CanvasInner(): JSX.Element {
             + Action
           </button>
         ) : null}
+        {viewpoint.id === STATE_MACHINE_VIEWPOINT_ID ? (
+          <button
+            type="button"
+            data-testid="toolbar-add-state"
+            onClick={handleAddState}
+            className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-foreground shadow-sm transition hover:bg-accent"
+          >
+            + State
+          </button>
+        ) : null}
         <button
           type="button"
           data-testid="toolbar-auto-layout"
@@ -957,6 +1020,7 @@ function CanvasInner(): JSX.Element {
         </div>
       </div>
       {viewpoint.id === ACTIVITY_VIEWPOINT_ID ? <ActivityPalette /> : null}
+      {viewpoint.id === STATE_MACHINE_VIEWPOINT_ID ? <StateMachinePalette /> : null}
       <div
         ref={canvasRef}
         data-testid="canvas-drop-target"

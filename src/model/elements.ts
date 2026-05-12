@@ -46,6 +46,19 @@ export function isActionNodeType(value: unknown): value is ActionNodeType {
 
 export type StateNodeType = 'state' | 'initial' | 'final';
 
+export const STATE_NODE_TYPE_VALUES: readonly StateNodeType[] = [
+  'state',
+  'initial',
+  'final',
+] as const;
+
+export function isStateNodeType(value: unknown): value is StateNodeType {
+  return (
+    typeof value === 'string' &&
+    (STATE_NODE_TYPE_VALUES as readonly string[]).includes(value)
+  );
+}
+
 export type ValueType = 'string' | 'number' | 'boolean';
 
 export type ValueLiteral = string | number | boolean;

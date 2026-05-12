@@ -876,6 +876,19 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
   context menu entry is omitted when the element has zero incoming traces
   or when no Requirements diagram exists yet.
 
+- **2026-05-12** — Testing model Cmd-Z after an inspector text-field edit:
+  pressing **Tab** after `fill()` moves focus to the *next* INPUT inside the
+  inspector, and the workspace's global Cmd-Z handler in `Workspace.tsx`
+  suppresses model undo whenever `document.activeElement` is INPUT /
+  TEXTAREA / SELECT (so the browser's native input-undo handles the
+  in-place text). The keypress then no-ops on the model, the next field
+  still has its committed value, and the assertion fails with a
+  misleading "expected '' got 'turnOn()'". Fix: press **Enter** instead
+  of Tab — the field's onKeyDown calls `blur()`, focus leaves all
+  inputs, and Ctrl+Z routes to the model undo stack as intended.
+  Discovered while landing #105's `Cmd-Z reverts an action-field edit`
+  spec.
+
 - **2026-05-12** — When a viewpoint phase ships persistent canvas chrome
   (a palette chip strip, a toolbar overlay, a header band, etc.) that is
   visible *whenever that viewpoint is active*, the previously-committed

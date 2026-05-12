@@ -44,7 +44,13 @@ export type {
   ValueLiteral,
 } from './elements';
 
-export { ACTION_NODE_TYPE_VALUES, ELEMENT_KINDS, isActionNodeType } from './elements';
+export {
+  ACTION_NODE_TYPE_VALUES,
+  ELEMENT_KINDS,
+  isActionNodeType,
+  isStateNodeType,
+  STATE_NODE_TYPE_VALUES,
+} from './elements';
 
 export type {
   ModelEdge,

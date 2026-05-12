@@ -7,6 +7,14 @@ import type {
   ViewpointId,
   ViewpointNodeTypes,
 } from '../types';
+import { StateUsageNode } from './StateUsageNode';
+
+export {
+  StateUsageNode,
+  type StateRenameCallback,
+  type StateUsageFlowNode,
+  type StateUsageNodeData,
+} from './StateUsageNode';
 
 export const STATE_MACHINE_VIEWPOINT_ID: ViewpointId = 'state-machine';
 
@@ -49,10 +57,13 @@ const NODE_TYPE_BY_STATE_NODE_TYPE: Readonly<Record<StateNodeType, string>> = {
 };
 
 // Module-scoped (frozen) so React Flow can rely on referential stability.
-// #105 swaps the empty record for the three node-type → component mappings.
-const STATE_MACHINE_NODE_TYPES = Object.freeze(
-  {} as Record<string, never>,
-) as unknown as ViewpointNodeTypes;
+// All three StateUsage stateType discriminators route to the same component;
+// the component branches on `data.stateType` to render the right shape.
+const STATE_MACHINE_NODE_TYPES = Object.freeze({
+  [STATE_MACHINE_STATE_NODE_TYPE]: StateUsageNode,
+  [STATE_MACHINE_INITIAL_NODE_TYPE]: StateUsageNode,
+  [STATE_MACHINE_FINAL_NODE_TYPE]: StateUsageNode,
+}) as ViewpointNodeTypes;
 
 // #106 swaps the empty record for the transition edge-type mapping.
 const STATE_MACHINE_EDGE_TYPES = Object.freeze(

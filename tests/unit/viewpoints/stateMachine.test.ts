@@ -67,11 +67,16 @@ describe('State Machine viewpoint (ADR 0006)', () => {
 
   it('keeps nodeTypes and edgeTypes frozen at module scope', () => {
     // Per docs/CONTEXT.md, React Flow needs referentially-stable
-    // nodeTypes/edgeTypes — frozen records (whether empty or populated).
+    // nodeTypes/edgeTypes — frozen records.
     expect(Object.isFrozen(stateMachineViewpoint.nodeTypes)).toBe(true);
     expect(Object.isFrozen(stateMachineViewpoint.edgeTypes)).toBe(true);
-    // #105 / #106 populate these — #104 ships them empty.
-    expect(Object.keys(stateMachineViewpoint.nodeTypes)).toEqual([]);
+    // #105 populates the node-type record with one entry per StateNodeType.
+    // #106 will populate the edge-type record.
+    expect(Object.keys(stateMachineViewpoint.nodeTypes).sort()).toEqual([
+      STATE_MACHINE_FINAL_NODE_TYPE,
+      STATE_MACHINE_INITIAL_NODE_TYPE,
+      STATE_MACHINE_STATE_NODE_TYPE,
+    ].sort());
     expect(Object.keys(stateMachineViewpoint.edgeTypes)).toEqual([]);
   });
 
