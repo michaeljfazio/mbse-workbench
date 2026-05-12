@@ -40,6 +40,7 @@ import {
   IBD_VIEWPOINT_ID,
   isValidActivityConnection,
   isValidIbdConnection,
+  isValidStateMachineConnection,
   REQUIREMENT_NODE_HEIGHT,
   REQUIREMENT_NODE_WIDTH,
   REQUIREMENTS_VIEWPOINT_ID,
@@ -228,7 +229,7 @@ function toFlowEdges(
     for (const el of elements) {
       if (!viewpoint.acceptedEdgeElementKinds.includes(el.kind)) continue;
       // The discriminated-union members that render as edges all carry
-      // `sourceId` / `targetId` directly (ConnectionUsage, ItemFlow, Transition).
+      // `sourceId` / `targetId` directly.
       if (
         el.kind !== 'ConnectionUsage' &&
         el.kind !== 'ItemFlow' &&
@@ -236,24 +237,44 @@ function toFlowEdges(
       ) {
         continue;
       }
-      const endpoints = resolveIbdEdgeEndpoints({
-        sourcePortUsageId: el.sourceId,
-        targetPortUsageId: el.targetId,
-        portUsageToPartUsage: ownership,
-      });
-      if (!endpoints) continue;
       const data: Record<string, unknown> = {
         elementId: el.id,
         name: el.name,
       };
-      if (el.kind === 'ItemFlow') data.itemType = el.itemType;
+      let sourceNodeId: ElementId;
+      let targetNodeId: ElementId;
+      let sourceHandleId: string;
+      let targetHandleId: string;
+      if (el.kind === 'Transition') {
+        // Transitions wire StateUsage→StateUsage directly; no handle indirection.
+        // Match the default handle ids declared on StateUsageNode.
+        sourceNodeId = el.sourceId;
+        targetNodeId = el.targetId;
+        sourceHandleId = 'bottom';
+        targetHandleId = 'top';
+        data.trigger = el.trigger;
+        data.guard = el.guard;
+        data.effect = el.effect;
+      } else {
+        const endpoints = resolveIbdEdgeEndpoints({
+          sourcePortUsageId: el.sourceId,
+          targetPortUsageId: el.targetId,
+          portUsageToPartUsage: ownership,
+        });
+        if (!endpoints) continue;
+        sourceNodeId = endpoints.sourceNodeId;
+        targetNodeId = endpoints.targetNodeId;
+        sourceHandleId = endpoints.sourceHandleId;
+        targetHandleId = endpoints.targetHandleId;
+        if (el.kind === 'ItemFlow') data.itemType = el.itemType;
+      }
       out.push({
         id: el.id,
         type: viewpoint.edgeTypeForElement(el),
-        source: endpoints.sourceNodeId,
-        target: endpoints.targetNodeId,
-        sourceHandle: endpoints.sourceHandleId,
-        targetHandle: endpoints.targetHandleId,
+        source: sourceNodeId,
+        target: targetNodeId,
+        sourceHandle: sourceHandleId,
+        targetHandle: targetHandleId,
         selected: selectedIds.has(el.id),
         data,
       });
@@ -284,6 +305,9 @@ function CanvasInner(): JSX.Element {
   const connectItemFlow = useWorkspaceStore((s) => s.connectItemFlow);
   const connectControlFlow = useWorkspaceStore((s) => s.connectControlFlow);
   const connectObjectFlow = useWorkspaceStore((s) => s.connectObjectFlow);
+  const connectStateTransition = useWorkspaceStore(
+    (s) => s.connectStateTransition,
+  );
   const createRequirement = useWorkspaceStore((s) => s.createRequirement);
   const createActionUsage = useWorkspaceStore((s) => s.createActionUsage);
   const createStateUsage = useWorkspaceStore((s) => s.createStateUsage);
@@ -518,6 +542,12 @@ function CanvasInner(): JSX.Element {
         if (id) setSelection([id as unknown as ElementId]);
         return;
       }
+      if (viewpoint.id === STATE_MACHINE_VIEWPOINT_ID) {
+        // ADR 0006 § 3: single transition kind, no shift-modifier split.
+        const id = connectStateTransition(connection);
+        if (id) setSelection([id]);
+        return;
+      }
       if (viewpoint.id === REQUIREMENTS_VIEWPOINT_ID && registry) {
         const allowed = validTraceKindsFor(connection, registry);
         if (allowed.length === 0) return;
@@ -543,6 +573,7 @@ function CanvasInner(): JSX.Element {
       connectItemFlow,
       connectControlFlow,
       connectObjectFlow,
+      connectStateTransition,
       setSelection,
       registry,
     ],
@@ -574,6 +605,12 @@ function CanvasInner(): JSX.Element {
         // ObjectFlow — Shift only switches which edge kind gets created on
         // commit, it does not change validity.
         return isValidActivityConnection(connection as Connection, registry);
+      }
+      if (viewpoint.id === STATE_MACHINE_VIEWPOINT_ID) {
+        return isValidStateMachineConnection(
+          connection as Connection,
+          registry,
+        );
       }
       // BDD: both endpoints must resolve to a PartDefinition.
       const s = registry.get(source as ElementId);

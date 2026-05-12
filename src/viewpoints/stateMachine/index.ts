@@ -8,6 +8,7 @@ import type {
   ViewpointNodeTypes,
 } from '../types';
 import { StateUsageNode } from './StateUsageNode';
+import { TransitionEdge } from './TransitionEdge';
 
 export {
   StateUsageNode,
@@ -15,6 +16,15 @@ export {
   type StateUsageFlowNode,
   type StateUsageNodeData,
 } from './StateUsageNode';
+
+export {
+  composeTransitionLabel,
+  TransitionEdge,
+  type StateMachineTransitionEdgeData,
+  type StateMachineTransitionFlowEdge,
+} from './TransitionEdge';
+
+export { isValidStateMachineConnection } from './connection';
 
 export const STATE_MACHINE_VIEWPOINT_ID: ViewpointId = 'state-machine';
 
@@ -65,10 +75,9 @@ const STATE_MACHINE_NODE_TYPES = Object.freeze({
   [STATE_MACHINE_FINAL_NODE_TYPE]: StateUsageNode,
 }) as ViewpointNodeTypes;
 
-// #106 swaps the empty record for the transition edge-type mapping.
-const STATE_MACHINE_EDGE_TYPES = Object.freeze(
-  {} as Record<string, never>,
-) as unknown as ViewpointEdgeTypes;
+const STATE_MACHINE_EDGE_TYPES = Object.freeze({
+  [STATE_MACHINE_TRANSITION_EDGE_TYPE]: TransitionEdge,
+}) as ViewpointEdgeTypes;
 
 const STATE_MACHINE_PALETTE_ITEMS: readonly PaletteItem[] = [
   {

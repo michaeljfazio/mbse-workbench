@@ -77,7 +77,9 @@ describe('State Machine viewpoint (ADR 0006)', () => {
       STATE_MACHINE_INITIAL_NODE_TYPE,
       STATE_MACHINE_STATE_NODE_TYPE,
     ].sort());
-    expect(Object.keys(stateMachineViewpoint.edgeTypes)).toEqual([]);
+    expect(Object.keys(stateMachineViewpoint.edgeTypes)).toEqual([
+      STATE_MACHINE_TRANSITION_EDGE_TYPE,
+    ]);
   });
 
   it('nodeSizeFor returns per-stateType sizes (ADR 0006)', () => {
