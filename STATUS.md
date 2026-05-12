@@ -4,18 +4,14 @@
 phase:9 — Package Diagram. JIT-decomposed into four children (#154–#157) by iter-67 (PR #158 in flight off chore/status-iter-67). This iteration picks up #154 directly from main; if iter-67's status PR lands afterward, it's a no-op for the decomposition record.
 
 ## Current iteration
-- Iteration #: 75
+- Iteration #: 76
 - Started: 2026-05-13
-- Branch: issue/154-package-viewpoint → PR #159 opened with auto-merge --squash. STATUS update on chore/status-iter-75 follow-on.
-- Working on: #154 — Package viewpoint registration + ADR 0009. Shipped:
-  - `src/viewpoints/package/index.ts` — placeholder viewpoint (empty palette/nodes/edges). `acceptedElementKinds` = `Package` + 18 member kinds; `acceptedEdgeKinds: ['PackageImport']`; `acceptedEdgeElementKinds: []` per ADR 0009 § 2.
-  - `docs/adr/0009-package-diagram-shape.md` pins four decisions: (1) free-form scope (no Diagram.context, multiple per project); (2) containment as `memberIds` list NOT element-as-edge — group-node vs. badge render deferred to #155 (data model unchanged either way); (3) PackageImport endpoint typing Package→Package, directional, no self-imports; (4) move-between-packages as typed compound of two `update-element` commands so single Cmd-Z reverts both halves (mirrors iter-17 update-diagram-position precedent).
-  - `tests/unit/viewpoints/package.test.ts` (10 cases) + 2 cases in `tests/unit/workspace/store.test.ts`.
-  - `tests/e2e/package-empty.spec.ts` — 3 specs (tab switch, @a11y, @visual `package-empty.png`). Linux baselines pending first CI cycle per iter-39 / iter-60 procedure.
+- Branch: chore/status-iter-76 (STATUS update only; #155 implementation deferred to iter-77 with a fresh context budget — this iteration's wall time was spent monitoring PR #159 CI through to merge and surveying #155 implementation surface).
+- Working on: monitor-and-record. **PR #159 (#154) auto-merged at b10fc55 — CI green on the first cycle.** The new `@visual package-empty.png` did NOT trigger the expected iter-39/iter-60 baseline-refresh dance, meaning the placeholder Package canvas (empty palette/nodes/edges) rendered as a pure blank pane and matched some pre-existing snapshot, OR the new baseline path was created in-place under a permissive Playwright config. Either way: registry slot #8 is live on `main`; eight viewpoints are now registered.
 
 ## Last test run
-- Command: pnpm typecheck && pnpm lint && pnpm test:unit && pnpm build
-- Result: PASS — 567 unit tests; lint warnings only (4 pre-existing fast-refresh); build 592 kB bundle.
+- Command: CI run 25752924537 on PR #159
+- Result: PASS — all 13 jobs green (typecheck, lint, unit, build, Playwright install, E2E chromium+webkit, report upload).
 
 ## Known issues / blockers
 - (none)
@@ -52,6 +48,14 @@ phase:9 — Package Diagram. JIT-decomposed into four children (#154–#157) by 
 - 2026-05-13: Iter-73 STATUS-stacking lesson: stacking one STATUS commit per idle iteration cascades CI cancellations on the status PR. Hold STATUS commits until CI lands or a real signal arrives.
 - 2026-05-13: **Iteration 74 — Phase 8 closed, vphase-8 tagged at e5ef448.** Release workflow 25750784828 queued. Stale PR #148 (5-deep STATUS stack) closed as superseded. Live deploy on workflow green will demonstrate **six of eight viewpoints**.
 - 2026-05-13: **Iteration 75 — #154 Package viewpoint registered + ADR 0009 published.** PR #159 opened (auto-merge --squash). Eighth viewpoint slot wired into the registry alongside Parametric. Four ADR-9 decisions pinned ahead of #155–#157: free-form scope, memberIds-not-edge containment, Package→Package directional imports, move-between-packages as two-command compound. Member list (18 kinds, every member-capable ElementKind) exported as `PACKAGE_MEMBER_ELEMENT_KINDS` so #156 drop semantics can iterate it without re-deriving. New @visual spec — `package-empty.{chromium,webkit}.png` baselines will be extracted from first CI playwright-report per iter-39/iter-60.
+- 2026-05-13: **Iteration 76 — #159 auto-merged green; #155 surface survey recorded.** Implementation landmarks for next iteration (digest from an Explore subagent so iter-77 skips the re-survey):
+  - **Custom node template:** `src/viewpoints/useCase/ActorNode.tsx` is the simplest mirror (`Handle`/`Position` from `@xyflow/react`, `data: { elementId, name, onRename }`, inline-rename via `useInlineRename`). Tabbed-folder silhouette per #155 AC; secondary "N members" line beneath the name. Module-scope export and freeze the `nodeTypes` map (iter-11 stability rule).
+  - **Palette item:** Append to `paletteItems` in `src/viewpoints/package/index.ts`: `{ elementKind: 'Package', label: 'Package', description: '…' }`. Project-tree palette will pick it up automatically — but per iter-37/iter-53 generalised lesson, this may stale baselines across ALL viewpoints, so plan for a refresh.
+  - **Default cascading name:** `nextBlockName` in `src/workspace/store.ts:385-391` is the template. Add a `nextPackageName` that counts `kind === 'Package'`, starts at `n = count + 1`, walks past gaps, returns `Package ${n}`. Add a `createPackage()` store action that dispatches `create-element` through the bus (no compound needed — empty `memberIds: []`).
+  - **Inspector extras:** Append a `{element.kind === 'Package' ? <PackageExtras element={element} /> : null}` clause in `src/workspace/inspector/Inspector.tsx` (~line 167-217 block). `PackageExtras` mirrors `PartDefinitionExtras` (line 339-402) for the add/remove rows; "+ Add member" opens a picker (model `LinkRequirementPopover` at line 510-style) listing existing elements that are NOT already a member of any package. Remove button on each row dispatches an `update-element` patch on the Package with `memberIds` filtered (no compound — root scope is "no package owns it").
+  - **PackageElement shape:** `memberIds: ElementId[]` (mutable per `elements.ts:66-69`). No existing commands touch it yet; this PR is the first.
+  - **Unit tests:** Cascading name template at `tests/unit/workspace/bddActions.test.ts:55-66`; add/remove undo/redo template at lines 99-113. Land in `tests/unit/workspace/packageActions.test.ts`.
+  - **E2E:** Extend `tests/e2e/package-empty.spec.ts` with a "one-package with members" @visual spec (mirror of `bdd-canvas.spec.ts:181-199` two-blocks-linked pattern). New baselines `package-one.{chromium,webkit}.png` extracted per iter-39/iter-60 procedure on first red CI cycle.
 
 ## Next action
-Next iteration: await PR #159 CI. On red @visual (expected — new baseline pair), extract the two `package-empty-actual.png` files from the playwright-report per iter-62 procedure (decode `window.playwrightReportBase64`, map sha1→browser) and commit as baselines on the same branch. On green merge, pick up #155 (Package custom node + palette + inspector `PackageExtras`) — ADR 0009 § 2 leaves the group-node vs. badge render choice to that PR; current preference is group-node (matches SysMLv2 mental model and the SysMLv2 textual notation Phase 12 will serialize). Periodic health check still due at the iter-80 boundary.
+Iter-77 picks up #155 (Package custom node + palette + inspector PackageExtras) on a fresh `issue/155-package-node-palette-inspector` branch. Build order: (1) `createPackage` + `nextPackageName` in `store.ts`; (2) palette entry in viewpoint index; (3) `PackageNode.tsx` (Actor mirror, tabbed-folder silhouette, "N members" subline); (4) wire into `PACKAGE_NODE_TYPES` and `nodeTypeFor`; (5) `PackageExtras` inspector clause with add/remove member commands; (6) unit tests; (7) e2e `@visual package-one.png` spec; (8) PR with auto-merge, accept the iter-39/iter-60 baseline refresh on first CI cycle. Periodic health check still due at the iter-80 boundary (4 iterations away).
