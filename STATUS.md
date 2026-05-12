@@ -1,17 +1,17 @@
 # STATUS
 
 ## Current phase
-phase:7 — Use Case Diagram (epic #8 open; #117 + #118 merged; #119/#120 ready)
+phase:7 — Use Case Diagram (epic #8 open; #117/#118/#119 merged; **#120 gate spec is next**)
 
 ## Current iteration
-- Iteration #: 54
+- Iteration #: 56
 - Started: 2026-05-12
-- Branch: issue/119-use-case-edges → PR #127 (auto-merge enabled, CI in progress)
-- Working on: **#119** (Include + Extend + Generalization edges). Implementation complete: three new edge components, `UseCaseEdgeKindPopover` (3-kind popover, not shift-modifier), `linkUseCaseEdge` + `setExtendExtensionPoint` store actions, inspector dispatch for all three new edge kinds, `ActorNode` handle directions flipped to match `UseCaseNode` (top=target, bottom=source) so Generalization drag bottom→top works mechanically.
+- Branch: (idle on main at 93b465e)
+- Working on: **#119 PR #127 merged at 93b465e.** Second CI run 25713983099 green (chromium + webkit visual baselines accepted as committed at 5ff478f). Issue #119 closed. Phase 7 epic #8 has one remaining child issue: **#120 Phase 7 gate spec** (vertical-slice e2e covering Actor + UseCase + Include + Extend + Generalization + Subject + reload + Cmd-Z cascade).
 
 ## Last test run
-- Command: `pnpm run check` locally
-- Result: PASS — 519 unit + 292 e2e green on darwin (visual specs CI-only per docs/CONTEXT.md). Awaiting PR #127 CI to confirm chromium + webkit visual baselines for `use-case-with-{include,extend,generalization}-edge.png`. Per iter-25 procedure, first CI failure on visuals → CI-extract `*-actual.png` from playwright-report and commit.
+- Command: GitHub Actions run 25713983099 (CI on PR #127, post-baseline-recovery)
+- Result: PASS — squash-merged into main at 93b465e (2026-05-12T04:53:17Z). Iter-25 baseline-extraction procedure worked exactly as documented for the third time.
 
 ## Known issues / blockers
 - (none)
