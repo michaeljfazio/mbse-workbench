@@ -15,10 +15,10 @@ describe('Package viewpoint', () => {
     expect(packageViewpoint.id).toBe('package');
     expect(PACKAGE_VIEWPOINT_ID).toBe('package');
     expect(packageViewpoint.label).toBe('Package Diagram');
-    expect(packageViewpoint.acceptedElementKinds).toEqual([
-      'Package',
-      ...PACKAGE_MEMBER_ELEMENT_KINDS,
-    ]);
+    // Only Package nodes render in this viewpoint. Member kinds are
+    // tracked separately via PACKAGE_MEMBER_ELEMENT_KINDS for #156's
+    // cross-package drop affordance; they are not rendered here.
+    expect(packageViewpoint.acceptedElementKinds).toEqual(['Package']);
     expect(packageViewpoint.acceptedEdgeKinds).toEqual(['PackageImport']);
     expect(packageViewpoint.acceptedEdgeElementKinds).toEqual([]);
     expect(packageViewpoint.defaultLayout).toBe('dagre');

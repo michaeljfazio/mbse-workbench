@@ -81,7 +81,14 @@ const PACKAGE_PALETTE_ITEMS: readonly PaletteItem[] = [
 export const packageViewpoint: Viewpoint = {
   id: PACKAGE_VIEWPOINT_ID,
   label: 'Package Diagram',
-  acceptedElementKinds: ['Package', ...PACKAGE_MEMBER_ELEMENT_KINDS],
+  // Only Package nodes render in this viewpoint right now. The 18 member
+  // kinds in PACKAGE_MEMBER_ELEMENT_KINDS are admissible package members
+  // (used by #156's cross-package drop) but they don't render *as nodes*
+  // here — listing them in acceptedElementKinds caused CanvasPane to map
+  // them through nodeTypeFor and throw "package viewpoint cannot render
+  // element kind: PartDefinition". #156 will introduce a separate drop
+  // affordance for member kinds without expanding the render set.
+  acceptedElementKinds: ['Package'],
   acceptedEdgeKinds: ['PackageImport'],
   // Per ADR 0009 § 2: Package containment is a `memberIds` list, NOT an
   // element-as-edge. PackageImport stays in ModelEdge — it carries no
