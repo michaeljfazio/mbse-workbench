@@ -1,24 +1,29 @@
 # STATUS
 
 ## Current phase
-phase:9 — Package Diagram. Children: #154 (closed), #155 (PR #163 open, fix pushed), #156 (PackageImport edge + cross-package import), #157 (move-between-packages compound).
+phase:9 — Package Diagram. Children: #154 (closed), #155 (PR #163 open, CI in progress after merge-main), #156 (PackageImport edge + cross-package import), #157 (move-between-packages compound).
 
 ## Current iteration
-- Iteration #: 78
+- Iteration #: 80
 - Started: 2026-05-13
-- Branch: chore/status-iter-78 (this STATUS update). PR #163 fix lives on `issue/155-package-node-palette-inspector` (commit 14ef1b3).
-- Working on: Diagnosed and pushed two functional fixes for PR #163's first red CI cycle. CI was masking BOTH a real render crash and a real focus regression behind what initially looked like routine baseline drift.
-  - **Fix 1 (package render crash):** Package viewpoint had `acceptedElementKinds: ['Package', ...PACKAGE_MEMBER_ELEMENT_KINDS]` (19 kinds). CanvasPane.toFlowNodes filters by `acceptedElementKinds` then calls `viewpoint.nodeTypeFor(el)` on each — and `nodeTypeFor` throws for any non-Package kind. Seeding even one PartDefinition alongside a Package crashed the whole canvas render, so `getByTestId('package-node-pkg-1')` never appeared (4 failures across `package-empty.spec.ts` × chromium+webkit). Narrowed to `acceptedElementKinds: ['Package']`; the 18-kind constant `PACKAGE_MEMBER_ELEMENT_KINDS` stays exported for #156's cross-package drop affordance.
-  - **Fix 2 (project-tree focus desync):** ProjectTree's roving-tabindex state was set only by `focusItem()` (click/keyboard). External DOM-focus (`el.focus()` from tests, Tab key from real users) didn't update `explicitFocusKey`, so it stayed anchored at `visibleKeys[0]` — now the new empty Packages group. Pressing ArrowDown from the visibly-focused PartDefinition group navigated *from the stale Package anchor*, advancing to PartDefinition instead of into a leaf. Fix: `onFocus` handlers on group and leaf treeitems call `syncFocus(key)` to mirror DOM-focus into state.
-- Iter-79 monitors the re-run. After fix-1 lands, the package-empty visual specs will produce real actual.pngs (the test was timing out *before* the screenshot assertion). After fix-2 lands, project-tree e2e arrow-keys passes. Remaining first-red category — shared-tree-chrome baseline drift across context-menu / ibd-parts / ibd-connection — will surface cleanly for the iter-39/iter-60/iter-62 sha1→browser extraction.
+- Branch: chore/status-iter-80 (this STATUS update). PR #163 still on `issue/155-package-node-palette-inspector` waiting on CI run 25759382560 (in_progress, started after iter-79's merge-main commit 7a8b63a).
+- Working on: Periodic health check (due at iter-80 per AGENT.md § 13). No functional work this iteration — PR #163 CI is still cycling; per iter-73 lesson, holding off any further STATUS stacking until a real signal arrives. Recording the health-check result here is the single real signal for this iteration.
+
+## Last health check
+- Date: 2026-05-13 (iter-80)
+- Pages deploy: `https://michaeljfazio.github.io/mbse-workbench/` returns HTTP 200 ✓
+- Last 5 merged PRs (#165 #164 #160 #159 #152): all show merged status with referenced issues closed ✓
+- `status:needs-human` open issues: 0 (well under threshold of 3) ✓
+- Most recent 5 CI runs on `main`: all green (2b4e66f, 9570760, b10fc55, 726166b, 88738a4) ✓
+- Result: PASS — no follow-up issue required.
 
 ## Last test run
-- Command: `pnpm typecheck && pnpm lint && pnpm test:unit && pnpm build` (local, on fix branch)
+- Command: `pnpm typecheck && pnpm lint && pnpm test:unit && pnpm build` (local, on PR #163's branch, iter-78)
 - Result: PASS — 575 unit tests / 53 files; tsc clean; eslint 0 errors (4 pre-existing react-refresh warnings); vite build 599 kB.
-- One unit test required adjustment in lock-step with fix-1: `tests/unit/viewpoints/package.test.ts:18` asserted the wide `acceptedElementKinds`. Updated to assert `['Package']` only.
+- Iter-80: no new local run this iteration (no code changes).
 
 ## Known issues / blockers
-- PR #163 CI re-run pending after 14ef1b3. Expected to still red on baseline drift (context-menu, ibd-parts, ibd-connection — shared tree chrome) and on the two new package-one baselines. Iter-79 harvests them via the sha1→browser procedure.
+- PR #163 CI re-run (run 25759382560) in_progress on the iter-79 merge-main tip. Expected: package-empty baselines green (cc31135 + bf61668 chromium/webkit extracts from run 25758491542); project-tree arrow-keys green (fix-2 in 14ef1b3); shared-tree-chrome baseline drift on context-menu / ibd-parts / ibd-connection still TBD if it persists.
 
 ## Decisions log
 - 2026-05-11: Bootstrap as a single committed scaffold, not iterative through child PRs. Reason: AGENT.md Phase 0 explicitly lists scaffold steps as the bootstrap and instructs iteration 1 to "run Phase 0 bootstrap" when STATUS.md is missing; opening child issues against an empty repo with no CI yet would be the wrong order. Child issues for any *remaining* Phase 0 polish are opened after the initial commit.
@@ -57,6 +62,8 @@ phase:9 — Package Diagram. Children: #154 (closed), #155 (PR #163 open, fix pu
 - 2026-05-13: **Iteration 78 — TWO real bugs uncovered in #163's first CI red, both fixed in 14ef1b3.**
   - **`acceptedElementKinds` overreach landmine.** A viewpoint's `acceptedElementKinds` doubles as the *render set* (CanvasPane filters by it then calls `nodeTypeFor`, which throws for unsupported kinds). It is NOT a drop-affordance list. Future viewpoints with palettes broader than their renderers must keep these two concerns separate — list only renderable kinds in `acceptedElementKinds`, track drop-only kinds in a viewpoint-private constant. ADR 0009 § 1's "accepts the Package element plus every member kind" was the trap.
   - **Roving-tabindex without DOM-focus sync.** ProjectTree's `explicitFocusKey` was only written by `focusItem()` — not by native focus events. Any caller that bypasses React (test `el.focus()`, real Tab from outside the tree) puts DOM and state out of sync, and ArrowDown navigates from the stale state anchor. The fix is a 1-line `onFocus={() => syncFocus(key)}` on every focusable treeitem. Apply this pattern to any new roving-tabindex widget. Sympathetic with iter-37/iter-53 generalised lesson: shared chrome changes (new tree groups) move `visibleKeys[0]`, which is the *implicit* focus default, surfacing latent focus-sync gaps.
+- 2026-05-13: **Iteration 79 — PR #163 `DIRTY` → cleared by merging `origin/main` into the feature branch.** Iter-77 + iter-78 STATUS PRs (#164/#165) had landed on main while #163 was idle, conflicting on STATUS.md. Took main's STATUS verbatim (theirs), merged forward (no rebase, no `--force`). Per iter-46: clearing `BEHIND`/`DIRTY` on a feature branch under the no-`--force` constraint = merge main IN (or `gh pr update-branch`), not rebase-then-force. The 5 functional commits on the branch are unchanged.
+- 2026-05-13: **Iteration 80 — periodic health check PASS.** Pages 200, last 5 merged PRs clean, 0 `status:needs-human`, last 5 main CI runs green. PR #163 CI run 25759382560 still in_progress on the iter-79 merge-main tip; no further STATUS stacking this cycle.
 
 ## Next action
-Iter-79 monitors PR #163 CI re-run on 14ef1b3. Expected outcomes: (a) `package-empty.spec.ts` 4 failures → now produce real `package-one-actual.{chromium,webkit}.png` (extractable via the iter-62 sha1→browser procedure); (b) `project-tree.spec.ts` arrow-keys → passes outright; (c) `context-menu.spec.ts` / `ibd-parts.spec.ts` / `ibd-connection.spec.ts` baseline drift (already had actuals in this CI run) — copy the `*-actual.png` payloads over the matching baselines. Push same branch; auto-merge fires on green. After #155 lands, JIT-decompose what remains of phase 9 — #156 (PackageImport edge + cross-package drop semantics; this is the slot where `PACKAGE_MEMBER_ELEMENT_KINDS` finally pays off) and #157 (move-between-packages compound command per ADR 0009 § 4). Periodic health check due at iter-80.
+Await PR #163's CI run 25759382560 outcome. On green: auto-merge --squash lands #155, then JIT-decompose what remains of phase 9 (#156 PackageImport + cross-package drop semantics — the slot where `PACKAGE_MEMBER_ELEMENT_KINDS` finally pays off, and #157 move-between-packages compound per ADR 0009 § 4). On red: apply the iter-62 sha1→browser extract to any residual shared-tree-chrome baseline drift (context-menu / ibd-parts / ibd-connection). Next periodic health check due at iter-90.
