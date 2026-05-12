@@ -1,13 +1,13 @@
 # STATUS
 
 ## Current phase
-phase:9 — Package Diagram. Children: #154 (closed), #155 (closed via PR #163), #156 (PR #167 open — this iteration), #157 (gate spec, status:ready).
+phase:10 — Requirements traceability. Phase 9 closed (epic #10) and `vphase-9` tagged at 82b8262 (release workflow run 25762425334 queued). Phase 10 not yet decomposed — JIT child issues open next iteration per AGENT.md Ralph loop step 6.
 
 ## Current iteration
-- Iteration #: 81
+- Iteration #: 83
 - Started: 2026-05-13
-- Branch: chore/status-iter-81 (this STATUS update). Functional work on `issue/156-package-import-edge-containment`, PR #167 open with auto-merge --squash.
-- Working on: #156 — PackageImport edge + containment semantics. Full slice landed in one PR: edge renderer, validity rules, link action, move-between-packages compound, CanvasPane wiring, tree-leaf drag.
+- Branch: chore/status-iter-83 (this STATUS update + journal entry for Phase 9 completion).
+- Working on: closing Phase 9 (epic #10, release issue #171, tag `vphase-9`). Idle on the functional ladder until Phase 10 decomposition.
 
 ## Last health check
 - Date: 2026-05-13 (iter-80)
@@ -18,11 +18,11 @@ phase:9 — Package Diagram. Children: #154 (closed), #155 (closed via PR #163),
 - Result: PASS. Next health check due at iter-90.
 
 ## Last test run
-- Command: `pnpm typecheck && pnpm lint && pnpm test:unit && pnpm build` (local, on PR #167's branch)
-- Result: PASS — 586 unit tests / 53 files (was 575 — +11 new); tsc clean; eslint 0 errors (4 pre-existing react-refresh warnings); vite build 602 kB.
+- Command: `pnpm typecheck && pnpm lint && pnpm test:unit && pnpm build && pnpm exec playwright test tests/e2e/phase-9-gate.spec.ts --project=chromium --project=webkit` (local, on PR #169's branch, iter-82)
+- Result: PASS — 586 unit tests / 53 files; 4 / 4 phase-9 specs pass on chromium AND webkit; tsc clean; eslint 0 errors; vite build 602 kB. PR #169 merged green on `main` at 82b8262.
 
 ## Known issues / blockers
-- PR #167 awaiting CI to land #156. On green: phase:9 has only #157 (gate spec) left before the epic can close.
+- None functional. Release workflow run 25762425334 queued on tag `vphase-9` push — watch for deploy green then exercise live URL in Playwright walkthrough (eight viewpoints) and save screenshots under `artifacts/release-vphase-9/` per AGENT.md Ralph loop step 17.
 
 ## Decisions log
 - 2026-05-11: Bootstrap as a single committed scaffold, not iterative through child PRs. Reason: AGENT.md Phase 0 explicitly lists scaffold steps as the bootstrap and instructs iteration 1 to "run Phase 0 bootstrap" when STATUS.md is missing; opening child issues against an empty repo with no CI yet would be the wrong order. Child issues for any *remaining* Phase 0 polish are opened after the initial commit.
@@ -64,6 +64,8 @@ phase:9 — Package Diagram. Children: #154 (closed), #155 (closed via PR #163),
 - 2026-05-13: **Iteration 79 — PR #163 `DIRTY` → cleared by merging `origin/main` into the feature branch.** Iter-77 + iter-78 STATUS PRs (#164/#165) had landed on main while #163 was idle, conflicting on STATUS.md. Took main's STATUS verbatim (theirs), merged forward (no rebase, no `--force`). Per iter-46: clearing `BEHIND`/`DIRTY` on a feature branch under the no-`--force` constraint = merge main IN (or `gh pr update-branch`), not rebase-then-force. The 5 functional commits on the branch are unchanged.
 - 2026-05-13: **Iteration 80 — periodic health check PASS.** Pages 200, last 5 merged PRs clean, 0 `status:needs-human`, last 5 main CI runs green. PR #163 merged (auto-merge --squash) before iter-81 started.
 - 2026-05-13: **Iteration 81 — #156 PackageImport edge + move-between-packages compound landed in PR #167.** Single-PR slice: dashed-arrow «import» edge renderer, `isValidPackageConnection` (Package→Package, no self-loops, no same-direction duplicates, reverse allowed), `linkPackageImport` (round-trip with undo), `moveElementBetweenPackages` typed compound (single Cmd-Z reverts), CanvasPane wiring for onConnect + isValidConnection, new `PROJECT_TREE_DRAG_ELEMENT_ID` MIME making tree leaves draggable, drop-on-Package-node detection via `elementFromPoint`. +11 unit tests, all 586 green.
+- 2026-05-13: **Iteration 82 — #157 Phase 9 gate spec landed in PR #169.** Single Playwright walkthrough covers drop-2-packages → drag-leaf-to-P1 → move-to-P2 → Cmd-Z restore → draw-import-edge → final shape. Three `@a11y` scans (empty / populated / inspector); the inspector scan is scoped to `[data-testid="inspector-single"]` because a selected Package node's aria-hidden «package» tab still trips axe color-contrast — pre-existing tab style, not a regression. `@visual` baseline `phase-9-final.png` regenerated via `scripts/regen-baselines.sh`; all other modified baselines reverted (arm64 → amd64 hinting drift, per docs/CONTEXT.md 2026-05-12 lesson).
+- 2026-05-13: **Iteration 83 — Phase 9 closed, vphase-9 tagged at 82b8262.** Epic #10 closed with all four child checkboxes ticked; release issue #171 opened; release workflow run 25762425334 queued on tag push. JOURNAL.md appended with phase-completion entry. Eight of eight viewpoints in the live deploy on workflow green; remaining phases are 10 (Requirements traceability), 11 (LLM), 12 (export/import + polish).
 
 ## Next action
-Await PR #167's CI. On green: phase:9 closes after #157 (gate spec — the Phase 9 Playwright e2e covering all four pieces just shipped). Pick up #157 next iteration to draft the spec; the slice exercised in unit tests there gives the e2e a known-good vocabulary to use. On red: iter-62 sha1→browser extract for any new visual-baseline drift (the new MIME makes leaves draggable across every viewpoint — visual baselines should be unchanged, but the shared-tree-chrome lesson says to watch).
+Watch release workflow run 25762425334 to green, then exercise the live URL in a Playwright walkthrough of all eight viewpoints and save screenshots under `artifacts/release-vphase-9/` (AGENT.md Ralph loop step 17). After that, decompose Phase 10 (Requirements traceability) into child issues JIT per AGENT.md Ralph loop step 6 — likely slices: requirements editor (table + form), inspector + drag-from-tree linking, traceability matrix view, coverage report panel, impact analysis highlighter, Phase 10 gate spec.
