@@ -4,14 +4,14 @@
 phase:8 — Parametric Diagram (epic #9 open; decomposed into #135 viewpoint+ADR / #136 nodes+palette+inspector / #137 ParameterBinding edge / #138 gate spec)
 
 ## Current iteration
-- Iteration #: 61
-- Started: 2026-05-12
-- Branch: issue/136-parametric-nodes-palette-inspector. PR #140 (#135) merged at 55139d6. This iteration implements **#136**: ConstraintUsage + ValueProperty custom nodes + palette chip strip + inspector extras + paired ConstraintDefinition (holds the equation) + createConstraintUsage/createValueProperty/setConstraintExpression/setValuePropertyType/setValuePropertyDefault store actions. Expect CI to red on visual baselines — adding palette items grows the project tree by two groups (Constraints + Values). Renamed ValueProperty kindLabel `Value properties` → `Values` so the ProjectTree Home/End test's single-word regex still matches the last group. Recovery plan if visual fails: extract `*-actual.png` from playwright-report and commit.
-- Working on: **#136 PR (to be opened)** with local checks green.
+- Iteration #: 63
+- Started: 2026-05-13
+- Branch: issue/137-parametric-parameter-binding-edge. PR **#143** OPEN with auto-merge --squash. CI awaiting. Iter-62's PR #142 (#136) merged at c935454 (CI 25746011271 green). This iteration ships **#137**: ParameterBindingEdge custom React Flow edge (solid line + filled-circle binding markers, optional EdgeLabelRenderer label); `isValidParametricConnection` + `canonicalizeParametricConnection` enforcing ADR 0008 § 3 (ConstraintUsage/ValueProperty endpoints, no self-loops, no duplicates, ValueProperty→ConstraintUsage canonicalised to source=ConstraintUsage); store `linkParameterBinding` + `setParameterBindingLabel`; Inspector `InspectorParameterBindingEdge`; CanvasPane onConnect/isValidConnection branches; `data-testid` handles on Constraint/Value nodes for e2e drag. Expect first CI to fail on new visual baselines `parametric-with-binding.{chromium,webkit}.png` — handle via iter-25 CI-extract.
+- Working on: **PR #143** (idle, awaiting CI).
 
 ## Last test run
 - Command: pnpm typecheck && pnpm lint && pnpm test:unit && pnpm build
-- Result: PASS — 536 unit tests; lint warnings only (fast-refresh export-shape on ValuePropertyNode + 3 pre-existing files); build 586 kB bundle.
+- Result: PASS — 556 unit tests; lint warnings only (fast-refresh, 4 pre-existing); build 591 kB bundle.
 
 ## Known issues / blockers
 - (none)
@@ -88,6 +88,8 @@ phase:8 — Parametric Diagram (epic #9 open; decomposed into #135 viewpoint+ADR
 
 - 2026-05-12: Iteration 60 — PR #140 (#135) merged at 55139d6 after extracting the missing `parametric-empty.{chromium,webkit}.png` baseline pair from a failing playwright-report (new-spec lesson). Iter-59 STATUS commit auto-ran iter-60 STATUS-only branch (chore/status-iter-60) which never merged.
 - 2026-05-12: Iteration 61 — Shipped #136 implementation. ConstraintUsage carries a paired `ConstraintDefinition` (created in the same compound command) which holds the equation string — Inspector's `ConstraintUsageExtras` edits the linked definition's `expression`. ValueProperty edits via `select` (string/number/boolean) + free-text `defaultValue` with kind-aware parsing. **Lesson:** ValueProperty kindLabel "Value properties" was multi-word and broke the ProjectTree Home/End test's single-word regex once the palette item added the group to every project tree. Renamed to "Values" (singular: "Value") — the cleanest fix without touching the test's accessibility-name regex. Generalizes: keep new tree-group labels single-word so existing tree tests stay green.
+- 2026-05-12: Iteration 62 — PR #142 (#136) baseline-refresh cycle: first CI red on three predicted visual baselines (one webkit color-comparison + two new-baseline writes). Recovery via iter-25 procedure with a twist — the new-baseline failures do NOT write a `trace.zip` to the playwright-report, so the trace-attachment lookup only resolved the IBD case. For the parametric actuals, decoded the report's embedded `window.playwrightReportBase64` zip and scanned per-project report JSONs to map sha1→browser. Baselines committed at b7d6bdc; CI 25746011271 went green and PR #142 merged at c935454.
+- 2026-05-13: Iteration 63 — Shipped #137 (ParameterBinding edge). `ParameterBindingEdge` uses two `<marker>` defs with a `<circle>` glyph (filled binding dot) on each end — distinct from RequirementTrace's open-triangle. `linkParameterBinding(connection)` accepts a Connection (not source/target/kind) because the canonicalisation flips the connection itself before unpacking. Inspector's endpoint dl mirrors `InspectorIncludeEdge`'s pattern; describeParametricEndpoint falls back to `«kind»` for unnamed nodes. Lesson: jsdom doesn't render `EdgeLabelRenderer` children — the portal target isn't created without a real ReactFlow viewport, so label tests are e2e-only.
 
 ## Next action
-Push branch `issue/136-parametric-nodes-palette-inspector`, open PR closing #136 with auto-merge --squash, then handle expected visual-baseline failures by extracting `*-actual.png` from the failing Playwright report (iter-23/-60 procedure).
+Await PR #143 CI. On green, auto-merge lands #137; next iteration picks up #138 (Phase 8 gate spec — last child before vphase-8). On red visual baselines, apply iter-25/-60/-62 CI-extract procedure (new spec, new file: extract via report JSON sha1→browser scan, no trace.zip).
