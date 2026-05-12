@@ -13,6 +13,10 @@ import {
   PARAMETRIC_CONSTRAINT_USAGE_NODE_TYPE,
 } from './ConstraintUsageNode';
 import {
+  PARAMETRIC_PARAMETER_BINDING_EDGE_TYPE,
+  ParameterBindingEdge,
+} from './ParameterBindingEdge';
+import {
   PARAMETRIC_VALUE_PROPERTY_NODE_TYPE,
   ValuePropertyNode,
 } from './ValuePropertyNode';
@@ -43,6 +47,18 @@ export type {
   ValuePropertyRenameCallback,
 } from './ValuePropertyNode';
 export {
+  PARAMETRIC_PARAMETER_BINDING_EDGE_TYPE,
+  ParameterBindingEdge,
+} from './ParameterBindingEdge';
+export type {
+  ParameterBindingEdgeData,
+  ParameterBindingFlowEdge,
+} from './ParameterBindingEdge';
+export {
+  canonicalizeParametricConnection,
+  isValidParametricConnection,
+} from './isValidConnection';
+export {
   PARAMETRIC_CONSTRAINT_USAGE_HEIGHT,
   PARAMETRIC_CONSTRAINT_USAGE_WIDTH,
   PARAMETRIC_VALUE_PROPERTY_HEIGHT,
@@ -70,13 +86,14 @@ const PARAMETRIC_PALETTE_ITEMS: readonly PaletteItem[] = [
   },
 ];
 
-// Module-scoped (frozen) so React Flow gets stable references. #137 will
-// add the ParameterBinding edge type.
+// Module-scoped (frozen) so React Flow gets stable references.
 const PARAMETRIC_NODE_TYPES = Object.freeze({
   [PARAMETRIC_CONSTRAINT_USAGE_NODE_TYPE]: ConstraintUsageNode,
   [PARAMETRIC_VALUE_PROPERTY_NODE_TYPE]: ValuePropertyNode,
 }) as unknown as ViewpointNodeTypes;
-const PARAMETRIC_EDGE_TYPES = Object.freeze({}) as unknown as ViewpointEdgeTypes;
+const PARAMETRIC_EDGE_TYPES = Object.freeze({
+  [PARAMETRIC_PARAMETER_BINDING_EDGE_TYPE]: ParameterBindingEdge,
+}) as unknown as ViewpointEdgeTypes;
 
 export const parametricViewpoint: Viewpoint = {
   id: PARAMETRIC_VIEWPOINT_ID,
@@ -102,6 +119,9 @@ export const parametricViewpoint: Viewpoint = {
     );
   },
   edgeTypeFor(edge: ModelEdge): string {
+    if (edge.kind === 'ParameterBinding') {
+      return PARAMETRIC_PARAMETER_BINDING_EDGE_TYPE;
+    }
     throw new Error(
       `parametric viewpoint cannot render edge kind: ${edge.kind}`,
     );

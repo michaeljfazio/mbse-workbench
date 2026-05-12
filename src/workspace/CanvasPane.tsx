@@ -43,6 +43,7 @@ import {
   IBD_VIEWPOINT_ID,
   isValidActivityConnection,
   isValidIbdConnection,
+  isValidParametricConnection,
   isValidStateMachineConnection,
   isValidUseCaseConnection,
   REQUIREMENT_NODE_HEIGHT,
@@ -267,6 +268,9 @@ function toFlowEdges(
       data.label = e.label;
       data.extensionPoint = e.extensionPoint;
     }
+    if (e.kind === 'ParameterBinding') {
+      data.label = e.label;
+    }
     out.push({
       id: e.id,
       type: viewpoint.edgeTypeFor(e),
@@ -374,6 +378,9 @@ function CanvasInner(): JSX.Element {
     (s) => s.linkRequirementTrace,
   );
   const linkUseCaseEdge = useWorkspaceStore((s) => s.linkUseCaseEdge);
+  const linkParameterBinding = useWorkspaceStore(
+    (s) => s.linkParameterBinding,
+  );
 
   const [pending, setPending] = useState<PendingConnection | null>(null);
   const [pendingPart, setPendingPart] = useState<PendingPartDrop | null>(null);
@@ -626,6 +633,13 @@ function CanvasInner(): JSX.Element {
         setPendingTrace({ connection, allowedKinds: allowed, x, y });
         return;
       }
+      if (viewpoint.id === PARAMETRIC_VIEWPOINT_ID) {
+        // ADR 0008 § 3: single ParameterBinding edge kind, no shift-modifier
+        // split. Store action canonicalises ConstraintUsage→ValueProperty.
+        const id = linkParameterBinding(connection);
+        if (id) setSelection([id as unknown as ElementId]);
+        return;
+      }
       if (viewpoint.id === USE_CASE_VIEWPOINT_ID && registry) {
         // ADR 0007 § 4: three accepted edge kinds (Include/Extend/Generalization).
         // Popover picker at the drop site — shift-modifier discriminates only
@@ -669,6 +683,7 @@ function CanvasInner(): JSX.Element {
       connectControlFlow,
       connectObjectFlow,
       connectStateTransition,
+      linkParameterBinding,
       setSelection,
       registry,
     ],
@@ -710,13 +725,20 @@ function CanvasInner(): JSX.Element {
       if (viewpoint.id === USE_CASE_VIEWPOINT_ID) {
         return isValidUseCaseConnection(connection as Connection, registry);
       }
+      if (viewpoint.id === PARAMETRIC_VIEWPOINT_ID) {
+        return isValidParametricConnection(
+          connection as Connection,
+          registry,
+          edges,
+        );
+      }
       // BDD: both endpoints must resolve to a PartDefinition.
       const s = registry.get(source as ElementId);
       const t = registry.get(target as ElementId);
       if (!s || !t) return false;
       return s.kind === 'PartDefinition' && t.kind === 'PartDefinition';
     },
-    [viewpoint, registry],
+    [viewpoint, registry, edges],
   );
 
   const confirmPending = useCallback(

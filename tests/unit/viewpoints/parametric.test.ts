@@ -5,6 +5,7 @@ import {
   PARAMETRIC_CONSTRAINT_USAGE_HEIGHT,
   PARAMETRIC_CONSTRAINT_USAGE_NODE_TYPE,
   PARAMETRIC_CONSTRAINT_USAGE_WIDTH,
+  PARAMETRIC_PARAMETER_BINDING_EDGE_TYPE,
   PARAMETRIC_VALUE_PROPERTY_HEIGHT,
   PARAMETRIC_VALUE_PROPERTY_NODE_TYPE,
   PARAMETRIC_VALUE_PROPERTY_WIDTH,
@@ -40,7 +41,9 @@ describe('Parametric viewpoint (issues #135 / #136)', () => {
         PARAMETRIC_VALUE_PROPERTY_NODE_TYPE,
       ].sort(),
     );
-    expect(Object.keys(parametricViewpoint.edgeTypes)).toEqual([]);
+    expect(Object.keys(parametricViewpoint.edgeTypes)).toEqual([
+      PARAMETRIC_PARAMETER_BINDING_EDGE_TYPE,
+    ]);
   });
 
   it('can be registered in a viewpoint registry and looked up by id', () => {
@@ -82,11 +85,22 @@ describe('Parametric viewpoint (issues #135 / #136)', () => {
     ).toThrow(/parametric viewpoint cannot render element kind/);
   });
 
-  it('edgeTypeFor still throws — ParameterBinding edge ships in #137', () => {
-    expect(() =>
+  it('edgeTypeFor maps ParameterBinding to its edge type', () => {
+    expect(
       parametricViewpoint.edgeTypeFor({
         id: 'e-1' as never,
         kind: 'ParameterBinding',
+        sourceId: 'c-1' as never,
+        targetId: 'v-1' as never,
+      }),
+    ).toBe(PARAMETRIC_PARAMETER_BINDING_EDGE_TYPE);
+  });
+
+  it('edgeTypeFor throws for unsupported edge kinds', () => {
+    expect(() =>
+      parametricViewpoint.edgeTypeFor({
+        id: 'e-2' as never,
+        kind: 'Composition',
         sourceId: 'c-1' as never,
         targetId: 'v-1' as never,
       }),

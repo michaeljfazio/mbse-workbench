@@ -20,6 +20,7 @@ import type {
   ModelEdge,
   ModelElement,
   ObjectFlowEdge,
+  ParameterBindingEdge,
   PartDefinitionElement,
   PartUsageElement,
   PortDefinitionElement,
@@ -62,7 +63,9 @@ import {
   IBD_VIEWPOINT_ID,
   ibdViewpoint,
   isValidActivityConnection,
+  isValidParametricConnection,
   isValidStateMachineConnection,
+  canonicalizeParametricConnection,
   parametricViewpoint,
   REQUIREMENTS_VIEWPOINT_ID,
   requirementsViewpoint,
@@ -325,6 +328,8 @@ export interface WorkspaceActions {
     kind: UseCaseEdgeKind,
   ): EdgeId | null;
   setExtendExtensionPoint(id: EdgeId, extensionPoint: string): void;
+  linkParameterBinding(connection: Connection): EdgeId | null;
+  setParameterBindingLabel(id: EdgeId, label: string): void;
   undo(): void;
   redo(): void;
 }
@@ -1822,6 +1827,39 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
     const next = trimmed.length === 0 ? undefined : trimmed;
     if ((existing.extensionPoint ?? undefined) === next) return;
     const patch: EdgePatch<'Extend'> = { extensionPoint: next };
+    bus.dispatch({ kind: 'update-edge', id, patch }, user);
+  },
+
+  linkParameterBinding(connection) {
+    const { bus, user, registry, edges } = get();
+    if (!bus || !user || !registry) return null;
+    if (!isValidParametricConnection(connection, registry, edges)) {
+      return null;
+    }
+    const canonical = canonicalizeParametricConnection(connection, registry);
+    const source = canonical.source;
+    const target = canonical.target;
+    if (!source || !target) return null;
+    const edgeId = createEdgeId();
+    const edge: ParameterBindingEdge = {
+      id: edgeId,
+      kind: 'ParameterBinding',
+      sourceId: source as ElementId,
+      targetId: target as ElementId,
+    };
+    bus.dispatch({ kind: 'link', edge }, user);
+    return edgeId;
+  },
+
+  setParameterBindingLabel(id, label) {
+    const { bus, user, registry } = get();
+    if (!bus || !user || !registry) return;
+    const existing = registry.getEdge(id);
+    if (!existing || existing.kind !== 'ParameterBinding') return;
+    const trimmed = label.trim();
+    const next = trimmed.length === 0 ? undefined : trimmed;
+    if ((existing.label ?? undefined) === next) return;
+    const patch: EdgePatch<'ParameterBinding'> = { label: next };
     bus.dispatch({ kind: 'update-edge', id, patch }, user);
   },
 

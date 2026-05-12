@@ -197,17 +197,21 @@ export type {
 } from './useCase';
 
 export {
+  canonicalizeParametricConnection,
   ConstraintUsageNode,
   formatValueDefault,
+  isValidParametricConnection,
   PARAMETRIC_CONSTRAINT_USAGE_HEIGHT,
   PARAMETRIC_CONSTRAINT_USAGE_NODE_TYPE,
   PARAMETRIC_CONSTRAINT_USAGE_WIDTH,
   PARAMETRIC_DEFAULT_NODE_HEIGHT,
   PARAMETRIC_DEFAULT_NODE_WIDTH,
+  PARAMETRIC_PARAMETER_BINDING_EDGE_TYPE,
   PARAMETRIC_VALUE_PROPERTY_HEIGHT,
   PARAMETRIC_VALUE_PROPERTY_NODE_TYPE,
   PARAMETRIC_VALUE_PROPERTY_WIDTH,
   PARAMETRIC_VIEWPOINT_ID,
+  ParameterBindingEdge,
   parametricViewpoint,
   ValuePropertyNode,
 } from './parametric';
@@ -216,6 +220,8 @@ export type {
   ConstraintUsageFlowNode,
   ConstraintUsageNodeData,
   ConstraintUsageRenameCallback,
+  ParameterBindingEdgeData,
+  ParameterBindingFlowEdge,
   ValuePropertyFlowNode,
   ValuePropertyNodeData,
   ValuePropertyRenameCallback,

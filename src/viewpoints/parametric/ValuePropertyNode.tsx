@@ -92,6 +92,7 @@ export function ValuePropertyNode({
         type="target"
         position={Position.Top}
         id="top"
+        data-testid={`parametric-handle-top-${data.elementId}`}
         className={HANDLE_BASE_CLASS}
       />
       <div className="flex flex-1 flex-col gap-0.5 px-2 py-1">
@@ -137,6 +138,7 @@ export function ValuePropertyNode({
         type="source"
         position={Position.Bottom}
         id="bottom"
+        data-testid={`parametric-handle-bottom-${data.elementId}`}
         className={HANDLE_BASE_CLASS}
       />
     </div>
