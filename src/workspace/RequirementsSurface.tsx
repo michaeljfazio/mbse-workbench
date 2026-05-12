@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 
-import type { ModelEdge, ModelElement, RequirementElement } from '@/model';
+import type { ModelElement, RequirementElement } from '@/model';
 
 import {
   buildRequirementRows,
@@ -28,7 +28,7 @@ export function RequirementsSurface(): JSX.Element {
   const [query, setQuery] = useState('');
 
   const rows = useMemo(() => {
-    const built = buildRequirementRows(requirementsOf(elements), edges as readonly ModelEdge[]);
+    const built = buildRequirementRows(requirementsOf(elements), edges);
     const filtered = filterRequirements(built, query);
     return sortRequirements(filtered, 'reqId', 'asc');
   }, [elements, edges, query]);
@@ -36,6 +36,9 @@ export function RequirementsSurface(): JSX.Element {
   return (
     <section
       data-testid="requirements-surface"
+      id="requirements-surface-panel"
+      role="tabpanel"
+      aria-labelledby="surface-tab-requirements"
       aria-label="Requirements editor"
       className="flex min-h-0 flex-1 flex-col bg-background"
     >
