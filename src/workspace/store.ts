@@ -91,7 +91,7 @@ import {
   type NodePosition,
 } from './diagram';
 import { computeImpactSet } from './impact/impact-set';
-import type { Conversation } from '@/llm/types';
+import type { Conversation, LLMMessage } from '@/llm/types';
 import {
   appendAssistantTextDelta,
   appendUserText,
@@ -373,6 +373,8 @@ export interface WorkspaceActions {
   finalizeAssistantTurn(): void;
   clearConversations(): void;
   deleteConversation(id: string): void;
+  /** Append an arbitrary LLMMessage to the active conversation (for tool_use / tool_result persistence). */
+  appendRawMessage(message: LLMMessage): void;
   runImpactAnalysis(rootId: ElementId): boolean;
   clearImpactHighlight(): void;
   setActiveSurface(kind: ActiveSurfaceKind): void;
@@ -2204,6 +2206,23 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       ? (nextConversations[nextConversations.length - 1]?.id ?? null)
       : activeConversationId;
     set({ project: nextProject, activeConversationId: nextActiveId });
+    void get().saveProject();
+  },
+
+  appendRawMessage(message) {
+    const { project, activeConversationId } = get();
+    if (!project || activeConversationId === null) return;
+    const convIndex = project.conversations.findIndex((c) => c.id === activeConversationId);
+    if (convIndex === -1) return;
+    const conv = project.conversations[convIndex]!;
+    const updated: Conversation = {
+      ...conv,
+      modifiedAt: new Date().toISOString(),
+      messages: [...conv.messages, message],
+    };
+    const nextConversations = project.conversations.map((c, i) => (i === convIndex ? updated : c));
+    const nextProject = { ...project, conversations: nextConversations };
+    set({ project: nextProject });
     void get().saveProject();
   },
 }));

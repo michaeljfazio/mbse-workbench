@@ -1,9 +1,41 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { readApiKey } from '@/llm/api-key';
 import { getChatProvider } from '@/llm/chat-provider';
-import { accumulateStream } from '@/llm/stream-accumulator';
-import type { LLMMessage } from '@/llm/types';
+import { createDispatcher } from '@/llm/create-dispatcher';
+import { createProjectReader } from '@/llm/project-reader';
+import { buildToolRegistry } from '@/llm/tools/index';
+import type { LLMContentBlock, LLMMessage } from '@/llm/types';
 import { useWorkspaceStore } from '../store';
+import { ToolUseCard, ToolResultCard } from './ToolCallCard';
+
+function ContentBlockView({
+  block,
+  streamingCursor,
+}: {
+  readonly block: LLMContentBlock;
+  readonly streamingCursor: boolean;
+}): JSX.Element | null {
+  if (block.type === 'text') {
+    return (
+      <span>
+        {block.text}
+        {streamingCursor && (
+          <span
+            aria-hidden="true"
+            className="ml-0.5 inline-block h-3 w-0.5 animate-pulse bg-current opacity-70"
+          />
+        )}
+      </span>
+    );
+  }
+  if (block.type === 'tool_use') {
+    return <ToolUseCard block={block} />;
+  }
+  if (block.type === 'tool_result') {
+    return <ToolResultCard block={block} />;
+  }
+  return null;
+}
 
 function MessageBubble({
   message,
@@ -13,10 +45,20 @@ function MessageBubble({
   readonly streaming: boolean;
 }): JSX.Element {
   const isUser = message.role === 'user';
-  const textContent = message.content
-    .filter((b) => b.type === 'text')
-    .map((b) => (b.type === 'text' ? b.text : ''))
-    .join('');
+
+  // User messages that contain only tool_result blocks are rendered without a bubble
+  const hasOnlyToolResults =
+    message.content.length > 0 && message.content.every((b) => b.type === 'tool_result');
+
+  if (hasOnlyToolResults) {
+    return (
+      <div data-testid="chat-message" data-role={message.role} className="mb-1">
+        {message.content.map((block, i) =>
+          block.type === 'tool_result' ? <ToolResultCard key={i} block={block} /> : null,
+        )}
+      </div>
+    );
+  }
 
   return (
     <div
@@ -27,18 +69,14 @@ function MessageBubble({
     >
       <div
         className={`max-w-[85%] rounded-lg px-3 py-2 text-sm leading-relaxed ${
-          isUser
-            ? 'bg-primary text-primary-foreground'
-            : 'bg-muted text-foreground'
+          isUser ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'
         }`}
       >
-        {textContent}
-        {streaming && (
-          <span
-            aria-hidden="true"
-            className="ml-0.5 inline-block h-3 w-0.5 animate-pulse bg-current opacity-70"
-          />
-        )}
+        {message.content.map((block, i) => {
+          const isLastBlock = i === message.content.length - 1;
+          const showCursor = streaming && isLastBlock && block.type === 'text';
+          return <ContentBlockView key={i} block={block} streamingCursor={showCursor} />;
+        })}
       </div>
     </div>
   );
@@ -49,8 +87,6 @@ export function ChatPane(): JSX.Element {
   const activeConversationId = useWorkspaceStore((s) => s.activeConversationId);
   const createConversation = useWorkspaceStore((s) => s.createConversation);
   const appendUserMessage = useWorkspaceStore((s) => s.appendUserMessage);
-  const appendAssistantText = useWorkspaceStore((s) => s.appendAssistantText);
-  const finalizeAssistantTurn = useWorkspaceStore((s) => s.finalizeAssistantTurn);
   const clearConversations = useWorkspaceStore((s) => s.clearConversations);
 
   const [composerText, setComposerText] = useState('');
@@ -62,7 +98,6 @@ export function ChatPane(): JSX.Element {
   const activeConversation = conversations.find((c) => c.id === activeConversationId) ?? null;
   const messages = activeConversation?.messages ?? [];
 
-  // Auto-scroll to bottom on new messages
   useEffect(() => {
     const el = scrollRef.current;
     if (el) {
@@ -93,30 +128,55 @@ export function ChatPane(): JSX.Element {
 
     try {
       const provider = getChatProvider(apiKey);
-      // Build the request from the current conversation messages + new user msg
-      const currentMessages = useWorkspaceStore.getState().project?.conversations
-        .find((c) => c.id === useWorkspaceStore.getState().activeConversationId)
-        ?.messages ?? [];
 
-      const stream = provider.stream({
-        system: 'You are the MBSE Workbench assistant.',
-        messages: currentMessages,
-        tools: [],
+      // Build the registry with a reader that reads from the store at handler call time
+      const getReader = () => {
+        const s = useWorkspaceStore.getState();
+        return createProjectReader({
+          projectName: s.project?.name ?? 'Untitled Project',
+          elements: s.elements,
+          edges: s.edges,
+          diagrams: s.diagrams,
+          activeDiagramId: s.activeDiagramId,
+        });
+      };
+
+      const registry = buildToolRegistry(getReader);
+      const dispatch = createDispatcher({ provider, registry });
+
+      // Build the current conversation message list (includes user message just appended)
+      const stateNow = useWorkspaceStore.getState();
+      const currentMessages =
+        stateNow.project?.conversations.find((c) => c.id === stateNow.activeConversationId)
+          ?.messages ?? [];
+
+      // priorMessages = all but the last (user message we just added)
+      const priorMessages = currentMessages.slice(0, -1);
+      const userMessage: LLMMessage = currentMessages[currentMessages.length - 1] ?? {
+        role: 'user',
+        content: [{ type: 'text', text }],
+      };
+
+      const conversationId = stateNow.activeConversationId ?? 'unknown';
+
+      const result = await dispatch({
+        conversationId,
+        system:
+          'You are the MBSE Workbench assistant. You have access to tools to read the active model.',
+        priorMessages,
+        userMessage,
         maxTokens: 1024,
       });
 
-      await accumulateStream(
-        stream,
-        (delta) => appendAssistantText(delta),
-        () => {
-          finalizeAssistantTurn();
-          setIsStreaming(false);
-        },
-      );
-    } catch {
+      // Persist all returned messages (skip index 0 = user message already appended)
+      const { appendRawMessage } = useWorkspaceStore.getState();
+      for (const msg of result.appendedMessages.slice(1)) {
+        appendRawMessage(msg);
+      }
+    } finally {
       setIsStreaming(false);
     }
-  }, [composerText, isStreaming, appendUserMessage, appendAssistantText, finalizeAssistantTurn]);
+  }, [composerText, isStreaming, appendUserMessage]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -183,10 +243,7 @@ export function ChatPane(): JSX.Element {
       </div>
 
       {/* Scrollback */}
-      <div
-        ref={scrollRef}
-        className="flex-1 overflow-y-auto px-3 py-2"
-      >
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-2">
         {messages.length === 0 ? (
           <p className="text-center text-xs text-muted-foreground">
             Send a message to get started.
@@ -195,13 +252,7 @@ export function ChatPane(): JSX.Element {
           messages.map((msg, idx) => {
             const isLast = idx === messages.length - 1;
             const isStreamingThis = isStreaming && isLast && msg.role === 'assistant';
-            return (
-              <MessageBubble
-                key={idx}
-                message={msg}
-                streaming={isStreamingThis}
-              />
-            );
+            return <MessageBubble key={idx} message={msg} streaming={isStreamingThis} />;
           })
         )}
       </div>
