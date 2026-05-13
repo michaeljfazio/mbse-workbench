@@ -91,7 +91,8 @@ import {
   type NodePosition,
 } from './diagram';
 import { computeImpactSet } from './impact/impact-set';
-import type { Conversation, LLMMessage } from '@/llm/types';
+import type { ProposalResolution } from '@/llm';
+import type { Conversation, LLMMessage, ProposedChange } from '@/llm/types';
 import {
   appendAssistantTextDelta,
   appendUserText,
@@ -205,6 +206,7 @@ export interface WorkspaceState {
   readonly requirementsSurfaceTab: RequirementsSurfaceTab;
   readonly coverageApprovedOnly: boolean;
   readonly activeConversationId: string | null;
+  readonly pendingProposals: readonly ProposedChange[];
 }
 
 export type ActiveSurfaceKind = 'diagram' | 'requirements';
@@ -375,6 +377,13 @@ export interface WorkspaceActions {
   deleteConversation(id: string): void;
   /** Append an arbitrary LLMMessage to the active conversation (for tool_use / tool_result persistence). */
   appendRawMessage(message: LLMMessage): void;
+  /** Queue a ProposedChange awaiting user accept/reject. Returns a Promise
+   * that resolves once `acceptProposal` or `rejectProposal` is called with
+   * the same id. Designed to be supplied as the dispatcher's
+   * `resolveProposal` callback. */
+  enqueueProposal(change: ProposedChange): Promise<ProposalResolution>;
+  acceptProposal(id: string): void;
+  rejectProposal(id: string, reason?: string): void;
   runImpactAnalysis(rootId: ElementId): boolean;
   clearImpactHighlight(): void;
   setActiveSurface(kind: ActiveSurfaceKind): void;
@@ -410,7 +419,15 @@ const INITIAL_STATE: WorkspaceState = {
   requirementsSurfaceTab: 'editor',
   coverageApprovedOnly: false,
   activeConversationId: null,
+  pendingProposals: [],
 };
+
+/**
+ * Module-level map of pending proposal resolvers. Kept outside the Zustand
+ * state because functions are not serialisable and the resolver only matters
+ * for the in-flight LLM turn. Cleared by resetWorkspaceStoreForTests.
+ */
+const proposalResolvers = new Map<string, (resolution: ProposalResolution) => void>();
 
 function newEmptyProject(): Project {
   const now = new Date().toISOString();
@@ -2225,9 +2242,43 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
     set({ project: nextProject });
     void get().saveProject();
   },
+
+  enqueueProposal(change) {
+    return new Promise<ProposalResolution>((resolve) => {
+      proposalResolvers.set(change.id, resolve);
+      set({ pendingProposals: [...get().pendingProposals, change] });
+    });
+  },
+
+  acceptProposal(id) {
+    const { bus, user, pendingProposals } = get();
+    const change = pendingProposals.find((p) => p.id === id);
+    if (!change) return;
+    if (bus && user) {
+      bus.dispatch({ kind: 'compound', commands: [...change.commands] }, user);
+    }
+    set({ pendingProposals: pendingProposals.filter((p) => p.id !== id) });
+    const resolver = proposalResolvers.get(id);
+    if (resolver) {
+      proposalResolvers.delete(id);
+      resolver({ kind: 'accepted', appliedSummary: change.summary });
+    }
+  },
+
+  rejectProposal(id, reason) {
+    const { pendingProposals } = get();
+    if (!pendingProposals.some((p) => p.id === id)) return;
+    set({ pendingProposals: pendingProposals.filter((p) => p.id !== id) });
+    const resolver = proposalResolvers.get(id);
+    if (resolver) {
+      proposalResolvers.delete(id);
+      resolver(reason !== undefined ? { kind: 'rejected', reason } : { kind: 'rejected' });
+    }
+  },
 }));
 
 export function resetWorkspaceStoreForTests(): void {
+  proposalResolvers.clear();
   useWorkspaceStore.setState(INITIAL_STATE, false);
 }
 

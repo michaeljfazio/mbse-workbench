@@ -22,6 +22,8 @@ export {
   type DispatcherDependencies,
   type DispatcherTurnRequest,
   type DispatcherTurnResult,
+  type ProposalResolution,
+  type ProposalResolver,
 } from './dispatcher';
 export { createProjectReader, type ProjectReader } from './project-reader';
 export { buildToolRegistry } from './tools/index';
