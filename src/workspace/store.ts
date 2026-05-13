@@ -91,6 +91,12 @@ import {
   type NodePosition,
 } from './diagram';
 import { computeImpactSet } from './impact/impact-set';
+import type { Conversation } from '@/llm/types';
+import {
+  appendAssistantTextDelta,
+  appendUserText,
+  finalizeAssistantMessage,
+} from '@/llm/conversation-reducer';
 
 export const LAYOUT_STORAGE_KEY = 'mbse:v1:workspace:layout';
 
@@ -198,6 +204,7 @@ export interface WorkspaceState {
   readonly activeSurfaceKind: ActiveSurfaceKind;
   readonly requirementsSurfaceTab: RequirementsSurfaceTab;
   readonly coverageApprovedOnly: boolean;
+  readonly activeConversationId: string | null;
 }
 
 export type ActiveSurfaceKind = 'diagram' | 'requirements';
@@ -359,6 +366,13 @@ export interface WorkspaceActions {
   ): boolean;
   undo(): void;
   redo(): void;
+  setActiveConversation(id: string | null): void;
+  createConversation(): string;
+  appendUserMessage(text: string): void;
+  appendAssistantText(delta: string): void;
+  finalizeAssistantTurn(): void;
+  clearConversations(): void;
+  deleteConversation(id: string): void;
   runImpactAnalysis(rootId: ElementId): boolean;
   clearImpactHighlight(): void;
   setActiveSurface(kind: ActiveSurfaceKind): void;
@@ -393,6 +407,7 @@ const INITIAL_STATE: WorkspaceState = {
   activeSurfaceKind: 'diagram',
   requirementsSurfaceTab: 'editor',
   coverageApprovedOnly: false,
+  activeConversationId: null,
 };
 
 function newEmptyProject(): Project {
@@ -786,6 +801,10 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       rightPaneWidth: layout.rightPaneWidth,
       storage: storageInst,
       modelVersion: bus.version(),
+      // Restore the most recent conversation as active so reloading shows history.
+      activeConversationId: project.conversations.length > 0
+        ? (project.conversations[project.conversations.length - 1]?.id ?? null)
+        : null,
     });
   },
 
@@ -2106,6 +2125,86 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   setCoverageApprovedOnly(next) {
     if (get().coverageApprovedOnly === next) return;
     set({ coverageApprovedOnly: next });
+  },
+
+  setActiveConversation(id) {
+    set({ activeConversationId: id });
+  },
+
+  createConversation() {
+    const { project } = get();
+    if (!project) {
+      const fallbackId = crypto.randomUUID();
+      return fallbackId;
+    }
+    const now = new Date().toISOString();
+    const id = crypto.randomUUID();
+    const newConv: Conversation = {
+      id,
+      title: 'New conversation',
+      createdAt: now,
+      modifiedAt: now,
+      messages: [],
+    };
+    const updated: typeof project = {
+      ...project,
+      conversations: [...project.conversations, newConv],
+    };
+    set({ project: updated, activeConversationId: id });
+    void get().saveProject();
+    return id;
+  },
+
+  appendUserMessage(text) {
+    const { project, activeConversationId } = get();
+    if (!project || activeConversationId === null) return;
+    const convIndex = project.conversations.findIndex((c) => c.id === activeConversationId);
+    if (convIndex === -1) return;
+    const updated = appendUserText(project.conversations[convIndex]!, text);
+    const nextConversations = project.conversations.map((c, i) => (i === convIndex ? updated : c));
+    set({ project: { ...project, conversations: nextConversations } });
+  },
+
+  appendAssistantText(delta) {
+    const { project, activeConversationId } = get();
+    if (!project || activeConversationId === null) return;
+    const convIndex = project.conversations.findIndex((c) => c.id === activeConversationId);
+    if (convIndex === -1) return;
+    const updated = appendAssistantTextDelta(project.conversations[convIndex]!, delta);
+    const nextConversations = project.conversations.map((c, i) => (i === convIndex ? updated : c));
+    set({ project: { ...project, conversations: nextConversations } });
+  },
+
+  finalizeAssistantTurn() {
+    const { project, activeConversationId } = get();
+    if (!project || activeConversationId === null) return;
+    const convIndex = project.conversations.findIndex((c) => c.id === activeConversationId);
+    if (convIndex === -1) return;
+    const finalized = finalizeAssistantMessage(project.conversations[convIndex]!);
+    const nextConversations = project.conversations.map((c, i) => (i === convIndex ? finalized : c));
+    const nextProject = { ...project, conversations: nextConversations };
+    set({ project: nextProject });
+    void get().saveProject();
+  },
+
+  clearConversations() {
+    const { project } = get();
+    if (!project) return;
+    const nextProject = { ...project, conversations: [] };
+    set({ project: nextProject, activeConversationId: null });
+    void get().saveProject();
+  },
+
+  deleteConversation(id) {
+    const { project, activeConversationId } = get();
+    if (!project) return;
+    const nextConversations = project.conversations.filter((c) => c.id !== id);
+    const nextProject = { ...project, conversations: nextConversations };
+    const nextActiveId = activeConversationId === id
+      ? (nextConversations[nextConversations.length - 1]?.id ?? null)
+      : activeConversationId;
+    set({ project: nextProject, activeConversationId: nextActiveId });
+    void get().saveProject();
   },
 }));
 

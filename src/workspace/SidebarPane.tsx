@@ -1,5 +1,6 @@
 import { readApiKey, requestApiKeyModal, useApiKey } from '@/llm/api-key';
 
+import { ChatPane } from './chat/ChatPane';
 import { Inspector } from './inspector/Inspector';
 import { useWorkspaceStore, type InspectorTab } from './store';
 
@@ -72,7 +73,7 @@ export function SidebarPane({ width }: SidebarPaneProps): JSX.Element {
         role="tabpanel"
         aria-labelledby={`sidebar-tab-${inspectorTab}`}
         data-testid="sidebar-panel"
-        className="flex-1 overflow-auto p-4 text-sm"
+        className={`flex-1 overflow-hidden text-sm ${inspectorTab === 'inspector' || (inspectorTab === 'chat' && apiKey === null) ? 'overflow-auto p-4' : ''}`}
       >
         {inspectorTab === 'inspector' ? (
           <Inspector />
@@ -92,12 +93,7 @@ export function SidebarPane({ width }: SidebarPaneProps): JSX.Element {
             </button>
           </div>
         ) : (
-          <p
-            data-testid="chat-placeholder"
-            className="text-muted-foreground"
-          >
-            Chat UI lands in slice C.
-          </p>
+          <ChatPane />
         )}
       </div>
     </aside>
