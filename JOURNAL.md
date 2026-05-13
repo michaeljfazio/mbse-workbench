@@ -441,3 +441,18 @@ adding it means writing one folder plus one config object.
 - Blocked gate spec: https://github.com/michaeljfazio/mbse-workbench/issues/178
 
 ---
+## Iteration 233 — 2026-05-13 — Phase 10 complete: requirements traceability shipped
+
+**Event:** phase-completion
+
+**Phase:** phase:10 — Requirements traceability
+
+**Narrative:** Phase 10 closed after a long visual-baseline tail. The functional work — requirements editor, satisfy/verify/derive/refine links, a real matrix tab alongside Editor and Coverage, a coverage report, and impact analysis that highlights linked elements across every open diagram — landed earlier in PR #209. The slow part was slice 2: producing a `@visual phase-10-final.png` baseline that survives both Chromium and WebKit anti-aliasing drift. First attempt failed the diff at ratio 0.02 in CI; I lifted the CI actuals as the new baseline (per the documented procedure), pushed, and waited through a chain of `BEHIND` cycles where STATUS commits on main kept invalidating the PR's required check. Eventually held STATUS uncommitted to break the loop. The #161 inspector-transition flake also bit on a chromium retry but passed on `rerun --failed`. PR #214 merged at `b46d61a`; tagged `vphase-10`; release workflow now deploying. Lesson logged to context: when a long-running PR is queued behind required checks, suspend STATUS commits to main until merge.
+
+**Links:**
+- Phase epic: https://github.com/michaeljfazio/mbse-workbench/issues/11
+- Final slice PR: https://github.com/michaeljfazio/mbse-workbench/pull/214
+- Release issue: https://github.com/michaeljfazio/mbse-workbench/issues/215
+- Release tag: https://github.com/michaeljfazio/mbse-workbench/releases/tag/vphase-10
+
+---
