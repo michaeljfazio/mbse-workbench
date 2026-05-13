@@ -6,15 +6,13 @@ phase:11 — LLM integration (epic #12). Slices A/B/C/D/E merged on main
 this iteration scaffolds the gate spec + recorded fixture.
 
 ## Current iteration
-- Iteration #: 452
-- Started: 2026-05-14T03:45Z
+- Iteration #: 453
+- Started: 2026-05-14T (resume)
 - Branch: issue/222-phase-11-gate-e2e-recorded-fixture
-- Working on: #222 slice F — comprehensive recorded fixture covering
-  `explain_diagram` → `create_element` (Pump) → `link_requirement`
-  (Mission --satisfy--> Vessel) → final end_turn, plus Playwright spec
-  asserting tool-use card, both ProposalCards, accept paths, Cmd-Z
-  reverts the last batch atomically (Pump survives, edge gone), and
-  @visual + @a11y of the chat pane post-flow.
+- Working on: #222 slice F — PR #229 open, auto-merge --squash armed,
+  CI run 25822206490 in_progress (single `check` job). Awaiting result.
+  Expected baseline miss on `phase-11-final-chat.png` (Linux PNG
+  extraction recipe ready per iter-332 / iter-436).
 
 ## Last test run
 - Local: typecheck ✓, lint ✓ (4 pre-existing fast-refresh warnings,
@@ -71,10 +69,11 @@ this iteration scaffolds the gate spec + recorded fixture.
   PNGs from playwright-report base64 blob and commit.
 
 ## Next action
-1. Push branch and open PR #229; auto-merge --squash.
-2. CI run #1 likely fails on the missing `phase-11-final-chat.png`
-   baseline; extract from playwright-report artifact and commit per
-   the iter-332/iter-436 recipe.
-3. When the slice F PR merges, close epic #12, open release issue,
+1. When CI run 25822206490 completes: if green, auto-merge will squash
+   PR #229 and close #222 — proceed to step 3.
+2. If red on missing `phase-11-final-chat.png`: extract Linux PNG from
+   the playwright-report artifact and commit per iter-332/iter-436.
+   If red elsewhere, diagnose; respect 3-attempt escalation rule.
+3. After slice F PR merges: close epic #12, open `type:release` issue,
    push tag `vphase-11`, deploy smoke per Ralph loop step 17, then
    append the phase-11 journal entry.
