@@ -196,9 +196,12 @@ export interface WorkspaceState {
   readonly impactHighlightedIds: ReadonlySet<ElementId>;
   readonly impactHighlightedEdgeIds: ReadonlySet<EdgeId>;
   readonly activeSurfaceKind: ActiveSurfaceKind;
+  readonly requirementsSurfaceTab: RequirementsSurfaceTab;
+  readonly coverageApprovedOnly: boolean;
 }
 
 export type ActiveSurfaceKind = 'diagram' | 'requirements';
+export type RequirementsSurfaceTab = 'editor' | 'coverage';
 
 export interface CreateDiagramOptions {
   readonly name?: string;
@@ -359,6 +362,8 @@ export interface WorkspaceActions {
   runImpactAnalysis(rootId: ElementId): boolean;
   clearImpactHighlight(): void;
   setActiveSurface(kind: ActiveSurfaceKind): void;
+  setRequirementsSurfaceTab(tab: RequirementsSurfaceTab): void;
+  setCoverageApprovedOnly(next: boolean): void;
 }
 
 export type WorkspaceStore = WorkspaceState & WorkspaceActions;
@@ -386,6 +391,8 @@ const INITIAL_STATE: WorkspaceState = {
   impactHighlightedIds: new Set<ElementId>(),
   impactHighlightedEdgeIds: new Set<EdgeId>(),
   activeSurfaceKind: 'diagram',
+  requirementsSurfaceTab: 'editor',
+  coverageApprovedOnly: false,
 };
 
 function newEmptyProject(): Project {
@@ -2088,6 +2095,16 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   setActiveSurface(kind) {
     if (get().activeSurfaceKind === kind) return;
     set({ activeSurfaceKind: kind, selectedElementIds: [] });
+  },
+
+  setRequirementsSurfaceTab(tab) {
+    if (get().requirementsSurfaceTab === tab) return;
+    set({ requirementsSurfaceTab: tab });
+  },
+
+  setCoverageApprovedOnly(next) {
+    if (get().coverageApprovedOnly === next) return;
+    set({ coverageApprovedOnly: next });
   },
 }));
 
