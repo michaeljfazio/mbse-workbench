@@ -41,9 +41,10 @@ test.describe('Workspace shell (issue #30)', () => {
     await expect(
       page.getByRole('tab', { name: 'Chat', selected: true }),
     ).toBeVisible();
-    await expect(
-      page.getByRole('complementary', { name: 'Inspector and chat' }),
-    ).toContainText(/Chat lands in Phase 11/);
+    // Without an API key the Chat tab renders the needs-key block (slice B
+    // also auto-opens the modal; dismissing leaves the block in place).
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('chat-needs-key')).toBeVisible();
   });
 
   test('dragging the left divider resizes the project tree pane and persists across reload', async ({

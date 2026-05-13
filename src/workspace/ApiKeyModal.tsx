@@ -53,7 +53,7 @@ export function ApiKeyModal({ onClose }: ApiKeyModalProps): JSX.Element {
         aria-labelledby={headingId}
         aria-describedby={descId}
         data-testid="api-key-modal"
-        className="w-[28rem] max-w-[90vw] rounded-lg border border-border bg-card p-5 shadow-xl"
+        className="w-[28rem] max-w-[90vw] rounded-lg border border-border bg-background p-5 shadow-xl"
       >
         <h2 id={headingId} className="text-base font-semibold text-foreground">
           Anthropic API key
@@ -89,7 +89,7 @@ export function ApiKeyModal({ onClose }: ApiKeyModalProps): JSX.Element {
             type="button"
             data-testid="api-key-clear"
             onClick={clear}
-            className="rounded-md border border-border bg-card px-3 py-1.5 text-sm font-medium text-muted-foreground hover:bg-accent"
+            className="rounded-md border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground hover:bg-accent"
           >
             Clear
           </button>
