@@ -22,6 +22,11 @@ import {
   proposeDecompositionSchema,
   proposeDecompositionHandler,
 } from './propose-decomposition';
+import {
+  suggestMissingElementsDefinition,
+  suggestMissingElementsSchema,
+  suggestMissingElementsHandler,
+} from './suggest-missing-elements';
 
 /**
  * Build the default ToolRegistry for the chat dispatcher.
@@ -103,6 +108,20 @@ export function buildToolRegistry(getReader: () => ProjectReader): ToolRegistry 
         handler: async (input: unknown, ctx: ToolContext): Promise<ToolOutput> =>
           proposeDecompositionHandler(
             proposeDecompositionSchema.parse(input),
+            ctx,
+            getReader(),
+          ),
+      },
+    ],
+    [
+      'suggest_missing_elements',
+      {
+        definition: suggestMissingElementsDefinition,
+        inputSchema: suggestMissingElementsSchema,
+        mutating: true,
+        handler: async (input: unknown, ctx: ToolContext): Promise<ToolOutput> =>
+          suggestMissingElementsHandler(
+            suggestMissingElementsSchema.parse(input),
             ctx,
             getReader(),
           ),
