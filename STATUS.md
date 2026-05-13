@@ -7,19 +7,38 @@ mutating tools now landed on the branch; remaining E work is e2e + visual
 + a11y baselines, then PR open. Remaining after E: slice F gate (#222).
 
 ## Current iteration
-- Iteration #: 399
-- Started: 2026-05-13T18:14:00Z
+- Iteration #: 400
+- Started: 2026-05-13T18:40:00Z
 - Branch: issue/221-mutating-tools-diff-preview
-- Working on: #221 slice E — fourth mutating tool
-  (`suggest_missing_elements`) — complete this iteration.
+- Working on: #221 slice E — Playwright Accept/Reject e2e + a11y.
 
 ## Last test run
-- `pnpm exec vitest run tests/unit/llm` → 73 tests pass (12 new for
-  `suggest_missing_elements`).
+- `pnpm exec playwright test tests/e2e/chat-proposal-accept.spec.ts
+  --project=chromium --grep-invert "@visual"` → 3/3 pass (Accept,
+  Reject, @a11y).
 - `pnpm exec tsc --noEmit` → clean.
-- `pnpm exec eslint` on changed files → clean.
+- `pnpm exec eslint tests/e2e/chat-proposal-accept.spec.ts` → clean.
 
-## What changed this iteration (commit b2bf40e)
+## What changed this iteration (commit 7dba072)
+- New fixture `tests/fixtures/llm/create-element-accept-round-trip.json`:
+  round 1 emits `create_element` tool_use with
+  `{kind:"PartDefinition", name:"Pump"}`; round 2 is the final
+  "Pump has been added" assistant message.
+- New `tests/e2e/chat-proposal-accept.spec.ts` with 4 specs:
+  - Accept path: send chat → ProposalCard appears with summary
+    "Create PartDefinition \"Pump\"" → click Accept → card clears →
+    round 2 streams → "Pump" leaf appears in `project-tree`.
+  - Reject path: card appears → click Reject → card clears →
+    dispatcher resumes but no `Pump` leaf exists.
+  - `@a11y` scan on the visible proposal card — 0 serious/critical
+    violations on chromium.
+  - `@visual` baseline for `proposal-card-pending.png` (Linux PNGs
+    will be extracted from CI per the iter-332 workflow).
+
+## What changed prior iterations (commit 5510210 / b2bf40e)
+- iter-399: `suggest_missing_elements` mutating tool +12 unit tests.
+
+## What changed earlier prior iterations (commit be281de)
 - New `src/llm/tools/suggest-missing-elements.ts` exporting:
   - `suggestMissingElementsSchema` — strict zod:
     `{ owningPackageId?, maxSuggestions?: int [1..20] }`.
@@ -68,12 +87,27 @@ mutating tools now landed on the branch; remaining E work is e2e + visual
 - #161 — p2 inspector-transition flake. Deferred.
 - Pre-existing `text-muted-foreground` contrast violation on inactive
   sidebar tab button — deferred from slice C.
-- Slice E remaining work: Playwright e2e exercising Accept path with a
-  recorded fixture; `@visual` baselines for diff card pending /
-  accepted / rejected; `@a11y` scan on diff card. Branch is now 11
-  commits ahead of main — slice E PR should be opened next iteration.
+- Slice E remaining work: rebase onto main, open the slice-E PR for
+  #221, enable auto-merge, extract the Linux `proposal-card-pending.png`
+  baseline from CI's playwright-report and commit it. Branch is now 12
+  commits ahead of main.
 
 ## Decisions log
+- 2026-05-13 (iter-400): Accept-path e2e asserts the new "Pump" leaf
+  appears in `project-tree` (not the BDD canvas). Reason: an
+  uncontainerised PartDefinition is rendered in the tree as soon as it
+  is created; BDD canvas only shows it once it has been dragged onto a
+  diagram. The tree assertion is the cleanest proof the compound
+  command was actually dispatched.
+- 2026-05-13 (iter-400): Reject-path e2e asserts the dispatcher
+  resumes (round 2 fires, streaming clears) but no `Pump` leaf is
+  created. Reason: this catches a regression where Reject would either
+  leak a pending proposal or accidentally apply the change.
+- 2026-05-13 (iter-400): `@visual` baseline scoped to the
+  `proposal-card` locator, not the whole sidebar. Reason: the rest of
+  the sidebar (chat scrollback) flaps when streaming text width
+  changes; pinning to the card keeps the baseline stable across
+  fixture tweaks.
 - 2026-05-13 (iter-399): `suggest_missing_elements` heuristic = "find
   PartDefinitions with no incoming RequirementTrace of any kind". Reason:
   this is the most actionable un-required-ness signal and produces a
@@ -139,10 +173,8 @@ mutating tools now landed on the branch; remaining E work is e2e + visual
   PNGs from playwright-report base64 blob and commit.
 
 ## Next action
-Slice E remaining work (all four mutating tools are now in):
-1. Playwright e2e exercising the chat Accept path end-to-end using a
-   recorded fixture response that calls `create_element`.
-2. `@visual` baselines for ProposalCard pending / accepted / rejected
-   states on Chromium + WebKit.
-3. `@a11y` scan on the diff card.
-4. Rebase onto main, open the slice-E PR for #221, enable auto-merge.
+1. Rebase `issue/221-mutating-tools-diff-preview` onto main.
+2. Push and open the slice-E PR for #221, enable auto-merge.
+3. After CI runs, extract the Linux `proposal-card-pending.png`
+   baselines (chromium + webkit) from the playwright-report base64
+   blob and commit them per the iter-332 workflow.
