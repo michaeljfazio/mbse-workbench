@@ -118,6 +118,7 @@ export type InspectorTab = 'inspector' | 'chat';
 interface LayoutSnapshot {
   readonly leftPaneWidth: number;
   readonly rightPaneWidth: number;
+  readonly secondaryDiagramId: DiagramId | null;
 }
 
 function clampPaneWidth(px: number): number {
@@ -132,17 +133,24 @@ function readLayout(storage: Storage): LayoutSnapshot {
       return {
         leftPaneWidth: DEFAULT_LEFT_PANE_WIDTH,
         rightPaneWidth: DEFAULT_RIGHT_PANE_WIDTH,
+        secondaryDiagramId: null,
       };
     }
-    const parsed = JSON.parse(raw) as Partial<LayoutSnapshot>;
+    const parsed = JSON.parse(raw) as Partial<LayoutSnapshot> & {
+      secondaryDiagramId?: string | null;
+    };
+    const sd = parsed.secondaryDiagramId;
     return {
       leftPaneWidth: clampPaneWidth(parsed.leftPaneWidth ?? DEFAULT_LEFT_PANE_WIDTH),
       rightPaneWidth: clampPaneWidth(parsed.rightPaneWidth ?? DEFAULT_RIGHT_PANE_WIDTH),
+      secondaryDiagramId:
+        typeof sd === 'string' && sd.length > 0 ? (sd as DiagramId) : null,
     };
   } catch {
     return {
       leftPaneWidth: DEFAULT_LEFT_PANE_WIDTH,
       rightPaneWidth: DEFAULT_RIGHT_PANE_WIDTH,
+      secondaryDiagramId: null,
     };
   }
 }
@@ -193,9 +201,11 @@ export interface WorkspaceState {
   readonly project: Project | null;
   readonly diagrams: readonly Diagram[];
   readonly activeDiagramId: DiagramId | null;
+  readonly secondaryDiagramId: DiagramId | null;
   readonly elements: readonly ModelElement[];
   readonly edges: readonly ModelEdge[];
   readonly selectedElementIds: readonly ElementId[];
+  readonly secondarySelectedElementIds: readonly ElementId[];
   readonly leftPaneWidth: number;
   readonly rightPaneWidth: number;
   readonly inspectorTab: InspectorTab;
@@ -223,6 +233,9 @@ export interface CreateDiagramOptions {
 export interface WorkspaceActions {
   bootstrap(deps: BootstrapDeps): Promise<void>;
   setActiveDiagram(id: DiagramId): void;
+  splitDiagram(id: DiagramId): void;
+  closeSplit(): void;
+  setSecondarySelection(ids: readonly ElementId[]): void;
   createDiagram(
     viewpointId: ViewpointId,
     options?: CreateDiagramOptions,
@@ -416,9 +429,11 @@ const INITIAL_STATE: WorkspaceState = {
   project: null,
   diagrams: [],
   activeDiagramId: null,
+  secondaryDiagramId: null,
   elements: [],
   edges: [],
   selectedElementIds: [],
+  secondarySelectedElementIds: [],
   leftPaneWidth: DEFAULT_LEFT_PANE_WIDTH,
   rightPaneWidth: DEFAULT_RIGHT_PANE_WIDTH,
   inspectorTab: 'inspector',
@@ -727,7 +742,11 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
     const storageInst = storage ?? defaultBrowserStorage();
     const layout = storageInst
       ? readLayout(storageInst)
-      : { leftPaneWidth: DEFAULT_LEFT_PANE_WIDTH, rightPaneWidth: DEFAULT_RIGHT_PANE_WIDTH };
+      : {
+          leftPaneWidth: DEFAULT_LEFT_PANE_WIDTH,
+          rightPaneWidth: DEFAULT_RIGHT_PANE_WIDTH,
+          secondaryDiagramId: null,
+        };
     const collaborationProvider = provider ?? new NoopCollaborationProvider();
 
     const metadata = await repository.list();
@@ -826,9 +845,15 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       project,
       diagrams,
       activeDiagramId: diagrams[0]!.id,
+      secondaryDiagramId:
+        layout.secondaryDiagramId &&
+        diagrams.some((d) => d.id === layout.secondaryDiagramId)
+          ? layout.secondaryDiagramId
+          : null,
       elements: registry.elements(),
       edges: registry.edges(),
       selectedElementIds: [],
+      secondarySelectedElementIds: [],
       leftPaneWidth: layout.leftPaneWidth,
       rightPaneWidth: layout.rightPaneWidth,
       storage: storageInst,
@@ -841,7 +866,13 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   },
 
   setActiveDiagram(id) {
-    if (!get().diagrams.some((d) => d.id === id)) return;
+    const { diagrams, secondaryDiagramId } = get();
+    if (!diagrams.some((d) => d.id === id)) return;
+    // Avoid showing the same diagram on both sides: if the new primary is the
+    // current secondary, close the split.
+    if (secondaryDiagramId === id) {
+      get().closeSplit();
+    }
     set({ activeDiagramId: id });
   },
 
@@ -868,20 +899,64 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
 
   setLeftPaneWidth(px) {
     const width = clampPaneWidth(px);
-    const { storage, rightPaneWidth } = get();
+    const { storage, rightPaneWidth, secondaryDiagramId } = get();
     set({ leftPaneWidth: width });
     if (storage) {
-      writeLayout(storage, { leftPaneWidth: width, rightPaneWidth });
+      writeLayout(storage, {
+        leftPaneWidth: width,
+        rightPaneWidth,
+        secondaryDiagramId,
+      });
     }
   },
 
   setRightPaneWidth(px) {
     const width = clampPaneWidth(px);
-    const { storage, leftPaneWidth } = get();
+    const { storage, leftPaneWidth, secondaryDiagramId } = get();
     set({ rightPaneWidth: width });
     if (storage) {
-      writeLayout(storage, { leftPaneWidth, rightPaneWidth: width });
+      writeLayout(storage, {
+        leftPaneWidth,
+        rightPaneWidth: width,
+        secondaryDiagramId,
+      });
     }
+  },
+
+  splitDiagram(id) {
+    const { diagrams, storage, leftPaneWidth, rightPaneWidth, activeDiagramId } =
+      get();
+    if (!diagrams.some((d) => d.id === id)) return;
+    // No-op if the requested split diagram is already the active primary.
+    if (id === activeDiagramId) return;
+    set({
+      secondaryDiagramId: id,
+      secondarySelectedElementIds: [],
+    });
+    if (storage) {
+      writeLayout(storage, {
+        leftPaneWidth,
+        rightPaneWidth,
+        secondaryDiagramId: id,
+      });
+    }
+  },
+
+  closeSplit() {
+    const { storage, leftPaneWidth, rightPaneWidth, secondaryDiagramId } = get();
+    if (secondaryDiagramId === null) return;
+    set({ secondaryDiagramId: null, secondarySelectedElementIds: [] });
+    if (storage) {
+      writeLayout(storage, {
+        leftPaneWidth,
+        rightPaneWidth,
+        secondaryDiagramId: null,
+      });
+    }
+  },
+
+  setSecondarySelection(ids) {
+    set({ secondarySelectedElementIds: Array.from(ids) });
   },
 
   setInspectorTab(tab) {

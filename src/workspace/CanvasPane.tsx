@@ -18,8 +18,6 @@ import type {
   EdgeId,
   ElementId,
   ElementKind,
-  ModelEdge,
-  ModelElement,
   PartDefinitionElement,
   RequirementTraceKind,
 } from '@/model';
@@ -36,7 +34,6 @@ import {
   actionNodeSize,
   allowedUseCaseEdgeKindsFor,
   BDD_VIEWPOINT_ID,
-  buildPortUsageOwnership,
   defaultUseCaseEdgeKindFor,
   IBD_PART_USAGE_HEIGHT,
   IBD_PART_USAGE_WIDTH,
@@ -50,8 +47,6 @@ import {
   REQUIREMENT_NODE_HEIGHT,
   REQUIREMENT_NODE_WIDTH,
   REQUIREMENTS_VIEWPOINT_ID,
-  resolveIbdEdgeEndpoints,
-  resolvePartHandles,
   STATE_MACHINE_STATE_HEIGHT,
   STATE_MACHINE_STATE_WIDTH,
   PARAMETRIC_CONSTRAINT_USAGE_HEIGHT,
@@ -73,6 +68,8 @@ import {
 } from '@/viewpoints';
 
 import { RequirementsSurface } from './RequirementsSurface';
+import { SecondaryCanvasPane } from './SecondaryCanvasPane';
+import { toFlowEdges, toFlowNodes } from './flowGraph';
 import { ContextMenu, deriveNavTargets, type NavTarget } from './contextMenu';
 import { EdgeKindPopover } from './EdgeKindPopover';
 import { ExportMenu } from './ExportMenu';
@@ -84,7 +81,6 @@ import { ImportErrorBanner } from './ImportErrorBanner';
 import { PartUsageTypePopover } from './PartUsageTypePopover';
 import { TraceKindPopover } from './TraceKindPopover';
 import { UseCaseEdgeKindPopover } from './UseCaseEdgeKindPopover';
-import type { Diagram } from './diagram';
 import {
   downloadDiagramPng,
   downloadDiagramSvg,
@@ -142,9 +138,6 @@ interface ContextMenuState {
   readonly targets: readonly NavTarget[];
 }
 
-interface RegistryLookup {
-  get(id: ElementId): ModelElement | undefined;
-}
 
 function exportNodeSizeFor(viewpoint: Viewpoint): { width: number; height: number } {
   // Export takes a single (width, height) pair per call. Until export grows
@@ -165,212 +158,6 @@ function exportNodeSizeFor(viewpoint: Viewpoint): { width: number; height: numbe
     return { width: USE_CASE_USE_CASE_WIDTH, height: USE_CASE_USE_CASE_HEIGHT };
   }
   return { width: BDD_BLOCK_WIDTH, height: BDD_BLOCK_HEIGHT };
-}
-
-function toFlowNodes(
-  elements: readonly ModelElement[],
-  viewpoint: Viewpoint,
-  diagram: Diagram,
-  selectedIds: ReadonlySet<ElementId>,
-  onRename: (id: ElementId, name: string) => void,
-  registry: RegistryLookup | null,
-  impactHighlightedIds: ReadonlySet<ElementId>,
-): Node[] {
-  return elements
-    .filter((el) => viewpoint.acceptedElementKinds.includes(el.kind))
-    .map((el) => {
-      const pos = diagram.positions[el.id] ?? { x: 0, y: 0 };
-      let data: Record<string, unknown>;
-      if (el.kind === 'PartUsage' && registry) {
-        const definition = registry.get(el.definitionId);
-        const definitionName =
-          definition?.kind === 'PartDefinition' ? definition.name : 'unknown';
-        const ports = resolvePartHandles({ partUsage: el, registry });
-        data = {
-          elementId: el.id,
-          name: el.name,
-          definitionName,
-          ports,
-        };
-      } else if (el.kind === 'Requirement') {
-        data = {
-          elementId: el.id,
-          name: el.name,
-          reqId: el.reqId,
-          text: el.text,
-          priority: el.priority,
-          status: el.status,
-          onRename,
-        };
-      } else if (el.kind === 'ActionUsage') {
-        data = {
-          elementId: el.id,
-          name: el.name,
-          nodeType: el.nodeType,
-          onRename,
-        };
-      } else if (el.kind === 'StateUsage') {
-        data = {
-          elementId: el.id,
-          name: el.name,
-          stateType: el.stateType,
-          entryAction: el.entryAction,
-          exitAction: el.exitAction,
-          doAction: el.doAction,
-          onRename,
-        };
-      } else if (el.kind === 'Actor' || el.kind === 'UseCase') {
-        data = { elementId: el.id, name: el.name, onRename };
-      } else if (el.kind === 'Package') {
-        data = {
-          elementId: el.id,
-          name: el.name,
-          memberCount: el.memberIds.length,
-          onRename,
-        };
-      } else if (el.kind === 'ConstraintUsage') {
-        const def = registry?.get(el.definitionId);
-        const expression =
-          def && def.kind === 'ConstraintDefinition' ? def.expression : '';
-        data = {
-          elementId: el.id,
-          name: el.name,
-          expression,
-          onRename,
-        };
-      } else if (el.kind === 'ValueProperty') {
-        data = {
-          elementId: el.id,
-          name: el.name,
-          valueType: el.valueType,
-          defaultValue: el.defaultValue,
-          onRename,
-        };
-      } else {
-        data = { elementId: el.id, name: el.name, onRename };
-      }
-      const { width, height } = viewpoint.nodeSizeFor(el);
-      const isImpact = impactHighlightedIds.has(el.id);
-      const node: Node = {
-        id: el.id,
-        type: viewpoint.nodeTypeFor(el),
-        position: pos,
-        width,
-        height,
-        selected: selectedIds.has(el.id),
-        data,
-        className: isImpact ? 'mbse-impact-node' : undefined,
-      };
-      return node;
-    });
-}
-
-function toFlowEdges(
-  edges: readonly ModelEdge[],
-  elements: readonly ModelElement[],
-  viewpoint: Viewpoint,
-  selectedIds: ReadonlySet<ElementId>,
-  impactHighlightedEdgeIds: ReadonlySet<EdgeId>,
-): Edge[] {
-  const out: Edge[] = [];
-  for (const e of edges) {
-    if (!viewpoint.acceptedEdgeKinds.includes(e.kind)) continue;
-    const data: Record<string, unknown> = { edgeId: e.id };
-    if (e.kind === 'RequirementTrace') {
-      data.traceKind = e.traceKind;
-      data.label = e.label;
-    }
-    if (e.kind === 'ControlFlow') {
-      data.guard = e.guard;
-      data.label = e.label;
-    }
-    if (e.kind === 'ObjectFlow') {
-      data.itemType = e.itemType;
-      data.label = e.label;
-    }
-    if (e.kind === 'Include') {
-      data.label = e.label;
-    }
-    if (e.kind === 'Extend') {
-      data.label = e.label;
-      data.extensionPoint = e.extensionPoint;
-    }
-    if (e.kind === 'ParameterBinding') {
-      data.label = e.label;
-    }
-    out.push({
-      id: e.id,
-      type: viewpoint.edgeTypeFor(e),
-      source: e.sourceId,
-      target: e.targetId,
-      sourceHandle: 'bottom',
-      targetHandle: 'top',
-      selected: selectedIds.has(e.id as unknown as ElementId),
-      data,
-      className: impactHighlightedEdgeIds.has(e.id)
-        ? 'mbse-impact-edge'
-        : undefined,
-    });
-  }
-
-  if (viewpoint.acceptedEdgeElementKinds.length > 0) {
-    const ownership = buildPortUsageOwnership(elements);
-    for (const el of elements) {
-      if (!viewpoint.acceptedEdgeElementKinds.includes(el.kind)) continue;
-      // The discriminated-union members that render as edges all carry
-      // `sourceId` / `targetId` directly.
-      if (
-        el.kind !== 'ConnectionUsage' &&
-        el.kind !== 'ItemFlow' &&
-        el.kind !== 'Transition'
-      ) {
-        continue;
-      }
-      const data: Record<string, unknown> = {
-        elementId: el.id,
-        name: el.name,
-      };
-      let sourceNodeId: ElementId;
-      let targetNodeId: ElementId;
-      let sourceHandleId: string;
-      let targetHandleId: string;
-      if (el.kind === 'Transition') {
-        // Transitions wire StateUsage→StateUsage directly; no handle indirection.
-        // Match the default handle ids declared on StateUsageNode.
-        sourceNodeId = el.sourceId;
-        targetNodeId = el.targetId;
-        sourceHandleId = 'bottom';
-        targetHandleId = 'top';
-        data.trigger = el.trigger;
-        data.guard = el.guard;
-        data.effect = el.effect;
-      } else {
-        const endpoints = resolveIbdEdgeEndpoints({
-          sourcePortUsageId: el.sourceId,
-          targetPortUsageId: el.targetId,
-          portUsageToPartUsage: ownership,
-        });
-        if (!endpoints) continue;
-        sourceNodeId = endpoints.sourceNodeId;
-        targetNodeId = endpoints.targetNodeId;
-        sourceHandleId = endpoints.sourceHandleId;
-        targetHandleId = endpoints.targetHandleId;
-        if (el.kind === 'ItemFlow') data.itemType = el.itemType;
-      }
-      out.push({
-        id: el.id,
-        type: viewpoint.edgeTypeForElement(el),
-        source: sourceNodeId,
-        target: targetNodeId,
-        sourceHandle: sourceHandleId,
-        targetHandle: targetHandleId,
-        selected: selectedIds.has(el.id),
-        data,
-      });
-    }
-  }
-
-  return out;
 }
 
 function CanvasInner(): JSX.Element {
@@ -1587,6 +1374,8 @@ export function CanvasPane(): JSX.Element {
   const setActiveDiagram = useWorkspaceStore((s) => s.setActiveDiagram);
   const activeSurfaceKind = useWorkspaceStore((s) => s.activeSurfaceKind);
   const setActiveSurface = useWorkspaceStore((s) => s.setActiveSurface);
+  const secondaryDiagramId = useWorkspaceStore((s) => s.secondaryDiagramId);
+  const splitDiagram = useWorkspaceStore((s) => s.splitDiagram);
 
   const requirementsActive = activeSurfaceKind === 'requirements';
 
@@ -1598,11 +1387,10 @@ export function CanvasPane(): JSX.Element {
       className="flex min-w-0 flex-1 flex-col bg-muted/30"
     >
       <div
-        role="tablist"
-        aria-label="Diagram tabs"
         data-testid="surface-tablist"
         className="flex h-9 shrink-0 items-center gap-1 border-b border-border bg-card px-2"
       >
+        <div role="tablist" aria-label="Diagram tabs" className="flex items-center gap-1">
         <button
           role="tab"
           type="button"
@@ -1639,6 +1427,7 @@ export function CanvasPane(): JSX.Element {
                 aria-selected={isActive}
                 aria-controls={`diagram-panel-${d.id}`}
                 id={`diagram-tab-${d.id}`}
+                data-testid={`diagram-tab-${d.id}`}
                 tabIndex={isActive ? 0 : -1}
                 onClick={() => {
                   if (requirementsActive) setActiveSurface('diagram');
@@ -1655,6 +1444,34 @@ export function CanvasPane(): JSX.Element {
             );
           })
         )}
+        </div>
+        {diagrams.length > 0 ? (
+          <div
+            role="toolbar"
+            aria-label="Split-view actions"
+            data-testid="split-toolbar"
+            className="ml-1 flex items-center gap-0.5"
+          >
+            {diagrams.map((d) => {
+              const splitDisabled =
+                d.id === activeDiagramId || d.id === secondaryDiagramId;
+              return (
+                <button
+                  key={d.id}
+                  type="button"
+                  aria-label={`Split ${d.name} into secondary pane`}
+                  title={`Split ${d.name} right`}
+                  data-testid={`split-tab-${d.id}`}
+                  disabled={splitDisabled}
+                  onClick={() => splitDiagram(d.id)}
+                  className="ml-0.5 inline-flex h-6 w-5 items-center justify-center rounded text-xs text-muted-foreground transition hover:bg-accent disabled:cursor-not-allowed disabled:opacity-30"
+                >
+                  ⇆
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
       </div>
       {requirementsActive ? (
         <ErrorBoundary boundaryId="requirements" label="Requirements">
@@ -1662,12 +1479,19 @@ export function CanvasPane(): JSX.Element {
           <RequirementsSurface />
         </ErrorBoundary>
       ) : (
-        <ErrorBoundary boundaryId="canvas" label="Diagram canvas">
-          <ErrorTestThrower boundaryId="canvas" />
-          <ReactFlowProvider>
-            <CanvasInner />
-          </ReactFlowProvider>
-        </ErrorBoundary>
+        <div
+          data-testid="canvas-split-container"
+          data-split={secondaryDiagramId ? 'true' : 'false'}
+          className="flex min-h-0 flex-1"
+        >
+          <ErrorBoundary boundaryId="canvas" label="Diagram canvas">
+            <ErrorTestThrower boundaryId="canvas" />
+            <ReactFlowProvider>
+              <CanvasInner />
+            </ReactFlowProvider>
+          </ErrorBoundary>
+          <SecondaryCanvasPane />
+        </div>
       )}
     </section>
   );
