@@ -6,6 +6,7 @@ import type { ToolOutput } from '../types';
 import { queryModelDefinition, queryModelSchema, queryModelHandler } from './query-model';
 import { explainDiagramDefinition, explainDiagramSchema, explainDiagramHandler } from './explain-diagram';
 import { critiqueModelDefinition, critiqueModelSchema, critiqueModelHandler } from './critique-model';
+import { createElementDefinition, createElementSchema, createElementHandler } from './create-element';
 
 /**
  * Build the default ToolRegistry for the chat dispatcher.
@@ -42,6 +43,16 @@ export function buildToolRegistry(getReader: () => ProjectReader): ToolRegistry 
         mutating: false,
         handler: async (input: unknown, ctx: ToolContext): Promise<ToolOutput> =>
           critiqueModelHandler(critiqueModelSchema.parse(input), ctx, getReader()),
+      },
+    ],
+    [
+      'create_element',
+      {
+        definition: createElementDefinition,
+        inputSchema: createElementSchema,
+        mutating: true,
+        handler: async (input: unknown, ctx: ToolContext): Promise<ToolOutput> =>
+          createElementHandler(createElementSchema.parse(input), ctx, getReader()),
       },
     ],
   ]);
