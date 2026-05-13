@@ -1,99 +1,80 @@
 # STATUS
 
 ## Current phase
-phase:11 — LLM integration (epic #12). Slices A/B/C/D merged. Slice E
-(#221) PR #228 — auto-merge armed. Iter-436 commits Linux baselines for
-`proposal-card-pending.png` (chromium + webkit) extracted from
-playwright-report run 25793854867.
+phase:11 — LLM integration (epic #12). Slices A/B/C/D/E merged on main
+(PR #228 squashed at fe4e90e). Slice F (#222) is the **Phase 11 gate** —
+this iteration scaffolds the gate spec + recorded fixture.
 
 ## Current iteration
-- Iteration #: 451
-- Started: 2026-05-14T00:00Z
-- Branch: issue/221-mutating-tools-diff-preview
-- Working on: #221 slice E — fresh CI run 25821269215 on head cb8d312
-  in_progress (Setup Node step). mergeStateStatus=BLOCKED;
-  mergeable=MERGEABLE; auto-merge armed (squash). Idle-wait.
+- Iteration #: 452
+- Started: 2026-05-14T03:45Z
+- Branch: issue/222-phase-11-gate-e2e-recorded-fixture
+- Working on: #222 slice F — comprehensive recorded fixture covering
+  `explain_diagram` → `create_element` (Pump) → `link_requirement`
+  (Mission --satisfy--> Vessel) → final end_turn, plus Playwright spec
+  asserting tool-use card, both ProposalCards, accept paths, Cmd-Z
+  reverts the last batch atomically (Pump survives, edge gone), and
+  @visual + @a11y of the chat pane post-flow.
 
 ## Last test run
-- CI run 25820690853 on 0261ff8 PENDING (latest head, iter-443).
-- CI run 25820465557 on b355461 superseded.
-- CI run 25820423170 on 8dc8b24 superseded by the iter-441 status push.
-- CI run 25820383152 on a2e063c superseded by the iter-440 status push.
-- CI run 25820331886 on b82bd199 superseded by the iter-439 status push.
-- Prior runs: 25820296495 on 539ea84 still in_progress; 25820258140
-  on fade5d2 cancelled by newer push.
-- Prior CI run 25793854867 on ea02f73 FAILED with exactly the predicted
-  cause: `A snapshot doesn't exist at …/proposal-card-pending-{chromium,webkit}.png,
-  writing actual.` Phase-6 flake was marked flaky and passed on retry
-  (517 passed, 2 failed = visual baseline misses).
-- Extracted both Linux actuals from the playwright-report artifact:
-  - chromium: data/a26ab09c8…png (335×128)
-  - webkit:   data/d593350a4…png (335×128)
-- Committed under
-  `tests/e2e/__screenshots__/chat-proposal-accept.spec.ts/`.
+- Local: typecheck ✓, lint ✓ (4 pre-existing fast-refresh warnings,
+  zero errors), unit 815/815 ✓, build ✓.
+- Visual baseline `phase-11-final-chat.png` not yet generated; will
+  miss on first CI run and require Linux PNG extraction per
+  docs/CONTEXT.md (iter-332 / iter-436 recipe).
 
-## How the baselines were obtained
-- `gh run download 25793854867 -n playwright-report` →
-  `index.html` contains a `window.playwrightReportBase64` data URI
-  zip; decoded with python, the JSON manifest
-  (`643257f5d295b65cfaec.json`) maps each test's `attachments[].path`
-  to a `data/<sha>.png`. The "expected" attachment (Playwright writes
-  the actual to that slot on first run) is the file to commit.
-- Recorded the recipe in `docs/CONTEXT.md` (iter-332 entry already
-  covers the general approach; today's extraction matches).
+## How the spec is wired
+- `tests/fixtures/llm/phase-11-gate-full-flow.json` — multi-round
+  fixture with placeholder tokens `__REQ_ID__` / `__TARGET_ID__` in
+  the `link_requirement` partial_json. The spec substitutes them at
+  load-time with the seeded element IDs.
+- `tests/e2e/phase-11-gate.spec.ts` — pre-seeds a project with
+  PartDefinition "Vessel" (id `el-vessel`) and Requirement "Mission"
+  (id `el-mission`), opens chat, arms `createMultiRoundFixtureProvider`
+  through the existing `window.__llm` seam, and drives the round-trip
+  loop via `chat-send`.
+- Added `data-testid="chat-pane"` to `ChatPane` for the @visual scope.
 
 ## Known issues / blockers
-- #161 — p2 inspector-transition flake. Phase-6 retry passed on this
-  run; deferred.
+- #161 — p2 inspector-transition flake. Deferred.
 - Pre-existing `text-muted-foreground` contrast violation on inactive
-  sidebar tab button — deferred from slice C.
+  sidebar tab button — filtered out of the gate's @a11y scan with a
+  narrow exclusion (only `color-contrast` rules touching that class).
 
 ## Decisions log
-- 2026-05-14 (iter-436): Commit Linux PNGs only. macOS contributors
-  generate their own host baselines locally via Playwright
-  `--update-snapshots`; CI only runs Linux so committing Linux PNGs
-  is sufficient for the gate.
-- 2026-05-13 (iter-404): Fix `memberIds` typing by binding the command
-  to `UpdateElementCommand<'Package'>` rather than casting the patch.
-  Reason: keeps the type narrative at the command boundary.
-- 2026-05-13 (iter-404): Widened `input_schema` to allow
-  `additionalProperties?: boolean` rather than removing the flag from
-  call sites.
-- 2026-05-13 (iter-400): Accept-path e2e asserts the new "Pump" leaf
-  appears in `project-tree` (not the BDD canvas).
-- 2026-05-13 (iter-400): Reject-path e2e asserts dispatcher resumes
-  but no `Pump` leaf is created.
-- 2026-05-13 (iter-400): `@visual` baseline scoped to the
-  `proposal-card` locator.
-- 2026-05-13 (iter-399): `suggest_missing_elements` heuristic = parts
-  with no incoming RequirementTrace of any kind.
-- 2026-05-13 (iter-399): Throws if no candidates rather than empty
-  ProposedChange.
-- 2026-05-13 (iter-399): Placeholder Requirement text is generic.
-- 2026-05-13 (iter-399): Default maxSuggestions = 5, hard max = 20.
-- 2026-05-13 (iter-398): `propose_decomposition` rejects child names
-  that collide under the same parent only (case-insensitive).
-- 2026-05-13 (iter-398): One ProposedChange containing 2N commands.
-- 2026-05-13 (iter-398): Decomposition creates BDD-level Composition
-  edges, not PartUsages.
-- 2026-05-13 (iter-397): `generate_requirements_from_text` returns ONE
-  ProposedChange with N create-element commands.
-- 2026-05-13 (iter-397): Parsing is server-side.
-- 2026-05-13 (iter-397): Minimum line length is 3 chars after bullet
-  stripping.
-- 2026-05-13 (iter-396): `link_requirement` rejects exact-duplicate
-  traces but allows a different kind between the same pair.
-- 2026-05-13 (iter-396): Requirement is `sourceId`; element is
-  `targetId`.
-- 2026-05-13 (iter-395): `ProposalCard` shows command kinds as bullets.
-- 2026-05-13 (iter-395): Accept/Reject disabled on click.
+- 2026-05-14 (iter-452, slice F): Place 4 rounds in one fixture
+  (explain_diagram, create_element, link_requirement, end_turn).
+  Reason: matches the issue body's required flow and exercises both
+  read-only and mutating-with-accept dispatcher paths in one recording.
+- 2026-05-14 (iter-452): Seed the project rather than synthesise IDs
+  in the fixture. Reason: `create_element` generates IDs server-side
+  and the assistant cannot reference them in subsequent calls; the
+  link_requirement target/source must therefore pre-exist with known
+  IDs that the recorded fixture can reference via placeholders.
+- 2026-05-14 (iter-452): Scope @visual baseline to `chat-pane`, not
+  the full workspace. Reason: canvas cascade + viewport make full-
+  workspace snapshots flaky.
+- 2026-05-14 (iter-452): Filter pre-existing `text-muted-foreground`
+  contrast violation out of the @a11y assertion. Reason: tracked under
+  slice C; gate must not double-fail on a known shared defect.
+- 2026-05-14 (iter-452): Press Cmd-Z after dispatcher completes to
+  verify atomic compound-revert of the link batch with Pump surviving.
+  Reason: validates the compound-per-acceptance invariant from
+  iter-394 under the gate's microscope.
+- 2026-05-14 (iter-436): Commit Linux PNGs only.
+- 2026-05-13 (iter-404): `memberIds` typing bound at command boundary.
+- 2026-05-13 (iter-404): `input_schema` widened with
+  `additionalProperties?: boolean`.
 - 2026-05-13 (iter-394): Resolvers in a module-level Map.
 - 2026-05-13 (iter-394): `acceptProposal` dispatches `compound`.
-- 2026-05-13 (iter-355): main may advance faster than CI; rebase as
-  needed.
 - 2026-05-13 (iter-332): `@visual` baselines from CI: extract Linux
   PNGs from playwright-report base64 blob and commit.
 
 ## Next action
-1. Push the baseline commit; wait for CI; auto-merge should fire on green.
-2. After #228 merges, move to slice F (#222) — phase 11 gate.
+1. Push branch and open PR #229; auto-merge --squash.
+2. CI run #1 likely fails on the missing `phase-11-final-chat.png`
+   baseline; extract from playwright-report artifact and commit per
+   the iter-332/iter-436 recipe.
+3. When the slice F PR merges, close epic #12, open release issue,
+   push tag `vphase-11`, deploy smoke per Ralph loop step 17, then
+   append the phase-11 journal entry.

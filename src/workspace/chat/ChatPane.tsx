@@ -212,7 +212,7 @@ export function ChatPane(): JSX.Element {
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div data-testid="chat-pane" className="flex h-full flex-col">
       {/* Header */}
       <div className="flex shrink-0 items-center justify-between border-b border-border px-3 py-2">
         <span
