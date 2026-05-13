@@ -15,3 +15,4 @@ to the index below in chronological order.
 - [0007 — Use Case Diagram shape: scope, edge model, endpoint typing, onConnect discrimination](0007-use-case-diagram-shape.md)
 - [0008 — Parametric Diagram shape: scope, edge model, endpoint typing, equations](0008-parametric-diagram-shape.md)
 - [0009 — Package Diagram shape: scope, containment model, import edges, move-between-packages](0009-package-diagram-shape.md)
+- [0010 — LLM architecture: provider, dispatcher, tool registry, diff-preview seam](0010-llm-architecture.md)
