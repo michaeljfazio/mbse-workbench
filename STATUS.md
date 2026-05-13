@@ -5,12 +5,14 @@ phase:11 — LLM integration (epic #12). Slices A/B/C merged. Slice D (#220)
 in flight on PR #227. Remaining: slice E (#221), slice F gate (#222).
 
 ## Current iteration
-- Iteration #: 371
-- Started: 2026-05-13T09:18:40Z
+- Iteration #: 372
+- Started: 2026-05-13T09:18:53Z
 - Branch: issue/220-tool-dispatcher.
-- Working on: CI run 25789413513 IN_PROGRESS (~13.1m elapsed since 09:05:34Z),
-  mergeable=UNKNOWN, mergeStateStatus=UNKNOWN.
-  Auto-merge armed (squash).
+- Working on: CI run 25789413513 IN_PROGRESS (~13.2m elapsed since 09:05:44Z).
+  Step 11 "Install Playwright browsers" still in_progress (started 09:06:46Z,
+  ~12.1m elapsed — unusually long despite cache-hit success). Steps 1-10 all
+  green (typecheck, lint, unit tests, build). E2E step pending.
+  mergeable=UNKNOWN, mergeStateStatus=UNKNOWN. Auto-merge armed (squash).
 
 ## Last test run
 - Local `pnpm run build` green after fix. `pnpm exec vitest run tests/unit/llm`
@@ -156,6 +158,10 @@ in flight on PR #227. Remaining: slice E (#221), slice F gate (#222).
 - 2026-05-13 (iter-371): Idle-wait — CI run 25789413513 in_progress
   (~13.1m elapsed at 09:18:40Z, mergeable=UNKNOWN, mergeStateStatus=UNKNOWN).
   No commit.
+- 2026-05-13 (iter-372): Idle-wait — CI run 25789413513 in_progress
+  (~13.2m elapsed at 09:18:53Z). Step 11 "Install Playwright browsers"
+  stuck in_progress for ~12.1m despite cache-hit success on step 10.
+  E2E step not yet started. No commit.
 - 2026-05-13 (iter-344): CI run 25788507469 **SUCCESS** at 08:56:34Z but
   PR mergeStateStatus=BEHIND (main advanced while we waited). Ran
   `gh pr update-branch 227` which fast-forwarded the branch and queued
