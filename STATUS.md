@@ -1,25 +1,28 @@
 # STATUS
 
 ## Current phase
-phase:11 — LLM integration (epic #12). Decomposed into design issue #216 (p0) + slices A–F (#217–#222). Slice A (#217) is the first implementation work; it depends on #216 being resolved first.
+phase:11 — LLM integration (epic #12). Design issue #216 resolved via ADR 0010 + type-only skeletons. Slice A (#217) unblocked once PR #223 lands.
 
 ## Current iteration
-- Iteration #: 235
-- Started: 2026-05-13T13:00Z
-- Branch: main
-- Working on: phase:11 decomposition → done. Next iteration: resolve design issue #216.
+- Iteration #: 237
+- Started: 2026-05-13T13:30Z
+- Branch: issue/216-llm-architecture-adr
+- Working on: #216 — PR #223 awaiting CI rerun (prior run hung ~8h on "Install Playwright browsers"; cancelled + re-queued this iteration)
 
 ## Last test run
-- Command: none this iteration (planning/decomposition only)
-- Result: n/a
+- Command: CI rerun on PR #223 (run 25780570646)
+- Result: queued — prior run cancelled after hanging on "Install Playwright browsers" step for ~8h while typecheck/lint/unit/build all succeeded
 
 ## Known issues / blockers
 - #161 — p2 inspector-transition flake. Deferred; pick up as background work during phase-11 implementation.
+- CI infrastructure: GitHub Actions run 25780570646 hung 8h on Playwright browser install on PR #223. If the rerun repeats, inspect the Playwright browser cache key in `.github/workflows/ci.yml` (possible corrupted cache hit) before opening a p0 bug.
 
 ## Decisions log
 - 2026-05-13 (iter-233): **Phase 10 complete.** PR #214 merged at `b46d61a`. Closed epic #11; opened release issue #215; pushed tag `vphase-10`; appended phase-completion entry to JOURNAL.md.
 - 2026-05-13 (iter-234): **Release vphase-10 verified.** Pages 200. Wrote `scripts/smoke-vphase-10.mjs` (seeded R-001 Mission + Engine block + Brake action + two satisfy edges). Captured 7 screenshots under `artifacts/release-vphase-10/`. Confirmed matrix glyphs, coverage panel, and impact-active banner render correctly on the deployed build. Commented evidence on #215 and closed it. Phase:11 decomposition starts next iteration.
 - 2026-05-13 (iter-235): **Phase 11 decomposed.** Verified `@anthropic-ai/sdk@~0.32.1` tool-use & streaming shape via context7 (recorded in `docs/CONTEXT.md`). Opened design issue #216 (provider interface, dispatcher loop, tool registry, diff-preview seam, conversation persistence, API key handling). Opened six slice issues #217–#222 (scaffolding → API key → chat sidebar → dispatcher+read tools → mutating tools+diff preview → gate e2e). Updated epic #12 with the task list. No code changes; design resolution lands next iteration before any slice is started.
+- 2026-05-13 (iter-236): **Phase 11 design ADR.** Dispatched a Plan/Opus subagent to draft ADR 0010 resolving #216. Six sub-decisions: (1) `LLMProvider.stream(req) -> AsyncIterable<LLMEvent>` with `AnthropicProvider` + `FixtureProvider` (tests pin against the interface, never the real client); (2) dispatcher loop per CONTEXT iter-235 streaming shape, **8 round-trip cap** per user turn, handler-throw → `tool_result is_error: true`; (3) tool registry = `Map<string, ToolEntry>` with structural `ToolInputSchema` (zod-compatible, deferred dep until slice D); (4) `ProposedChange = { id, summary, commands: Command[] }` reusing the existing command union — mutating tool handlers never mutate state, only the accept path dispatches; (5) `Project.conversations` field (not sibling store) so persistence reuses `InMemorySessionRepository` and chat stays out of undo/redo — `readProject` will default to `[]` following the existing diagrams/history forward-compat pattern; (6) API key in `sessionStorage[mbse-workbench:anthropic-api-key]`, never logged. Skeleton type-only files committed: `src/llm/{types,provider,registry,dispatcher}.ts` (no logic). PR will close #216.
+- 2026-05-13 (iter-237): **CI rerun on PR #223.** Run 25780570646 was stuck `in_progress` on the "Install Playwright browsers" step for ~8h while typecheck/lint/unit/build all succeeded. Cancelled the run, waited until `completed/cancelled`, then `gh run rerun 25780570646` — now queued. No code changes. Auto-merge remains enabled; if the rerun stays green, #223 merges and slice A (#217) is the next pick.
 
 ## Next action
-Resolve design issue #216: dispatch a Plan subagent (Opus, this is load-bearing for all of phase 11) to draft 1–2 ADRs covering (1) `LLMProvider` interface + `AnthropicProvider` + `FixtureProvider` split, (2) dispatcher loop pseudocode + round-trip cap + tool registry shape, (3) `ProposedChange` / diff-preview seam wiring into the command bus, (4) conversation persistence location (extend `Project` vs sibling store), (5) API key sessionStorage handling. Then open a PR adding the ADRs under `docs/adr/`, the empty `src/llm/{provider,dispatcher,registry,types}.ts` type-only skeletons, and updating `docs/adr/README.md`. Close #216 on merge. Only after #216 closes, start slice A (#217).
+Monitor PR #223 CI rerun (run 25780570646). On green, auto-merge lands #216 and closes it. Then start slice A (#217 — repo scaffolding: install `@anthropic-ai/sdk@~0.32.1`, add `LLMProvider` impl stubs `AnthropicProvider`/`FixtureProvider` returning `throw new Error('not implemented')`, extend `Project.conversations` with the schema-tolerant load default, no UI yet). If the rerun hangs again on Playwright browser install, investigate the cache key in `.github/workflows/ci.yml` before further reruns.
