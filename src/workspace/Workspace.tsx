@@ -1,5 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
+import { subscribeApiKeyModal } from '@/llm/api-key';
+
+import { ApiKeyModal } from './ApiKeyModal';
 import { CanvasPane } from './CanvasPane';
 import { Divider } from './Divider';
 import { Header } from './Header';
@@ -27,6 +30,11 @@ export function Workspace(): JSX.Element {
   const undo = useWorkspaceStore((s) => s.undo);
   const redo = useWorkspaceStore((s) => s.redo);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [apiKeyModalOpen, setApiKeyModalOpen] = useState(false);
+
+  useEffect(() => {
+    return subscribeApiKeyModal(() => setApiKeyModalOpen(true));
+  }, []);
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent): void {
@@ -87,6 +95,9 @@ export function Workspace(): JSX.Element {
         />
         <SidebarPane width={rightPaneWidth} />
       </div>
+      {apiKeyModalOpen ? (
+        <ApiKeyModal onClose={() => setApiKeyModalOpen(false)} />
+      ) : null}
     </div>
   );
 }
