@@ -15,6 +15,8 @@
 import { createAnthropicProvider } from './anthropic';
 import type { LLMProvider } from './provider';
 
+const DEFAULT_MODEL = 'claude-sonnet-4-6';
+
 let override: LLMProvider | null = null;
 
 /** Inject a test provider. Pass null to restore production behaviour. */
@@ -25,5 +27,5 @@ export function setChatProviderOverride(provider: LLMProvider | null): void {
 /** Returns the overridden provider if set, otherwise creates an AnthropicProvider. */
 export function getChatProvider(apiKey: string): LLMProvider {
   if (override !== null) return override;
-  return createAnthropicProvider({ apiKey });
+  return createAnthropicProvider({ apiKey, model: DEFAULT_MODEL });
 }
