@@ -7,15 +7,20 @@ phase:11 — LLM integration (epic #12). Slices A/B/C/D merged. Slice E
 playwright-report run 25793854867.
 
 ## Current iteration
-- Iteration #: 442
+- Iteration #: 446
 - Started: 2026-05-14
 - Branch: issue/221-mutating-tools-diff-preview
-- Working on: #221 slice E — idle-wait on PR #228 CI run 25820465557
-  in_progress on head b355461 (the iter-441 STATUS doc commit;
-  supersedes 25820423170).
+- Working on: #221 slice E — CI run 25820690853 had been stuck
+  in_progress for 22+ hours on the E2E step (started
+  2026-05-13T19:13:33Z), well past GitHub Actions' 6-hour job timeout.
+  Cancelled the stuck run via `gh run cancel` and re-triggered it with
+  `gh run rerun 25820690853`. Same run id, now `queued` again on head
+  0261ff8. mergeStateStatus=BLOCKED until the new attempt completes;
+  auto-merge remains armed.
 
 ## Last test run
-- CI run 25820465557 on b355461 IN_PROGRESS (iter-442).
+- CI run 25820690853 on 0261ff8 PENDING (latest head, iter-443).
+- CI run 25820465557 on b355461 superseded.
 - CI run 25820423170 on 8dc8b24 superseded by the iter-441 status push.
 - CI run 25820383152 on a2e063c superseded by the iter-440 status push.
 - CI run 25820331886 on b82bd199 superseded by the iter-439 status push.
