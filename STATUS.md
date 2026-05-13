@@ -4,10 +4,10 @@
 phase:10 — Requirements traceability. Final child issue **#178 (gate spec)** in flight via **PR #209 slice 1** (functional walkthrough + 3 `@a11y` scans). Sibling PR #207 closed as superseded — its committed visual baselines failed CI with a 10 963 px diff (ratio 0.02 > 0.01 threshold) so the slice-2 approach is cleaner. Sibling bug: **#161** p2 inspector-transition flake.
 
 ## Current iteration
-- Iteration #: 141
+- Iteration #: 142
 - Started: 2026-05-13T03:49Z
 - Branch: `issue/178-phase-10-gate-slice1` (PR #209 open, auto-merge `--squash` enabled)
-- Working on: #178 slice 1 — fresh CI run `25777054853` triggered by branch-update started 03:48:20Z, `IN_PROGRESS` (~1 min in). Auto-merge `--squash` will fire on green.
+- Working on: #178 slice 1 — fresh CI run `25777054853` (job `75711795513`) started 03:48:20Z, `IN_PROGRESS` ~1.4 min in. Auto-merge `--squash` will fire on green.
 
 ## Last test run
 - Command: CI run `25776356198` on PR #209 (chromium + webkit Playwright suites)
@@ -37,6 +37,7 @@ phase:10 — Requirements traceability. Final child issue **#178 (gate spec)** i
 - 2026-05-13 (iter-139): Re-polled PR #209 / run `25776356198` — still `IN_PROGRESS` (~7.5 min elapsed; now 03:47Z). mergeStateStatus `UNKNOWN`. At the upper edge of Playwright window; no-op tick.
 - 2026-05-13 (iter-140): CI run `25776356198` on PR #209 concluded **SUCCESS** at 03:47:10Z (8th attempt; #161 flake did not recur). mergeStateStatus `BEHIND` since main advanced during the long wait — dispatched `PUT /pulls/209/update-branch` to bring branch up. Fresh CI will run on the updated head; auto-merge `--squash` will fire on green.
 - 2026-05-13 (iter-141): Branch-update triggered fresh CI run `25777054853` on PR #209 (job `75711795513` started 03:48:20Z, `IN_PROGRESS` ~1 min in). No-op tick.
+- 2026-05-13 (iter-142): Re-polled PR #209 / run `25777054853` — still `IN_PROGRESS` (~1.4 min elapsed; now 03:49:43Z). mergeStateStatus `UNKNOWN`. Well within Playwright window; no-op tick.
 
 ## Next action
 Wait for rerun of CI run `25776356198` on PR #209. On green merge: file slice-2 issue for the `@visual phase-10-final.png` baseline (to be generated in the Linux Playwright container per `docs/CONTEXT.md`); once slice 2 lands, close the phase-10 epic (#11) via `Closes #178`, open a `type:release` issue, tag `vphase-10`, and exercise the deployed release with the smoke walkthrough. Append a phase-completion entry to `JOURNAL.md` only after the tag is pushed. On rerun red with the same #161 flake → attempt 3 (last rerun). On any other red → diagnose on the slice-1 branch.
