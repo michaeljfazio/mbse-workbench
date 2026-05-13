@@ -7,11 +7,13 @@ mutating tools now landed on the branch; remaining E work is e2e + visual
 + a11y baselines, then PR open. Remaining after E: slice F gate (#222).
 
 ## Current iteration
-- Iteration #: 401
-- Started: 2026-05-13T19:00:00Z
+- Iteration #: 402
+- Started: 2026-05-13T10:23:00Z
 - Branch: issue/221-mutating-tools-diff-preview
-- Working on: #221 slice E — PR #228 opened, auto-merge enabled,
-  awaiting CI.
+- Working on: #221 slice E — PR #228 CI in progress (run
+  25793102745, started 10:21:58Z, ~1m elapsed at iter start).
+  Auto-merge armed. Mid-PR resume rule applies; no new work
+  started this iteration.
 
 ## Last test run
 - `pnpm exec playwright test tests/e2e/chat-proposal-accept.spec.ts
