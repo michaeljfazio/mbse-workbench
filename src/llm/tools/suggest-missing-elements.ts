@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { Command } from '@/commands/types';
+import type { Command, UpdateElementCommand } from '@/commands/types';
 import type {
   ElementId,
   PartDefinitionElement,
@@ -113,11 +113,12 @@ export async function suggestMissingElementsHandler(
   if (owningPackageId !== undefined) {
     const owner = elements.find((e) => e.id === owningPackageId);
     if (owner !== undefined && owner.kind === 'Package') {
-      commands.push({
+      const updatePackage: UpdateElementCommand<'Package'> = {
         kind: 'update-element',
         id: owningPackageId,
         patch: { memberIds: [...owner.memberIds, ...newRequirementIds] },
-      });
+      };
+      commands.push(updatePackage);
     }
   }
 

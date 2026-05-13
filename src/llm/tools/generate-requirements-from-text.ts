@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { Command } from '@/commands/types';
+import type { Command, UpdateElementCommand } from '@/commands/types';
 import type { ElementId, RequirementElement } from '@/model';
 import { createElementId } from '@/model';
 import type { ToolContext } from '../registry';
@@ -124,11 +124,12 @@ export async function generateRequirementsFromTextHandler(
   if (owningPackageId !== undefined) {
     const owner = reader.elements().find((e) => e.id === owningPackageId);
     if (owner !== undefined && owner.kind === 'Package') {
-      commands.push({
+      const updatePackage: UpdateElementCommand<'Package'> = {
         kind: 'update-element',
         id: owningPackageId,
         patch: { memberIds: [...owner.memberIds, ...newIds] },
-      });
+      };
+      commands.push(updatePackage);
     }
   }
 

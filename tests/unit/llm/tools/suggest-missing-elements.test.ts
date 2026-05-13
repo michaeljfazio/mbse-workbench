@@ -177,7 +177,8 @@ describe('suggest_missing_elements tool', () => {
     const update = output.change.commands.find((c) => c.kind === 'update-element');
     if (update?.kind !== 'update-element') throw new Error('expected update-element');
     expect(update.id).toBe('pkg-1');
-    expect(update.patch.memberIds).toEqual(['existing', newReq.element.id]);
+    const patch = update.patch as Partial<PackageElement>;
+    expect(patch.memberIds).toEqual(['existing', newReq.element.id]);
     expect(output.change.summary).toContain('pkg-1');
   });
 

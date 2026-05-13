@@ -65,10 +65,8 @@ describe('create_element tool', () => {
     if (createCmd?.kind !== 'create-element') return;
 
     expect(updateCmd.id).toBe(pkg.id);
-    expect(updateCmd.patch.memberIds).toEqual([
-      ...pkg.memberIds,
-      createCmd.element.id,
-    ]);
+    const patch = updateCmd.patch as Partial<PackageElement>;
+    expect(patch.memberIds).toEqual([...pkg.memberIds, createCmd.element.id]);
   });
 
   it('builds a Requirement with defaults when only "text" is supplied', async () => {

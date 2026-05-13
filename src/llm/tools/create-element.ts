@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { Command } from '@/commands/types';
+import type { Command, UpdateElementCommand } from '@/commands/types';
 import type {
   ActorElement,
   ElementId,
@@ -178,11 +178,12 @@ export async function createElementHandler(
       );
     }
     const nextMembers: ElementId[] = [...owner.memberIds, id];
-    commands.push({
+    const updatePackage: UpdateElementCommand<'Package'> = {
       kind: 'update-element',
       id: packageId,
       patch: { memberIds: nextMembers },
-    });
+    };
+    commands.push(updatePackage);
   }
 
   const summary =
