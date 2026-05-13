@@ -8,12 +8,10 @@ import { expect, test, type Page } from '@playwright/test';
 // link to block in BDD and action in Activity, verify matrix, verify
 // coverage, run impact analysis and assert highlighted set."
 //
-// Slice 1 (this file): functional walkthrough + three @a11y scans (matrix,
-// coverage, impact-active). The @visual baseline `phase-10-final.png` of
-// the matrix populated state lands in slice 2 — it requires generating
-// chromium + webkit PNGs in the Linux Playwright container per
-// docs/CONTEXT.md, separate from the test logic that is the load-bearing
-// gate.
+// Slice 1: functional walkthrough + three @a11y scans (matrix, coverage,
+// impact-active). Slice 2 (issue #212): the @visual baseline of the matrix
+// populated state — `phase-10-final.png` — captured below. Baselines are
+// generated inside the Linux Playwright container per docs/CONTEXT.md.
 
 const SEED_PROJECT_ID = 'p-phase-10-gate';
 const BDD_DIAGRAM = 'd-bdd';
@@ -383,5 +381,51 @@ test.describe('Phase 10 gate (issue #178)', () => {
       (v) => v.impact === 'serious' || v.impact === 'critical',
     );
     expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
+  });
+
+  test('@visual phase-10 final state (matrix populated: one requirement × two elements satisfied)', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    const tablist = page.getByRole('tablist', { name: 'Diagram tabs' });
+
+    await tablist.getByRole('tab', { name: 'System Requirements' }).click();
+    const reqId = await dropRequirementOntoCanvas(page, 240, 180);
+    await page.locator(`[data-testid="requirements-req-${reqId}"]`).click();
+    await page.getByTestId('inspector-name').fill('Mission');
+    await page.getByTestId('inspector-name').press('Enter');
+
+    await tablist.getByRole('tab', { name: 'Main BDD' }).click();
+    const engineId = await addBlockNamed(page, 'Engine');
+    await linkRequirementToSelectedElement(page, reqId, 'satisfy');
+
+    await tablist.getByRole('tab', { name: 'Main Activity' }).click();
+    const brakeId = await addActionNamed(page, 'Brake');
+    await linkRequirementToSelectedElement(page, reqId, 'satisfy');
+
+    await page.getByTestId('surface-tab-requirements').click();
+    await page.getByTestId('requirements-tab-matrix-button').click();
+    await expect(
+      page.getByTestId(
+        `requirements-matrix-glyph-${reqId}-${engineId}-satisfy`,
+      ),
+    ).toBeVisible();
+    await expect(
+      page.getByTestId(
+        `requirements-matrix-glyph-${reqId}-${brakeId}-satisfy`,
+      ),
+    ).toBeVisible();
+
+    // Deselect so focus rings and selection chrome don't dominate the
+    // baseline. Click an empty corner of the matrix surface, then move
+    // the mouse offscreen so hover styles don't render.
+    await page.locator('body').click({ position: { x: 4, y: 4 } });
+    await page.mouse.move(0, 0);
+    await page.evaluate(async () => {
+      await Promise.all(document.getAnimations().map((a) => a.finished));
+    });
+    await expect(page).toHaveScreenshot('phase-10-final.png', {
+      fullPage: false,
+    });
   });
 });
