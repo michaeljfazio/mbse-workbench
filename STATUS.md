@@ -1,26 +1,28 @@
 # STATUS
 
 ## Current phase
-phase:10 — Requirements traceability. Slice 1 (#178) **merged** via PR #209 at `02a536f` (2026-05-13T04:04:10Z). All 6 epic-#11 child issues are now closed. Remaining gate work: `@visual phase-10-final.png` baseline (filed as **#212**, slice 2). Once #212 lands, close epic #11, open `type:release`, tag `vphase-10`, exercise the deployed app, append phase-completion entry to `JOURNAL.md`.
+phase:10 — Requirements traceability. Slice 2 (#212) implemented this iteration: added `@visual phase-10-final` baseline test to `tests/e2e/phase-10-gate.spec.ts`, regenerated chromium + webkit baselines inside the Linux Playwright container, committed only the two new PNGs (reverted full-suite re-renders of pre-existing baselines per docs/CONTEXT.md convention).
 
 ## Current iteration
-- Iteration #: 154
-- Started: 2026-05-13T04:05Z
-- Branch: `main` (no in-flight branch)
-- Working on: idle — about to pick up #212 (slice-2 visual baseline) next iteration.
+- Iteration #: 155
+- Started: 2026-05-13T05:00Z
+- Branch: `issue/212-phase-10-visual-baseline`
+- Working on: #212 — PR opening with auto-merge `--squash`.
 
 ## Last test run
-- Command: CI run `25777313673` on PR #209 (post-update-branch refresh)
-- Result: PASS — concluded `success` at 04:04:09Z; auto-merge `--squash` fired one second later at 04:04:10Z, merging PR #209 to `02a536f`. #178 closed via `Closes #178`.
+- Command: `podman run … mcr.microsoft.com/playwright:v1.48.2-jammy sh scripts/regen-baselines.sh`
+- Result: PASS — 98 @visual specs passed. The new `phase-10-final-chromium.png` and `phase-10-final-webkit.png` baselines were written; the remaining 96 baseline PNGs were byte-rewritten but discarded via `git checkout HEAD -- tests/e2e/__screenshots__` to keep this PR scoped to slice 2.
+- Local: `tsc --noEmit` clean, `eslint tests/e2e/phase-10-gate.spec.ts` clean.
 - Failures: none.
 
 ## Known issues / blockers
-- #212 — `status:ready`, p1. Phase-10 visual baseline slice. Must be generated inside the Playwright Linux container per `docs/CONTEXT.md` to avoid the macOS-vs-Linux glyph antialiasing diff that sank PR #207.
+- After #212 merges: close epic #11, open `type:release` issue, tag `vphase-10`, smoke-walk the deployed Pages URL, capture release screenshots under `artifacts/release-vphase-10/`, append phase-completion entry to `JOURNAL.md`.
 - #161 — p2 inspector-transition flake. Still deferred; pick up after phase-10 epic closes and `vphase-10` is tagged.
 
 ## Decisions log
 - 2026-05-13 (iter-148 → iter-153): Recurring `BEHIND` loop on PR #209 caused by STATUS commits to main during in-flight CI; halted STATUS commits until terminal CI state. Loop policy worked — CI run `25777313673` completed without further base-ref churn and auto-merge fired immediately on green.
-- 2026-05-13 (iter-154): PR #209 merged at `02a536f`. All phase-10 child issues (#173–#178) now closed. Filed **#212** for the slice-2 `@visual phase-10-final.png` baseline — required by epic #11's "Visual + a11y baselines" gate and AGENT.md architectural directive #8. Documented in the issue body that baselines must be generated in the Playwright Linux container (not macOS) per the lesson from closed PR #207.
+- 2026-05-13 (iter-154): PR #209 merged at `02a536f`. All phase-10 child issues (#173–#178) now closed. Filed **#212** for the slice-2 `@visual phase-10-final.png` baseline.
+- 2026-05-13 (iter-155): Slice 2 (#212) implemented. New `@visual phase-10-final baseline (matrix populated)` test added to phase-10-gate.spec.ts — walks Requirement Mission → satisfy Engine (BDD) + satisfy Brake (Activity) → Matrix tab populated, blurs focus, parks mouse off-canvas, awaits all animations, captures `phase-10-final.png`. Baselines generated in `mcr.microsoft.com/playwright:v1.48.2-jammy` via `scripts/regen-baselines.sh`. Only the two new PNGs are committed.
 
 ## Next action
-Pick up **#212** next iteration: add a `@visual` capture to `tests/e2e/phase-10-gate.spec.ts` for the matrix → coverage → impact end state, generate `chromium` + `webkit` baselines inside the Playwright Linux Docker image, commit both PNGs, open PR with auto-merge `--squash`. On green merge, close epic #11, open a `type:release` issue, tag `vphase-10`, smoke-walk the deployed Pages URL, capture release screenshots under `artifacts/release-vphase-10/`, append phase-completion entry to `JOURNAL.md`.
+Open PR `issue/212 → main` with auto-merge `--squash`. Body cites the in-container regen and the deliberate revert of incidentally-rewritten baselines. On green merge: close epic #11, open `type:release` for phase-10, tag `vphase-10`, smoke-walk deployment, append phase-completion entry to `JOURNAL.md`.
