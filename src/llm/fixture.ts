@@ -35,3 +35,39 @@ export function isLLMFixture(value: unknown): value is LLMFixture {
     Array.isArray(obj.responses)
   );
 }
+
+/** A fixture that provides a different response stream for each round-trip call. */
+export interface LLMMultiRoundFixture {
+  readonly name: string;
+  readonly request: LLMFixture['request'];
+  readonly responseRounds: readonly (readonly AnthropicRawStreamEvent[])[];
+}
+
+/**
+ * Create a provider that replays `responseRounds[N]` on the Nth call to `stream()`.
+ * If there are more calls than rounds, the last round is replayed indefinitely.
+ */
+export function createMultiRoundFixtureProvider(fixture: LLMMultiRoundFixture): LLMProvider {
+  let round = 0;
+  return {
+    stream(_request: LLMRequest): AsyncIterable<LLMEvent> {
+      const responses =
+        fixture.responseRounds[round] ??
+        fixture.responseRounds[fixture.responseRounds.length - 1] ??
+        [];
+      round++;
+      return translateAnthropicEvents(iterate(responses));
+    },
+  };
+}
+
+export function isLLMMultiRoundFixture(value: unknown): value is LLMMultiRoundFixture {
+  if (value === null || typeof value !== 'object') return false;
+  const obj = value as Partial<LLMMultiRoundFixture>;
+  return (
+    typeof obj.name === 'string' &&
+    typeof obj.request === 'object' &&
+    obj.request !== null &&
+    Array.isArray(obj.responseRounds)
+  );
+}
