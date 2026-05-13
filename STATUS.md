@@ -4,9 +4,9 @@
 phase:10 — Requirements traceability. Slice 1 merged (PR #209 → `02a536f`). Slice 2 (#212) in flight as **PR #214** with auto-merge `--squash` armed; baselines replaced with CI actuals at `e4d345e`. On green: close epic #11, open `type:release`, tag `vphase-10`, exercise deployed Pages URL, append phase-completion entry to `JOURNAL.md`.
 
 ## Current iteration
-- Iteration #: 208
+- Iteration #: 209
 - Started: 2026-05-13T05:05Z
-- Branch: `issue/212-visual-phase-10-final` (PR #214 open; auto-merge armed; chromium-only `rerun --failed` of CI run `25778988999` IN_PROGRESS ~7 min in — only the #161 flake test re-running)
+- Branch: `issue/212-visual-phase-10-final` (PR #214 open; auto-merge armed; chromium-only `rerun --failed` of CI run `25778988999` IN_PROGRESS ~8 min in — only the #161 flake test re-running)
 - Working on: #212 — `@visual phase-10-final.png` baseline (slice 2 of #178)
 
 ## Last test run
@@ -54,6 +54,7 @@ phase:10 — Requirements traceability. Slice 1 merged (PR #209 → `02a536f`). 
 - 2026-05-13 (iter-206): Chromium-only rerun of `25778988999` still IN_PROGRESS at ~5 min in (now 05:03Z; updatedAt 04:58:04Z, log-streaming unchanged). No-op tick.
 - 2026-05-13 (iter-207): Chromium-only rerun of `25778988999` still IN_PROGRESS at ~6 min in (now 05:04Z; updatedAt 04:58:04Z, log-streaming unchanged). No-op tick.
 - 2026-05-13 (iter-208): Chromium-only rerun of `25778988999` still IN_PROGRESS at ~7 min in (now 05:05Z; updatedAt 04:58:04Z, log-streaming unchanged). PR #214 still BEHIND main; rerun on `3f5415a`. No-op tick.
+- 2026-05-13 (iter-209): Chromium-only rerun of `25778988999` still IN_PROGRESS at ~8 min in (now 05:05Z; updatedAt 04:58:04Z, log-streaming unchanged). At/past prior chromium-only rerun expected wall — should resolve very soon. No-op tick.
 
 ## Next action
 Wait for the `rerun --failed` of CI run `25778988999` (chromium-only) to go green. On merge: close epic #11, open a `type:release` issue, tag `vphase-10` from new `main` HEAD, run the release workflow, exercise the deployed Pages URL in Playwright, save smoke screenshots under `artifacts/release-vphase-10/`, append a phase-completion entry to `JOURNAL.md`, and move to phase 11 decomposition. The #161 flake is now load-bearing on phase-10 completion; if it fails the rerun, escalate #161 to p1 and fix it as a blocker before further phase-10 work.
