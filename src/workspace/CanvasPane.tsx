@@ -76,6 +76,8 @@ import { RequirementsSurface } from './RequirementsSurface';
 import { ContextMenu, deriveNavTargets, type NavTarget } from './contextMenu';
 import { EdgeKindPopover } from './EdgeKindPopover';
 import { ExportMenu } from './ExportMenu';
+import { ImportMenu } from './ImportMenu';
+import { ImportErrorBanner } from './ImportErrorBanner';
 import { PartUsageTypePopover } from './PartUsageTypePopover';
 import { TraceKindPopover } from './TraceKindPopover';
 import { UseCaseEdgeKindPopover } from './UseCaseEdgeKindPopover';
@@ -980,6 +982,26 @@ function CanvasInner(): JSX.Element {
     downloadProjectSysml({ project });
   }, []);
 
+  const handleImportSysml = useCallback(() => {
+    if (typeof document === 'undefined') return;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.sysml,.txt,text/plain';
+    input.style.display = 'none';
+    input.addEventListener('change', () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      void file.text().then((text) => {
+        void useWorkspaceStore.getState().importSysmlText(text);
+      });
+    });
+    document.body.appendChild(input);
+    input.click();
+    setTimeout(() => {
+      input.remove();
+    }, 0);
+  }, []);
+
   const handleExportSvg = useCallback(() => {
     if (!viewpoint || !diagram) return;
     const { width, height } = exportNodeSizeFor(viewpoint);
@@ -1427,7 +1449,8 @@ function CanvasInner(): JSX.Element {
         >
           Delete
         </button>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          <ImportMenu onImportSysml={handleImportSysml} />
           <ExportMenu
             disabled={elementCount === 0}
             onExportPng={handleExportPng}
@@ -1436,6 +1459,7 @@ function CanvasInner(): JSX.Element {
           />
         </div>
       </div>
+      <ImportErrorBanner />
       <ImpactBanner />
       {viewpoint.id === ACTIVITY_VIEWPOINT_ID ? <ActivityPalette /> : null}
       {viewpoint.id === STATE_MACHINE_VIEWPOINT_ID ? <StateMachinePalette /> : null}

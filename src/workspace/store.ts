@@ -91,6 +91,7 @@ import {
   type NodePosition,
 } from './diagram';
 import { computeImpactSet } from './impact/impact-set';
+import { parseSysmlText, type ParseError } from '@/parser';
 import type { ProposalResolution } from '@/llm';
 import type { Conversation, LLMMessage, ProposedChange } from '@/llm/types';
 import {
@@ -207,6 +208,7 @@ export interface WorkspaceState {
   readonly coverageApprovedOnly: boolean;
   readonly activeConversationId: string | null;
   readonly pendingProposals: readonly ProposedChange[];
+  readonly importError: ParseError | null;
 }
 
 export type ActiveSurfaceKind = 'diagram' | 'requirements';
@@ -389,6 +391,11 @@ export interface WorkspaceActions {
   setActiveSurface(kind: ActiveSurfaceKind): void;
   setRequirementsSurfaceTab(tab: RequirementsSurfaceTab): void;
   setCoverageApprovedOnly(next: boolean): void;
+  importSysmlText(text: string): Promise<
+    | { readonly ok: true }
+    | { readonly ok: false; readonly errors: readonly ParseError[] }
+  >;
+  clearImportError(): void;
 }
 
 export type WorkspaceStore = WorkspaceState & WorkspaceActions;
@@ -420,6 +427,7 @@ const INITIAL_STATE: WorkspaceState = {
   coverageApprovedOnly: false,
   activeConversationId: null,
   pendingProposals: [],
+  importError: null,
 };
 
 /**
@@ -2274,6 +2282,88 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       proposalResolvers.delete(id);
       resolver(reason !== undefined ? { kind: 'rejected', reason } : { kind: 'rejected' });
     }
+  },
+
+  async importSysmlText(text) {
+    const parsed = parseSysmlText(text);
+    if (!parsed.ok) {
+      const first = parsed.errors[0] ?? { line: 1, col: 1, message: 'parse failed' };
+      set({ importError: first });
+      return { ok: false, errors: parsed.errors };
+    }
+    const repository = get().repository;
+    const provider = get().provider;
+    if (!repository || !provider) {
+      const err: ParseError = { line: 1, col: 1, message: 'workspace not initialized' };
+      set({ importError: err });
+      return { ok: false, errors: [err] };
+    }
+    const now = new Date().toISOString();
+    const projectId = parsed.value.projectId ?? createProjectId();
+    const project: Project = {
+      id: projectId,
+      name: parsed.value.projectName ?? get().project?.name ?? 'Imported Project',
+      createdAt: now,
+      modifiedAt: now,
+      elements: parsed.value.elements,
+      edges: parsed.value.edges,
+      diagrams: [newDefaultDiagram()],
+      history: EMPTY_COMMAND_HISTORY,
+      conversations: [],
+    };
+    await repository.save(project);
+    const registry = createElementRegistry();
+    for (const el of project.elements) registry.add(el);
+    for (const edge of project.edges) registry.addEdge(edge);
+    const positionStore: DiagramPositionStore = {
+      getPosition(diagramId, elementId) {
+        const diagram = get().diagrams.find((d) => d.id === diagramId);
+        return diagram?.positions[elementId];
+      },
+      setPosition(diagramId, elementId, position) {
+        const nextDiagrams = get().diagrams.map((d) => {
+          if (d.id !== diagramId) return d;
+          const nextPositions: Record<ElementId, NodePosition> = { ...d.positions };
+          if (position === undefined) delete nextPositions[elementId];
+          else nextPositions[elementId] = position;
+          return { ...d, positions: nextPositions };
+        });
+        set({ diagrams: nextDiagrams });
+      },
+    };
+    const bus = createCommandBus({ registry, provider, positions: positionStore });
+    bus.subscribe(() => {
+      const r = get().registry;
+      if (!r) return;
+      set({
+        elements: r.elements(),
+        edges: r.edges(),
+        modelVersion: get().bus?.version() ?? 0,
+      });
+      void get().saveProject();
+    });
+    set({
+      project,
+      registry,
+      bus,
+      diagrams: project.diagrams,
+      activeDiagramId: project.diagrams[0]!.id,
+      elements: registry.elements(),
+      edges: registry.edges(),
+      selectedElementIds: [],
+      impactRootId: null,
+      impactHighlightedIds: new Set<ElementId>(),
+      impactHighlightedEdgeIds: new Set<EdgeId>(),
+      activeConversationId: null,
+      pendingProposals: [],
+      importError: null,
+      modelVersion: bus.version(),
+    });
+    return { ok: true };
+  },
+
+  clearImportError() {
+    if (get().importError !== null) set({ importError: null });
   },
 }));
 
