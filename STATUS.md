@@ -4,10 +4,10 @@
 phase:11 — LLM integration (epic #12). Slice A (#217) merged via PR #224. Slice B (#218) in flight on PR #225.
 
 ## Current iteration
-- Iteration #: 285
-- Started: 2026-05-13T07:09Z
+- Iteration #: 286
+- Started: 2026-05-13T07:10Z
 - Branch: issue/218-api-key-entry (PR #225) — head `b75a44a`.
-- Working on: Awaiting CI run 25783763405 on PR #225. E2E in_progress (~7min in since 07:01:48Z). Idle iteration.
+- Working on: Awaiting CI run 25783763405 on PR #225. E2E step in_progress (started 07:03:17Z, ~7.5min in). Idle iteration.
 
 ## Last test run
 - Command: `pnpm typecheck && pnpm lint && pnpm test:unit` + targeted Playwright (a11y + Chat-tab swap) on chromium
@@ -60,6 +60,7 @@ Pre-E2E all green. E2E failures, by category:
 - 2026-05-13 (iter-283): CI run 25783763405 still in_progress (~5min). Idle iteration.
 - 2026-05-13 (iter-284): CI run 25783763405 still in_progress (~6.5min). Idle iteration.
 - 2026-05-13 (iter-285): CI run 25783763405 still in_progress (~7min). Idle iteration.
+- 2026-05-13 (iter-286): CI run 25783763405 E2E ~7.5min in. Idle iteration.
 
 ## Next action
 Wait for next CI run on PR #225. Expected outcome: pre-E2E green, a11y green, Chat-tab swap green, and 8 visual-baseline failures (3 new + 5 stale-from-chip). Then lift chromium+webkit actuals from the report per `docs/CONTEXT.md` L435–488 and commit as baselines.
