@@ -4,7 +4,7 @@ import { subscribeApiKeyModal } from '@/llm/api-key';
 
 import { ApiKeyModal } from './ApiKeyModal';
 import { CanvasPane } from './CanvasPane';
-import { CommandPaletteStub } from './CommandPaletteStub';
+import { CommandPalette } from './CommandPalette';
 import { Divider } from './Divider';
 import { downloadProjectJson } from './export';
 import { Header } from './Header';
@@ -163,7 +163,7 @@ export function Workspace(): JSX.Element {
         <ApiKeyModal onClose={() => setApiKeyModalOpen(false)} />
       ) : null}
       {commandPaletteOpen ? (
-        <CommandPaletteStub onClose={closeCommandPalette} />
+        <CommandPalette onClose={closeCommandPalette} />
       ) : null}
     </div>
   );

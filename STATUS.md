@@ -1,56 +1,66 @@
 # STATUS
 
 ## Current phase
-phase:12 — Export/import + polish. Epic #13 OPEN. Slices A/F/G/H merged.
-Open child slices: B (#232 in-progress this iter), C (#233), D (#234),
-E (#235).
+phase:12 — Export/import + polish. Epic #13 OPEN. Slices A/B/C/F/G/H merged.
+Open child slices: D (#234 in-progress this iter), E (#235).
 
 ## Current iteration
-- Iteration #: 517
-- Started: 2026-05-13T22:52:00Z
-- Branch: issue/232-empty-state-error-boundaries
-- Working on: #232 slice B — Empty-state UX & error boundaries.
-  PR not yet opened; iteration just committed locally. Push +
-  PR-open next.
+- Iteration #: 521
+- Started: 2026-05-14T07:25:00Z
+- Branch: issue/234-cmdk-command-palette
+- Working on: #234 slice D — Cmd-K command palette / element search.
+  Real `CommandPalette` replaces the slice C stub. Search filters by name
+  and id substring (case-insensitive), capped at 50 results, returns only
+  elements present on at least one diagram (so navigation has a target).
+  Up/Down navigate (wrap), Enter selects → `navigateToElementOnDiagram`,
+  Esc closes. role=dialog + aria-modal + listbox/option semantics.
+  Slice C tests rebound from `command-palette-stub` → `command-palette`.
 
 ## Last health check (iter-480)
 - Pages https://michaeljfazio.github.io/mbse-workbench/ → 200 ✓
-- Last 5 merged PRs (#243, #242, #241, #240, #239) all merged ✓
+- Last 5 merged PRs (#244, #243, #242, #241, #240) all merged ✓
 - 0 open `status:needs-human` issues ✓
 - Last 3 CI runs on `main` all `success` ✓
 
 ## Last test run
 - `pnpm exec tsc -b` ✓
 - `pnpm lint` ✓ (4 pre-existing react-refresh warnings)
-- `pnpm run test:unit` ✓ 857/857 (incl. new 3 ErrorBoundary tests)
-- `pnpm exec playwright test empty-state-error-boundary --project=chromium` ✓ 5/5
-- `pnpm exec playwright test empty-state-error-boundary --project=webkit` ✓ 5/5
-- @visual NOT runnable locally on darwin; CI will generate. Expected
-  bdd-empty baseline drift this PR (new empty-state CTA replaces the
-  blank BDD canvas). Will refresh via the CI-extract pattern per
-  docs/CONTEXT.md iter-332.
+- `pnpm run test:unit` ✓ 863/863 (replaced 3 stub tests with 6 search tests)
+- `pnpm exec playwright test "command-palette|global-shortcuts" --project=chromium` ✓ 9/9
+- `pnpm exec playwright test "command-palette|global-shortcuts" --project=webkit` ✓ 9/9
+- @visual NOT runnable locally; no baseline drift expected (palette is
+  hidden by default; no existing surface markup changed).
 
 ## Known issues / blockers
 - #161 — p2 inspector-transition flake. Deferred.
-- bdd-empty visual baseline (chromium+webkit) drifts this PR — new
-  empty-state CTA replaces the blank BDD canvas. Justified in PR
-  body; refresh PNGs from CI artifact next iter if CI is red on
-  @visual.
 
 ## Decisions log
+- 2026-05-14 (iter-521): Slice D search excludes elements not present on
+  any diagram's `positions`. The acceptance requires selection to navigate
+  to a containing diagram, so an orphan match (edge-only or unplaced)
+  has nothing to select. Avoids dead-end results.
+- 2026-05-14 (iter-521): Slice D footer hint uses `text-foreground`; row
+  secondary spans use `opacity-80` instead of `text-muted-foreground` —
+  needed to clear axe color-contrast (4.5:1) on bg-card and bg-accent.
+- 2026-05-14 (iter-519): Slice C Delete handler defers to ReactFlow's
+  own viewport keymap when focus is inside `.react-flow`. The global
+  path covers tree- and inspector-driven selections.
+- 2026-05-14 (iter-519): Slice C Cmd-K opens a placeholder
+  `CommandPaletteStub` (disabled input + Close). Real palette lands
+  in slice D (#234); stub exists so the binding is verifiable now
+  and the empty-state crib isn't lying.
+- 2026-05-14 (iter-519): Slice C Cmd-S triggers Export JSON (not
+  saveProject) per #233 acceptance. Suppressed while palette open
+  via a ref so the once-bound keydown handler sees the latest open
+  state without re-binding on toggle.
 - 2026-05-13 (iter-517): Slice B empty-state gated to BDD viewpoint
-  only — Activity/State Machine/Use Case/Parametric/Package have
-  their own `*-empty` baselines that intentionally show a blank
-  canvas. Empty-state is the BDD entry-point experience.
+  only — other viewpoints have their own `*-empty` baselines that
+  intentionally show a blank canvas.
 - 2026-05-13 (iter-517): Boundaries use a window-flag test seam
   (`__WORKSPACE_FORCE_ERROR__`) read by a tiny <ErrorTestThrower/>
-  embedded in each boundary. No production code path writes the
-  flag, so the harness is a strict no-op outside e2e.
-- 2026-05-13 (iter-517): Three boundaries — `canvas`,
-  `requirements`, `chat`. Inspector is not wrapped (slice B
-  acceptance lists "each diagram surface, requirements, chat"; the
-  Inspector is too tightly coupled to selection state to recover
-  via a local reset).
+  embedded in each boundary.
+- 2026-05-13 (iter-517): Three boundaries — `canvas`, `requirements`,
+  `chat`. Inspector is not wrapped.
 - 2026-05-14 (iter-501): Slice A JSON import/export shape (kept).
 - 2026-05-13 (iter-492): UTC clock-check (kept).
 - 2026-05-14 (iter-485): Phase 12 gate short diagram names (kept).
@@ -75,9 +85,5 @@ E (#235).
 - 2026-05-13 (iter-332): @visual baselines from CI Linux artifact.
 
 ## Next action
-1. Commit + push branch `issue/232-empty-state-error-boundaries`,
-   open PR with `Closes #232`, enable auto-merge --squash.
-2. PR will likely fail @visual `bdd-empty` chromium+webkit on first
-   CI run (drift is intentional). Next iter: extract Linux PNGs
-   from CI report and commit refreshed baseline.
-3. After merge, pick next slice (#233) in following iteration.
+1. Push branch, open PR closing #234, enable auto-merge.
+2. After CI green → merge → pick last slice (#235 split view).
