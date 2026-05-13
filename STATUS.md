@@ -6,16 +6,12 @@ phase:11 — LLM integration (epic #12). Slices A/B/C/D/E merged on main
 PR #229.
 
 ## Current iteration
-- Iteration #: 456
-- Started: 2026-05-14T04:20:00Z
+- Iteration #: 457
+- Started: 2026-05-14T04:35:00Z
 - Branch: issue/222-phase-11-gate-e2e-recorded-fixture
-- Working on: #222 slice F. iter-455's @visual stabilisation
-  (testid-scope + scrollTop=0 + blur) did not eliminate the flake:
-  CI run 25823795815 showed the two retry "actual" PNGs still differed
-  by 23% of pixels, with every text glyph outlined — classic
-  anti-aliasing/font-hinting variance from headless Chromium, not a
-  layout regression. Committing either retry as baseline would fail
-  next run. iter-456 drops the @visual test from the gate.
+- Working on: #222 slice F. iter-456 commit (9550735, @visual drop)
+  pushed; CI run 25824379099 IN_PROGRESS on PR #229. Auto-merge
+  remains enabled. Nothing actionable until CI completes — no poll.
 
 ## Fix in iter-456
 - `tests/e2e/phase-11-gate.spec.ts`: removed the `@visual workspace
