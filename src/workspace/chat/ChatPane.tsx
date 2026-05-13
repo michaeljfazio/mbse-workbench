@@ -6,6 +6,7 @@ import { createProjectReader } from '@/llm/project-reader';
 import { buildToolRegistry } from '@/llm/tools/index';
 import type { LLMContentBlock, LLMMessage } from '@/llm/types';
 import { useWorkspaceStore } from '../store';
+import { PendingProposalsList } from './ProposalCard';
 import { ToolUseCard, ToolResultCard } from './ToolCallCard';
 
 function ContentBlockView({
@@ -142,7 +143,8 @@ export function ChatPane(): JSX.Element {
       };
 
       const registry = buildToolRegistry(getReader);
-      const dispatch = createDispatcher({ provider, registry });
+      const resolveProposal = useWorkspaceStore.getState().enqueueProposal;
+      const dispatch = createDispatcher({ provider, registry, resolveProposal });
 
       // Build the current conversation message list (includes user message just appended)
       const stateNow = useWorkspaceStore.getState();
@@ -256,6 +258,8 @@ export function ChatPane(): JSX.Element {
           })
         )}
       </div>
+
+      <PendingProposalsList />
 
       {/* Composer */}
       <div className="shrink-0 border-t border-border p-3">

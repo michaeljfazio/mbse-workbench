@@ -35,6 +35,7 @@ export interface LLMToolDefinition {
     readonly type: 'object';
     readonly properties: Readonly<Record<string, unknown>>;
     readonly required?: readonly string[];
+    readonly additionalProperties?: boolean;
   };
 }
 

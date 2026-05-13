@@ -1,220 +1,99 @@
 # STATUS
 
 ## Current phase
-phase:11 — LLM integration (epic #12). Slices A/B/C merged. Slice D (#220)
-in flight on PR #227. Remaining: slice E (#221), slice F gate (#222).
+phase:11 — LLM integration (epic #12). Slices A/B/C/D merged. Slice E
+(#221) PR #228 — auto-merge armed. Iter-436 commits Linux baselines for
+`proposal-card-pending.png` (chromium + webkit) extracted from
+playwright-report run 25793854867.
 
 ## Current iteration
-- Iteration #: 390
-- Started: 2026-05-13T09:36:05Z
-- Branch: issue/220-tool-dispatcher.
-- Working on: CI run 25790513200 in_progress (~7.9m elapsed at 09:36:05Z,
-  started 09:28:12Z). E2E step in_progress (~6.4m in, started 09:29:39Z).
-  mergeStateStatus=UNKNOWN. Auto-merge armed.
+- Iteration #: 451
+- Started: 2026-05-14T00:00Z
+- Branch: issue/221-mutating-tools-diff-preview
+- Working on: #221 slice E — fresh CI run 25821269215 on head cb8d312
+  in_progress (Setup Node step). mergeStateStatus=BLOCKED;
+  mergeable=MERGEABLE; auto-merge armed (squash). Idle-wait.
 
 ## Last test run
-- Local `pnpm run build` green after fix. `pnpm exec vitest run tests/unit/llm`
-  → 4 files / 13 tests pass.
+- CI run 25820690853 on 0261ff8 PENDING (latest head, iter-443).
+- CI run 25820465557 on b355461 superseded.
+- CI run 25820423170 on 8dc8b24 superseded by the iter-441 status push.
+- CI run 25820383152 on a2e063c superseded by the iter-440 status push.
+- CI run 25820331886 on b82bd199 superseded by the iter-439 status push.
+- Prior runs: 25820296495 on 539ea84 still in_progress; 25820258140
+  on fade5d2 cancelled by newer push.
+- Prior CI run 25793854867 on ea02f73 FAILED with exactly the predicted
+  cause: `A snapshot doesn't exist at …/proposal-card-pending-{chromium,webkit}.png,
+  writing actual.` Phase-6 flake was marked flaky and passed on retry
+  (517 passed, 2 failed = visual baseline misses).
+- Extracted both Linux actuals from the playwright-report artifact:
+  - chromium: data/a26ab09c8…png (335×128)
+  - webkit:   data/d593350a4…png (335×128)
+- Committed under
+  `tests/e2e/__screenshots__/chat-proposal-accept.spec.ts/`.
 
-## What changed this iteration
-- PR #227 first CI run (25787838167) FAILED at 08:34:04Z with 2 TS errors:
-  1. `src/llm/tools/critique-model.ts:78` — `definitionId` cast to `string`
-     wouldn't satisfy `partDefinitionIds.has()` which expects `ElementId`.
-  2. `tests/unit/llm/tools/explain-diagram.test.ts:32` — raw string keys
-     `'el-1'`, `'el-2'` not assignable to `Record<ElementId, NodePosition>`.
-- Fixed both:
-  - critique-model.ts: import `ElementId`, cast `definitionId` to `ElementId`.
-  - explain-diagram.test.ts: cast positions object literal
-    `as unknown as Diagram['positions']`.
-- Verified locally with build + vitest before push.
-- Initial commit accidentally scooped a stray
-  `docs/superpowers/plans/2026-05-13-tool-dispatcher.md` (2429 lines) from
-  the untracked tree via `git add -A`. Reverted in follow-up commit
-  `3b511e0`.
+## How the baselines were obtained
+- `gh run download 25793854867 -n playwright-report` →
+  `index.html` contains a `window.playwrightReportBase64` data URI
+  zip; decoded with python, the JSON manifest
+  (`643257f5d295b65cfaec.json`) maps each test's `attachments[].path`
+  to a `data/<sha>.png`. The "expected" attachment (Playwright writes
+  the actual to that slot on first run) is the file to commit.
+- Recorded the recipe in `docs/CONTEXT.md` (iter-332 entry already
+  covers the general approach; today's extraction matches).
 
 ## Known issues / blockers
-- #161 — p2 inspector-transition flake. Deferred.
+- #161 — p2 inspector-transition flake. Phase-6 retry passed on this
+  run; deferred.
 - Pre-existing `text-muted-foreground` contrast violation on inactive
   sidebar tab button — deferred from slice C.
-- Visual baselines for chat-tools.spec.ts not yet in repo; will be added
-  by first CI green run on Linux.
 
 ## Decisions log
-- 2026-05-13 (iter-311): **Slice B merged 07:44:12Z.** Slice C dispatched.
-- 2026-05-13 (iter-312→320): Idle-wait on PR #226 CI (~13min E2E step).
-- 2026-05-13 (iter-321): **PR #226 (slice C) merged 08:07:04Z.** Slice D
-  delivered, PR #227 opened with auto-merge armed.
-- 2026-05-13 (iter-322): PR #227 CI red on TS. Fixed two trivial typing
-  bugs (branded `ElementId` mismatches) and pushed `3b511e0`. Lesson:
-  prefer `git add <files>` over `git add -A` when working tree has
-  untracked artefacts. Add to CONTEXT later if recurring.
-- 2026-05-13 (iter-323): Idle-wait — CI run 25788009193 started 08:36:43Z,
-  ~2m elapsed at iter start. No commit this iteration.
-- 2026-05-13 (iter-324): Idle-wait — CI still in_progress (~3m elapsed,
-  mergeStateStatus=BLOCKED). No commit.
-- 2026-05-13 (iter-325): Idle-wait — CI still in_progress (~5m elapsed,
-  mergeStateStatus=BLOCKED). No commit.
-- 2026-05-13 (iter-326): Idle-wait — CI still in_progress (~6m elapsed,
-  mergeStateStatus=BLOCKED). No commit.
-- 2026-05-13 (iter-327): Idle-wait — CI still in_progress (~7m elapsed,
-  mergeStateStatus=BLOCKED). No commit.
-- 2026-05-13 (iter-328): Idle-wait — CI run 25788009193 in_progress (~5m
-  elapsed at 08:41Z, started 08:36:43Z, mergeStateStatus=BLOCKED). No commit.
-- 2026-05-13 (iter-329): Idle-wait — CI run 25788009193 in_progress (~6m
-  elapsed at 08:42Z, mergeStateStatus=BLOCKED). No commit.
-- 2026-05-13 (iter-330): Idle-wait — CI run 25788009193 in_progress (~7m
-  elapsed at 08:43Z, mergeStateStatus=BLOCKED). No commit.
-- 2026-05-13 (iter-331): Idle-wait — CI run 25788009193 in_progress (~8m
-  elapsed at 08:44Z, mergeStateStatus=BLOCKED). No commit.
-- 2026-05-13 (iter-333): Idle-wait — new CI run 25788507469 started
-  08:47:12Z after baseline push, ~1m elapsed. No commit.
-- 2026-05-13 (iter-334): Idle-wait — CI run 25788507469 in_progress
-  (~1.5m elapsed at 08:48:36Z). No commit.
-- 2026-05-13 (iter-335): Idle-wait — CI run 25788507469 in_progress
-  (~2m elapsed at 08:49:22Z, mergeStateStatus=UNKNOWN). No commit.
-- 2026-05-13 (iter-336): Idle-wait — CI run 25788507469 in_progress
-  (~3.5m elapsed at 08:50:30Z, mergeStateStatus=UNKNOWN). No commit.
-- 2026-05-13 (iter-337): Idle-wait — CI run 25788507469 in_progress
-  (~4.5m elapsed at 08:51:30Z, mergeStateStatus=UNKNOWN). No commit.
-- 2026-05-13 (iter-338): Idle-wait — CI run 25788507469 in_progress
-  (~5.5m elapsed at 08:52:45Z, mergeStateStatus=UNKNOWN). No commit.
-- 2026-05-13 (iter-339): Idle-wait — CI run 25788507469 in_progress
-  (~6.5m elapsed at 08:53:45Z, mergeStateStatus=UNKNOWN). No commit.
-- 2026-05-13 (iter-340): Idle-wait — CI run 25788507469 in_progress
-  (~7.5m elapsed at 08:54:50Z, mergeStateStatus=UNKNOWN). No commit.
-- 2026-05-13 (iter-341): Idle-wait — CI run 25788507469 in_progress
-  (~7m elapsed at 08:54:03Z, mergeStateStatus=UNKNOWN). No commit.
-- 2026-05-13 (iter-342): Idle-wait — CI run 25788507469 in_progress
-  (~8m elapsed at 08:54:55Z, mergeStateStatus=UNKNOWN). No commit.
-- 2026-05-13 (iter-343): Idle-wait — CI run 25788507469 in_progress
-  (~9m elapsed at 08:56:00Z, mergeStateStatus=UNKNOWN). No commit.
-- 2026-05-13 (iter-345): Idle-wait — new CI run 25788984946 started
-  08:56:52Z (post update-branch), ~1m elapsed at 08:57:50Z,
-  mergeStateStatus=UNKNOWN. No commit.
-- 2026-05-13 (iter-346): Idle-wait — CI run 25788984946 in_progress
-  (~1.5m elapsed at 08:58:27Z, mergeStateStatus=UNKNOWN). No commit.
-- 2026-05-13 (iter-347): Idle-wait — CI run 25788984946 in_progress
-  (~2.5m elapsed at 08:59:14Z, mergeStateStatus=UNKNOWN). No commit.
-- 2026-05-13 (iter-348): Idle-wait — CI run 25788984946 in_progress
-  (~3.5m elapsed at 09:00:20Z, mergeStateStatus=UNKNOWN). No commit.
-- 2026-05-13 (iter-349): Idle-wait — CI run 25788984946 in_progress
-  (~4.5m elapsed at 09:01:30Z, mergeStateStatus=UNKNOWN). No commit.
-- 2026-05-13 (iter-350): Idle-wait — CI run 25788984946 in_progress
-  (~4.5m elapsed at 09:01:34Z, mergeStateStatus=UNKNOWN). No commit.
-- 2026-05-13 (iter-351): Idle-wait — CI run 25788984946 in_progress
-  (~5.5m elapsed at 09:02:24Z, mergeStateStatus=UNKNOWN). No commit.
-- 2026-05-13 (iter-352): Idle-wait — CI run 25788984946 in_progress
-  (~6.5m elapsed at 09:03:20Z, mergeStateStatus=UNKNOWN). No commit.
-- 2026-05-13 (iter-353): Idle-wait — CI run 25788984946 in_progress
-  (~7.5m elapsed at 09:04:30Z, mergeStateStatus=UNKNOWN). No commit.
-- 2026-05-13 (iter-354): Idle-wait — CI run 25788984946 in_progress
-  (~8.5m elapsed at 09:05:30Z, mergeStateStatus=UNKNOWN). No commit.
-- 2026-05-13 (iter-355): CI run 25788984946 **SUCCESS** at 09:05:08Z but
-  PR BEHIND main again. Ran `gh pr update-branch 227` (2nd time); new CI
-  run 25789413513 queued at 09:05:34Z. Lesson: main is advancing faster
-  than our ~8m CI cycle — slice E may need to coordinate or rebase
-  multiple times. Auto-merge remains armed.
-- 2026-05-13 (iter-356): Idle-wait — CI run 25789413513 in_progress
-  (~1m elapsed at 09:06:26Z, mergeStateStatus=BEHIND/MERGEABLE). No commit.
-- 2026-05-13 (iter-357): Idle-wait — CI run 25789413513 in_progress
-  (~1.5m elapsed at 09:07:18Z, mergeStateStatus=UNKNOWN). No commit.
-- 2026-05-13 (iter-358): Idle-wait — CI run 25789413513 in_progress
-  (~2.5m elapsed at 09:08:11Z, mergeStateStatus=UNKNOWN). No commit.
-- 2026-05-13 (iter-359): Idle-wait — CI run 25789413513 in_progress
-  (~3.5m elapsed at 09:09:05Z, mergeStateStatus=UNKNOWN). No commit.
-- 2026-05-13 (iter-360): Idle-wait — CI run 25789413513 in_progress
-  (~4.5m elapsed at 09:09:50Z, mergeStateStatus=UNKNOWN). No commit.
-- 2026-05-13 (iter-361): Idle-wait — CI run 25789413513 in_progress
-  (~5.5m elapsed at 09:11:00Z, mergeStateStatus=UNKNOWN). No commit.
-- 2026-05-13 (iter-362): Idle-wait — CI run 25789413513 in_progress
-  (~6.5m elapsed at 09:12:00Z, mergeable=MERGEABLE, mergeStateStatus=BEHIND).
-  No commit.
-- 2026-05-13 (iter-363): Idle-wait — CI run 25789413513 in_progress
-  (~7.5m elapsed at 09:13:00Z, mergeable=UNKNOWN, mergeStateStatus=UNKNOWN).
-  No commit.
-- 2026-05-13 (iter-364): Idle-wait — CI run 25789413513 in_progress
-  (~7.4m elapsed at 09:12:56Z, mergeable=UNKNOWN, mergeStateStatus=UNKNOWN).
-  No commit.
-- 2026-05-13 (iter-365): Idle-wait — CI run 25789413513 in_progress
-  (~8.2m elapsed at 09:13:43Z, mergeable=UNKNOWN, mergeStateStatus=UNKNOWN).
-  No commit.
-- 2026-05-13 (iter-366): Idle-wait — CI run 25789413513 in_progress
-  (~8.9m elapsed at 09:14:29Z, mergeable=UNKNOWN, mergeStateStatus=UNKNOWN).
-  No commit.
-- 2026-05-13 (iter-367): Idle-wait — CI run 25789413513 in_progress
-  (~9.6m elapsed at 09:15:11Z, mergeable=UNKNOWN, mergeStateStatus=UNKNOWN).
-  No commit.
-- 2026-05-13 (iter-368): Idle-wait — CI run 25789413513 in_progress
-  (~10.5m elapsed at 09:16:00Z, mergeable=UNKNOWN, mergeStateStatus=UNKNOWN).
-  No commit.
-- 2026-05-13 (iter-369): Idle-wait — CI run 25789413513 in_progress
-  (~11.3m elapsed at 09:17:00Z, mergeable=UNKNOWN, mergeStateStatus=UNKNOWN).
-  No commit.
-- 2026-05-13 (iter-370): Idle-wait — CI run 25789413513 in_progress
-  (~12.3m elapsed at 09:17:50Z, mergeable=UNKNOWN, mergeStateStatus=UNKNOWN).
-  No commit.
-- 2026-05-13 (iter-371): Idle-wait — CI run 25789413513 in_progress
-  (~13.1m elapsed at 09:18:40Z, mergeable=UNKNOWN, mergeStateStatus=UNKNOWN).
-  No commit.
-- 2026-05-13 (iter-372): Idle-wait — CI run 25789413513 in_progress
-  (~13.2m elapsed at 09:18:53Z). Step 11 "Install Playwright browsers"
-  stuck in_progress for ~12.1m despite cache-hit success on step 10.
-  E2E step not yet started. No commit.
-- 2026-05-13 (iter-373): Idle-wait — CI run 25789413513 in_progress (~13.8m
-  elapsed at 09:19:30Z). Step 11 still in_progress (~12.7m). No commit.
-- 2026-05-13 (iter-374): Idle-wait — CI run 25789413513 in_progress (~14.8m
-  elapsed at 09:20:30Z). Step 11 Install Playwright browsers completed
-  success at 09:20:12Z (13.4m duration). Step 12 E2E tests now in_progress.
-  No commit.
-- 2026-05-13 (iter-375): Idle-wait — CI run 25789413513 in_progress. Step 12
-  E2E tests in_progress (~1.3m elapsed at 09:21:30Z). No commit.
-- 2026-05-13 (iter-376): Idle-wait — CI run 25789413513 in_progress. Step 12
-  E2E tests in_progress (~2.7m elapsed at 09:22:50Z). No commit.
-- 2026-05-13 (iter-377): Idle-wait — CI run 25789413513 in_progress. Step 12
-  E2E tests in_progress (~3.8m elapsed at 09:24:00Z). No commit.
-- 2026-05-13 (iter-378): Idle-wait — CI run 25789413513 in_progress. Step 12
-  E2E tests in_progress (~4.8m elapsed at 09:24:57Z). No commit.
-- 2026-05-13 (iter-379): Idle-wait — CI run 25789413513 in_progress. Step 12
-  E2E tests in_progress (~5.8m elapsed at 09:26:00Z). No commit.
-- 2026-05-13 (iter-380): Idle-wait — CI run 25789413513 in_progress. Step 12
-  E2E tests in_progress (~6.5m elapsed at 09:26:40Z). No commit.
-- 2026-05-13 (iter-381): CI run 25789413513 **SUCCESS** at 09:26:57Z but
-  PR BEHIND main again (3rd update). Ran `gh pr update-branch 227`; new CI
-  run 25790513200 queued at 09:28:02Z (sha 2619bdbe). Auto-merge armed.
-- 2026-05-13 (iter-382): Idle-wait — CI run 25790513200 in_progress (~1.5m
-  elapsed at 09:29:30Z, mergeStateStatus=BEHIND/MERGEABLE). No commit.
-- 2026-05-13 (iter-383): Idle-wait — CI run 25790513200 in_progress (~1.9m
-  elapsed at 09:29:53Z, mergeStateStatus=UNKNOWN). No commit.
-- 2026-05-13 (iter-384): Idle-wait — CI run 25790513200 in_progress (~2.5m
-  elapsed at 09:30:35Z, mergeStateStatus=BEHIND/MERGEABLE). No commit.
-- 2026-05-13 (iter-385): Idle-wait — CI run 25790513200 in_progress (~3.3m
-  elapsed at 09:31:21Z). E2E step in_progress (~1.7m in, started 09:29:39Z).
-  mergeStateStatus=BEHIND/MERGEABLE. No commit.
-- 2026-05-13 (iter-386): Idle-wait — CI run 25790513200 in_progress (~4.2m
-  elapsed at 09:32:11Z). E2E step in_progress (~2.5m in). No commit.
-- 2026-05-13 (iter-387): Idle-wait — CI run 25790513200 in_progress (~4.9m
-  elapsed at 09:33:08Z). E2E step in_progress (~3.5m in). No commit.
-- 2026-05-13 (iter-388): Idle-wait — CI run 25790513200 in_progress (~5.8m
-  elapsed at 09:34:01Z). E2E step in_progress (~4.4m in). No commit.
-- 2026-05-13 (iter-389): Idle-wait — CI run 25790513200 in_progress (~6.8m
-  elapsed at 09:35:00Z). E2E step in_progress (~5.4m in). No commit.
-- 2026-05-13 (iter-390): Idle-wait — CI run 25790513200 in_progress (~7.9m
-  elapsed at 09:36:05Z). E2E step in_progress (~6.4m in). No commit.
-- 2026-05-13 (iter-344): CI run 25788507469 **SUCCESS** at 08:56:34Z but
-  PR mergeStateStatus=BEHIND (main advanced while we waited). Ran
-  `gh pr update-branch 227` which fast-forwarded the branch and queued
-  a new CI run. Auto-merge remains armed (squash). Lesson: when a long
-  idle-wait completes green but doesn't merge, check mergeStateStatus
-  for BEHIND and update the branch.
-- 2026-05-13 (iter-332): CI run 25788009193 **FAILED** at 08:44:55Z — the
-  2 chat-tool-cards `@visual` tests had no baselines on Linux. Extracted
-  the Linux-rendered actual PNGs from the embedded playwright-report
-  (`window.playwrightReportBase64`) for both chromium and webkit, dropped
-  them into `tests/e2e/__screenshots__/chat-tools.spec.ts/`, and pushed
-  as `e6d8a60`. CI re-running. Lesson for CONTEXT: future visual specs
-  need a "first Linux run produces baselines" cycle; an alternative is
-  running playwright in a Linux container locally before the PR opens.
+- 2026-05-14 (iter-436): Commit Linux PNGs only. macOS contributors
+  generate their own host baselines locally via Playwright
+  `--update-snapshots`; CI only runs Linux so committing Linux PNGs
+  is sufficient for the gate.
+- 2026-05-13 (iter-404): Fix `memberIds` typing by binding the command
+  to `UpdateElementCommand<'Package'>` rather than casting the patch.
+  Reason: keeps the type narrative at the command boundary.
+- 2026-05-13 (iter-404): Widened `input_schema` to allow
+  `additionalProperties?: boolean` rather than removing the flag from
+  call sites.
+- 2026-05-13 (iter-400): Accept-path e2e asserts the new "Pump" leaf
+  appears in `project-tree` (not the BDD canvas).
+- 2026-05-13 (iter-400): Reject-path e2e asserts dispatcher resumes
+  but no `Pump` leaf is created.
+- 2026-05-13 (iter-400): `@visual` baseline scoped to the
+  `proposal-card` locator.
+- 2026-05-13 (iter-399): `suggest_missing_elements` heuristic = parts
+  with no incoming RequirementTrace of any kind.
+- 2026-05-13 (iter-399): Throws if no candidates rather than empty
+  ProposedChange.
+- 2026-05-13 (iter-399): Placeholder Requirement text is generic.
+- 2026-05-13 (iter-399): Default maxSuggestions = 5, hard max = 20.
+- 2026-05-13 (iter-398): `propose_decomposition` rejects child names
+  that collide under the same parent only (case-insensitive).
+- 2026-05-13 (iter-398): One ProposedChange containing 2N commands.
+- 2026-05-13 (iter-398): Decomposition creates BDD-level Composition
+  edges, not PartUsages.
+- 2026-05-13 (iter-397): `generate_requirements_from_text` returns ONE
+  ProposedChange with N create-element commands.
+- 2026-05-13 (iter-397): Parsing is server-side.
+- 2026-05-13 (iter-397): Minimum line length is 3 chars after bullet
+  stripping.
+- 2026-05-13 (iter-396): `link_requirement` rejects exact-duplicate
+  traces but allows a different kind between the same pair.
+- 2026-05-13 (iter-396): Requirement is `sourceId`; element is
+  `targetId`.
+- 2026-05-13 (iter-395): `ProposalCard` shows command kinds as bullets.
+- 2026-05-13 (iter-395): Accept/Reject disabled on click.
+- 2026-05-13 (iter-394): Resolvers in a module-level Map.
+- 2026-05-13 (iter-394): `acceptProposal` dispatches `compound`.
+- 2026-05-13 (iter-355): main may advance faster than CI; rebase as
+  needed.
+- 2026-05-13 (iter-332): `@visual` baselines from CI: extract Linux
+  PNGs from playwright-report base64 blob and commit.
 
 ## Next action
-Wait for re-run CI on PR #227 (post-update-branch) to complete. Auto-merge
-will fire on green; then slice E (#221, mutating tools + diff-preview).
+1. Push the baseline commit; wait for CI; auto-merge should fire on green.
+2. After #228 merges, move to slice F (#222) — phase 11 gate.

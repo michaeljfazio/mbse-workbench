@@ -1,14 +1,21 @@
 import type { LLMProvider } from './provider';
 import type { ToolRegistry } from './registry';
-import type { LLMMessage } from './types';
+import type { LLMMessage, ProposedChange } from './types';
 
 export { createDispatcher } from './create-dispatcher';
 
 export const DISPATCHER_ROUND_TRIP_CAP = 8;
 
+export type ProposalResolution =
+  | { readonly kind: 'accepted'; readonly appliedSummary: string }
+  | { readonly kind: 'rejected'; readonly reason?: string };
+
+export type ProposalResolver = (change: ProposedChange) => Promise<ProposalResolution>;
+
 export interface DispatcherDependencies {
   readonly provider: LLMProvider;
   readonly registry: ToolRegistry;
+  readonly resolveProposal?: ProposalResolver;
 }
 
 export interface DispatcherTurnRequest {

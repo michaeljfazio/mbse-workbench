@@ -100,7 +100,7 @@ async function consumeStream(events: AsyncIterable<LLMEvent>): Promise<StreamRes
 export function createDispatcher(
   deps: DispatcherDependencies,
 ): (req: DispatcherTurnRequest) => Promise<DispatcherTurnResult> {
-  const { provider, registry } = deps;
+  const { provider, registry, resolveProposal } = deps;
 
   return async function dispatch(req: DispatcherTurnRequest): Promise<DispatcherTurnResult> {
     const appendedMessages: LLMMessage[] = [];
@@ -181,10 +181,18 @@ export function createDispatcher(
 
         try {
           const output = await entry.handler(parsedInput, { conversationId: req.conversationId });
-          const content =
-            output.kind === 'data'
-              ? JSON.stringify(output.data)
-              : JSON.stringify({ proposedChange: output.change.summary });
+          let content: string;
+          if (output.kind === 'data') {
+            content = JSON.stringify(output.data);
+          } else if (resolveProposal !== undefined) {
+            const resolution = await resolveProposal(output.change);
+            content =
+              resolution.kind === 'accepted'
+                ? JSON.stringify({ accepted: true, appliedSummary: resolution.appliedSummary })
+                : JSON.stringify({ accepted: false, reason: resolution.reason ?? 'rejected by user' });
+          } else {
+            content = JSON.stringify({ proposedChange: output.change.summary });
+          }
           toolResultBlocks.push({ type: 'tool_result', tool_use_id: tub.id, content });
         } catch (handlerErr: unknown) {
           const msg = handlerErr instanceof Error ? handlerErr.message : String(handlerErr);

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createDispatcher, DISPATCHER_ROUND_TRIP_CAP } from '@/llm/dispatcher';
-import type { LLMEvent, LLMMessage, ToolOutput } from '@/llm/types';
+import type { ProposalResolver } from '@/llm/dispatcher';
+import type { LLMEvent, LLMMessage, ProposedChange, ToolOutput } from '@/llm/types';
 import type { LLMProvider } from '@/llm/provider';
 import type { ToolRegistry, ToolContext } from '@/llm/registry';
 
@@ -200,6 +201,131 @@ describe('createDispatcher', () => {
     if (trBlock!.type === 'tool_result') {
       expect(trBlock!.is_error).toBe(true);
       expect(trBlock!.content).toContain('Handler exploded');
+    }
+  });
+
+  it('proposed-change tool: accepted resolution serialises appliedSummary into tool_result', async () => {
+    const change: ProposedChange = {
+      id: 'pc-1',
+      summary: 'Create Block "Cooling System"',
+      commands: [],
+    };
+    const round1: LLMEvent[] = [
+      {
+        kind: 'content_block_start',
+        index: 0,
+        block: { type: 'tool_use', id: 'tu_mut', name: 'test_tool', input: null },
+      },
+      { kind: 'input_json_delta', index: 0, partialJson: '{}' },
+      { kind: 'content_block_stop', index: 0 },
+      { kind: 'message_stop', stopReason: 'tool_use' },
+    ];
+    const round2: LLMEvent[] = [
+      { kind: 'content_block_start', index: 0, block: { type: 'text', text: '' } },
+      { kind: 'text_delta', index: 0, text: 'Done.' },
+      { kind: 'content_block_stop', index: 0 },
+      { kind: 'message_stop', stopReason: 'end_turn' },
+    ];
+    const provider = makeProvider([round1, round2]);
+    const registry = makeRegistry('test_tool', async () => ({
+      kind: 'proposed-change' as const,
+      change,
+    }));
+    const resolveProposal: ProposalResolver = async (pc) => {
+      expect(pc.id).toBe('pc-1');
+      return { kind: 'accepted', appliedSummary: 'Applied: block-42 created' };
+    };
+
+    const result = await createDispatcher({ provider, registry, resolveProposal })(BASE_REQUEST);
+
+    const trMsg = result.appendedMessages.find(
+      (m) => m.role === 'user' && m.content.some((b) => b.type === 'tool_result'),
+    );
+    const tr = trMsg!.content.find((b) => b.type === 'tool_result');
+    expect(tr!.type).toBe('tool_result');
+    if (tr!.type === 'tool_result') {
+      expect(tr!.is_error).toBeFalsy();
+      const parsed = JSON.parse(tr!.content) as { accepted: boolean; appliedSummary: string };
+      expect(parsed.accepted).toBe(true);
+      expect(parsed.appliedSummary).toBe('Applied: block-42 created');
+    }
+  });
+
+  it('proposed-change tool: rejected resolution serialises reason and is not is_error', async () => {
+    const change: ProposedChange = { id: 'pc-2', summary: 'no-op', commands: [] };
+    const round1: LLMEvent[] = [
+      {
+        kind: 'content_block_start',
+        index: 0,
+        block: { type: 'tool_use', id: 'tu_mut2', name: 'test_tool', input: null },
+      },
+      { kind: 'input_json_delta', index: 0, partialJson: '{}' },
+      { kind: 'content_block_stop', index: 0 },
+      { kind: 'message_stop', stopReason: 'tool_use' },
+    ];
+    const round2: LLMEvent[] = [
+      { kind: 'content_block_start', index: 0, block: { type: 'text', text: '' } },
+      { kind: 'text_delta', index: 0, text: 'OK, cancelled.' },
+      { kind: 'content_block_stop', index: 0 },
+      { kind: 'message_stop', stopReason: 'end_turn' },
+    ];
+    const provider = makeProvider([round1, round2]);
+    const registry = makeRegistry('test_tool', async () => ({
+      kind: 'proposed-change' as const,
+      change,
+    }));
+    const resolveProposal: ProposalResolver = async () => ({
+      kind: 'rejected',
+      reason: 'user clicked reject',
+    });
+
+    const result = await createDispatcher({ provider, registry, resolveProposal })(BASE_REQUEST);
+
+    const trMsg = result.appendedMessages.find(
+      (m) => m.role === 'user' && m.content.some((b) => b.type === 'tool_result'),
+    );
+    const tr = trMsg!.content.find((b) => b.type === 'tool_result');
+    if (tr!.type === 'tool_result') {
+      expect(tr!.is_error).toBeFalsy();
+      const parsed = JSON.parse(tr!.content) as { accepted: boolean; reason: string };
+      expect(parsed.accepted).toBe(false);
+      expect(parsed.reason).toBe('user clicked reject');
+    }
+  });
+
+  it('proposed-change tool with no resolver falls back to summary-only tool_result', async () => {
+    const change: ProposedChange = { id: 'pc-3', summary: 'fallback summary', commands: [] };
+    const round1: LLMEvent[] = [
+      {
+        kind: 'content_block_start',
+        index: 0,
+        block: { type: 'tool_use', id: 'tu_mut3', name: 'test_tool', input: null },
+      },
+      { kind: 'input_json_delta', index: 0, partialJson: '{}' },
+      { kind: 'content_block_stop', index: 0 },
+      { kind: 'message_stop', stopReason: 'tool_use' },
+    ];
+    const round2: LLMEvent[] = [
+      { kind: 'content_block_start', index: 0, block: { type: 'text', text: '' } },
+      { kind: 'text_delta', index: 0, text: '.' },
+      { kind: 'content_block_stop', index: 0 },
+      { kind: 'message_stop', stopReason: 'end_turn' },
+    ];
+    const provider = makeProvider([round1, round2]);
+    const registry = makeRegistry('test_tool', async () => ({
+      kind: 'proposed-change' as const,
+      change,
+    }));
+
+    const result = await createDispatcher({ provider, registry })(BASE_REQUEST);
+
+    const trMsg = result.appendedMessages.find(
+      (m) => m.role === 'user' && m.content.some((b) => b.type === 'tool_result'),
+    );
+    const tr = trMsg!.content.find((b) => b.type === 'tool_result');
+    if (tr!.type === 'tool_result') {
+      const parsed = JSON.parse(tr!.content) as { proposedChange: string };
+      expect(parsed.proposedChange).toBe('fallback summary');
     }
   });
 
