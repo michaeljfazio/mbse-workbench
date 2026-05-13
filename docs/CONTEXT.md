@@ -1007,3 +1007,13 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
   bucket by `(spec,title,project,base)`, take `failed`-status results
   only, copy each `actual` SHA1 over the matching baseline. Verify
   `missing=0` (no accidental new baselines).
+
+- **2026-05-13 (iter-101): shadcn `bg-destructive` fails WCAG AA at small
+  text.** The default shadcn destructive token resolves to red-500
+  (#ef4444) for `bg-destructive` and near-white (#f8fafc) for
+  `text-destructive-foreground` — contrast 3.59:1, below the 4.5:1 AA
+  threshold for text under 18pt/24px. Same trap with `text-destructive`
+  on `bg-destructive/10` (3.29). For any destructive button rendered at
+  `text-xs` or `text-sm`, use `bg-red-700` (#b91c1c, 7.3:1 vs white) or
+  `bg-red-800` instead. Don't trust the token name as a stand-in for
+  AA compliance — it's tuned for visual emphasis, not contrast.
