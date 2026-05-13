@@ -139,7 +139,12 @@ export function RequirementsSurface(): JSX.Element {
         </button>
       </div>
       <div className="flex min-h-0 flex-1">
-        <div className="min-h-0 flex-1 overflow-auto">
+        <div
+          className="min-h-0 flex-1 overflow-auto"
+          tabIndex={0}
+          role="region"
+          aria-label="Requirements list"
+        >
           {rows.length === 0 ? (
             <div
               data-testid="requirements-surface-empty"
@@ -191,7 +196,7 @@ export function RequirementsSurface(): JSX.Element {
                         {row.priority}
                       </td>
                       <td className="px-3 py-2 text-foreground">{row.status}</td>
-                      <td className="px-3 py-2 text-muted-foreground">
+                      <td className="px-3 py-2 text-foreground">
                         {truncate(row.text)}
                       </td>
                       <td className="px-3 py-2 text-foreground tabular-nums">
@@ -245,6 +250,7 @@ function RequirementEditorForm(props: RequirementEditorFormProps): JSX.Element {
     <aside
       data-testid="requirements-surface-form"
       aria-label="Edit requirement"
+      tabIndex={0}
       className="flex w-80 min-w-0 shrink-0 flex-col gap-3 overflow-auto border-l border-border bg-card p-3 text-xs"
     >
       <div className="flex items-center justify-between">
@@ -255,7 +261,7 @@ function RequirementEditorForm(props: RequirementEditorFormProps): JSX.Element {
           type="button"
           data-testid="requirements-surface-delete"
           onClick={onDelete}
-          className="rounded-md border border-destructive/30 bg-destructive/10 px-2 py-1 text-xs font-medium text-destructive transition hover:bg-destructive/20"
+          className="rounded-md bg-destructive px-2 py-1 text-xs font-medium text-destructive-foreground shadow-sm transition hover:bg-destructive/90"
         >
           Delete
         </button>
