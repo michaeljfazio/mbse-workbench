@@ -16,12 +16,15 @@ export type {
 export type { LLMProvider } from './provider';
 export type { ToolContext, ToolEntry, ToolInputSchema, ToolRegistry } from './registry';
 export {
+  createDispatcher,
   DISPATCHER_ROUND_TRIP_CAP,
   type Dispatcher,
   type DispatcherDependencies,
   type DispatcherTurnRequest,
   type DispatcherTurnResult,
 } from './dispatcher';
+export { createProjectReader, type ProjectReader } from './project-reader';
+export { buildToolRegistry } from './tools/index';
 export {
   createAnthropicProvider,
   type AnthropicProviderOptions,
