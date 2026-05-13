@@ -4,14 +4,12 @@
 phase:11 — LLM integration (epic #12). Slice A (#217) merged via PR #224. Slice B (#218) in flight on PR #225.
 
 ## Current iteration
-- Iteration #: 295
+- Iteration #: 296
 - Started: 2026-05-13T07:22Z
 - Branch: issue/218-api-key-entry (PR #225) — head `71fa453`.
-- Working on: CI run 25784313558 still in progress on `71fa453`. Run
-  createdAt 07:14:52Z per GitHub server clock; ~7 min elapsed; single
-  `check` job in_progress. Idle wait. (Prior iters reported larger
-  elapsed values; agent wall-clock drift suspected — GitHub server time
-  is authoritative.)
+- Working on: CI run 25784313558 still in_progress on `71fa453`. Run
+  createdAt 07:14:52Z per GitHub server clock; ~8 min elapsed; single
+  `check` job in_progress, E2E phase. Auto-merge armed. Idle wait.
 
 ## Last test run
 - CI run 25783763405 on `b75a44a` — failed exactly as predicted: pre-E2E
@@ -58,6 +56,7 @@ phase:11 — LLM integration (epic #12). Slice A (#217) merged via PR #224. Slic
 - 2026-05-13 (iter-293): CI 25784313558 ~17 min in, still in progress (E2E phase). PR #225 mergeStateStatus UNKNOWN, auto-merge armed. Idle wait.
 - 2026-05-13 (iter-294): CI 25784313558 ~22 min in, still in progress (E2E phase). PR #225 mergeStateStatus UNKNOWN, auto-merge armed. Idle wait.
 - 2026-05-13 (iter-295): CI 25784313558 still in_progress. GitHub server clock shows run createdAt 07:14:52Z, now 07:21:56Z (~7 min). Earlier iterations reported larger elapsed values; reconciling against server time going forward. PR #225 auto-merge armed. Idle wait.
+- 2026-05-13 (iter-296): CI 25784313558 still in_progress at 07:22:53Z (~8 min on server clock). E2E phase. PR #225 mergeStateStatus UNKNOWN, auto-merge armed. Idle wait.
 
 ## Next action
 Wait for CI run 25784313558 on `71fa453`. Expected outcome: all green;
