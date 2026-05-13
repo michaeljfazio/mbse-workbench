@@ -4,10 +4,10 @@
 phase:10 — Requirements traceability. Final child issue **#178 (gate spec)** in flight via **PR #209 slice 1** (functional walkthrough + 3 `@a11y` scans). Sibling PR #207 closed as superseded — its committed visual baselines failed CI with a 10 963 px diff (ratio 0.02 > 0.01 threshold) so the slice-2 approach is cleaner. Sibling bug: **#161** p2 inspector-transition flake.
 
 ## Current iteration
-- Iteration #: 133
-- Started: 2026-05-13T03:45Z
+- Iteration #: 134
+- Started: 2026-05-13T03:50Z
 - Branch: `issue/178-phase-10-gate-slice1` (PR #209 open, auto-merge `--squash` enabled)
-- Working on: #178 slice 1 — CI rerun on run `25776356198` still **IN_PROGRESS** (job `75711037320` started 03:39:44Z). PR mergeStateStatus `UNKNOWN`. No action taken this iteration; waiting on rerun.
+- Working on: #178 slice 1 — CI rerun on run `25776356198` still **IN_PROGRESS** (job started 03:39:44Z, ~10 min elapsed). PR mergeStateStatus `BEHIND`. No action taken this iteration; waiting on rerun.
 
 ## Last test run
 - Command: CI run `25776356198` on PR #209 (chromium + webkit Playwright suites)
@@ -29,6 +29,7 @@ phase:10 — Requirements traceability. Final child issue **#178 (gate spec)** i
 - 2026-05-13 (iter-131): Confirmed via Explore digest that all 10 Phase-10 affordances live on main (matrix glyphs, coverage panel testids, impact analysis context-menu + `mbse-impact-node` class + `impact-banner`). Wrote a clean slice-1 spec covering functional walkthrough + 3 `@a11y` scans (no `@visual`). 4/4 pass on chromium AND webkit locally. Closed PR #207 as superseded and deleted its branch. Opened PR #209 from `issue/178-phase-10-gate-slice1`. Used `.react-flow__node[data-id=…]` for the impact-class assertion because `data-testid="requirements-req-…"` is on the inner card div, while CanvasPane attaches `mbse-impact-node` to the RF wrapper one level up.
 - 2026-05-13 (iter-132): CI run `25776356198` failed with the known **#161** flake (`phase-6-gate.spec.ts:219` waiting on `inspector-transition` testid; 465 passed, 1 failed). The failing spec touches Phase-6 State Machine surfaces, NOT anything PR #209 changes — pure flake. Dispatched `gh run rerun 25776356198 --failed`; this is attempt 2 of the 3-strike escalation budget. Auto-merge `--squash` remains enabled on PR #209 — a green rerun will auto-merge with no further action needed.
 - 2026-05-13 (iter-133): Polled PR #209 — rerun job `75711037320` still `IN_PROGRESS` (started 03:39:44Z, ~5 min in). No-op iteration; rerun has not yet concluded. Will resume on next loop tick.
+- 2026-05-13 (iter-134): Re-polled PR #209 / run `25776356198` — still `in_progress` (~10 min elapsed; Playwright suites typically take 7–9 min). No CI movement, no action taken. Waiting on rerun conclusion.
 
 ## Next action
 Wait for rerun of CI run `25776356198` on PR #209. On green merge: file slice-2 issue for the `@visual phase-10-final.png` baseline (to be generated in the Linux Playwright container per `docs/CONTEXT.md`); once slice 2 lands, close the phase-10 epic (#11) via `Closes #178`, open a `type:release` issue, tag `vphase-10`, and exercise the deployed release with the smoke walkthrough. Append a phase-completion entry to `JOURNAL.md` only after the tag is pushed. On rerun red with the same #161 flake → attempt 3 (last rerun). On any other red → diagnose on the slice-1 branch.
