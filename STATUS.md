@@ -7,14 +7,16 @@ phase:11 — LLM integration (epic #12). Slices A/B/C/D merged. Slice E
 playwright-report run 25793854867.
 
 ## Current iteration
-- Iteration #: 440
+- Iteration #: 441
 - Started: 2026-05-14
 - Branch: issue/221-mutating-tools-diff-preview
-- Working on: #221 slice E — idle-wait on PR #228 CI run 25820383152
-  (head a2e063c, the iter-439 STATUS doc commit; supersedes 25820331886).
+- Working on: #221 slice E — idle-wait on PR #228 CI run 25820423170
+  queued on head 8dc8b24 (the iter-440 STATUS doc commit; supersedes
+  25820383152).
 
 ## Last test run
-- CI run 25820383152 on a2e063c IN_PROGRESS (iter-440).
+- CI run 25820423170 on 8dc8b24 QUEUED (iter-441).
+- CI run 25820383152 on a2e063c superseded by the iter-440 status push.
 - CI run 25820331886 on b82bd199 superseded by the iter-439 status push.
 - Prior runs: 25820296495 on 539ea84 still in_progress; 25820258140
   on fade5d2 cancelled by newer push.
