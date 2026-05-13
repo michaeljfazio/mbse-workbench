@@ -2,6 +2,8 @@ import type { LLMProvider } from './provider';
 import type { ToolRegistry } from './registry';
 import type { LLMMessage } from './types';
 
+export { createDispatcher } from './create-dispatcher';
+
 export const DISPATCHER_ROUND_TRIP_CAP = 8;
 
 export interface DispatcherDependencies {
