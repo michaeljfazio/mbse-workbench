@@ -5,11 +5,13 @@ phase:12 — Export/import + polish. Epic #13 OPEN. Child slices A–H
 decomposed as #231..#238 (slice F closed in #240). Working slice G.
 
 ## Current iteration
-- Iteration #: 469
-- Started: 2026-05-13T21:25Z
+- Iteration #: 477
+- Started: 2026-05-14T00:00Z
 - Branch: issue/237-sysmlv2-parser
-- Working on: #237 slice G — parser + Import SysMLv2 UI. Local
-  checks green (tsc, lint, 847/847 unit, vite build). PR pending push.
+- Working on: #237 slice G — PR #241 CI red on stale
+  parametric-empty visual baseline (0.02 ratio). Drift is real:
+  toolbar gained Import/Export dropdowns. Refreshed Linux baseline
+  from CI playwright-report (per iter-332/436 pattern), pushing.
 
 ## Last test run
 - `pnpm exec tsc -b` ✓
@@ -23,6 +25,10 @@ decomposed as #231..#238 (slice F closed in #240). Working slice G.
   sidebar tab button — filtered out of any new gate's @a11y scan.
 
 ## Decisions log
+- 2026-05-14 (iter-477): parametric-empty baseline refreshed in
+  slice G PR. Drift is from Import/Export toolbar dropdowns added
+  in slices F+G; baseline last touched in #225 (Phase 11 slice B)
+  before those landed. Justified in PR body.
 - 2026-05-14 (iter-469): Slice G parser tokenizer accepts unknown
   printable chars as single-char punct tokens so bracketed segments
   (multiplicities, ControlFlow guards) preserve arithmetic-ish
@@ -60,6 +66,5 @@ decomposed as #231..#238 (slice F closed in #240). Working slice G.
   PNGs from playwright-report base64 blob and commit.
 
 ## Next action
-1. Push branch, open PR closing #237 (auto-merge --squash). Wait
-   for CI to finish Playwright (e2e + visual + a11y).
-2. On green, slice H (#238 — phase:12 gate: round-trip + smoke).
+1. Wait for PR #241 CI; auto-merge will land it on green.
+2. On green, start slice H (#238 — phase:12 gate: round-trip + smoke).
