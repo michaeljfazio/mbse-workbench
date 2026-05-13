@@ -72,6 +72,7 @@ import {
   type Viewpoint,
 } from '@/viewpoints';
 
+import { RequirementsSurface } from './RequirementsSurface';
 import { ContextMenu, deriveNavTargets, type NavTarget } from './contextMenu';
 import { EdgeKindPopover } from './EdgeKindPopover';
 import { ExportMenu } from './ExportMenu';
@@ -1512,6 +1513,10 @@ export function CanvasPane(): JSX.Element {
   const diagrams = useWorkspaceStore((s) => s.diagrams);
   const activeDiagramId = useWorkspaceStore((s) => s.activeDiagramId);
   const setActiveDiagram = useWorkspaceStore((s) => s.setActiveDiagram);
+  const activeSurfaceKind = useWorkspaceStore((s) => s.activeSurfaceKind);
+  const setActiveSurface = useWorkspaceStore((s) => s.setActiveSurface);
+
+  const requirementsActive = activeSurfaceKind === 'requirements';
 
   return (
     <section
@@ -1520,22 +1525,40 @@ export function CanvasPane(): JSX.Element {
       data-testid="canvas-pane"
       className="flex min-w-0 flex-1 flex-col bg-muted/30"
     >
-      {diagrams.length === 0 ? (
-        <div
-          data-testid="diagram-tablist-empty"
-          className="flex h-9 shrink-0 items-center border-b border-border bg-card px-3 text-xs text-muted-foreground"
+      <div
+        role="tablist"
+        aria-label="Diagram tabs"
+        data-testid="surface-tablist"
+        className="flex h-9 shrink-0 items-center gap-1 border-b border-border bg-card px-2"
+      >
+        <button
+          role="tab"
+          type="button"
+          data-testid="surface-tab-requirements"
+          aria-selected={requirementsActive}
+          aria-controls="requirements-surface-panel"
+          id="surface-tab-requirements"
+          tabIndex={requirementsActive ? 0 : -1}
+          onClick={() => setActiveSurface('requirements')}
+          className={`rounded-md px-3 py-1 text-xs font-medium transition ${
+            requirementsActive
+              ? 'bg-primary text-primary-foreground shadow-sm'
+              : 'text-muted-foreground hover:bg-accent'
+          }`}
         >
-          No diagrams
-        </div>
-      ) : (
-        <div
-          role="tablist"
-          aria-label="Diagram tabs"
-          data-testid="diagram-tablist"
-          className="flex h-9 shrink-0 items-center gap-1 border-b border-border bg-card px-2"
-        >
-          {diagrams.map((d) => {
-            const isActive = d.id === activeDiagramId;
+          Requirements
+        </button>
+        <span aria-hidden="true" className="mx-1 h-4 w-px bg-border" />
+        {diagrams.length === 0 ? (
+          <span
+            data-testid="diagram-tablist-empty"
+            className="px-1 text-xs text-muted-foreground"
+          >
+            No diagrams
+          </span>
+        ) : (
+          diagrams.map((d) => {
+            const isActive = !requirementsActive && d.id === activeDiagramId;
             return (
               <button
                 key={d.id}
@@ -1545,7 +1568,10 @@ export function CanvasPane(): JSX.Element {
                 aria-controls={`diagram-panel-${d.id}`}
                 id={`diagram-tab-${d.id}`}
                 tabIndex={isActive ? 0 : -1}
-                onClick={() => setActiveDiagram(d.id)}
+                onClick={() => {
+                  if (requirementsActive) setActiveSurface('diagram');
+                  setActiveDiagram(d.id);
+                }}
                 className={`rounded-md px-3 py-1 text-xs font-medium transition ${
                   isActive
                     ? 'bg-primary text-primary-foreground shadow-sm'
@@ -1555,12 +1581,16 @@ export function CanvasPane(): JSX.Element {
                 {d.name}
               </button>
             );
-          })}
-        </div>
+          })
+        )}
+      </div>
+      {requirementsActive ? (
+        <RequirementsSurface />
+      ) : (
+        <ReactFlowProvider>
+          <CanvasInner />
+        </ReactFlowProvider>
       )}
-      <ReactFlowProvider>
-        <CanvasInner />
-      </ReactFlowProvider>
     </section>
   );
 }

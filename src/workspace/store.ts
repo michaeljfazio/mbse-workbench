@@ -195,7 +195,10 @@ export interface WorkspaceState {
   readonly impactRootId: ElementId | null;
   readonly impactHighlightedIds: ReadonlySet<ElementId>;
   readonly impactHighlightedEdgeIds: ReadonlySet<EdgeId>;
+  readonly activeSurfaceKind: ActiveSurfaceKind;
 }
+
+export type ActiveSurfaceKind = 'diagram' | 'requirements';
 
 export interface CreateDiagramOptions {
   readonly name?: string;
@@ -355,6 +358,7 @@ export interface WorkspaceActions {
   redo(): void;
   runImpactAnalysis(rootId: ElementId): boolean;
   clearImpactHighlight(): void;
+  setActiveSurface(kind: ActiveSurfaceKind): void;
 }
 
 export type WorkspaceStore = WorkspaceState & WorkspaceActions;
@@ -381,6 +385,7 @@ const INITIAL_STATE: WorkspaceState = {
   impactRootId: null,
   impactHighlightedIds: new Set<ElementId>(),
   impactHighlightedEdgeIds: new Set<EdgeId>(),
+  activeSurfaceKind: 'diagram',
 };
 
 function newEmptyProject(): Project {
@@ -2078,6 +2083,11 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       impactHighlightedIds: new Set<ElementId>(),
       impactHighlightedEdgeIds: new Set<EdgeId>(),
     });
+  },
+
+  setActiveSurface(kind) {
+    if (get().activeSurfaceKind === kind) return;
+    set({ activeSurfaceKind: kind });
   },
 }));
 

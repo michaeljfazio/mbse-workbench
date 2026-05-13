@@ -967,6 +967,18 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
   mapped-type strips readonly. Pre-PR: prefer `pnpm run build` over
   bare `pnpm typecheck` when adding store-state patches via locals.
 
+- **2026-05-13 (iter-96)** — **`aria-controls` ⇄ panel `id` symmetry crosses
+  files.** Tab JSX (typically in a shell component like `CanvasPane.tsx`)
+  declares `aria-controls="some-panel-id"`; the matching `id` lives on the
+  panel component (here `RequirementsSurface.tsx`), often in a different
+  source file. A single-file mental review misses the dangle and only
+  axe (or a follow-up `@a11y` spec) catches it. When introducing a new
+  `role="tab"` element, also: (a) confirm the panel section has the
+  matching `id`, `role="tabpanel"`, and `aria-labelledby="<tab id>"`;
+  (b) include both files in the same PR diff so review surfaces them
+  together. Caught by a sonnet pre-merge review subagent on PR #191
+  before the slice 3 a11y scan would have flagged it.
+
 - **2026-05-13 (iter-90): Playwright `--update-snapshots` is conditional,
   not unconditional, in v1.48.** If an existing baseline already matches
   the new render within `maxDiffPixelRatio` (we use 0.01), `--update-
@@ -981,3 +993,17 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
   running `playwright test --update-snapshots`. "Snapshot doesn't
   exist, writing actual" is the line you want; an unannotated `✓
   passed` under `--update-snapshots` means the file was NOT rewritten.
+
+- **2026-05-13** — **Chrome changes drift ~all canvas baselines.** Adding
+  or removing a row in shared chrome (tablist, toolbar, header) shifts
+  the canvas region vertically and pushes every `@visual` spec that
+  captures the canvas over `maxDiffPixelRatio: 0.01` on the amd64 CI
+  runner — typically ~80 baselines (40 specs × 2 browsers), not 1.
+  Budget for a full bulk-refresh round in the same PR that lands the
+  chrome change. Recovery is scripted (iter-92 / iter-97): pull
+  `playwright-report` artifact, base64-extract `index.html`'s
+  `window.playwrightReportBase64` into `report.zip`, unzip, parse each
+  spec's JSON for `attachments[]` (path → `resources/<sha1>.png`),
+  bucket by `(spec,title,project,base)`, take `failed`-status results
+  only, copy each `actual` SHA1 over the matching baseline. Verify
+  `missing=0` (no accidental new baselines).
