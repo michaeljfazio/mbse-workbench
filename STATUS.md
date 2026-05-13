@@ -4,10 +4,10 @@
 phase:11 — LLM integration (epic #12). Slice A (#217) merged via PR #224. Slice B (#218) in flight on PR #225.
 
 ## Current iteration
-- Iteration #: 266
-- Started: 2026-05-13T14:50Z
+- Iteration #: 267
+- Started: 2026-05-13T06:49Z
 - Branch: issue/218-api-key-entry (PR #225)
-- Working on: PR #225 (closes #218) — open with auto-merge SQUASH. Visual baselines NOT pushed yet; CI expected to fail @visual on first run per `docs/CONTEXT.md` L435–488 baseline-lift workflow.
+- Working on: Awaiting PR #225 CI (run 25783204661). Check-in only — E2E not yet started (step 11/16, installing Playwright browsers at 06:49Z; job started 06:48:07Z). Visual baselines NOT pushed yet; first run expected red on @visual.
 
 ## Last test run
 - Command: pnpm run typecheck && pnpm run test:unit && pnpm run lint && pnpm run build
@@ -37,6 +37,7 @@ phase:11 — LLM integration (epic #12). Slice A (#217) merged via PR #224. Slic
 - 2026-05-13 (iter-255): **Slice A implemented.** Provider interface, AnthropicProvider, FixtureProvider on a shared translator. Fixture format aligned with raw SDK events so tests exercise the production translation path. Conversation persistence wired through repository with schema-tolerant defaults.
 - 2026-05-13 (iter-256→265): **PR #224 CI cancel-loop diagnosed** — STATUS commits on the PR branch were cancelling CI via the concurrency group. Stopped committing STATUS to PR branches mid-CI from iter-264; run 25782664520 completed and PR #224 merged at 06:42Z (commit 37896d3).
 - 2026-05-13 (iter-266): **Slice B implemented and pushed as PR #225.** Storage helper + hook + chip + modal + wiring. Followed iter-264 lesson: STATUS goes on main directly, not the PR branch. First CI run expected red on `@visual` — baselines to be lifted from the failed run.
+- 2026-05-13 (iter-267): **PR #225 CI in progress** (run 25783204661); E2E step pending as of 06:49Z. No actionable work; check-in only.
 
 ## Next action
 Wait for PR #225 CI to finish first run. If visual tests fail with missing-baseline (expected), download the report and lift chromium+webkit actuals into `tests/e2e/__screenshots__/api-key-modal.spec.ts/` and push a second commit to the PR branch. Then back to await CI green.
