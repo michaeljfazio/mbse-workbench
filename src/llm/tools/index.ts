@@ -17,6 +17,11 @@ import {
   generateRequirementsFromTextSchema,
   generateRequirementsFromTextHandler,
 } from './generate-requirements-from-text';
+import {
+  proposeDecompositionDefinition,
+  proposeDecompositionSchema,
+  proposeDecompositionHandler,
+} from './propose-decomposition';
 
 /**
  * Build the default ToolRegistry for the chat dispatcher.
@@ -84,6 +89,20 @@ export function buildToolRegistry(getReader: () => ProjectReader): ToolRegistry 
         handler: async (input: unknown, ctx: ToolContext): Promise<ToolOutput> =>
           generateRequirementsFromTextHandler(
             generateRequirementsFromTextSchema.parse(input),
+            ctx,
+            getReader(),
+          ),
+      },
+    ],
+    [
+      'propose_decomposition',
+      {
+        definition: proposeDecompositionDefinition,
+        inputSchema: proposeDecompositionSchema,
+        mutating: true,
+        handler: async (input: unknown, ctx: ToolContext): Promise<ToolOutput> =>
+          proposeDecompositionHandler(
+            proposeDecompositionSchema.parse(input),
             ctx,
             getReader(),
           ),
