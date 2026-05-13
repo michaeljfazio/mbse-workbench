@@ -4,8 +4,8 @@
 phase:10 — Requirements traceability. Slice 1 merged (PR #209 → `02a536f`). Slice 2 (#212) in flight as **PR #214** with auto-merge `--squash` enabled. On green: close epic #11, open `type:release`, tag `vphase-10`, exercise deployed Pages URL, append phase-completion entry to `JOURNAL.md`.
 
 ## Current iteration
-- Iteration #: 169
-- Started: 2026-05-13T04:33Z
+- Iteration #: 170
+- Started: 2026-05-13T04:34Z
 - Branch: `issue/212-visual-phase-10-final` (PR #214 open; auto-merge armed)
 - Working on: #212 — `@visual phase-10-final.png` baseline (slice 2 of #178)
 
@@ -36,6 +36,7 @@ phase:10 — Requirements traceability. Slice 1 merged (PR #209 → `02a536f`). 
 - 2026-05-13 (iter-167): PR #214 CI run `25778015755` still on "Install Playwright browsers" (~16 min in). Steps 1–10 still green. No-op tick.
 - 2026-05-13 (iter-168): PR #214 CI run `25778015755` still on "Install Playwright browsers" (~12 min in per actual wall clock — earlier counters were drifting). Steps 1–10 still green; E2E not started. No-op tick.
 - 2026-05-13 (iter-169): PR #214 "Install Playwright browsers" completed at 04:32:46Z (12m19s — full install, cache miss). "E2E tests" step now in-progress. Steps 1–11 all green. No-op tick.
+- 2026-05-13 (iter-170): PR #214 CI run `25778015755` "E2E tests" in-progress (~1.5 min in). Steps 1–11 all green. No-op tick.
 
 ## Next action
 Wait for PR #214 CI. On green merge: close epic #11, open a `type:release` issue, tag `vphase-10` from the new `main` HEAD, run the release workflow, then exercise the deployed Pages URL in Playwright, save the smoke screenshots under `artifacts/release-vphase-10/`, append phase-completion entry to `JOURNAL.md`, and move to phase 11 decomposition. If CI fails the visual diff on the arm64-generated baselines, pull the failed run's report and lift `*-actual.png` per CONTEXT.md.
