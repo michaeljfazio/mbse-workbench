@@ -2,71 +2,54 @@
 
 ## Current phase
 phase:11 — LLM integration (epic #12). Slices A/B/C/D merged. Slice E
-(#221) PR #228 in flight on branch `issue/221-mutating-tools-diff-preview`.
-Mid-PR: auto-merge armed (SQUASH); iter 404 push fixed two real CI type
-errors. Remaining after E: slice F gate (#222).
+(#221) PR #228 — auto-merge armed. Iter-436 commits Linux baselines for
+`proposal-card-pending.png` (chromium + webkit) extracted from
+playwright-report run 25793854867.
 
 ## Current iteration
-- Iteration #: 411
-- Started: 2026-05-13T10:36Z
+- Iteration #: 436
+- Started: 2026-05-14
 - Branch: issue/221-mutating-tools-diff-preview
-- Working on: #221 slice E — idle-wait on CI run 25793764814
-  (started 10:35:59Z, in_progress). Auto-merge armed (SQUASH).
-  PR mergeable, BLOCKED on check. No action this iteration.
+- Working on: #221 slice E — install missing visual baselines.
 
 ## Last test run
-- `pnpm exec tsc -b` (full project-refs build, same as CI's `pnpm
-  build`) → clean.
-- `pnpm exec vitest run tests/unit/llm/tools/{create-element,
-  suggest-missing-elements, generate-requirements-from-text}.test.ts`
-  → 34/34 pass.
+- CI run 25793854867 on ea02f73 FAILED with exactly the predicted
+  cause: `A snapshot doesn't exist at …/proposal-card-pending-{chromium,webkit}.png,
+  writing actual.` Phase-6 flake was marked flaky and passed on retry
+  (517 passed, 2 failed = visual baseline misses).
+- Extracted both Linux actuals from the playwright-report artifact:
+  - chromium: data/a26ab09c8…png (335×128)
+  - webkit:   data/d593350a4…png (335×128)
+- Committed under
+  `tests/e2e/__screenshots__/chat-proposal-accept.spec.ts/`.
 
-## What changed this iteration (commits 88a4965 + e1a9e4d)
-- Investigated CI run 25793102745 on commit 4cc78f9 (slice E initial
-  push). It failed `pnpm build` with 10 TS errors that local
-  `tsc --noEmit` had NOT caught.
-- Root cause #1: `LLMToolDefinition.input_schema` interface did not
-  declare `additionalProperties?: boolean`, but every mutating tool
-  sets `additionalProperties: false` at the top level of the schema.
-  Fix: widened the interface in `src/llm/types.ts`.
-- Root cause #2: `UpdateElementCommand` defaults `K = ElementKind`
-  (full union). `Partial<Omit<ElementOfKind<ElementKind>, …>>`
-  distributes to common-keys only, so `memberIds` (Package-only)
-  isn't assignable. Fix: typed the Package member-list updates as
-  `UpdateElementCommand<'Package'>` in `create-element.ts`,
-  `generate-requirements-from-text.ts`, and
-  `suggest-missing-elements.ts`. Two tests assert the patch via a
-  `Partial<PackageElement>` cast.
-- Recorded the `tsc -b` vs `tsc --noEmit` divergence in
-  `docs/CONTEXT.md` so future iterations stop trusting `--noEmit`
-  alone.
-
-## What changed prior iterations (commit 7dba072)
-- iter-400: chat-proposal-accept e2e (Accept/Reject/@a11y/@visual)
-  for #221 slice E. Fixture `create-element-accept-round-trip.json`.
+## How the baselines were obtained
+- `gh run download 25793854867 -n playwright-report` →
+  `index.html` contains a `window.playwrightReportBase64` data URI
+  zip; decoded with python, the JSON manifest
+  (`643257f5d295b65cfaec.json`) maps each test's `attachments[].path`
+  to a `data/<sha>.png`. The "expected" attachment (Playwright writes
+  the actual to that slot on first run) is the file to commit.
+- Recorded the recipe in `docs/CONTEXT.md` (iter-332 entry already
+  covers the general approach; today's extraction matches).
 
 ## Known issues / blockers
-- #161 — p2 inspector-transition flake. Deferred.
+- #161 — p2 inspector-transition flake. Phase-6 retry passed on this
+  run; deferred.
 - Pre-existing `text-muted-foreground` contrast violation on inactive
   sidebar tab button — deferred from slice C.
-- Slice E remaining work: wait for new CI run on commit e1a9e4d
-  (auto-merge will fire on green). Then extract Linux
-  `proposal-card-pending.png` baseline from CI playwright-report and
-  decide whether a follow-up commit is needed. Branch is 14 commits
-  ahead of main.
 
 ## Decisions log
+- 2026-05-14 (iter-436): Commit Linux PNGs only. macOS contributors
+  generate their own host baselines locally via Playwright
+  `--update-snapshots`; CI only runs Linux so committing Linux PNGs
+  is sufficient for the gate.
 - 2026-05-13 (iter-404): Fix `memberIds` typing by binding the command
   to `UpdateElementCommand<'Package'>` rather than casting the patch.
-  Reason: keeps the type narrative at the command boundary (where the
-  Package-ness is known) rather than at every push site. Reusable for
-  any future kind-specific patches.
+  Reason: keeps the type narrative at the command boundary.
 - 2026-05-13 (iter-404): Widened `input_schema` to allow
   `additionalProperties?: boolean` rather than removing the flag from
-  call sites. Reason: `additionalProperties: false` is the strict-
-  schema discipline the LLM dispatcher relies on for argument
-  validation; deleting it would silently weaken every mutating tool's
-  contract.
+  call sites.
 - 2026-05-13 (iter-400): Accept-path e2e asserts the new "Pump" leaf
   appears in `project-tree` (not the BDD canvas).
 - 2026-05-13 (iter-400): Reject-path e2e asserts dispatcher resumes
@@ -103,10 +86,5 @@ errors. Remaining after E: slice F gate (#222).
   PNGs from playwright-report base64 blob and commit.
 
 ## Next action
-1. Wait for CI run on commit e1a9e4d. If green and auto-merge fires,
-   inspect the run for the `@visual` first-run baseline behaviour and
-   decide whether a follow-up commit is needed to ship the Linux PNG.
-2. If CI red on the visual spec only (no baseline yet), extract the
-   chromium + webkit `proposal-card-pending.png` from the
-   playwright-report base64 blob and commit them.
-3. After #228 merges, move to slice F (#222) — phase 11 gate.
+1. Push the baseline commit; wait for CI; auto-merge should fire on green.
+2. After #228 merges, move to slice F (#222) — phase 11 gate.
