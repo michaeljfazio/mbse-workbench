@@ -85,7 +85,7 @@ async function openCoverageTab(page: Page): Promise<void> {
   await page.goto('/');
   await page.getByTestId('surface-tab-requirements').click();
   await expect(page.getByTestId('requirements-surface')).toBeVisible();
-  await page.getByTestId('requirements-tab-coverage').click();
+  await page.getByTestId('requirements-tab-coverage-button').click();
   await expect(page.getByTestId('requirements-coverage-panel')).toBeVisible();
 }
 
