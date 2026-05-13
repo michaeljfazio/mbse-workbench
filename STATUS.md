@@ -5,10 +5,11 @@ phase:11 — LLM integration (epic #12). Slices A/B/C merged. Slice D (#220)
 in flight on PR #227. Remaining: slice E (#221), slice F gate (#222).
 
 ## Current iteration
-- Iteration #: 343
-- Started: 2026-05-13T08:56:00Z
-- Branch: issue/220-tool-dispatcher rev e6d8a60 (no changes this iter).
-- Working on: idle-wait — CI run 25788507469 in_progress (~9m elapsed).
+- Iteration #: 344
+- Started: 2026-05-13T08:57:00Z
+- Branch: issue/220-tool-dispatcher — updated from main (was BEHIND).
+- Working on: PR #227 CI green on e6d8a60 but BEHIND main. Ran
+  `gh pr update-branch 227` to fast-forward; new CI run triggered.
 
 ## Last test run
 - Local `pnpm run build` green after fix. `pnpm exec vitest run tests/unit/llm`
@@ -86,6 +87,12 @@ in flight on PR #227. Remaining: slice E (#221), slice F gate (#222).
   (~8m elapsed at 08:54:55Z, mergeStateStatus=UNKNOWN). No commit.
 - 2026-05-13 (iter-343): Idle-wait — CI run 25788507469 in_progress
   (~9m elapsed at 08:56:00Z, mergeStateStatus=UNKNOWN). No commit.
+- 2026-05-13 (iter-344): CI run 25788507469 **SUCCESS** at 08:56:34Z but
+  PR mergeStateStatus=BEHIND (main advanced while we waited). Ran
+  `gh pr update-branch 227` which fast-forwarded the branch and queued
+  a new CI run. Auto-merge remains armed (squash). Lesson: when a long
+  idle-wait completes green but doesn't merge, check mergeStateStatus
+  for BEHIND and update the branch.
 - 2026-05-13 (iter-332): CI run 25788009193 **FAILED** at 08:44:55Z — the
   2 chat-tool-cards `@visual` tests had no baselines on Linux. Extracted
   the Linux-rendered actual PNGs from the embedded playwright-report
@@ -96,5 +103,5 @@ in flight on PR #227. Remaining: slice E (#221), slice F gate (#222).
   running playwright in a Linux container locally before the PR opens.
 
 ## Next action
-Wait for CI on PR #227 rev e6d8a60 to complete. If green, auto-merge fires
-and slice E (#221, mutating tools + diff-preview) is next.
+Wait for re-run CI on PR #227 (post-update-branch) to complete. Auto-merge
+will fire on green; then slice E (#221, mutating tools + diff-preview).
