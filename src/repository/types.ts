@@ -1,4 +1,5 @@
 import type { CommandHistory } from '@/commands';
+import type { Conversation } from '@/llm/types';
 import type { ModelEdge, ModelElement, ProjectId } from '@/model';
 import type { Diagram } from '@/workspace/diagram';
 
@@ -13,11 +14,12 @@ export interface Project {
   // Persisted command-bus undo/redo stacks. Empty by default; allows the
   // workspace bootstrap to rehydrate operation history after a page reload.
   history: CommandHistory;
+  conversations: readonly Conversation[];
 }
 
 export type ProjectMetadata = Omit<
   Project,
-  'elements' | 'edges' | 'diagrams' | 'history'
+  'elements' | 'edges' | 'diagrams' | 'history' | 'conversations'
 >;
 
 export const EMPTY_COMMAND_HISTORY: CommandHistory = { undo: [], redo: [] };

@@ -1,0 +1,18 @@
+{
+  "name": "no-tool-greeting",
+  "request": {
+    "model": "claude-sonnet-4-6",
+    "system": "You are the MBSE Workbench assistant.",
+    "messages": [{ "role": "user", "content": "Say hi." }],
+    "tools": []
+  },
+  "responses": [
+    { "type": "message_start", "message": { "id": "msg_fixture_1" } },
+    { "type": "content_block_start", "index": 0, "content_block": { "type": "text", "text": "" } },
+    { "type": "content_block_delta", "index": 0, "delta": { "type": "text_delta", "text": "Hi" } },
+    { "type": "content_block_delta", "index": 0, "delta": { "type": "text_delta", "text": " there." } },
+    { "type": "content_block_stop", "index": 0 },
+    { "type": "message_delta", "delta": { "stop_reason": "end_turn" } },
+    { "type": "message_stop" }
+  ]
+}

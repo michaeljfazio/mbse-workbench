@@ -406,6 +406,7 @@ function newEmptyProject(): Project {
     edges: [],
     diagrams: [],
     history: EMPTY_COMMAND_HISTORY,
+    conversations: [],
   };
 }
 

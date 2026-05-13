@@ -60,7 +60,8 @@ export function createInMemorySessionRepository(
         Array.isArray(parsed.history.redo)
           ? parsed.history
           : EMPTY_COMMAND_HISTORY;
-      return { ...(parsed as Project), diagrams, history };
+      const conversations = Array.isArray(parsed.conversations) ? parsed.conversations : [];
+      return { ...(parsed as Project), diagrams, history, conversations };
     } catch {
       return undefined;
     }

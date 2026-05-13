@@ -186,6 +186,7 @@ function projectWithEverything(id: string): Project {
     edges: EDGE_KINDS.map((kind, i) => edgeOf(kind, `g-${i}`)),
     diagrams: [],
     history: EMPTY_COMMAND_HISTORY,
+    conversations: [],
   };
 }
 
@@ -233,6 +234,7 @@ describe('InMemorySessionRepository', () => {
       edges: [],
       diagrams: [],
       history: EMPTY_COMMAND_HISTORY,
+      conversations: [],
     });
 
     const metadata = await repo.list();
@@ -298,6 +300,7 @@ describe('InMemorySessionRepository', () => {
       edges: [],
       diagrams: [],
       history: EMPTY_COMMAND_HISTORY,
+      conversations: [],
     };
     await repo.save(updated);
 
@@ -364,6 +367,7 @@ describe('InMemorySessionRepository', () => {
         },
       ],
       history: EMPTY_COMMAND_HISTORY,
+      conversations: [],
     };
     await repo.save(project);
     const loaded = await repo.load(project.id);
@@ -422,6 +426,7 @@ describe('InMemorySessionRepository', () => {
         },
       ],
       history: EMPTY_COMMAND_HISTORY,
+      conversations: [],
     };
     await repo.save(project);
     const loaded = await repo.load(project.id);
