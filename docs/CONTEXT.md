@@ -1030,3 +1030,21 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
   pushed to the open feature branch. When mid-PR, hold STATUS edits
   local-only (don't even commit them) and push them to main after the
   feature PR squashes, in a tiny docs-only follow-up PR.
+
+- **2026-05-13 (iter-235): `@anthropic-ai/sdk@~0.32.1` tool-use & streaming
+  shape (verified via context7).** Tool def keys are snake_case
+  (`name`, `description`, `input_schema` with `type: "object"`). Streaming
+  via `client.messages.stream({ model, max_tokens, messages, tools })`:
+  iterate with `for await (const event of stream)` — `content_block_start`
+  carries `{ type: "tool_use", id, name }`; `content_block_delta` with
+  `delta.type === "input_json_delta"` carries `partial_json` chunks to
+  accumulate; `JSON.parse` at `content_block_stop`. Send `tool_result`
+  blocks as a `user`-role follow-up message:
+  `{ type: "tool_result", tool_use_id, content, is_error? }`. Loop until
+  `finalMessage().stop_reason === "end_turn"`; `"tool_use"` means another
+  round-trip. **There is no `.on("tool_use", ...)` event** — training-data
+  examples sometimes show it; ignore them. Browser-side construction
+  requires `dangerouslyAllowBrowser: true` (the key lands in the bundle —
+  that's why phase-11 stores it in sessionStorage only and never logs).
+  Fixture replay should emit raw streaming events matching this schema —
+  the `tests/fixtures/llm/README.md` format already aligns.
