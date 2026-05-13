@@ -4,12 +4,16 @@ export interface ExportMenuProps {
   readonly disabled: boolean;
   readonly onExportPng: () => void;
   readonly onExportSvg: () => void;
+  readonly onExportSysml: () => void;
+  readonly sysmlDisabled?: boolean;
 }
 
 export function ExportMenu({
   disabled,
   onExportPng,
   onExportSvg,
+  onExportSysml,
+  sysmlDisabled = false,
 }: ExportMenuProps): JSX.Element {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -82,6 +86,19 @@ export function ExportMenu({
             className="block w-full px-3 py-2 text-left text-foreground transition hover:bg-accent"
           >
             Export SVG
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            data-testid="toolbar-export-sysml"
+            disabled={sysmlDisabled}
+            onClick={() => {
+              close();
+              onExportSysml();
+            }}
+            className="block w-full px-3 py-2 text-left text-foreground transition hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Export SysMLv2
           </button>
         </div>
       ) : null}

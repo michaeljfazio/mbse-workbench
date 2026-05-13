@@ -6,4 +6,8 @@ export {
   type BuildDiagramSvgInput,
 } from './svg';
 export { buildDiagramPng, PngExportError, type BuildDiagramPngOptions } from './png';
-export { downloadDiagramSvg, downloadDiagramPng } from './download';
+export {
+  downloadDiagramSvg,
+  downloadDiagramPng,
+  downloadProjectSysml,
+} from './download';
