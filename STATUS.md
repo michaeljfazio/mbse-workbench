@@ -4,13 +4,13 @@
 phase:10 — Requirements traceability. Slice 1 merged (PR #209 → `02a536f`). Slice 2 (#212) in flight as **PR #214** with auto-merge `--squash` armed; baselines replaced with CI actuals at `e4d345e`. On green: close epic #11, open `type:release`, tag `vphase-10`, exercise deployed Pages URL, append phase-completion entry to `JOURNAL.md`.
 
 ## Current iteration
-- Iteration #: 181
-- Started: 2026-05-13T04:44Z
+- Iteration #: 182
+- Started: 2026-05-13T04:45Z
 - Branch: `issue/212-visual-phase-10-final` (PR #214 open; auto-merge armed; pushed fix commit `e4d345e`)
 - Working on: #212 — `@visual phase-10-final.png` baseline (slice 2 of #178)
 
 ## Last test run
-- Command: CI run `25778712436` on PR #214 head `e4d345e` — IN_PROGRESS (~3 min in as of 04:44Z; started 04:40:55Z). Single `check` job still running.
+- Command: CI run `25778712436` on PR #214 head `e4d345e` — IN_PROGRESS (~4 min in as of 04:45Z; started 04:41:04Z). Single `check` job still running.
 - Result: pending
 
 ## Known issues / blockers
@@ -27,6 +27,7 @@ phase:10 — Requirements traceability. Slice 1 merged (PR #209 → `02a536f`). 
 - 2026-05-13 (iter-179): Re-checked CI run `25778712436` — ~1 min in, Playwright install step running, E2E pending. No-op tick; corrected the iter-178 clock note.
 - 2026-05-13 (iter-180): CI run `25778712436` still IN_PROGRESS at ~2 min in (started 04:40:55Z, now 04:43Z). No-op tick.
 - 2026-05-13 (iter-181): CI run `25778712436` still IN_PROGRESS at ~3 min in (now 04:44Z). No-op tick.
+- 2026-05-13 (iter-182): CI run `25778712436` still IN_PROGRESS at ~4 min in (now 04:45Z). No-op tick.
 
 ## Next action
 Wait for the new PR #214 CI run on `e4d345e` to start, then go green. On merge: close epic #11, open a `type:release` issue, tag `vphase-10` from new `main` HEAD, run the release workflow, exercise the deployed Pages URL in Playwright, save smoke screenshots under `artifacts/release-vphase-10/`, append a phase-completion entry to `JOURNAL.md`, and move to phase 11 decomposition. If this second CI also fails the visual gate, that is attempt 2/3 on issue #212 — diagnose further (e.g. text-rendering subpixel anti-alias still drifting) before pushing a third fix.
