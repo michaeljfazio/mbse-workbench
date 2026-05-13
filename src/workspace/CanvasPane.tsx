@@ -86,6 +86,7 @@ import {
   downloadDiagramPng,
   downloadDiagramSvg,
   downloadProjectSysml,
+  downloadProjectJson,
 } from './export';
 import {
   getActiveDiagram,
@@ -1002,6 +1003,32 @@ function CanvasInner(): JSX.Element {
     }, 0);
   }, []);
 
+  const handleExportJson = useCallback(() => {
+    const project = useWorkspaceStore.getState().project;
+    if (!project) return;
+    downloadProjectJson({ project });
+  }, []);
+
+  const handleImportJson = useCallback(() => {
+    if (typeof document === 'undefined') return;
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json,application/json';
+    input.style.display = 'none';
+    input.addEventListener('change', () => {
+      const file = input.files?.[0];
+      if (!file) return;
+      void file.text().then((text) => {
+        void useWorkspaceStore.getState().importProjectJson(text);
+      });
+    });
+    document.body.appendChild(input);
+    input.click();
+    setTimeout(() => {
+      input.remove();
+    }, 0);
+  }, []);
+
   const handleExportSvg = useCallback(() => {
     if (!viewpoint || !diagram) return;
     const { width, height } = exportNodeSizeFor(viewpoint);
@@ -1450,12 +1477,16 @@ function CanvasInner(): JSX.Element {
           Delete
         </button>
         <div className="ml-auto flex items-center gap-2">
-          <ImportMenu onImportSysml={handleImportSysml} />
+          <ImportMenu
+            onImportSysml={handleImportSysml}
+            onImportJson={handleImportJson}
+          />
           <ExportMenu
             disabled={elementCount === 0}
             onExportPng={handleExportPng}
             onExportSvg={handleExportSvg}
             onExportSysml={handleExportSysml}
+            onExportJson={handleExportJson}
           />
         </div>
       </div>

@@ -92,6 +92,7 @@ import {
 } from './diagram';
 import { computeImpactSet } from './impact/impact-set';
 import { parseSysmlText, type ParseError } from '@/parser';
+import { parseProjectJson } from './jsonProject';
 import type { ProposalResolution } from '@/llm';
 import type { Conversation, LLMMessage, ProposedChange } from '@/llm/types';
 import {
@@ -394,6 +395,10 @@ export interface WorkspaceActions {
   importSysmlText(text: string): Promise<
     | { readonly ok: true }
     | { readonly ok: false; readonly errors: readonly ParseError[] }
+  >;
+  importProjectJson(text: string): Promise<
+    | { readonly ok: true }
+    | { readonly ok: false; readonly message: string }
   >;
   clearImportError(): void;
 }
@@ -2310,6 +2315,77 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       diagrams: [newDefaultDiagram()],
       history: EMPTY_COMMAND_HISTORY,
       conversations: [],
+    };
+    await repository.save(project);
+    const registry = createElementRegistry();
+    for (const el of project.elements) registry.add(el);
+    for (const edge of project.edges) registry.addEdge(edge);
+    const positionStore: DiagramPositionStore = {
+      getPosition(diagramId, elementId) {
+        const diagram = get().diagrams.find((d) => d.id === diagramId);
+        return diagram?.positions[elementId];
+      },
+      setPosition(diagramId, elementId, position) {
+        const nextDiagrams = get().diagrams.map((d) => {
+          if (d.id !== diagramId) return d;
+          const nextPositions: Record<ElementId, NodePosition> = { ...d.positions };
+          if (position === undefined) delete nextPositions[elementId];
+          else nextPositions[elementId] = position;
+          return { ...d, positions: nextPositions };
+        });
+        set({ diagrams: nextDiagrams });
+      },
+    };
+    const bus = createCommandBus({ registry, provider, positions: positionStore });
+    bus.subscribe(() => {
+      const r = get().registry;
+      if (!r) return;
+      set({
+        elements: r.elements(),
+        edges: r.edges(),
+        modelVersion: get().bus?.version() ?? 0,
+      });
+      void get().saveProject();
+    });
+    set({
+      project,
+      registry,
+      bus,
+      diagrams: project.diagrams,
+      activeDiagramId: project.diagrams[0]!.id,
+      elements: registry.elements(),
+      edges: registry.edges(),
+      selectedElementIds: [],
+      impactRootId: null,
+      impactHighlightedIds: new Set<ElementId>(),
+      impactHighlightedEdgeIds: new Set<EdgeId>(),
+      activeConversationId: null,
+      pendingProposals: [],
+      importError: null,
+      modelVersion: bus.version(),
+    });
+    return { ok: true };
+  },
+
+  async importProjectJson(text) {
+    const parsed = parseProjectJson(text);
+    if (!parsed.ok) {
+      const err: ParseError = { line: 1, col: 1, message: parsed.message };
+      set({ importError: err });
+      return { ok: false, message: parsed.message };
+    }
+    const repository = get().repository;
+    const provider = get().provider;
+    if (!repository || !provider) {
+      const message = 'workspace not initialized';
+      set({ importError: { line: 1, col: 1, message } });
+      return { ok: false, message };
+    }
+    const now = new Date().toISOString();
+    const project: Project = {
+      ...parsed.project,
+      modifiedAt: now,
+      history: EMPTY_COMMAND_HISTORY,
     };
     await repository.save(project);
     const registry = createElementRegistry();

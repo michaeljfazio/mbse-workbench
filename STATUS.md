@@ -1,45 +1,54 @@
 # STATUS
 
 ## Current phase
-phase:12 — Export/import + polish. Epic #13 OPEN. Child slices A–H
-decomposed as #231..#238. Slices F (#240) + G (#241) merged. Working
-slice H (#238) — the final Phase 12 gate.
+phase:12 — Export/import + polish. Epic #13 OPEN. Slices F/G/H merged.
+Open child slices: A (#231), B (#232), C (#233), D (#234), E (#235).
 
 ## Current iteration
-- Iteration #: 485
-- Started: 2026-05-14T06:00Z
-- Branch: issue/238-phase-12-gate
-- Working on: #238 slice H — Phase 12 gate: round-trip +
-  full-viewpoint smoke. Local checks green; PR being opened.
+- Iteration #: 501
+- Started: 2026-05-13T22:30:00Z
+- Branch: issue/231-json-import-export-ui
+- Working on: #231 slice A — JSON import/export in workspace UI.
+  Implementation, unit + e2e tests done locally. PR pending push.
 
 ## Last health check (iter-480)
 - Pages https://michaeljfazio.github.io/mbse-workbench/ → 200 ✓
-- Last 5 merged PRs (#241, #240, #239, #229, #228) all merged ✓
+- Last 5 merged PRs (#242, #241, #240, #239, #229) all merged ✓
 - 0 open `status:needs-human` issues ✓
 - Last 3 CI runs on `main` all `success` ✓
 
 ## Last test run
 - `pnpm exec tsc -b` ✓
 - `pnpm lint` ✓ (4 pre-existing react-refresh warnings)
-- `pnpm run test:unit` ✓ 847/847
-- `pnpm exec playwright test phase-12-gate --project=chromium` ✓ 2/2
-- `pnpm exec playwright test phase-12-gate --project=webkit` ✓ 2/2
+- `pnpm run test:unit` ✓ 854/854 (incl. new 7 jsonProject tests)
+- `pnpm exec playwright test json-import-export --project=chromium` ✓ 3/3
+- `pnpm exec playwright test json-import-export --project=webkit` ✓ 3/3
 
 ## Known issues / blockers
 - #161 — p2 inspector-transition flake. Deferred.
 - Pre-existing `text-muted-foreground` contrast violation on inactive
   sidebar tab button — filtered out of any new gate's @a11y scan.
-- New (from slice H): active diagram-tab `text-primary-foreground`
-  resolves to muted-foreground under axe-core; appears to be CSS-var
-  cascade resolution. Filtered in phase-12-gate @a11y scan; needs a
-  follow-up issue for the underlying CSS fix.
+- Active diagram-tab `text-primary-foreground` contrast issue under
+  axe-core (slice H finding) — needs follow-up issue.
 
 ## Decisions log
+- 2026-05-14 (iter-501): Slice A JSON import/export shape — reuses
+  the repository's existing JSON.stringify(Project) format. Pretty-
+  printed (2-space) for diff-readability. Importer validates a
+  minimal Project shape (id/name/timestamps/elements/edges/diagrams
+  required; history+conversations default-filled), then mirrors the
+  importSysmlText state-rebuild path (registry, bus, positionStore,
+  subscribe). Acceptance "history reset on import" implemented by
+  overwriting `history: EMPTY_COMMAND_HISTORY` on every import.
+- 2026-05-13 (iter-492): UTC clock-check. `date -u` shows
+  2026-05-13T22:16:29Z; run 25829567832 startedAt 22:15:34Z, so
+  the "hung Unit tests" reports across iters 487–491 were a
+  date confusion (local 2026-05-14 vs UTC 2026-05-13), not real
+  hangs. Run is normal; do not cancel. Rule for future iters:
+  always compare CI startedAt against `date -u`, not local date.
 - 2026-05-14 (iter-485): Phase 12 gate seeds short diagram names
   ('BDD', 'IBD', ..., 'Pkg') so all 8 diagram tabs fit on a single
-  row at the 1280×800 Playwright viewport. With 'Main XYZ' names the
-  rightmost tabs word-wrap behind the inspector sidebar tab and
-  become unclickable.
+  row at the 1280×800 Playwright viewport.
 - 2026-05-14 (iter-485): Phase 12 gate compares elements+edges only
   after round-trip. Serializer does not carry diagrams; the importer
   constructs a single default diagram. AGENT.md criterion is
@@ -86,6 +95,6 @@ slice H (#238) — the final Phase 12 gate.
   PNGs from playwright-report base64 blob and commit.
 
 ## Next action
-1. Push PR for #238; let auto-merge land it on green CI.
-2. On green, close Phase 12 epic #13, tag vphase-12, then move to
-   Final gate: v1.0.0 + COMPLETE.
+1. Commit slice A; push branch; open PR with auto-merge SQUASH.
+2. After merge, pick the next open slice (#232 — Empty-state UX
+   & error boundaries) in the following iteration.

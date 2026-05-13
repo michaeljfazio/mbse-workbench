@@ -5,6 +5,7 @@ export interface ExportMenuProps {
   readonly onExportPng: () => void;
   readonly onExportSvg: () => void;
   readonly onExportSysml: () => void;
+  readonly onExportJson: () => void;
   readonly sysmlDisabled?: boolean;
 }
 
@@ -13,6 +14,7 @@ export function ExportMenu({
   onExportPng,
   onExportSvg,
   onExportSysml,
+  onExportJson,
   sysmlDisabled = false,
 }: ExportMenuProps): JSX.Element {
   const [open, setOpen] = useState(false);
@@ -99,6 +101,18 @@ export function ExportMenu({
             className="block w-full px-3 py-2 text-left text-foreground transition hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
           >
             Export SysMLv2
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            data-testid="toolbar-export-json"
+            onClick={() => {
+              close();
+              onExportJson();
+            }}
+            className="block w-full px-3 py-2 text-left text-foreground transition hover:bg-accent"
+          >
+            Export JSON
           </button>
         </div>
       ) : null}

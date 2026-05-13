@@ -2,9 +2,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 export interface ImportMenuProps {
   readonly onImportSysml: () => void;
+  readonly onImportJson: () => void;
 }
 
-export function ImportMenu({ onImportSysml }: ImportMenuProps): JSX.Element {
+export function ImportMenu({ onImportSysml, onImportJson }: ImportMenuProps): JSX.Element {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -63,6 +64,18 @@ export function ImportMenu({ onImportSysml }: ImportMenuProps): JSX.Element {
             className="block w-full px-3 py-2 text-left text-foreground transition hover:bg-accent"
           >
             Import SysMLv2
+          </button>
+          <button
+            type="button"
+            role="menuitem"
+            data-testid="toolbar-import-json"
+            onClick={() => {
+              close();
+              onImportJson();
+            }}
+            className="block w-full px-3 py-2 text-left text-foreground transition hover:bg-accent"
+          >
+            Import JSON
           </button>
         </div>
       ) : null}
