@@ -7,14 +7,15 @@ phase:11 — LLM integration (epic #12). Slices A/B/C/D merged. Slice E
 playwright-report run 25793854867.
 
 ## Current iteration
-- Iteration #: 437
+- Iteration #: 438
 - Started: 2026-05-14
 - Branch: issue/221-mutating-tools-diff-preview
 - Working on: #221 slice E — idle-wait on PR #228 CI run 25820258140.
 
 ## Last test run
-- CI run 25820258140 on fade5d2 IN_PROGRESS. Typecheck/install passed,
-  lint running, unit/e2e/build pending. Auto-merge armed (squash).
+- CI run 25820258140 on fade5d2 IN_PROGRESS (iter-438 recheck).
+  Typecheck/lint/unit-tests PASSED; Build in progress; Playwright
+  install + E2E still pending. Auto-merge armed (squash).
 - Prior CI run 25793854867 on ea02f73 FAILED with exactly the predicted
   cause: `A snapshot doesn't exist at …/proposal-card-pending-{chromium,webkit}.png,
   writing actual.` Phase-6 flake was marked flaky and passed on retry
