@@ -1,32 +1,49 @@
 # STATUS
 
 ## Current phase
-phase:11 — LLM integration (epic #12). Design issue #216 resolved via ADR 0010 + type-only skeletons (PR #223 landing). Slice A (#217) unblocked once #223 merges.
+phase:11 — LLM integration (epic #12). #216 merged. Slice A (#217) in flight on `issue/217-llm-scaffolding`.
 
 ## Current iteration
-- Iteration #: 248
-- Started: 2026-05-13T05:58Z
-- Branch: issue/216-llm-architecture-adr (rebased)
-- Working on: #216 — CI run 25781221709 in E2E phase (started 05:55Z); auto-merge armed; idle wait
+- Iteration #: 262
+- Started: 2026-05-13T07:15Z
+- Branch: issue/217-llm-scaffolding
+- Working on: PR #224 (closes #217) — open, auto-merge SQUASH on, CI `check` QUEUED on run 25782640942 (prior 25782605240 auto-cancelled by concurrency group)
 
 ## Last test run
-- Command: CI run 25780570646 on PR #223
-- Result: **success** — full check job green (typecheck, lint, unit, build, Playwright E2E all passed). After conclusion the PR went `mergeable: CONFLICTING` because iter-237→245 STATUS.md commits on `main` diverged from the branch. Rebased onto `origin/main` (resolved STATUS.md by taking the branch version, since this iteration rewrites it anyway), force-pushed `89a7f65`. New CI run will start; auto-merge remains enabled.
+- Command: pnpm run typecheck && pnpm run test:unit && pnpm run lint && pnpm run build
+- Result: **PASS** — 712 unit tests green (4 pre-existing react-refresh warnings only), typecheck clean, build clean. E2E deferred to CI.
+
+## What this PR lands
+- `src/llm/anthropic.ts` — `createAnthropicProvider` using `@anthropic-ai/sdk@~0.32.1` with `dangerouslyAllowBrowser: true`. Maps internal `LLMRequest` → SDK params; translates SDK stream → `LLMEvent` via shared translator.
+- `src/llm/fixture.ts` — `createFixtureProvider(fixture)` replays recorded SDK-shape events through the same translator AnthropicProvider uses, so fixtures exercise the production translation path.
+- `src/llm/stream-translate.ts` — `translateAnthropicEvent`/`translateAnthropicEvents` — single source of truth for SDK→LLMEvent mapping.
+- `src/llm/index.ts` — barrel re-exports for the slice.
+- `Project.conversations: readonly Conversation[]` added; sessionStorage repo defaults to `[]` when missing or malformed; `newEmptyProject` seeds `[]`.
+- `tests/fixtures/llm/no-tool-greeting.json` — first seeded fixture. README updated to canonical raw-SDK-event format.
+
+## Tests added
+- `src/llm/__tests__/fixture.test.ts` — fixture round-trip (text + tool-use + idempotent replay + shape guard).
+- `src/llm/__tests__/anthropic.test.ts` — type-only smoke; provider instantiates without network.
+- `src/repository/__tests__/conversations.test.ts` — multi-block conversation round-trip; legacy-missing and malformed defaults.
 
 ## Known issues / blockers
-- #161 — p2 inspector-transition flake. Deferred; pick up as background work during phase-11 implementation.
-- CI infrastructure: GitHub Actions run 25780570646 hung 8h on Playwright browser install on first attempt, cleared on rerun. If recurs, inspect the Playwright browser cache key in `.github/workflows/ci.yml`.
-- Process note: don't push STATUS.md commits to `main` while a long-running PR is open — it guarantees a STATUS.md rebase conflict on merge. Future: keep monitoring-only iterations as STATUS.md-on-branch updates, or skip the monitoring commit entirely and just schedule a wakeup.
+- #161 — p2 inspector-transition flake. Deferred.
+- CI flake (iter-237→253): cold Playwright browser cache adds 8–12min; revisit cache key when phase:11 stabilises.
 
 ## Decisions log
-- 2026-05-13 (iter-233): **Phase 10 complete.** PR #214 merged at `b46d61a`. Closed epic #11; opened release issue #215; pushed tag `vphase-10`; appended phase-completion entry to JOURNAL.md.
-- 2026-05-13 (iter-234): **Release vphase-10 verified.** Pages 200. Wrote `scripts/smoke-vphase-10.mjs` (seeded R-001 Mission + Engine block + Brake action + two satisfy edges). Captured 7 screenshots under `artifacts/release-vphase-10/`. Confirmed matrix glyphs, coverage panel, and impact-active banner render correctly on the deployed build. Commented evidence on #215 and closed it. Phase:11 decomposition starts next iteration.
-- 2026-05-13 (iter-235): **Phase 11 decomposed.** Verified `@anthropic-ai/sdk@~0.32.1` tool-use & streaming shape via context7 (recorded in `docs/CONTEXT.md`). Opened design issue #216 and six slice issues #217–#222. Updated epic #12 with the task list.
-- 2026-05-13 (iter-236): **Phase 11 design ADR.** Dispatched a Plan/Opus subagent to draft ADR 0010 resolving #216. Six sub-decisions: (1) `LLMProvider.stream(req) -> AsyncIterable<LLMEvent>` with `AnthropicProvider` + `FixtureProvider`; (2) dispatcher loop with **8 round-trip cap** per user turn, handler-throw → `tool_result is_error: true`; (3) tool registry = `Map<string, ToolEntry>` with structural `ToolInputSchema` (zod deferred until slice D); (4) `ProposedChange = { id, summary, commands: Command[] }` — mutating tool handlers never mutate state, only the accept path dispatches; (5) `Project.conversations` field with schema-tolerant default `[]`; (6) API key in `sessionStorage[mbse-workbench:anthropic-api-key]`, never logged. Skeleton type-only files committed: `src/llm/{types,provider,registry,dispatcher}.ts`. PR #223 closes #216.
-- 2026-05-13 (iter-237→245): **CI rerun on PR #223.** First run wedged on Playwright browser install for ~8h. Cancelled + rerun cleared the hang (cache-related transient). Monitored E2E to completion across multiple short-wakeup iterations.
-- 2026-05-13 (iter-246): **CI green, PR conflict resolved.** Run 25780570646 succeeded. PR went `CONFLICTING` due to STATUS.md drift on `main` during the long wait. Rebased PR branch onto `origin/main` (kept branch STATUS.md since this iteration rewrites it), force-pushed `89a7f65`. Auto-merge still enabled. New CI run will trigger; on green, #223 lands and slice A (#217) starts next.
-- 2026-05-13 (iter-247): **Waiting on rebase CI.** PR #223 now `MERGEABLE`/`BLOCKED` on required `check`. Run 25781007103 started 05:49Z, status IN_PROGRESS. Auto-merge still armed (squash). No code work this iteration — wakeup scheduled.
-- 2026-05-13 (iter-248): **CI superseded.** Runs 25780978080 and 25781007103 both cancelled (likely by subsequent STATUS.md commits triggering re-runs). Latest run 25781221709 started 05:55Z, now in E2E phase. Auto-merge still armed. Wakeup scheduled for ~6min.
+- 2026-05-13 (iter-233): **Phase 10 complete.** PR #214 merged; epic #11 closed; `vphase-10` tagged.
+- 2026-05-13 (iter-234): **Release vphase-10 verified.** Pages 200; smoke screenshots under `artifacts/release-vphase-10/`.
+- 2026-05-13 (iter-235): **Phase 11 decomposed** into design #216 + slices #217–#222.
+- 2026-05-13 (iter-236): **Phase 11 design ADR 0010.** Six sub-decisions.
+- 2026-05-13 (iter-237→254): **PR #223 (ADR) landed.** Cold Playwright cache + cancel-loop avoidance; merged on `d6a4662`.
+- 2026-05-13 (iter-255): **Slice A implemented.** Provider interface, AnthropicProvider, FixtureProvider on a shared translator. Fixture format aligned with raw SDK events so tests exercise the production translation path. Conversation persistence wired through repository with schema-tolerant defaults.
+- 2026-05-13 (iter-256): **PR #224 open** with auto-merge SQUASH; CI `check` in progress. Awaiting green.
+- 2026-05-13 (iter-257): PR #224 CI still QUEUED. Mid-PR; no new work started. Longer wakeup.
+- 2026-05-13 (iter-258): PR #224 CI IN_PROGRESS (~8min in). Mid-PR; awaiting green.
+- 2026-05-13 (iter-259): PR #224 CI IN_PROGRESS on run 25782539942 (older runs auto-cancelled by concurrency group). Mid-PR; no new work.
+- 2026-05-13 (iter-260): PR #224 CI still IN_PROGRESS on run 25782568569 (~24min in — likely cold Playwright cache). Mid-PR; no new work.
+- 2026-05-13 (iter-261): PR #224 CI IN_PROGRESS on run 25782605240 (prior cancelled by concurrency). Mid-PR; no new work.
+- 2026-05-13 (iter-262): PR #224 CI QUEUED on run 25782640942 (prior 25782605240 auto-cancelled by concurrency). Mid-PR; no new work.
 
 ## Next action
-Wait for CI on the rebased PR #223 (force-push triggers a new run). On green, auto-merge lands #216. Then start slice A (#217 — repo scaffolding: install `@anthropic-ai/sdk@~0.32.1`, add `LLMProvider` impl stubs `AnthropicProvider`/`FixtureProvider` returning `throw new Error('not implemented')`, extend `Project.conversations` with the schema-tolerant load default, no UI yet).
+Await PR #224 CI green → auto-merge closes #217. Then start slice B (dispatcher loop #218).
