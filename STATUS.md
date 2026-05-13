@@ -4,14 +4,14 @@
 phase:10 — Requirements traceability. Slice 1 merged (PR #209 → `02a536f`). Slice 2 (#212) in flight as **PR #214** with auto-merge `--squash` armed; baselines replaced with CI actuals at `e4d345e`. On green: close epic #11, open `type:release`, tag `vphase-10`, exercise deployed Pages URL, append phase-completion entry to `JOURNAL.md`.
 
 ## Current iteration
-- Iteration #: 198
-- Started: 2026-05-13T04:57Z
-- Branch: `issue/212-visual-phase-10-final` (PR #214 open; auto-merge armed; CI run `25778988999` on `3f5415a` IN_PROGRESS, ~8 min in at 04:57Z)
+- Iteration #: 199
+- Started: 2026-05-13T04:58Z
+- Branch: `issue/212-visual-phase-10-final` (PR #214 open; auto-merge armed; CI run `25778988999` failed on chromium phase-6 flake #161 — visual gate passed; queued `gh run rerun --failed`)
 - Working on: #212 — `@visual phase-10-final.png` baseline (slice 2 of #178)
 
 ## Last test run
-- Command: CI run `25778712436` on `e4d345e` — **SUCCESS** at 04:48:45Z (visual baselines lifted from CI actuals held on both Chromium and WebKit). Ran `gh pr update-branch 214` to clear `BEHIND`; PR now `BLOCKED` awaiting the required check on the merged-into-main HEAD.
-- Result: PASS (prior head); pending (post-update head)
+- Command: CI run `25778988999` on `3f5415a` — **FAILURE** at 04:57:26Z. Sole failure: `phase-6-gate.spec.ts:174` chromium retry-x3 timeout on `getByTestId('inspector-transition')` — this is the known **#161** inspector-transition flake (p2, deferred). Visual gate (`@visual` phase-10-final + all other baselines) **PASSED** on both Chromium and WebKit. 467 passed / 1 failed. Queued `gh run rerun 25778988999 --failed` at 04:58Z.
+- Result: FAIL (flake, not a real regression) → rerun queued
 
 ## Known issues / blockers
 - #212 — `status:in-progress`, p1. PR #214 awaiting fresh CI on the actual-lifted baselines. If this still fails the second push, treat as 2nd of 3 attempts before `status:needs-human` escalation.
@@ -44,6 +44,7 @@ phase:10 — Requirements traceability. Slice 1 merged (PR #209 → `02a536f`). 
 - 2026-05-13 (iter-196): CI run `25778988999` still IN_PROGRESS at ~6 min in (now 04:55Z; updatedAt 04:49:28Z, log-streaming unchanged). PR mergeStateStatus UNKNOWN. No-op tick.
 - 2026-05-13 (iter-197): CI run `25778988999` still IN_PROGRESS at ~7 min in (now 04:56Z; updatedAt 04:49:28Z). Prior baseline ~8 min wall; ~1 min remaining. No-op tick.
 - 2026-05-13 (iter-198): CI run `25778988999` still IN_PROGRESS at ~8 min in (now 04:57Z; updatedAt 04:49:28Z). At/past prior-run baseline of ~8 min wall. No-op tick.
+- 2026-05-13 (iter-199): CI run `25778988999` completed **FAILURE** at 04:57:26Z. Triaged: visual gate green on both browsers; sole failure was `phase-6-gate.spec.ts:174` chromium — the known **#161** inspector-transition flake (p2, deferred). Queued `gh run rerun 25778988999 --failed` (chromium-only rerun). PR #214 auto-merge `--squash` still armed; merge will fire when the chromium rerun goes green. This is NOT an attempt against #212's gate — the visual baseline is correct.
 
 ## Next action
-Wait for the new PR #214 CI run on `e4d345e` to start, then go green. On merge: close epic #11, open a `type:release` issue, tag `vphase-10` from new `main` HEAD, run the release workflow, exercise the deployed Pages URL in Playwright, save smoke screenshots under `artifacts/release-vphase-10/`, append a phase-completion entry to `JOURNAL.md`, and move to phase 11 decomposition. If this second CI also fails the visual gate, that is attempt 2/3 on issue #212 — diagnose further (e.g. text-rendering subpixel anti-alias still drifting) before pushing a third fix.
+Wait for the `rerun --failed` of CI run `25778988999` (chromium-only) to go green. On merge: close epic #11, open a `type:release` issue, tag `vphase-10` from new `main` HEAD, run the release workflow, exercise the deployed Pages URL in Playwright, save smoke screenshots under `artifacts/release-vphase-10/`, append a phase-completion entry to `JOURNAL.md`, and move to phase 11 decomposition. The #161 flake is now load-bearing on phase-10 completion; if it fails the rerun, escalate #161 to p1 and fix it as a blocker before further phase-10 work.
