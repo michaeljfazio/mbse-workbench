@@ -7,6 +7,11 @@ import { queryModelDefinition, queryModelSchema, queryModelHandler } from './que
 import { explainDiagramDefinition, explainDiagramSchema, explainDiagramHandler } from './explain-diagram';
 import { critiqueModelDefinition, critiqueModelSchema, critiqueModelHandler } from './critique-model';
 import { createElementDefinition, createElementSchema, createElementHandler } from './create-element';
+import {
+  linkRequirementDefinition,
+  linkRequirementSchema,
+  linkRequirementHandler,
+} from './link-requirement';
 
 /**
  * Build the default ToolRegistry for the chat dispatcher.
@@ -53,6 +58,16 @@ export function buildToolRegistry(getReader: () => ProjectReader): ToolRegistry 
         mutating: true,
         handler: async (input: unknown, ctx: ToolContext): Promise<ToolOutput> =>
           createElementHandler(createElementSchema.parse(input), ctx, getReader()),
+      },
+    ],
+    [
+      'link_requirement',
+      {
+        definition: linkRequirementDefinition,
+        inputSchema: linkRequirementSchema,
+        mutating: true,
+        handler: async (input: unknown, ctx: ToolContext): Promise<ToolOutput> =>
+          linkRequirementHandler(linkRequirementSchema.parse(input), ctx, getReader()),
       },
     ],
   ]);
