@@ -4,10 +4,10 @@
 phase:11 — LLM integration (epic #12). #216 merged. Slice A (#217) in flight on `issue/217-llm-scaffolding`.
 
 ## Current iteration
-- Iteration #: 260
-- Started: 2026-05-13T06:55Z
+- Iteration #: 261
+- Started: 2026-05-13T07:00Z
 - Branch: issue/217-llm-scaffolding
-- Working on: PR #224 (closes #217) — open, auto-merge SQUASH on, CI `check` IN_PROGRESS on run 25782568569 (started 06:31:41Z, ~24min in); prior runs auto-cancelled by concurrency group
+- Working on: PR #224 (closes #217) — open, auto-merge SQUASH on, CI `check` IN_PROGRESS on run 25782605240 (started 06:32:38Z; prior 25782568569 auto-cancelled by concurrency group)
 
 ## Last test run
 - Command: pnpm run typecheck && pnpm run test:unit && pnpm run lint && pnpm run build
@@ -42,6 +42,7 @@ phase:11 — LLM integration (epic #12). #216 merged. Slice A (#217) in flight o
 - 2026-05-13 (iter-258): PR #224 CI IN_PROGRESS (~8min in). Mid-PR; awaiting green.
 - 2026-05-13 (iter-259): PR #224 CI IN_PROGRESS on run 25782539942 (older runs auto-cancelled by concurrency group). Mid-PR; no new work.
 - 2026-05-13 (iter-260): PR #224 CI still IN_PROGRESS on run 25782568569 (~24min in — likely cold Playwright cache). Mid-PR; no new work.
+- 2026-05-13 (iter-261): PR #224 CI IN_PROGRESS on run 25782605240 (prior cancelled by concurrency). Mid-PR; no new work.
 
 ## Next action
 Await PR #224 CI green → auto-merge closes #217. Then start slice B (dispatcher loop #218).
