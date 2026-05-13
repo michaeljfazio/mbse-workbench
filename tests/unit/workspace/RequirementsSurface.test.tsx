@@ -408,3 +408,91 @@ describe('<RequirementsSurface /> — Editor | Coverage sub-tablist', () => {
     ).toBeNull();
   });
 });
+
+describe('<RequirementsSurface /> — Matrix tab', () => {
+  beforeEach(() => resetWorkspaceStoreForTests());
+  afterEach(() => resetWorkspaceStoreForTests());
+
+  it('renders the Matrix tab button with stable testid and aria-controls', async () => {
+    await bootstrap();
+    render(<RequirementsSurface />);
+    const matrixTab = screen.getByTestId('requirements-tab-matrix-button');
+    expect(matrixTab.getAttribute('aria-selected')).toBe('false');
+    expect(matrixTab.getAttribute('aria-controls')).toBe(
+      'requirements-matrix-panel',
+    );
+  });
+
+  it('clicking the Matrix tab swaps panels, updates store, and mounts the matrix panel', async () => {
+    await bootstrap();
+    render(<RequirementsSurface />);
+    act(() => {
+      fireEvent.click(screen.getByTestId('requirements-tab-matrix-button'));
+    });
+    expect(useWorkspaceStore.getState().requirementsSurfaceTab).toBe('matrix');
+    expect(screen.getByTestId('requirements-matrix-tabpanel')).toBeTruthy();
+    expect(screen.queryByTestId('requirements-editor-tabpanel')).toBeNull();
+    expect(screen.queryByTestId('requirements-coverage-tabpanel')).toBeNull();
+    expect(screen.getByTestId('requirements-matrix-panel')).toBeTruthy();
+  });
+
+  it('renders matrix rows + glyphs for satisfy/derive traces and selects on cell click', async () => {
+    await bootstrap();
+    const diagramId = ensureRequirementsDiagram();
+    const state = useWorkspaceStore.getState();
+    const r1 = state.createRequirement(diagramId, { x: 0, y: 0 });
+    const r2 = state.createRequirement(diagramId, { x: 0, y: 100 });
+    if (!r1 || !r2) throw new Error('createRequirement failed');
+    useWorkspaceStore.getState().setRequirementReqId(r1, 'REQ-A');
+    useWorkspaceStore.getState().setRequirementReqId(r2, 'REQ-B');
+    useWorkspaceStore.getState().linkRequirementTrace(r1, r2, 'derive');
+
+    render(<RequirementsSurface />);
+    act(() => {
+      fireEvent.click(screen.getByTestId('requirements-tab-matrix-button'));
+    });
+
+    // REQ-A → REQ-B derive cell exists with «d» glyph.
+    expect(
+      screen.getByTestId(`requirements-matrix-cell-${r1}-${r2}`),
+    ).toBeTruthy();
+    expect(
+      screen.getByTestId(`requirements-matrix-glyph-${r1}-${r2}-derive`)
+        .textContent,
+    ).toBe('«d»');
+
+    act(() => {
+      fireEvent.click(
+        screen.getByTestId(`requirements-matrix-cell-${r1}-${r2}`),
+      );
+    });
+    expect(useWorkspaceStore.getState().selectedElementIds).toEqual([r1]);
+  });
+
+  it('filter input narrows visible matrix rows by reqId substring', async () => {
+    await bootstrap();
+    const diagramId = ensureRequirementsDiagram();
+    const state = useWorkspaceStore.getState();
+    const r1 = state.createRequirement(diagramId, { x: 0, y: 0 });
+    const r2 = state.createRequirement(diagramId, { x: 0, y: 100 });
+    if (!r1 || !r2) throw new Error('createRequirement failed');
+    useWorkspaceStore.getState().setRequirementReqId(r1, 'AAA-1');
+    useWorkspaceStore.getState().setRequirementReqId(r2, 'BBB-2');
+
+    render(<RequirementsSurface />);
+    act(() => {
+      fireEvent.click(screen.getByTestId('requirements-tab-matrix-button'));
+    });
+
+    expect(screen.queryByTestId(`requirements-matrix-row-${r1}`)).not.toBeNull();
+    expect(screen.queryByTestId(`requirements-matrix-row-${r2}`)).not.toBeNull();
+
+    act(() => {
+      fireEvent.change(screen.getByTestId('requirements-matrix-filter'), {
+        target: { value: 'AAA' },
+      });
+    });
+    expect(screen.queryByTestId(`requirements-matrix-row-${r1}`)).not.toBeNull();
+    expect(screen.queryByTestId(`requirements-matrix-row-${r2}`)).toBeNull();
+  });
+});

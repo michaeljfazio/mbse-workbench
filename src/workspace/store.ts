@@ -201,7 +201,7 @@ export interface WorkspaceState {
 }
 
 export type ActiveSurfaceKind = 'diagram' | 'requirements';
-export type RequirementsSurfaceTab = 'editor' | 'coverage';
+export type RequirementsSurfaceTab = 'editor' | 'coverage' | 'matrix';
 
 export interface CreateDiagramOptions {
   readonly name?: string;
