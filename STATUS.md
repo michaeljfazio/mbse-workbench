@@ -4,16 +4,15 @@
 phase:10 — Requirements traceability. Slice 1 merged (PR #209 → `02a536f`). Slice 2 (#212) in flight as **PR #214** with auto-merge `--squash` armed; baselines replaced with CI actuals at `e4d345e`. On green: close epic #11, open `type:release`, tag `vphase-10`, exercise deployed Pages URL, append phase-completion entry to `JOURNAL.md`.
 
 ## Current iteration
-- Iteration #: 178
-- Started: 2026-05-13T05:02Z
+- Iteration #: 179
+- Started: 2026-05-13T04:42Z
 - Branch: `issue/212-visual-phase-10-final` (PR #214 open; auto-merge armed; pushed fix commit `e4d345e`)
 - Working on: #212 — `@visual phase-10-final.png` baseline (slice 2 of #178)
 
 ## Last test run
-- Command: CI run `25778015755` (push to PR #214 branch with arm64-generated baselines)
-- Result: FAIL — both chromium and webkit visual diffs at 10279 px / ratio 0.02 against the new `phase-10-final` baseline. 466 specs passed; 2 failed.
-- Failures: `phase-10-gate.spec.ts:386:3 › @visual phase-10 final state` on chromium AND webkit. Anti-aliasing/font-rendering drift between arm64 podman and amd64 CI runner — exactly the foot-gun predicted in `docs/CONTEXT.md` (2026-05-12 entry).
-- Recovery: per CONTEXT.md, downloaded the failed run's playwright-report, mapped attachments via `test.trace` (zip 934cc736 = webkit, cbaee96e = chromium; expected sha1s cross-checked against committed baselines). Copied `ef7f67fe…png` over the chromium baseline and `b28a5077…png` over the webkit baseline. Committed as `e4d345e` and pushed. New CI run triggered.
+- Command: CI run `25778712436` on PR #214 head `e4d345e` — IN_PROGRESS (~1 min in as of 04:42Z; setup/typecheck/lint/unit/build all green, Playwright install step running, E2E pending).
+- Result: pending
+- Note: prior STATUS claim of "~20 min in" was a clock error — run started 04:41:04Z; current time 04:42Z.
 
 ## Known issues / blockers
 - #212 — `status:in-progress`, p1. PR #214 awaiting fresh CI on the actual-lifted baselines. If this still fails the second push, treat as 2nd of 3 attempts before `status:needs-human` escalation.
@@ -25,7 +24,8 @@ phase:10 — Requirements traceability. Slice 1 merged (PR #209 → `02a536f`). 
 - 2026-05-13 (iter-155): Generated slice-2 baselines inside the Linux Playwright container (podman linux/arm64). Followed the CONTEXT.md "only commit the new baseline; revert any incidentally rewritten ones" procedure. PR #214 opened with auto-merge `--squash` armed.
 - 2026-05-13 (iter-156 → iter-176): No-op ticks while PR #214 CI run `25778015755` ran (~19 min wall — full Playwright install cache miss accounted for ~12 min of that).
 - 2026-05-13 (iter-177): CI run `25778015755` failed visual diffs on both browsers at ratio 0.02 (anti-aliasing drift — predicted by CONTEXT.md). Downloaded the playwright-report, decoded `data/<trace>.zip → test.trace` attachments to map sha1→browser, cross-checked expected sha1s against committed baselines (both matched bit-exactly), copied `*-actual.png` over the two baselines. Pushed `e4d345e` to PR #214. Auto-merge still armed; awaiting fresh CI.
-- 2026-05-13 (iter-178): New CI run `25778712436` IN_PROGRESS on `e4d345e` (started 04:41Z, ~20 min in). No-op tick.
+- 2026-05-13 (iter-178): New CI run `25778712436` IN_PROGRESS on `e4d345e` (started 04:41Z). No-op tick. (Prior "~20 min in" was a clock error.)
+- 2026-05-13 (iter-179): Re-checked CI run `25778712436` — ~1 min in, Playwright install step running, E2E pending. No-op tick; corrected the iter-178 clock note.
 
 ## Next action
 Wait for the new PR #214 CI run on `e4d345e` to start, then go green. On merge: close epic #11, open a `type:release` issue, tag `vphase-10` from new `main` HEAD, run the release workflow, exercise the deployed Pages URL in Playwright, save smoke screenshots under `artifacts/release-vphase-10/`, append a phase-completion entry to `JOURNAL.md`, and move to phase 11 decomposition. If this second CI also fails the visual gate, that is attempt 2/3 on issue #212 — diagnose further (e.g. text-rendering subpixel anti-alias still drifting) before pushing a third fix.
