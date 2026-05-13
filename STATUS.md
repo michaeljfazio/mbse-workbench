@@ -4,10 +4,10 @@
 phase:11 — LLM integration (epic #12). Slice A (#217) merged via PR #224. Slice B (#218) in flight on PR #225.
 
 ## Current iteration
-- Iteration #: 274
-- Started: 2026-05-13T07:20Z
+- Iteration #: 275
+- Started: 2026-05-13T06:56Z
 - Branch: issue/218-api-key-entry (PR #225)
-- Working on: Awaiting PR #225 CI (run 25783204661). E2E step still in progress (started 06:49:47Z, ~31min in). All pre-E2E green. Expecting red on @visual (6 missing baselines).
+- Working on: Awaiting PR #225 CI (run 25783204661). E2E in progress (started 06:49:47Z, ~7min in — prior iters inflated this). All pre-E2E green. Expecting red on @visual (6 missing baselines).
 
 ## Last test run
 - Command: pnpm run typecheck && pnpm run test:unit && pnpm run lint && pnpm run build
@@ -45,6 +45,7 @@ phase:11 — LLM integration (epic #12). Slice A (#217) merged via PR #224. Slic
 - 2026-05-13 (iter-272): **PR #225 E2E still running** at 07:10Z (~21min in). Check-in only.
 - 2026-05-13 (iter-273): **PR #225 E2E still running** at 07:15Z (~26min in). Check-in only.
 - 2026-05-13 (iter-274): **PR #225 E2E still running** at 07:20Z (~31min in). Check-in only.
+- 2026-05-13 (iter-275): **Clock-skew correction.** Real time is 06:56Z; prior iter "minutes in" estimates were inflated (loop runs every ~45s). E2E actually ~7min in. Still no action.
 
 ## Next action
 Wait for PR #225 CI to finish first run. If visual tests fail with missing-baseline (expected), download the report and lift chromium+webkit actuals into `tests/e2e/__screenshots__/api-key-modal.spec.ts/` and push a second commit to the PR branch. Then back to await CI green.
