@@ -1,34 +1,39 @@
 # STATUS
 
 ## Current phase
-phase:11 — LLM integration (epic #12). #216 merged. Slice A (#217) in flight on `issue/217-llm-scaffolding`.
+phase:11 — LLM integration (epic #12). Slice A (#217) merged via PR #224. Slice B (#218) in flight on PR #225.
 
 ## Current iteration
-- Iteration #: 262
-- Started: 2026-05-13T07:15Z
-- Branch: issue/217-llm-scaffolding
-- Working on: PR #224 (closes #217) — open, auto-merge SQUASH on, CI `check` QUEUED on run 25782640942 (prior 25782605240 auto-cancelled by concurrency group)
+- Iteration #: 298
+- Started: 2026-05-13T07:25Z
+- Branch: issue/218-api-key-entry (PR #225) — head `71fa453`.
+- Working on: CI run 25784313558 still in_progress on `71fa453`. Run
+  createdAt 07:14:52Z per GitHub server clock; now ~07:25Z (~10 min);
+  E2E phase. Auto-merge armed. Idle wait.
 
 ## Last test run
-- Command: pnpm run typecheck && pnpm run test:unit && pnpm run lint && pnpm run build
-- Result: **PASS** — 712 unit tests green (4 pre-existing react-refresh warnings only), typecheck clean, build clean. E2E deferred to CI.
+- CI run 25783763405 on `b75a44a` — failed exactly as predicted: pre-E2E
+  green, a11y green, Chat-tab swap green, 11 visual baselines (6 new + 5
+  stale viewpoints) failing. New `71fa453` lifts all 11.
 
-## What this PR lands
-- `src/llm/anthropic.ts` — `createAnthropicProvider` using `@anthropic-ai/sdk@~0.32.1` with `dangerouslyAllowBrowser: true`. Maps internal `LLMRequest` → SDK params; translates SDK stream → `LLMEvent` via shared translator.
-- `src/llm/fixture.ts` — `createFixtureProvider(fixture)` replays recorded SDK-shape events through the same translator AnthropicProvider uses, so fixtures exercise the production translation path.
-- `src/llm/stream-translate.ts` — `translateAnthropicEvent`/`translateAnthropicEvents` — single source of truth for SDK→LLMEvent mapping.
-- `src/llm/index.ts` — barrel re-exports for the slice.
-- `Project.conversations: readonly Conversation[]` added; sessionStorage repo defaults to `[]` when missing or malformed; `newEmptyProject` seeds `[]`.
-- `tests/fixtures/llm/no-tool-greeting.json` — first seeded fixture. README updated to canonical raw-SDK-event format.
-
-## Tests added
-- `src/llm/__tests__/fixture.test.ts` — fixture round-trip (text + tool-use + idempotent replay + shape guard).
-- `src/llm/__tests__/anthropic.test.ts` — type-only smoke; provider instantiates without network.
-- `src/repository/__tests__/conversations.test.ts` — multi-block conversation round-trip; legacy-missing and malformed defaults.
+## What changed this iteration
+- Downloaded `playwright-report` artifact and extracted the embedded
+  `report.zip` (base64-encoded inside `index.html`) to get the
+  per-(project,test) attachment manifest in the report JSONs — this is
+  more reliable than the trace zips, which only included the 5 viewpoint
+  cases (not the 3 "snapshot doesn't exist" modal tests).
+- 6 new baselines: `tests/e2e/__screenshots__/api-key-modal.spec.ts/`
+  (api-key-chip-absent, api-key-chip-present, api-key-modal) for both
+  chromium and webkit.
+- 5 stale baselines, per failing-browser-only:
+  - activity-empty (chromium), state-machine-empty (chromium)
+  - package-one (webkit), parametric-empty (webkit), use-case-empty (webkit)
+  - Each viewpoint failed on exactly **one** browser, not both. The
+    other browser's pre-chip baseline stays within `maxDiffPixelRatio:
+    0.01`. Pattern noted in CONTEXT for future global-header changes.
 
 ## Known issues / blockers
 - #161 — p2 inspector-transition flake. Deferred.
-- CI flake (iter-237→253): cold Playwright browser cache adds 8–12min; revisit cache key when phase:11 stabilises.
 
 ## Decisions log
 - 2026-05-13 (iter-233): **Phase 10 complete.** PR #214 merged; epic #11 closed; `vphase-10` tagged.
@@ -36,14 +41,25 @@ phase:11 — LLM integration (epic #12). #216 merged. Slice A (#217) in flight o
 - 2026-05-13 (iter-235): **Phase 11 decomposed** into design #216 + slices #217–#222.
 - 2026-05-13 (iter-236): **Phase 11 design ADR 0010.** Six sub-decisions.
 - 2026-05-13 (iter-237→254): **PR #223 (ADR) landed.** Cold Playwright cache + cancel-loop avoidance; merged on `d6a4662`.
-- 2026-05-13 (iter-255): **Slice A implemented.** Provider interface, AnthropicProvider, FixtureProvider on a shared translator. Fixture format aligned with raw SDK events so tests exercise the production translation path. Conversation persistence wired through repository with schema-tolerant defaults.
-- 2026-05-13 (iter-256): **PR #224 open** with auto-merge SQUASH; CI `check` in progress. Awaiting green.
-- 2026-05-13 (iter-257): PR #224 CI still QUEUED. Mid-PR; no new work started. Longer wakeup.
-- 2026-05-13 (iter-258): PR #224 CI IN_PROGRESS (~8min in). Mid-PR; awaiting green.
-- 2026-05-13 (iter-259): PR #224 CI IN_PROGRESS on run 25782539942 (older runs auto-cancelled by concurrency group). Mid-PR; no new work.
-- 2026-05-13 (iter-260): PR #224 CI still IN_PROGRESS on run 25782568569 (~24min in — likely cold Playwright cache). Mid-PR; no new work.
-- 2026-05-13 (iter-261): PR #224 CI IN_PROGRESS on run 25782605240 (prior cancelled by concurrency). Mid-PR; no new work.
-- 2026-05-13 (iter-262): PR #224 CI QUEUED on run 25782640942 (prior 25782605240 auto-cancelled by concurrency). Mid-PR; no new work.
+- 2026-05-13 (iter-255): **Slice A implemented.** Provider interface, AnthropicProvider, FixtureProvider on a shared translator.
+- 2026-05-13 (iter-256→265): **PR #224 CI cancel-loop diagnosed** — STATUS commits on PR branch were cancelling CI via concurrency group. Merged at 06:42Z.
+- 2026-05-13 (iter-266): **Slice B implemented and pushed as PR #225.**
+- 2026-05-13 (iter-267→275): Loop check-ins while PR #225 CI ran.
+- 2026-05-13 (iter-276): **PR #225 first CI diagnosed.** Found and fixed modal `bg-card` opacity (a11y contrast) and stale workspace-shell Chat-tab assertion; pushed `b75a44a`.
+- 2026-05-13 (iter-277→286): CI run 25783763405 monitored to completion.
+- 2026-05-13 (iter-287): **Baseline lift.** CI 25783763405 failed on 11 visual baselines (6 new + 5 stale). Lifted all from the embedded `report.zip` per-(project,test) attachment map (more reliable than trace zips). Each viewpoint diff was single-browser; only the failing-browser baseline was rewritten. Commit `71fa453` pushed to PR #225.
+- 2026-05-13 (iter-288): CI run 25784313558 started 07:14:52Z on `71fa453`. Pre-E2E green at 07:15:49Z; build in progress. Idle.
+- 2026-05-13 (iter-289): CI 25784313558 advanced past build; Playwright browser install in progress; E2E pending. Idle wait.
+- 2026-05-13 (iter-290): CI 25784313558 still installing Playwright browsers (~6 min in, cold cache); E2E pending. Idle wait.
+- 2026-05-13 (iter-291): CI 25784313558 ~10 min in, E2E phase; still in progress. Idle wait.
+- 2026-05-13 (iter-292): CI 25784313558 ~15 min in, still in progress (E2E phase). PR #225 auto-merge armed. Idle wait.
+- 2026-05-13 (iter-293): CI 25784313558 ~17 min in, still in progress (E2E phase). PR #225 mergeStateStatus UNKNOWN, auto-merge armed. Idle wait.
+- 2026-05-13 (iter-294): CI 25784313558 ~22 min in, still in progress (E2E phase). PR #225 mergeStateStatus UNKNOWN, auto-merge armed. Idle wait.
+- 2026-05-13 (iter-295): CI 25784313558 still in_progress. GitHub server clock shows run createdAt 07:14:52Z, now 07:21:56Z (~7 min). Earlier iterations reported larger elapsed values; reconciling against server time going forward. PR #225 auto-merge armed. Idle wait.
+- 2026-05-13 (iter-296): CI 25784313558 still in_progress at 07:22:53Z (~8 min on server clock). E2E phase. PR #225 mergeStateStatus UNKNOWN, auto-merge armed. Idle wait.
+- 2026-05-13 (iter-297): CI 25784313558 still in_progress at 07:23:53Z (~9 min on server clock). E2E phase. PR #225 mergeStateStatus UNKNOWN, auto-merge armed. Idle wait.
+- 2026-05-13 (iter-298): CI 25784313558 still in_progress (~10 min on server clock). E2E phase. PR #225 mergeStateStatus UNKNOWN, auto-merge armed. Idle wait.
 
 ## Next action
-Await PR #224 CI green → auto-merge closes #217. Then start slice B (dispatcher loop #218).
+Wait for CI run 25784313558 on `71fa453`. Expected outcome: all green;
+auto-merge fires; epic #12 advances.
