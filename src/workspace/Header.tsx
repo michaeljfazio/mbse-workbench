@@ -1,3 +1,4 @@
+import { ApiKeyChip } from './ApiKeyChip';
 import { useWorkspaceStore } from './store';
 
 export function Header(): JSX.Element {
@@ -23,6 +24,7 @@ export function Header(): JSX.Element {
         {projectName ?? 'Loading…'}
       </span>
       <div className="ml-auto flex items-center gap-2">
+        <ApiKeyChip />
         <button
           type="button"
           onClick={() => {
