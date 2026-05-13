@@ -4,10 +4,10 @@
 phase:11 — LLM integration (epic #12). Slice A (#217) merged via PR #224. Slice B (#218) in flight on PR #225.
 
 ## Current iteration
-- Iteration #: 276
-- Started: 2026-05-13T07:01Z
-- Branch: issue/218-api-key-entry (PR #225) — second commit `b75a44a` pushed.
-- Working on: Diagnosed PR #225 first CI failure and fixed three real issues. Awaiting next CI run.
+- Iteration #: 277
+- Started: 2026-05-13T07:02Z
+- Branch: issue/218-api-key-entry (PR #225) — head `b75a44a`.
+- Working on: Awaiting CI run 25783763405 on PR #225 (started 07:01:51Z, ~1min in). Idle iteration.
 
 ## Last test run
 - Command: `pnpm typecheck && pnpm lint && pnpm test:unit` + targeted Playwright (a11y + Chat-tab swap) on chromium
@@ -51,6 +51,7 @@ Pre-E2E all green. E2E failures, by category:
 - 2026-05-13 (iter-266): **Slice B implemented and pushed as PR #225.**
 - 2026-05-13 (iter-267→275): Loop check-ins while PR #225 CI ran. Real elapsed ~9min (loop runs ~45s/iter so "minutes-in" estimates were inflated).
 - 2026-05-13 (iter-276): **PR #225 first CI diagnosed.** Found and fixed two real bugs (modal `bg-card` had no Tailwind mapping → transparent → axe contrast violation; stale workspace-shell Chat-tab assertion) and noted that 5 viewpoint visual diffs are intended (header chip is global). New commit `b75a44a` on PR branch.
+- 2026-05-13 (iter-277): CI run 25783763405 on `b75a44a` in progress (started 07:01:51Z, ~1min in). Idle iteration.
 
 ## Next action
 Wait for next CI run on PR #225. Expected outcome: pre-E2E green, a11y green, Chat-tab swap green, and 8 visual-baseline failures (3 new + 5 stale-from-chip). Then lift chromium+webkit actuals from the report per `docs/CONTEXT.md` L435–488 and commit as baselines.
