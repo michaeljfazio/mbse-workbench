@@ -8,6 +8,25 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
 
 ## Discovered facts
 
+- **2026-05-14** — **@visual snapshots of the chat pane need a stable
+  scroll position and blurred focus** (iter-455). Two consecutive retries
+  of the phase-11 gate's @visual capture in the same CI run produced
+  Linux PNGs that differed in ~22% of pixels — every text row was shifted
+  by ~1px and the Send button changed colour. Two root causes: (a) the
+  scrollback's auto-scroll-to-bottom (`scrollTop = scrollHeight` in
+  `ChatPane.tsx`) lands at sub-pixel-different positions depending on
+  exactly when the final message is appended, and (b) the Send button's
+  focus / disabled state lingers across captures. Mitigation pattern for
+  any future @visual that includes the chat pane:
+  1. Wait for the *final assistant text content* to be visible (don't
+     rely on `data-streaming=true` going to 0 — ChatPane never sets that
+     flag on its own messages; see "ChatPane streaming semantics" below).
+  2. Before `toHaveScreenshot`, run `await page.evaluate(() => { ... })`
+     to blur active element and set the scrollback's `scrollTop = 0`.
+  3. Scope the screenshot to `data-testid="chat-scrollback"` (added to
+     ChatPane's scrollable div) rather than `chat-pane`, so the composer
+     button states are excluded.
+
 - **2026-05-14** — **ChatPane streaming semantics** (iter-454). The chat
   pane in `src/workspace/chat/ChatPane.tsx` persists assistant messages
   to the conversation **only after the dispatcher promise resolves**

@@ -245,7 +245,11 @@ export function ChatPane(): JSX.Element {
       </div>
 
       {/* Scrollback */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 py-2">
+      <div
+        ref={scrollRef}
+        data-testid="chat-scrollback"
+        className="flex-1 overflow-y-auto px-3 py-2"
+      >
         {messages.length === 0 ? (
           <p className="text-center text-xs text-muted-foreground">
             Send a message to get started.

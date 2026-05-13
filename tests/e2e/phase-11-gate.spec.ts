@@ -292,10 +292,32 @@ test.describe('Phase 11 gate (issue #222) — full LLM UI flow', () => {
     await expect(
       page.locator('[data-testid="chat-message"][data-streaming="true"]'),
     ).toHaveCount(0, { timeout: 15000 });
+    // Wait for the dispatcher's final assistant text to be present — without
+    // this, the snapshot can fire between the last `proposal-card` clearing
+    // and the round-4 messages being appended (ChatPane appends only at
+    // dispatcher resolution; see docs/CONTEXT.md "ChatPane streaming
+    // semantics"). The fixture's final text is deterministic.
+    await expect(
+      page.getByText('Pump is now in the model and Mission satisfies Vessel.'),
+    ).toBeVisible({ timeout: 15000 });
 
-    // Scope the snapshot to the chat pane — the canvas position cascade and
-    // viewport sizing make full-workspace snapshots flaky across runs.
-    await expect(page.getByTestId('chat-pane')).toHaveScreenshot(
+    // Stabilise for visual diff:
+    //   1. Blur focus so the Send button (and any focus ring) is in its
+    //      idle state across runs.
+    //   2. Pin the scrollback to top so the auto-scroll-to-bottom
+    //      useEffect's sub-pixel landing position doesn't shift every text
+    //      row by ~1px between captures.
+    await page.evaluate(() => {
+      (document.activeElement as HTMLElement | null)?.blur();
+      const sb = document.querySelector(
+        '[data-testid="chat-scrollback"]',
+      ) as HTMLElement | null;
+      if (sb) sb.scrollTop = 0;
+    });
+    // Scope the snapshot to the scrollback — excludes the composer's Send
+    // button (its disabled-vs-idle pixel state varies) and the header tab
+    // strip; the scroll position is now deterministic.
+    await expect(page.getByTestId('chat-scrollback')).toHaveScreenshot(
       'phase-11-final-chat.png',
     );
   });
