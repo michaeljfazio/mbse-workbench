@@ -5,10 +5,10 @@ phase:11 — LLM integration (epic #12). Slices A/B/C merged. Slice D (#220)
 in flight on PR #227. Remaining: slice E (#221), slice F gate (#222).
 
 ## Current iteration
-- Iteration #: 359
-- Started: 2026-05-13T09:09:05Z
+- Iteration #: 360
+- Started: 2026-05-13T09:09:50Z
 - Branch: issue/220-tool-dispatcher.
-- Working on: CI run 25789413513 IN_PROGRESS (~3.5m elapsed since 09:05:44Z),
+- Working on: CI run 25789413513 IN_PROGRESS (~4.5m elapsed since 09:05:34Z),
   mergeable=UNKNOWN, mergeStateStatus=UNKNOWN.
   Auto-merge armed (squash).
 
@@ -122,6 +122,8 @@ in flight on PR #227. Remaining: slice E (#221), slice F gate (#222).
   (~2.5m elapsed at 09:08:11Z, mergeStateStatus=UNKNOWN). No commit.
 - 2026-05-13 (iter-359): Idle-wait — CI run 25789413513 in_progress
   (~3.5m elapsed at 09:09:05Z, mergeStateStatus=UNKNOWN). No commit.
+- 2026-05-13 (iter-360): Idle-wait — CI run 25789413513 in_progress
+  (~4.5m elapsed at 09:09:50Z, mergeStateStatus=UNKNOWN). No commit.
 - 2026-05-13 (iter-344): CI run 25788507469 **SUCCESS** at 08:56:34Z but
   PR mergeStateStatus=BEHIND (main advanced while we waited). Ran
   `gh pr update-branch 227` which fast-forwarded the branch and queued
