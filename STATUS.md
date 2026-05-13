@@ -4,7 +4,7 @@
 phase:10 — Requirements traceability. Slice 1 merged (PR #209 → `02a536f`). Slice 2 (#212) in flight as **PR #214** with auto-merge `--squash` armed; baselines replaced with CI actuals at `e4d345e`. On green: close epic #11, open `type:release`, tag `vphase-10`, exercise deployed Pages URL, append phase-completion entry to `JOURNAL.md`.
 
 ## Current iteration
-- Iteration #: 214
+- Iteration #: 215
 - Started: 2026-05-13T05:10Z
 - Branch: `issue/212-visual-phase-10-final` (PR #214 open; auto-merge armed; rerun went green → branch was BEHIND → `gh pr update-branch 214` merged main in → fresh CI run `25779573910` IN_PROGRESS on `9b436ae`)
 - Working on: #212 — `@visual phase-10-final.png` baseline (slice 2 of #178)
@@ -60,6 +60,7 @@ phase:10 — Requirements traceability. Slice 1 merged (PR #209 → `02a536f`). 
 - 2026-05-13 (iter-212): Fresh CI run `25779573910` IN_PROGRESS at ~1 min in (now 05:09Z; updatedAt 05:07:50Z). No-op tick.
 - 2026-05-13 (iter-213): Fresh CI run `25779573910` still IN_PROGRESS at ~3 min in (now 05:10Z; updatedAt 05:07:50Z). PR #214 mergeStateStatus UNKNOWN; auto-merge `--squash` still armed. No-op tick.
 - 2026-05-13 (iter-214): Fresh CI run `25779573910` still IN_PROGRESS at ~4 min in (updatedAt 05:07:50Z, log-streaming unchanged). Auto-merge `--squash` still armed. No-op tick.
+- 2026-05-13 (iter-215): Fresh CI run `25779573910` still IN_PROGRESS at ~3 min in (now 05:10Z; updatedAt 05:07:50Z). PR #214 mergeStateStatus UNKNOWN. Auto-merge `--squash` still armed. No-op tick.
 
 ## Next action
 Wait for the `rerun --failed` of CI run `25778988999` (chromium-only) to go green. On merge: close epic #11, open a `type:release` issue, tag `vphase-10` from new `main` HEAD, run the release workflow, exercise the deployed Pages URL in Playwright, save smoke screenshots under `artifacts/release-vphase-10/`, append a phase-completion entry to `JOURNAL.md`, and move to phase 11 decomposition. The #161 flake is now load-bearing on phase-10 completion; if it fails the rerun, escalate #161 to p1 and fix it as a blocker before further phase-10 work.
