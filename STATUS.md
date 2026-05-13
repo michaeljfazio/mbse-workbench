@@ -1,34 +1,32 @@
 # STATUS
 
 ## Current phase
-phase:11 — LLM integration (epic #12). #216 merged. Slice A (#217) in flight on `issue/217-llm-scaffolding`.
+phase:11 — LLM integration (epic #12). Slice A (#217) merged via PR #224. Slice B (#218) in flight on PR #225.
 
 ## Current iteration
-- Iteration #: 262
-- Started: 2026-05-13T07:15Z
-- Branch: issue/217-llm-scaffolding
-- Working on: PR #224 (closes #217) — open, auto-merge SQUASH on, CI `check` QUEUED on run 25782640942 (prior 25782605240 auto-cancelled by concurrency group)
+- Iteration #: 266
+- Started: 2026-05-13T14:50Z
+- Branch: issue/218-api-key-entry (PR #225)
+- Working on: PR #225 (closes #218) — open with auto-merge SQUASH. Visual baselines NOT pushed yet; CI expected to fail @visual on first run per `docs/CONTEXT.md` L435–488 baseline-lift workflow.
 
 ## Last test run
 - Command: pnpm run typecheck && pnpm run test:unit && pnpm run lint && pnpm run build
-- Result: **PASS** — 712 unit tests green (4 pre-existing react-refresh warnings only), typecheck clean, build clean. E2E deferred to CI.
+- Result: **PASS** — 716 unit tests green (4 pre-existing react-refresh warnings), typecheck clean, build clean. `@visual` skipped locally on macOS per `playwright.config.ts` SKIP_VISUAL_LOCALLY.
 
 ## What this PR lands
-- `src/llm/anthropic.ts` — `createAnthropicProvider` using `@anthropic-ai/sdk@~0.32.1` with `dangerouslyAllowBrowser: true`. Maps internal `LLMRequest` → SDK params; translates SDK stream → `LLMEvent` via shared translator.
-- `src/llm/fixture.ts` — `createFixtureProvider(fixture)` replays recorded SDK-shape events through the same translator AnthropicProvider uses, so fixtures exercise the production translation path.
-- `src/llm/stream-translate.ts` — `translateAnthropicEvent`/`translateAnthropicEvents` — single source of truth for SDK→LLMEvent mapping.
-- `src/llm/index.ts` — barrel re-exports for the slice.
-- `Project.conversations: readonly Conversation[]` added; sessionStorage repo defaults to `[]` when missing or malformed; `newEmptyProject` seeds `[]`.
-- `tests/fixtures/llm/no-tool-greeting.json` — first seeded fixture. README updated to canonical raw-SDK-event format.
+- `src/llm/api-key.ts` — `readApiKey`/`writeApiKey`/`clearApiKey`/`useApiKey` hook + `requestApiKeyModal`/`subscribeApiKeyModal` window-event bus. Canonical key `mbse-workbench:anthropic-api-key` per ADR 0010 §6. Helpers never touch `console.*`.
+- `src/workspace/ApiKeyChip.tsx` — header chip; `data-state` present/absent; click to open modal.
+- `src/workspace/ApiKeyModal.tsx` — `role="dialog" aria-modal`; focus on mount; Escape closes; Enter saves; Save / Clear / Cancel buttons.
+- `src/workspace/Workspace.tsx` — owns modal-open state; subscribes to modal-request event.
+- `src/workspace/SidebarPane.tsx` — chat-tab activation without a key auto-opens modal; renders a needs-key panel with a re-open button while no key is set.
 
 ## Tests added
-- `src/llm/__tests__/fixture.test.ts` — fixture round-trip (text + tool-use + idempotent replay + shape guard).
-- `src/llm/__tests__/anthropic.test.ts` — type-only smoke; provider instantiates without network.
-- `src/repository/__tests__/conversations.test.ts` — multi-block conversation round-trip; legacy-missing and malformed defaults.
+- `src/llm/__tests__/api-key.test.ts` — round-trip, empty→null, canonical key constant, **no `console.*` call** during write/read/clear.
+- `tests/e2e/api-key-modal.spec.ts` — modal-flow + clear + Escape + chip-as-trigger + fresh-context "new tab" check + `@a11y` axe scan + 3 `@visual` baselines (chip absent, chip present, modal layout).
 
 ## Known issues / blockers
+- PR #225 first CI run will be red on `@visual` (3 baselines × 2 browsers = 6 missing). Next iteration will lift actuals from the failed run per `docs/CONTEXT.md` L435–488 and commit them as baselines.
 - #161 — p2 inspector-transition flake. Deferred.
-- CI flake (iter-237→253): cold Playwright browser cache adds 8–12min; revisit cache key when phase:11 stabilises.
 
 ## Decisions log
 - 2026-05-13 (iter-233): **Phase 10 complete.** PR #214 merged; epic #11 closed; `vphase-10` tagged.
@@ -37,13 +35,8 @@ phase:11 — LLM integration (epic #12). #216 merged. Slice A (#217) in flight o
 - 2026-05-13 (iter-236): **Phase 11 design ADR 0010.** Six sub-decisions.
 - 2026-05-13 (iter-237→254): **PR #223 (ADR) landed.** Cold Playwright cache + cancel-loop avoidance; merged on `d6a4662`.
 - 2026-05-13 (iter-255): **Slice A implemented.** Provider interface, AnthropicProvider, FixtureProvider on a shared translator. Fixture format aligned with raw SDK events so tests exercise the production translation path. Conversation persistence wired through repository with schema-tolerant defaults.
-- 2026-05-13 (iter-256): **PR #224 open** with auto-merge SQUASH; CI `check` in progress. Awaiting green.
-- 2026-05-13 (iter-257): PR #224 CI still QUEUED. Mid-PR; no new work started. Longer wakeup.
-- 2026-05-13 (iter-258): PR #224 CI IN_PROGRESS (~8min in). Mid-PR; awaiting green.
-- 2026-05-13 (iter-259): PR #224 CI IN_PROGRESS on run 25782539942 (older runs auto-cancelled by concurrency group). Mid-PR; no new work.
-- 2026-05-13 (iter-260): PR #224 CI still IN_PROGRESS on run 25782568569 (~24min in — likely cold Playwright cache). Mid-PR; no new work.
-- 2026-05-13 (iter-261): PR #224 CI IN_PROGRESS on run 25782605240 (prior cancelled by concurrency). Mid-PR; no new work.
-- 2026-05-13 (iter-262): PR #224 CI QUEUED on run 25782640942 (prior 25782605240 auto-cancelled by concurrency). Mid-PR; no new work.
+- 2026-05-13 (iter-256→265): **PR #224 CI cancel-loop diagnosed** — STATUS commits on the PR branch were cancelling CI via the concurrency group. Stopped committing STATUS to PR branches mid-CI from iter-264; run 25782664520 completed and PR #224 merged at 06:42Z (commit 37896d3).
+- 2026-05-13 (iter-266): **Slice B implemented and pushed as PR #225.** Storage helper + hook + chip + modal + wiring. Followed iter-264 lesson: STATUS goes on main directly, not the PR branch. First CI run expected red on `@visual` — baselines to be lifted from the failed run.
 
 ## Next action
-Await PR #224 CI green → auto-merge closes #217. Then start slice B (dispatcher loop #218).
+Wait for PR #225 CI to finish first run. If visual tests fail with missing-baseline (expected), download the report and lift chromium+webkit actuals into `tests/e2e/__screenshots__/api-key-modal.spec.ts/` and push a second commit to the PR branch. Then back to await CI green.
