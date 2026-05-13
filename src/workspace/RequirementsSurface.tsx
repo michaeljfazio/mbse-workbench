@@ -261,7 +261,7 @@ function RequirementEditorForm(props: RequirementEditorFormProps): JSX.Element {
           type="button"
           data-testid="requirements-surface-delete"
           onClick={onDelete}
-          className="rounded-md bg-destructive px-2 py-1 text-xs font-medium text-destructive-foreground shadow-sm transition hover:bg-destructive/90"
+          className="rounded-md bg-red-700 px-2 py-1 text-xs font-medium text-white shadow-sm transition hover:bg-red-800"
         >
           Delete
         </button>
