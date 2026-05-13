@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 
 import type {
+  ElementId,
   ModelElement,
   RequirementElement,
   RequirementPriority,
@@ -8,6 +9,8 @@ import type {
 } from '@/model';
 import { REQUIREMENTS_VIEWPOINT_ID } from '@/viewpoints';
 
+import { RequirementsCoveragePanel } from './RequirementsCoveragePanel';
+import { computeRequirementsCoverage } from './requirements/coverage';
 import {
   buildRequirementRows,
   filterRequirements,
@@ -63,6 +66,12 @@ export function RequirementsSurface(): JSX.Element {
   const setRequirementRationale = useWorkspaceStore(
     (s) => s.setRequirementRationale,
   );
+  const surfaceTab = useWorkspaceStore((s) => s.requirementsSurfaceTab);
+  const setSurfaceTab = useWorkspaceStore((s) => s.setRequirementsSurfaceTab);
+  const coverageApprovedOnly = useWorkspaceStore((s) => s.coverageApprovedOnly);
+  const setCoverageApprovedOnly = useWorkspaceStore(
+    (s) => s.setCoverageApprovedOnly,
+  );
 
   const [query, setQuery] = useState('');
 
@@ -96,15 +105,58 @@ export function RequirementsSurface(): JSX.Element {
     setSelection([]);
   };
 
+  const coverage = useMemo(
+    () =>
+      computeRequirementsCoverage(elements, edges, {
+        statusFilter: coverageApprovedOnly
+          ? new Set<RequirementStatus>(['approved'])
+          : undefined,
+      }),
+    [elements, edges, coverageApprovedOnly],
+  );
+
+  const handleCoverageSelect = (id: ElementId): void => {
+    setSelection([id]);
+    setSurfaceTab('editor');
+  };
+
   return (
     <section
       data-testid="requirements-surface"
       id="requirements-surface-panel"
       role="tabpanel"
       aria-labelledby="surface-tab-requirements"
-      aria-label="Requirements editor"
+      aria-label="Requirements"
       className="flex min-h-0 flex-1 flex-col bg-background"
     >
+      <div
+        role="tablist"
+        aria-label="Requirements view"
+        className="flex shrink-0 items-center gap-1 border-b border-border bg-card px-2 pt-1"
+      >
+        <SurfaceTab
+          tabId="requirements-tab-editor"
+          panelId="requirements-editor-panel"
+          label="Editor"
+          active={surfaceTab === 'editor'}
+          onSelect={() => setSurfaceTab('editor')}
+        />
+        <SurfaceTab
+          tabId="requirements-tab-coverage"
+          panelId="requirements-coverage-panel"
+          label="Coverage"
+          active={surfaceTab === 'coverage'}
+          onSelect={() => setSurfaceTab('coverage')}
+        />
+      </div>
+      {surfaceTab === 'editor' ? (
+        <div
+          id="requirements-editor-panel"
+          role="tabpanel"
+          aria-labelledby="requirements-tab-editor"
+          data-testid="requirements-editor-tabpanel"
+          className="flex min-h-0 flex-1 flex-col"
+        >
       <div className="flex shrink-0 items-center gap-3 border-b border-border bg-card px-3 py-2">
         <label className="flex flex-1 items-center gap-2 text-xs text-muted-foreground">
           <span>Filter</span>
@@ -229,7 +281,56 @@ export function RequirementsSurface(): JSX.Element {
           />
         ) : null}
       </div>
+        </div>
+      ) : (
+        <div
+          id="requirements-coverage-panel"
+          role="tabpanel"
+          aria-labelledby="requirements-tab-coverage"
+          data-testid="requirements-coverage-tabpanel"
+          className="flex min-h-0 flex-1 flex-col"
+        >
+          <RequirementsCoveragePanel
+            coverage={coverage}
+            approvedOnly={coverageApprovedOnly}
+            onToggleApprovedOnly={setCoverageApprovedOnly}
+            onSelectRequirement={handleCoverageSelect}
+            selectedId={selectedId}
+          />
+        </div>
+      )}
     </section>
+  );
+}
+
+interface SurfaceTabProps {
+  readonly tabId: string;
+  readonly panelId: string;
+  readonly label: string;
+  readonly active: boolean;
+  readonly onSelect: () => void;
+}
+
+function SurfaceTab(props: SurfaceTabProps): JSX.Element {
+  const { tabId, panelId, label, active, onSelect } = props;
+  return (
+    <button
+      type="button"
+      id={tabId}
+      role="tab"
+      aria-selected={active}
+      aria-controls={panelId}
+      tabIndex={active ? 0 : -1}
+      data-testid={`${tabId}-button`}
+      onClick={onSelect}
+      className={`rounded-t-md border-x border-t px-3 py-1 text-xs font-medium transition ${
+        active
+          ? 'border-border bg-background text-foreground'
+          : 'border-transparent text-muted-foreground hover:text-foreground'
+      }`}
+    >
+      {label}
+    </button>
   );
 }
 
