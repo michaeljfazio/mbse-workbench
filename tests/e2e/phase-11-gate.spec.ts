@@ -155,21 +155,21 @@ test.describe('Phase 11 gate (issue #222) — full LLM UI flow', () => {
       );
     await page.getByTestId('chat-send').click();
 
-    // Round 1 — streamed text + explain_diagram tool-use card.
-    await expect(
-      page.locator('[data-testid="tool-use-card"][data-tool-name="explain_diagram"]'),
-    ).toBeVisible({ timeout: 15000 });
-
-    // Round 2 — create_element proposal card appears.
+    // Round 2 — create_element proposal card appears. (The round-1
+    // `explain_diagram` tool-use card is asserted after the full
+    // dispatch resolves; ChatPane persists assistant messages to the
+    // conversation only when the dispatcher promise settles — see
+    // docs/CONTEXT.md "ChatPane streaming semantics".)
     const firstProposal = page.locator('[data-testid="proposal-card"]').first();
     await expect(firstProposal).toBeVisible({ timeout: 15000 });
     await expect(firstProposal.locator('[data-testid="proposal-summary"]')).toContainText(
       'Create PartDefinition "Pump"',
     );
 
-    // Accept create_element.
+    // Accept create_element. Don't assert proposal count=0 here — the
+    // dispatcher resumes into round 3 and surfaces the link_requirement
+    // proposal before the queue can ever be empty.
     await firstProposal.locator('[data-testid="proposal-accept"]').click();
-    await expect(page.locator('[data-testid="proposal-card"]')).toHaveCount(0);
 
     // Pump now exists in the project tree.
     await expect(
@@ -179,8 +179,13 @@ test.describe('Phase 11 gate (issue #222) — full LLM UI flow', () => {
     ).toBeVisible({ timeout: 15000 });
     expect(await readPumpExists(page)).toBe(true);
 
-    // Round 3 — link_requirement proposal card appears.
-    const linkProposal = page.locator('[data-testid="proposal-card"]').first();
+    // Round 3 — link_requirement proposal card appears. Wait until the
+    // visible proposal summary matches link_requirement before
+    // accepting; first() may briefly still resolve to the just-accepted
+    // create_element card during teardown of the previous round.
+    const linkProposal = page.locator('[data-testid="proposal-card"]', {
+      hasText: 'Link requirement',
+    }).first();
     await expect(linkProposal).toBeVisible({ timeout: 15000 });
     await expect(linkProposal.locator('[data-testid="proposal-summary"]')).toContainText(
       'Link requirement "Mission" --satisfy--> "Vessel"',
@@ -191,18 +196,29 @@ test.describe('Phase 11 gate (issue #222) — full LLM UI flow', () => {
 
     // Accept link_requirement.
     await linkProposal.locator('[data-testid="proposal-accept"]').click();
-    await expect(page.locator('[data-testid="proposal-card"]')).toHaveCount(0);
 
     // One requirement-trace edge now exists.
     await expect.poll(() => readEdgeCount(page)).toBe(1);
 
-    // Round 4 — final assistant text.
+    // Round 4 — final assistant text. The dispatcher resolves here,
+    // and ChatPane now appends all intermediate assistant messages
+    // (including round-1 text + explain_diagram tool_use + tool_result)
+    // to the conversation in one go.
     await expect(
       page.locator('[data-testid="chat-message"][data-streaming="true"]'),
     ).toHaveCount(0, { timeout: 15000 });
     await expect(
       page.locator('[data-testid="chat-message"][data-role="assistant"]').last(),
     ).toContainText('Pump is now in the model');
+
+    // Round 1 read-only tool round-trip is now visible: explain_diagram
+    // tool-use card + matching tool-result card.
+    await expect(
+      page.locator('[data-testid="tool-use-card"][data-tool-name="explain_diagram"]'),
+    ).toBeVisible({ timeout: 15000 });
+    await expect(
+      page.locator('[data-testid="tool-result-card"][data-tool-use-id="tu_explain_1"]'),
+    ).toBeVisible({ timeout: 15000 });
 
     // Cmd-Z reverts the last batch (link_requirement) atomically. The Pump
     // from the previous batch must survive. Blur first so the workspace

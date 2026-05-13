@@ -8,6 +8,28 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
 
 ## Discovered facts
 
+- **2026-05-14** — **ChatPane streaming semantics** (iter-454). The chat
+  pane in `src/workspace/chat/ChatPane.tsx` persists assistant messages
+  to the conversation **only after the dispatcher promise resolves**
+  (see `handleSend` line ~175, `result.appendedMessages.slice(1)`).
+  Consequences for e2e specs that drive multi-round tool flows with
+  mutating tools that pause for proposal acceptance: the round-N
+  assistant text + tool_use + tool_result cards are NOT visible mid-
+  flow — only the live proposal queue is. Assert tool-use/tool-result
+  cards after the full dispatcher returns (no streaming message).
+  Also: do NOT assert `proposal-card` count == 0 between sequential
+  mutating proposals — the dispatcher resumes immediately into the
+  next round and re-fills the queue with no observable empty state.
+
+- **2026-05-14** — **CI auto-cancellation on STATUS pushes** (iter-454).
+  Pushing a docs-only `STATUS.md` commit to a PR branch with CI in
+  flight triggers a new `pull_request` workflow run that cancels the
+  prior in-progress run. Don't push STATUS-only commits while CI is
+  running on the same branch — either wait for it to complete, or
+  amend STATUS.md into the next code commit. Keeping STATUS off the
+  PR branch entirely (committing on main only) is the cleanest fix
+  but currently we co-locate it for resume context.
+
 - **2026-05-11** — Repo name is exactly `mbse-workbench` (see AGENT.md
   "Phase 0 → Scaffold steps"). Pages base path is `/mbse-workbench/` in
   production builds; `vite.config.ts` already wires this. Any router /
