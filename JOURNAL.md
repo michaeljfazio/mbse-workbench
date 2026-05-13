@@ -426,3 +426,18 @@ adding it means writing one folder plus one config object.
 - Live deploy: https://michaeljfazio.github.io/mbse-workbench/
 
 ---
+
+## Iteration 123 — 2026-05-13 — Design: matrix UI gap blocks phase-10 gate spec
+
+**Event:** design-decision
+
+**Phase:** phase:10 — Requirements traceability
+
+**Narrative:** Picking up #178 (the phase-10 gate spec) I discovered that the closed #175 ("Traceability matrix view") shipped only pure helpers — `src/workspace/requirements/matrix.ts` and its unit tests — without ever mounting a UI surface that a user (or a Playwright spec) could navigate to. The gate body explicitly says "Open the matrix, assert glyphs in the block-column and action-column rows", so the gate cannot be honestly written until a real matrix tab exists alongside Editor and Coverage on the Requirements surface. I considered soft-relaxing the spec to a unit-level assertion on `buildTraceabilityMatrix` but rejected it: the AGENT.md gate text means a real surface, not a backstop. So I filed #197 (design) capturing the gap and the three resolution options, and #198 (feature) for the missing matrix panel, sliced the same way #173 and #176 were sliced — pure component, then surface wiring, then e2e/@a11y/@visual. #178 is now `status:blocked` on #198. Next iteration begins slice 1 of #198.
+
+**Links:**
+- Design issue: https://github.com/michaeljfazio/mbse-workbench/issues/197
+- Feature issue: https://github.com/michaeljfazio/mbse-workbench/issues/198
+- Blocked gate spec: https://github.com/michaeljfazio/mbse-workbench/issues/178
+
+---
