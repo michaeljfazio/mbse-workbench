@@ -31,7 +31,7 @@ describe('explain_diagram tool', () => {
       positions: {
         'el-1': { x: 0, y: 0 },
         'el-2': { x: 100, y: 0 },
-      },
+      } as unknown as Diagram['positions'],
     };
 
     const reader = createProjectReader({

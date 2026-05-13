@@ -2,6 +2,7 @@ import { z } from 'zod';
 import type { LLMToolDefinition, ToolOutput } from '../types';
 import type { ToolContext } from '../registry';
 import type { ProjectReader } from '../project-reader';
+import type { ElementId } from '../../model/id';
 
 export const critiqueModelSchema = z.object({}).strict();
 
@@ -75,7 +76,7 @@ export async function critiqueModelHandler(
   const danglingPartUsages = elements.filter(
     (e) =>
       e.kind === 'PartUsage' &&
-      !partDefinitionIds.has((e as unknown as { definitionId: string }).definitionId),
+      !partDefinitionIds.has((e as unknown as { definitionId: ElementId }).definitionId),
   );
   for (const usage of danglingPartUsages) {
     findings.push({
