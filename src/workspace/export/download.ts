@@ -1,5 +1,6 @@
 import type { Project } from '@/repository/types';
 import { serializeProject } from '@/serializer';
+import { serializeProjectJson } from '@/workspace/jsonProject';
 import { buildDiagramPng } from './png';
 import { buildDiagramSvg, type BuildDiagramSvgInput } from './svg';
 import { slugifyDiagramName } from './slug';
@@ -28,6 +29,14 @@ export function downloadProjectSysml({
   const text = serializeProject(project);
   const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
   triggerDownload(blob, `${slugifyDiagramName(project.name)}.sysml`);
+}
+
+export function downloadProjectJson({
+  project,
+}: DownloadProjectSysmlOptions): void {
+  const text = serializeProjectJson(project);
+  const blob = new Blob([text], { type: 'application/json;charset=utf-8' });
+  triggerDownload(blob, `${slugifyDiagramName(project.name)}.json`);
 }
 
 export async function downloadDiagramPng({

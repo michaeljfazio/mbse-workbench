@@ -10,4 +10,5 @@ export {
   downloadDiagramSvg,
   downloadDiagramPng,
   downloadProjectSysml,
+  downloadProjectJson,
 } from './download';
