@@ -76,6 +76,9 @@ import { RequirementsSurface } from './RequirementsSurface';
 import { ContextMenu, deriveNavTargets, type NavTarget } from './contextMenu';
 import { EdgeKindPopover } from './EdgeKindPopover';
 import { ExportMenu } from './ExportMenu';
+import { EmptyState } from './EmptyState';
+import { ErrorBoundary } from './ErrorBoundary';
+import { ErrorTestThrower } from './ErrorTestThrower';
 import { ImportMenu } from './ImportMenu';
 import { ImportErrorBanner } from './ImportErrorBanner';
 import { PartUsageTypePopover } from './PartUsageTypePopover';
@@ -1503,6 +1506,9 @@ function CanvasInner(): JSX.Element {
         onDrop={handleDrop}
         className="relative flex-1"
       >
+        {elementCount === 0 && viewpoint.id === BDD_VIEWPOINT_ID ? (
+          <EmptyState onNewBlock={handleAddBlock} onImportJson={handleImportJson} />
+        ) : null}
         <ReactFlow
           nodes={flowNodes}
           edges={flowEdges}
@@ -1651,11 +1657,17 @@ export function CanvasPane(): JSX.Element {
         )}
       </div>
       {requirementsActive ? (
-        <RequirementsSurface />
+        <ErrorBoundary boundaryId="requirements" label="Requirements">
+          <ErrorTestThrower boundaryId="requirements" />
+          <RequirementsSurface />
+        </ErrorBoundary>
       ) : (
-        <ReactFlowProvider>
-          <CanvasInner />
-        </ReactFlowProvider>
+        <ErrorBoundary boundaryId="canvas" label="Diagram canvas">
+          <ErrorTestThrower boundaryId="canvas" />
+          <ReactFlowProvider>
+            <CanvasInner />
+          </ReactFlowProvider>
+        </ErrorBoundary>
       )}
     </section>
   );

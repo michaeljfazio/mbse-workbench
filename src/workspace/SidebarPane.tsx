@@ -1,6 +1,8 @@
 import { readApiKey, requestApiKeyModal, useApiKey } from '@/llm/api-key';
 
 import { ChatPane } from './chat/ChatPane';
+import { ErrorBoundary } from './ErrorBoundary';
+import { ErrorTestThrower } from './ErrorTestThrower';
 import { Inspector } from './inspector/Inspector';
 import { useWorkspaceStore, type InspectorTab } from './store';
 
@@ -93,7 +95,10 @@ export function SidebarPane({ width }: SidebarPaneProps): JSX.Element {
             </button>
           </div>
         ) : (
-          <ChatPane />
+          <ErrorBoundary boundaryId="chat" label="Chat">
+            <ErrorTestThrower boundaryId="chat" />
+            <ChatPane />
+          </ErrorBoundary>
         )}
       </div>
     </aside>
