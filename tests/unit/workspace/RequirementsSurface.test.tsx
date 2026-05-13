@@ -273,3 +273,138 @@ describe('workspace store — activeSurfaceKind', () => {
     expect(after).toBe(before);
   });
 });
+
+describe('workspace store — requirementsSurfaceTab + coverageApprovedOnly', () => {
+  beforeEach(() => resetWorkspaceStoreForTests());
+  afterEach(() => resetWorkspaceStoreForTests());
+
+  it('defaults requirementsSurfaceTab to "editor" and coverageApprovedOnly to false', () => {
+    const state = useWorkspaceStore.getState();
+    expect(state.requirementsSurfaceTab).toBe('editor');
+    expect(state.coverageApprovedOnly).toBe(false);
+  });
+
+  it('setRequirementsSurfaceTab switches between "editor" and "coverage"', () => {
+    useWorkspaceStore.getState().setRequirementsSurfaceTab('coverage');
+    expect(useWorkspaceStore.getState().requirementsSurfaceTab).toBe('coverage');
+    useWorkspaceStore.getState().setRequirementsSurfaceTab('editor');
+    expect(useWorkspaceStore.getState().requirementsSurfaceTab).toBe('editor');
+  });
+
+  it('setCoverageApprovedOnly toggles the flag', () => {
+    useWorkspaceStore.getState().setCoverageApprovedOnly(true);
+    expect(useWorkspaceStore.getState().coverageApprovedOnly).toBe(true);
+    useWorkspaceStore.getState().setCoverageApprovedOnly(false);
+    expect(useWorkspaceStore.getState().coverageApprovedOnly).toBe(false);
+  });
+
+  it('both setters preserve reference equality when value is unchanged', () => {
+    const before = useWorkspaceStore.getState();
+    useWorkspaceStore.getState().setRequirementsSurfaceTab('editor');
+    useWorkspaceStore.getState().setCoverageApprovedOnly(false);
+    expect(useWorkspaceStore.getState()).toBe(before);
+  });
+});
+
+describe('<RequirementsSurface /> — Editor | Coverage sub-tablist', () => {
+  beforeEach(() => resetWorkspaceStoreForTests());
+  afterEach(() => resetWorkspaceStoreForTests());
+
+  it('renders the Editor tab selected by default and shows the editor panel', async () => {
+    await bootstrap();
+    render(<RequirementsSurface />);
+    const editorTab = screen.getByTestId('requirements-tab-editor-button');
+    const coverageTab = screen.getByTestId('requirements-tab-coverage-button');
+    expect(editorTab.getAttribute('aria-selected')).toBe('true');
+    expect(coverageTab.getAttribute('aria-selected')).toBe('false');
+    expect(screen.getByTestId('requirements-editor-tabpanel')).toBeTruthy();
+    expect(screen.queryByTestId('requirements-coverage-tabpanel')).toBeNull();
+  });
+
+  it('clicking the Coverage tab swaps panels and reflects in store state', async () => {
+    await bootstrap();
+    render(<RequirementsSurface />);
+    act(() => {
+      fireEvent.click(screen.getByTestId('requirements-tab-coverage-button'));
+    });
+    expect(useWorkspaceStore.getState().requirementsSurfaceTab).toBe('coverage');
+    expect(screen.getByTestId('requirements-coverage-tabpanel')).toBeTruthy();
+    expect(screen.queryByTestId('requirements-editor-tabpanel')).toBeNull();
+    expect(screen.getByTestId('requirements-coverage-panel')).toBeTruthy();
+  });
+
+  it('aria-controls on each tab matches the rendered panel id', async () => {
+    await bootstrap();
+    render(<RequirementsSurface />);
+    const editorTab = screen.getByTestId('requirements-tab-editor-button');
+    const coverageTab = screen.getByTestId('requirements-tab-coverage-button');
+    expect(editorTab.getAttribute('aria-controls')).toBe(
+      'requirements-editor-panel',
+    );
+    expect(coverageTab.getAttribute('aria-controls')).toBe(
+      'requirements-coverage-panel',
+    );
+    expect(screen.getByTestId('requirements-editor-tabpanel').id).toBe(
+      'requirements-editor-panel',
+    );
+    act(() => {
+      fireEvent.click(coverageTab);
+    });
+    expect(screen.getByTestId('requirements-coverage-tabpanel').id).toBe(
+      'requirements-coverage-panel',
+    );
+  });
+
+  it('clicking a gap-list row selects the requirement and returns to the Editor tab', async () => {
+    await bootstrap();
+    const diagramId = ensureRequirementsDiagram();
+    const r1 = useWorkspaceStore
+      .getState()
+      .createRequirement(diagramId, { x: 0, y: 0 });
+    if (!r1) throw new Error('createRequirement failed');
+
+    render(<RequirementsSurface />);
+    act(() => {
+      fireEvent.click(screen.getByTestId('requirements-tab-coverage-button'));
+    });
+    // The new requirement is unsatisfied → appears in the unsatisfied gap list.
+    const row = screen.getByTestId(
+      `requirements-coverage-unsatisfied-row-${r1}`,
+    );
+    act(() => {
+      fireEvent.click(row);
+    });
+    expect(useWorkspaceStore.getState().selectedElementIds).toEqual([r1]);
+    expect(useWorkspaceStore.getState().requirementsSurfaceTab).toBe('editor');
+    expect(screen.getByTestId('requirements-surface-form')).toBeTruthy();
+  });
+
+  it('toggling "Approved only" narrows the coverage scope via the store flag', async () => {
+    await bootstrap();
+    const diagramId = ensureRequirementsDiagram();
+    const r1 = useWorkspaceStore
+      .getState()
+      .createRequirement(diagramId, { x: 0, y: 0 });
+    if (!r1) throw new Error('createRequirement failed');
+    // r1 stays in default 'draft' status; "Approved only" should drop it from scope.
+
+    render(<RequirementsSurface />);
+    act(() => {
+      fireEvent.click(screen.getByTestId('requirements-tab-coverage-button'));
+    });
+    // Draft requirement appears unsatisfied before the toggle.
+    expect(
+      screen.queryByTestId(`requirements-coverage-unsatisfied-row-${r1}`),
+    ).not.toBeNull();
+    act(() => {
+      fireEvent.click(
+        screen.getByTestId('requirements-coverage-approved-only'),
+      );
+    });
+    expect(useWorkspaceStore.getState().coverageApprovedOnly).toBe(true);
+    // After scoping to approved only, the draft requirement is out of scope.
+    expect(
+      screen.queryByTestId(`requirements-coverage-unsatisfied-row-${r1}`),
+    ).toBeNull();
+  });
+});
