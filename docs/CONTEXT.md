@@ -1017,3 +1017,16 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
   `text-xs` or `text-sm`, use `bg-red-700` (#b91c1c, 7.3:1 vs white) or
   `bg-red-800` instead. Don't trust the token name as a stand-in for
   AA compliance — it's tuned for visual emphasis, not contrast.
+
+- **2026-05-13 (iter-127): Never push STATUS.md commits to a feature
+  branch with an open PR.** GitHub Actions cancels the in-flight CI run
+  on every new push to the head ref, so iteration-by-iteration STATUS
+  updates keep the `check` job permanently in `queued` — `gh pr merge
+  --auto` then hangs forever and the loop appears stuck even though the
+  underlying code is fine. iter-124..126 burned three iterations on
+  this. The loop protocol step 18 says STATUS belongs on `main` via a
+  fast-forward PR when working from a branch, or as part of the
+  iteration PR itself — *not* as a separate `docs: iteration N` commit
+  pushed to the open feature branch. When mid-PR, hold STATUS edits
+  local-only (don't even commit them) and push them to main after the
+  feature PR squashes, in a tiny docs-only follow-up PR.
