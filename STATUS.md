@@ -4,10 +4,10 @@
 phase:11 — LLM integration (epic #12). Design issue #216 resolved via ADR 0010 + type-only skeletons (PR #223 landing). Slice A (#217) unblocked once #223 merges.
 
 ## Current iteration
-- Iteration #: 246
-- Started: 2026-05-13T05:50Z
+- Iteration #: 247
+- Started: 2026-05-13T05:51Z
 - Branch: issue/216-llm-architecture-adr (rebased)
-- Working on: #216 — unwedged merge conflict, force-pushed, awaiting CI rerun + auto-merge
+- Working on: #216 — CI run 25781007103 in progress on rebased branch; auto-merge armed; idle wait
 
 ## Last test run
 - Command: CI run 25780570646 on PR #223
@@ -25,6 +25,7 @@ phase:11 — LLM integration (epic #12). Design issue #216 resolved via ADR 0010
 - 2026-05-13 (iter-236): **Phase 11 design ADR.** Dispatched a Plan/Opus subagent to draft ADR 0010 resolving #216. Six sub-decisions: (1) `LLMProvider.stream(req) -> AsyncIterable<LLMEvent>` with `AnthropicProvider` + `FixtureProvider`; (2) dispatcher loop with **8 round-trip cap** per user turn, handler-throw → `tool_result is_error: true`; (3) tool registry = `Map<string, ToolEntry>` with structural `ToolInputSchema` (zod deferred until slice D); (4) `ProposedChange = { id, summary, commands: Command[] }` — mutating tool handlers never mutate state, only the accept path dispatches; (5) `Project.conversations` field with schema-tolerant default `[]`; (6) API key in `sessionStorage[mbse-workbench:anthropic-api-key]`, never logged. Skeleton type-only files committed: `src/llm/{types,provider,registry,dispatcher}.ts`. PR #223 closes #216.
 - 2026-05-13 (iter-237→245): **CI rerun on PR #223.** First run wedged on Playwright browser install for ~8h. Cancelled + rerun cleared the hang (cache-related transient). Monitored E2E to completion across multiple short-wakeup iterations.
 - 2026-05-13 (iter-246): **CI green, PR conflict resolved.** Run 25780570646 succeeded. PR went `CONFLICTING` due to STATUS.md drift on `main` during the long wait. Rebased PR branch onto `origin/main` (kept branch STATUS.md since this iteration rewrites it), force-pushed `89a7f65`. Auto-merge still enabled. New CI run will trigger; on green, #223 lands and slice A (#217) starts next.
+- 2026-05-13 (iter-247): **Waiting on rebase CI.** PR #223 now `MERGEABLE`/`BLOCKED` on required `check`. Run 25781007103 started 05:49Z, status IN_PROGRESS. Auto-merge still armed (squash). No code work this iteration — wakeup scheduled.
 
 ## Next action
 Wait for CI on the rebased PR #223 (force-push triggers a new run). On green, auto-merge lands #216. Then start slice A (#217 — repo scaffolding: install `@anthropic-ai/sdk@~0.32.1`, add `LLMProvider` impl stubs `AnthropicProvider`/`FixtureProvider` returning `throw new Error('not implemented')`, extend `Project.conversations` with the schema-tolerant load default, no UI yet).
