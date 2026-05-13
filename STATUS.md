@@ -4,10 +4,10 @@
 phase:11 — LLM integration (epic #12). Slice A (#217) merged via PR #224. Slice B (#218) in flight on PR #225.
 
 ## Current iteration
-- Iteration #: 268
-- Started: 2026-05-13T06:50Z
+- Iteration #: 269
+- Started: 2026-05-13T06:55Z
 - Branch: issue/218-api-key-entry (PR #225)
-- Working on: Awaiting PR #225 CI (run 25783204661). E2E step now in progress (started 06:49:47Z). Pre-E2E steps all green (typecheck/lint/unit/build/browser-install). Expecting red on @visual (6 missing baselines).
+- Working on: Awaiting PR #225 CI (run 25783204661). E2E step still in progress. Pre-E2E all green. Expecting red on @visual (6 missing baselines).
 
 ## Last test run
 - Command: pnpm run typecheck && pnpm run test:unit && pnpm run lint && pnpm run build
@@ -39,6 +39,7 @@ phase:11 — LLM integration (epic #12). Slice A (#217) merged via PR #224. Slic
 - 2026-05-13 (iter-266): **Slice B implemented and pushed as PR #225.** Storage helper + hook + chip + modal + wiring. Followed iter-264 lesson: STATUS goes on main directly, not the PR branch. First CI run expected red on `@visual` — baselines to be lifted from the failed run.
 - 2026-05-13 (iter-267): **PR #225 CI in progress** (run 25783204661); E2E step pending as of 06:49Z. No actionable work; check-in only.
 - 2026-05-13 (iter-268): **PR #225 E2E running** (started 06:49:47Z). All pre-E2E steps green. Check-in only.
+- 2026-05-13 (iter-269): **PR #225 E2E still running.** Check-in only.
 
 ## Next action
 Wait for PR #225 CI to finish first run. If visual tests fail with missing-baseline (expected), download the report and lift chromium+webkit actuals into `tests/e2e/__screenshots__/api-key-modal.spec.ts/` and push a second commit to the PR branch. Then back to await CI green.
