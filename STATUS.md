@@ -4,10 +4,10 @@
 phase:11 — LLM integration (epic #12). Design issue #216 resolved via ADR 0010 + type-only skeletons. Slice A (#217) unblocked once PR #223 lands.
 
 ## Current iteration
-- Iteration #: 239
-- Started: 2026-05-13T05:42Z
+- Iteration #: 240
+- Started: 2026-05-13T05:43Z
 - Branch: issue/216-llm-architecture-adr
-- Working on: #216 — PR #223 E2E in progress (~75s in at check)
+- Working on: #216 — PR #223 E2E in progress (~3.5min in at check, normal runtime)
 
 ## Last test run
 - Command: CI rerun on PR #223 (run 25780570646)
@@ -25,6 +25,7 @@ phase:11 — LLM integration (epic #12). Design issue #216 resolved via ADR 0010
 - 2026-05-13 (iter-237): **CI rerun on PR #223.** Run 25780570646 was stuck `in_progress` on the "Install Playwright browsers" step for ~8h while typecheck/lint/unit/build all succeeded. Cancelled the run, waited until `completed/cancelled`, then `gh run rerun 25780570646` — now queued. No code changes. Auto-merge remains enabled; if the rerun stays green, #223 merges and slice A (#217) is the next pick.
 - 2026-05-13 (iter-238): **CI rerun unwedged.** Rerun of 25780570646 cleared the Playwright-install hang on retry (cache-related transient, not a workflow defect). All pre-E2E steps green; E2E started 05:39:32Z and is in progress. No code changes this iteration; monitoring only.
 - 2026-05-13 (iter-239): **Still waiting on E2E.** Run 25780570646 — pre-E2E steps all green; E2E in_progress, started 05:40:55Z, only ~75s in at check time. Too early to suspect a stall. No code changes; resume on completion.
+- 2026-05-13 (iter-240): **E2E still running.** Run 25780570646 ~3.5min into E2E at 05:43Z. Within normal Playwright runtime; no stall signal. Auto-merge enabled (squash, enabled 05:37:02Z). No code changes; resume on completion.
 
 ## Next action
 Wait for E2E completion on run 25780570646. On green, auto-merge lands #216. Then start slice A (#217 — repo scaffolding: install `@anthropic-ai/sdk@~0.32.1`, add `LLMProvider` impl stubs `AnthropicProvider`/`FixtureProvider` returning `throw new Error('not implemented')`, extend `Project.conversations` with the schema-tolerant load default, no UI yet).
