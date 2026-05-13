@@ -4,13 +4,13 @@
 phase:10 — Requirements traceability. Slice 1 merged (PR #209 → `02a536f`). Slice 2 (#212) in flight as **PR #214** with auto-merge `--squash` armed; baselines replaced with CI actuals at `e4d345e`. On green: close epic #11, open `type:release`, tag `vphase-10`, exercise deployed Pages URL, append phase-completion entry to `JOURNAL.md`.
 
 ## Current iteration
-- Iteration #: 184
-- Started: 2026-05-13T04:48Z
+- Iteration #: 185
+- Started: 2026-05-13T04:49Z
 - Branch: `issue/212-visual-phase-10-final` (PR #214 open; auto-merge armed; pushed fix commit `e4d345e`)
 - Working on: #212 — `@visual phase-10-final.png` baseline (slice 2 of #178)
 
 ## Last test run
-- Command: CI run `25778712436` on PR #214 head `e4d345e` — IN_PROGRESS, E2E step running (~6 min into E2E; E2E started 04:42:40Z, now 04:48Z). Earlier steps (typecheck/lint/unit/build/install) all green.
+- Command: CI run `25778712436` on PR #214 head `e4d345e` — IN_PROGRESS, E2E step still running (~7 min in; now 04:49Z). Earlier steps (typecheck/lint/unit/build/install) all green.
 - Result: pending
 
 ## Known issues / blockers
@@ -30,6 +30,7 @@ phase:10 — Requirements traceability. Slice 1 merged (PR #209 → `02a536f`). 
 - 2026-05-13 (iter-182): CI run `25778712436` still IN_PROGRESS at ~4 min in (now 04:45Z). No-op tick.
 - 2026-05-13 (iter-183): CI run `25778712436` still IN_PROGRESS at ~5 min in (now 04:46Z). No-op tick.
 - 2026-05-13 (iter-184): CI run `25778712436` past install; E2E step running ~6 min in (now 04:48Z). Pre-E2E pipeline all green. No-op tick.
+- 2026-05-13 (iter-185): CI run `25778712436` still IN_PROGRESS at ~7 min in (now 04:49Z). E2E still executing. No-op tick.
 
 ## Next action
 Wait for the new PR #214 CI run on `e4d345e` to start, then go green. On merge: close epic #11, open a `type:release` issue, tag `vphase-10` from new `main` HEAD, run the release workflow, exercise the deployed Pages URL in Playwright, save smoke screenshots under `artifacts/release-vphase-10/`, append a phase-completion entry to `JOURNAL.md`, and move to phase 11 decomposition. If this second CI also fails the visual gate, that is attempt 2/3 on issue #212 — diagnose further (e.g. text-rendering subpixel anti-alias still drifting) before pushing a third fix.
