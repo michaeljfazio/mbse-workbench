@@ -4,7 +4,7 @@ import { expect, test, type Page } from '@playwright/test';
 //   Cmd/Ctrl-Z      → undo
 //   Cmd/Ctrl-Shift-Z → redo
 //   Cmd/Ctrl-S      → export JSON (no-op if Cmd-K palette open)
-//   Cmd/Ctrl-K      → toggle the command palette stub
+//   Cmd/Ctrl-K      → toggle the command palette
 //   Delete/Backspace → delete selected canvas element(s)
 
 const SEED_PROJECT_ID = 'p-global-shortcuts';
@@ -72,19 +72,19 @@ test.describe('Phase 12 slice C — global keyboard shortcuts (issue #233)', () 
     ).toBeVisible();
   });
 
-  test('Cmd/Ctrl-K toggles the command palette stub; Escape closes it', async ({
+  test('Cmd/Ctrl-K toggles the command palette; Escape closes it', async ({
     page,
   }) => {
     await page.keyboard.press('ControlOrMeta+k');
-    await expect(page.getByTestId('command-palette-stub')).toBeVisible();
+    await expect(page.getByTestId('command-palette')).toBeVisible();
     await page.keyboard.press('Escape');
-    await expect(page.getByTestId('command-palette-stub')).toHaveCount(0);
+    await expect(page.getByTestId('command-palette')).toHaveCount(0);
 
     // Toggle behaviour: pressing Cmd-K twice opens then closes.
     await page.keyboard.press('ControlOrMeta+k');
-    await expect(page.getByTestId('command-palette-stub')).toBeVisible();
+    await expect(page.getByTestId('command-palette')).toBeVisible();
     await page.keyboard.press('ControlOrMeta+k');
-    await expect(page.getByTestId('command-palette-stub')).toHaveCount(0);
+    await expect(page.getByTestId('command-palette')).toHaveCount(0);
   });
 
   test('Cmd/Ctrl-S triggers a JSON export download', async ({ page }) => {
@@ -99,7 +99,7 @@ test.describe('Phase 12 slice C — global keyboard shortcuts (issue #233)', () 
     page,
   }) => {
     await page.keyboard.press('ControlOrMeta+k');
-    await expect(page.getByTestId('command-palette-stub')).toBeVisible();
+    await expect(page.getByTestId('command-palette')).toBeVisible();
 
     let downloaded = false;
     page.once('download', () => {
@@ -110,7 +110,7 @@ test.describe('Phase 12 slice C — global keyboard shortcuts (issue #233)', () 
     await page.waitForTimeout(200);
     expect(downloaded).toBe(false);
     // Palette is still open.
-    await expect(page.getByTestId('command-palette-stub')).toBeVisible();
+    await expect(page.getByTestId('command-palette')).toBeVisible();
   });
 
   test('Cmd/Ctrl-Z undoes a block creation; Cmd/Ctrl-Shift-Z redoes it', async ({
