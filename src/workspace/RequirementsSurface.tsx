@@ -10,12 +10,14 @@ import type {
 import { REQUIREMENTS_VIEWPOINT_ID } from '@/viewpoints';
 
 import { RequirementsCoveragePanel } from './RequirementsCoveragePanel';
+import { RequirementsMatrixPanel } from './RequirementsMatrixPanel';
 import { computeRequirementsCoverage } from './requirements/coverage';
 import {
   buildRequirementRows,
   filterRequirements,
   sortRequirements,
 } from './requirements/editor';
+import { buildTraceabilityMatrix, filterMatrix } from './requirements/matrix';
 import { useWorkspaceStore } from './store';
 
 const PRIORITIES: readonly RequirementPriority[] = [
@@ -74,6 +76,7 @@ export function RequirementsSurface(): JSX.Element {
   );
 
   const [query, setQuery] = useState('');
+  const [matrixFilter, setMatrixFilter] = useState('');
 
   const rows = useMemo(() => {
     const built = buildRequirementRows(requirementsOf(elements), edges);
@@ -120,6 +123,15 @@ export function RequirementsSurface(): JSX.Element {
     setSurfaceTab('editor');
   };
 
+  const matrix = useMemo(() => {
+    const built = buildTraceabilityMatrix(elements, edges);
+    return filterMatrix(built, { text: matrixFilter });
+  }, [elements, edges, matrixFilter]);
+
+  const handleMatrixSelect = (id: ElementId): void => {
+    setSelection([id]);
+  };
+
   return (
     <section
       data-testid="requirements-surface"
@@ -148,8 +160,31 @@ export function RequirementsSurface(): JSX.Element {
           active={surfaceTab === 'coverage'}
           onSelect={() => setSurfaceTab('coverage')}
         />
+        <SurfaceTab
+          tabId="requirements-tab-matrix"
+          panelId="requirements-matrix-panel"
+          label="Matrix"
+          active={surfaceTab === 'matrix'}
+          onSelect={() => setSurfaceTab('matrix')}
+        />
       </div>
-      {surfaceTab === 'editor' ? (
+      {surfaceTab === 'matrix' ? (
+        <div
+          id="requirements-matrix-panel"
+          role="tabpanel"
+          aria-labelledby="requirements-tab-matrix"
+          data-testid="requirements-matrix-tabpanel"
+          className="flex min-h-0 flex-1 flex-col"
+        >
+          <RequirementsMatrixPanel
+            matrix={matrix}
+            filterText={matrixFilter}
+            onFilterTextChange={setMatrixFilter}
+            onSelectRequirement={handleMatrixSelect}
+            selectedId={selectedId}
+          />
+        </div>
+      ) : surfaceTab === 'editor' ? (
         <div
           id="requirements-editor-panel"
           role="tabpanel"
