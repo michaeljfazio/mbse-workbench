@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { subscribeApiKeyModal } from '@/llm/api-key';
 
 import { ApiKeyModal } from './ApiKeyModal';
 import { CanvasPane } from './CanvasPane';
+import { CommandPaletteStub } from './CommandPaletteStub';
 import { Divider } from './Divider';
+import { downloadProjectJson } from './export';
 import { Header } from './Header';
 import { ProjectTreePane } from './ProjectTreePane';
 import { SidebarPane } from './SidebarPane';
@@ -29,8 +31,17 @@ export function Workspace(): JSX.Element {
   const setRightPaneWidth = useWorkspaceStore((s) => s.setRightPaneWidth);
   const undo = useWorkspaceStore((s) => s.undo);
   const redo = useWorkspaceStore((s) => s.redo);
+  const deleteSelection = useWorkspaceStore((s) => s.deleteSelection);
   const containerRef = useRef<HTMLDivElement>(null);
   const [apiKeyModalOpen, setApiKeyModalOpen] = useState(false);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const commandPaletteOpenRef = useRef(false);
+  commandPaletteOpenRef.current = commandPaletteOpen;
+
+  const closeCommandPalette = useCallback(
+    () => setCommandPaletteOpen(false),
+    [],
+  );
 
   useEffect(() => {
     return subscribeApiKeyModal(() => setApiKeyModalOpen(true));
@@ -38,27 +49,80 @@ export function Workspace(): JSX.Element {
 
   useEffect(() => {
     function onKeyDown(event: KeyboardEvent): void {
+      const target = event.target;
+      const inTextInput = isTextInputTarget(target);
       const mod = event.metaKey || event.ctrlKey;
-      if (!mod) return;
       const key = event.key.toLowerCase();
-      // Skip when the user is typing into a text field — let the input's own
-      // undo behaviour handle in-place edits. The user can Tab out to undo
-      // the model.
-      if (key === 'z' && !isTextInputTarget(event.target)) {
-        event.preventDefault();
-        if (event.shiftKey) {
-          redo();
-        } else {
-          undo();
+
+      if (mod) {
+        // Skip text-field edits — let the input's own undo handle in-place
+        // edits. The user can Tab out to undo the model.
+        if (key === 'z' && !inTextInput) {
+          event.preventDefault();
+          if (event.shiftKey) {
+            redo();
+          } else {
+            undo();
+          }
+          return;
         }
-      } else if (key === 'y' && !isTextInputTarget(event.target)) {
-        event.preventDefault();
-        redo();
+        if (key === 'y' && !inTextInput) {
+          event.preventDefault();
+          redo();
+          return;
+        }
+        if (key === 'k') {
+          event.preventDefault();
+          setCommandPaletteOpen((open) => !open);
+          return;
+        }
+        if (key === 's') {
+          event.preventDefault();
+          if (commandPaletteOpenRef.current) return;
+          const state = useWorkspaceStore.getState();
+          if (state.project) {
+            downloadProjectJson({ project: state.project });
+          }
+          return;
+        }
+      } else if (
+        (key === 'delete' || key === 'backspace') &&
+        !inTextInput
+      ) {
+        // ReactFlow has its own Delete handler scoped to its viewport that
+        // emits node-remove changes through onNodesChange. Defer to it when
+        // focus is inside the canvas — otherwise (selection set by API,
+        // tree-driven focus, etc.) fall back to the workspace-global path.
+        const insideReactFlow =
+          target instanceof HTMLElement &&
+          target.closest('.react-flow') !== null;
+        if (insideReactFlow) return;
+        const state = useWorkspaceStore.getState();
+        if (
+          state.activeSurfaceKind === 'diagram' &&
+          state.selectedElementIds.length > 0
+        ) {
+          event.preventDefault();
+          deleteSelection();
+        }
       }
     }
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [undo, redo]);
+  }, [undo, redo, deleteSelection]);
+
+  // Close the palette on Escape.
+  useEffect(() => {
+    if (!commandPaletteOpen) return;
+    function onEsc(event: KeyboardEvent): void {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        setCommandPaletteOpen(false);
+      }
+    }
+    window.addEventListener('keydown', onEsc);
+    return () => window.removeEventListener('keydown', onEsc);
+  }, [commandPaletteOpen]);
 
   return (
     <div
@@ -97,6 +161,9 @@ export function Workspace(): JSX.Element {
       </div>
       {apiKeyModalOpen ? (
         <ApiKeyModal onClose={() => setApiKeyModalOpen(false)} />
+      ) : null}
+      {commandPaletteOpen ? (
+        <CommandPaletteStub onClose={closeCommandPalette} />
       ) : null}
     </div>
   );
