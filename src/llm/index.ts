@@ -45,3 +45,13 @@ export {
   useApiKey,
   writeApiKey,
 } from './api-key';
+export {
+  appendAssistantTextDelta,
+  appendUserText,
+  finalizeAssistantMessage,
+} from './conversation-reducer';
+export { accumulateStream } from './stream-accumulator';
+export {
+  setChatProviderOverride,
+  getChatProvider,
+} from './chat-provider';
