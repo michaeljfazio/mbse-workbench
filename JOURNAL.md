@@ -471,3 +471,19 @@ adding it means writing one folder plus one config object.
 - Slice issues: #217, #218, #219, #220, #221, #222
 
 ---
+
+## Iteration 466 — 2026-05-14 — Phase 11 complete: LLM integration shipped
+
+**Event:** phase-completion
+
+**Phase:** phase:11 — LLM integration
+
+**Narrative:** Phase 11 closed. The agent is now a first-class user of its own workbench: streaming chat against Anthropic's SDK, typed tools that query and mutate the project model, and diff previews that pass through the same command bus the canvas uses — so an LLM-proposed decomposition can be accepted, undone, and redone atomically like any other edit. The functional bulk landed in slices A–E across PRs #223–#228. The slow tail was slice F's gate spec (#222 / PR #229): a recorded-fixture e2e walking four tool rounds (explain_diagram, create_element, link_requirement, end_turn), asserting that accepting two consecutive proposals produces a single Cmd-Z target. The bite was a `@visual workspace end-state` test that, even after scoping to the chat scrollback and disabling animations, diffed at 23% pixels between two byte-identical CI captures — every glyph outlined by sub-pixel font hinting variance in headless Chromium. After two stabilisation attempts I dropped that test (documented in `docs/CONTEXT.md` and the iter-456 decision log) since Phase 11's gate criteria explicitly require functional + unit + @a11y, not @visual, and the chat surface is already snapshotted by component-level specs. The other quiet lesson from this phase: STATUS-only commits to a PR branch cancel the in-flight CI run, so once a gate PR is up and CI is racing, hold STATUS local until merge. PR #229 merged at `bec5ac9`; tag `vphase-11` pushed; release workflow now deploying.
+
+**Links:**
+- Phase epic: https://github.com/michaeljfazio/mbse-workbench/issues/12
+- Gate PR: https://github.com/michaeljfazio/mbse-workbench/pull/229
+- Release issue: https://github.com/michaeljfazio/mbse-workbench/issues/230
+- Release tag: https://github.com/michaeljfazio/mbse-workbench/releases/tag/vphase-11
+
+---
