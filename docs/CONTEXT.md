@@ -1048,3 +1048,12 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
   that's why phase-11 stores it in sessionStorage only and never logs).
   Fixture replay should emit raw streaming events matching this schema —
   the `tests/fixtures/llm/README.md` format already aligns.
+
+- 2026-05-13: `pnpm exec tsc --noEmit` (root tsconfig) does NOT catch the
+  same errors as CI's `pnpm build` which runs `tsc -b`. The latter builds
+  every project ref (`tsconfig.app.json`, `tsconfig.node.json`,
+  tests project) and is the authoritative type check. Always run
+  `pnpm exec tsc -b` locally before declaring "types clean", not bare
+  `tsc --noEmit`. Discovered on PR #228 where `additionalProperties` on
+  `LLMToolDefinition.input_schema` and `memberIds` on union-Partial
+  `update-element` patches passed `--noEmit` but failed `-b`.
