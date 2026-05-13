@@ -4,9 +4,9 @@
 phase:10 — Requirements traceability. Slice 1 merged (PR #209 → `02a536f`). Slice 2 (#212) in flight as **PR #214** with auto-merge `--squash` armed; baselines replaced with CI actuals at `e4d345e`. On green: close epic #11, open `type:release`, tag `vphase-10`, exercise deployed Pages URL, append phase-completion entry to `JOURNAL.md`.
 
 ## Current iteration
-- Iteration #: 201
+- Iteration #: 202
 - Started: 2026-05-13T05:00Z
-- Branch: `issue/212-visual-phase-10-final` (PR #214 open; auto-merge armed; chromium-only `rerun --failed` of CI run `25778988999` IN_PROGRESS ~2 min in — only the #161 flake test re-running)
+- Branch: `issue/212-visual-phase-10-final` (PR #214 open; auto-merge armed; chromium-only `rerun --failed` of CI run `25778988999` IN_PROGRESS ~3 min in — only the #161 flake test re-running)
 - Working on: #212 — `@visual phase-10-final.png` baseline (slice 2 of #178)
 
 ## Last test run
@@ -47,6 +47,7 @@ phase:10 — Requirements traceability. Slice 1 merged (PR #209 → `02a536f`). 
 - 2026-05-13 (iter-199): CI run `25778988999` completed **FAILURE** at 04:57:26Z. Triaged: visual gate green on both browsers; sole failure was `phase-6-gate.spec.ts:174` chromium — the known **#161** inspector-transition flake (p2, deferred). Queued `gh run rerun 25778988999 --failed` (chromium-only rerun). PR #214 auto-merge `--squash` still armed; merge will fire when the chromium rerun goes green. This is NOT an attempt against #212's gate — the visual baseline is correct.
 - 2026-05-13 (iter-200): Chromium-only `rerun --failed` of run `25778988999` IN_PROGRESS at ~1 min in (started 04:58:04Z, now 04:59Z). Only the #161 flake test is re-running so wall time should be short. No-op tick.
 - 2026-05-13 (iter-201): Chromium-only rerun still IN_PROGRESS at ~2 min in (now 05:00Z; updatedAt 04:58:04Z). PR #214 `BEHIND` against main but rerun is on `3f5415a`; on green will resolve and auto-merge fire. No-op tick.
+- 2026-05-13 (iter-202): Chromium-only rerun still IN_PROGRESS at ~3 min in (now 05:01Z; updatedAt 04:58:04Z). Only #161 flake test re-running so should be brief. No-op tick.
 
 ## Next action
 Wait for the `rerun --failed` of CI run `25778988999` (chromium-only) to go green. On merge: close epic #11, open a `type:release` issue, tag `vphase-10` from new `main` HEAD, run the release workflow, exercise the deployed Pages URL in Playwright, save smoke screenshots under `artifacts/release-vphase-10/`, append a phase-completion entry to `JOURNAL.md`, and move to phase 11 decomposition. The #161 flake is now load-bearing on phase-10 completion; if it fails the rerun, escalate #161 to p1 and fix it as a blocker before further phase-10 work.
