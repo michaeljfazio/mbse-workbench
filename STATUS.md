@@ -4,11 +4,11 @@
 phase:11 — LLM integration (epic #12). Slice A (#217) merged via PR #224. Slice B (#218) in flight on PR #225.
 
 ## Current iteration
-- Iteration #: 288
-- Started: 2026-05-13T07:17Z
+- Iteration #: 289
+- Started: 2026-05-13T07:21Z
 - Branch: issue/218-api-key-entry (PR #225) — head `71fa453`.
-- Working on: CI run 25784313558 in progress on `71fa453`. Pre-E2E green
-  (typecheck/lint/unit all pass); build in progress at 07:15:49Z. Idle.
+- Working on: CI run 25784313558 in progress on `71fa453`. Pre-E2E green;
+  build done; Playwright browser install in progress; E2E pending. Idle.
 
 ## Last test run
 - CI run 25783763405 on `b75a44a` — failed exactly as predicted: pre-E2E
@@ -48,6 +48,7 @@ phase:11 — LLM integration (epic #12). Slice A (#217) merged via PR #224. Slic
 - 2026-05-13 (iter-277→286): CI run 25783763405 monitored to completion.
 - 2026-05-13 (iter-287): **Baseline lift.** CI 25783763405 failed on 11 visual baselines (6 new + 5 stale). Lifted all from the embedded `report.zip` per-(project,test) attachment map (more reliable than trace zips). Each viewpoint diff was single-browser; only the failing-browser baseline was rewritten. Commit `71fa453` pushed to PR #225.
 - 2026-05-13 (iter-288): CI run 25784313558 started 07:14:52Z on `71fa453`. Pre-E2E green at 07:15:49Z; build in progress. Idle.
+- 2026-05-13 (iter-289): CI 25784313558 advanced past build; Playwright browser install in progress; E2E pending. Idle wait.
 
 ## Next action
 Wait for CI run 25784313558 on `71fa453`. Expected outcome: all green;
