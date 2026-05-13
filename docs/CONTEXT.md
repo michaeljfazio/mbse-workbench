@@ -8,6 +8,22 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
 
 ## Discovered facts
 
+- **2026-05-14** — **Chat scrollback @visual flake** (iter-456). After
+  iter-455's stabilisation (testid scoping + scrollTop=0 + blur focus),
+  two consecutive CI retry captures of the phase-11 gate's
+  `chat-scrollback` snapshot *still* differed by 23% of pixels. Diff
+  overlay showed every text glyph outlined — classic anti-aliasing /
+  sub-pixel font-hinting variance, not a layout regression. Headless
+  Chromium does not produce deterministic text rendering for tall
+  scrollable panels across runs. Decision: do not commit an @visual
+  baseline for the chat scrollback's multi-message end-state. Existing
+  `chat-proposal-accept.spec.ts` (proposal-card-pending) and
+  `api-key-modal.spec.ts` provide @visual coverage for individual chat
+  components; the multi-round end-state is covered functionally and by
+  @a11y in `phase-11-gate.spec.ts`. If a future iteration needs a
+  multi-message visual baseline, scope it to a *single* message bubble
+  rather than the whole scrollback.
+
 - **2026-05-14** — **@visual snapshots of the chat pane need a stable
   scroll position and blurred focus** (iter-455). Two consecutive retries
   of the phase-11 gate's @visual capture in the same CI run produced
