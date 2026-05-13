@@ -12,6 +12,11 @@ import {
   linkRequirementSchema,
   linkRequirementHandler,
 } from './link-requirement';
+import {
+  generateRequirementsFromTextDefinition,
+  generateRequirementsFromTextSchema,
+  generateRequirementsFromTextHandler,
+} from './generate-requirements-from-text';
 
 /**
  * Build the default ToolRegistry for the chat dispatcher.
@@ -68,6 +73,20 @@ export function buildToolRegistry(getReader: () => ProjectReader): ToolRegistry 
         mutating: true,
         handler: async (input: unknown, ctx: ToolContext): Promise<ToolOutput> =>
           linkRequirementHandler(linkRequirementSchema.parse(input), ctx, getReader()),
+      },
+    ],
+    [
+      'generate_requirements_from_text',
+      {
+        definition: generateRequirementsFromTextDefinition,
+        inputSchema: generateRequirementsFromTextSchema,
+        mutating: true,
+        handler: async (input: unknown, ctx: ToolContext): Promise<ToolOutput> =>
+          generateRequirementsFromTextHandler(
+            generateRequirementsFromTextSchema.parse(input),
+            ctx,
+            getReader(),
+          ),
       },
     ],
   ]);
