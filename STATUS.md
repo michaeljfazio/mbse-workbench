@@ -4,10 +4,10 @@
 phase:11 — LLM integration (epic #12). #216 merged. Slice A (#217) in flight on `issue/217-llm-scaffolding`.
 
 ## Current iteration
-- Iteration #: 255
-- Started: 2026-05-13T14:25Z
+- Iteration #: 256
+- Started: 2026-05-13T06:29Z
 - Branch: issue/217-llm-scaffolding
-- Working on: #217 — LLM scaffolding (provider interface + AnthropicProvider + FixtureProvider + conversation store)
+- Working on: PR #224 (closes #217) — open, auto-merge SQUASH enabled, CI `check` in progress (~1 min in)
 
 ## Last test run
 - Command: pnpm run typecheck && pnpm run test:unit && pnpm run lint && pnpm run build
@@ -37,6 +37,7 @@ phase:11 — LLM integration (epic #12). #216 merged. Slice A (#217) in flight o
 - 2026-05-13 (iter-236): **Phase 11 design ADR 0010.** Six sub-decisions.
 - 2026-05-13 (iter-237→254): **PR #223 (ADR) landed.** Cold Playwright cache + cancel-loop avoidance; merged on `d6a4662`.
 - 2026-05-13 (iter-255): **Slice A implemented.** Provider interface, AnthropicProvider, FixtureProvider on a shared translator. Fixture format aligned with raw SDK events so tests exercise the production translation path. Conversation persistence wired through repository with schema-tolerant defaults.
+- 2026-05-13 (iter-256): **PR #224 open** with auto-merge SQUASH; CI `check` in progress. Awaiting green.
 
 ## Next action
-Push `issue/217-llm-scaffolding`, open PR closing #217, enable auto-merge. On green, slice B (dispatcher loop #218) starts.
+Await PR #224 CI green → auto-merge closes #217. Then start slice B (dispatcher loop #218).
