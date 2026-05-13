@@ -1,0 +1,34 @@
+{
+  "name": "explain-diagram-round-trip",
+  "request": {
+    "model": "claude-sonnet-4-6",
+    "system": "You are the MBSE Workbench assistant.",
+    "messages": [{ "role": "user", "content": "explain this diagram" }],
+    "tools": []
+  },
+  "responseRounds": [
+    [
+      { "type": "message_start", "message": { "id": "msg_r1" } },
+      { "type": "content_block_start", "index": 0, "content_block": { "type": "text", "text": "" } },
+      { "type": "content_block_delta", "index": 0, "delta": { "type": "text_delta", "text": "Let me check." } },
+      { "type": "content_block_stop", "index": 0 },
+      {
+        "type": "content_block_start",
+        "index": 1,
+        "content_block": { "type": "tool_use", "id": "tu_explain_1", "name": "explain_diagram", "input": {} }
+      },
+      { "type": "content_block_delta", "index": 1, "delta": { "type": "input_json_delta", "partial_json": "{}" } },
+      { "type": "content_block_stop", "index": 1 },
+      { "type": "message_delta", "delta": { "stop_reason": "tool_use" } },
+      { "type": "message_stop" }
+    ],
+    [
+      { "type": "message_start", "message": { "id": "msg_r2" } },
+      { "type": "content_block_start", "index": 0, "content_block": { "type": "text", "text": "" } },
+      { "type": "content_block_delta", "index": 0, "delta": { "type": "text_delta", "text": "The active diagram has no elements yet." } },
+      { "type": "content_block_stop", "index": 0 },
+      { "type": "message_delta", "delta": { "stop_reason": "end_turn" } },
+      { "type": "message_stop" }
+    ]
+  ]
+}

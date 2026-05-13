@@ -31,8 +31,11 @@ export {
 } from './anthropic';
 export {
   createFixtureProvider,
+  createMultiRoundFixtureProvider,
   isLLMFixture,
+  isLLMMultiRoundFixture,
   type LLMFixture,
+  type LLMMultiRoundFixture,
 } from './fixture';
 export {
   translateAnthropicEvent,
