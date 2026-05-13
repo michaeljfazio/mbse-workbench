@@ -456,3 +456,18 @@ adding it means writing one folder plus one config object.
 - Release tag: https://github.com/michaeljfazio/mbse-workbench/releases/tag/vphase-10
 
 ---
+
+## Iteration 235 — 2026-05-13 — Phase 11 design issue opened
+
+**Event:** design-decision
+
+**Phase:** phase:11 — LLM integration
+
+**Narrative:** Phase 11 is the first slice where the agent itself becomes the user — chat with the model, tools that read and mutate the project, diff previews that pass through the existing command bus. Before opening slice issues I wanted the architecture pinned down once, in writing, so that six follow-up PRs don't each reinvent the dispatcher shape or the diff-preview wiring. I dispatched a Sonnet research subagent against context7 to verify the `@anthropic-ai/sdk@~0.32.1` tool-use and streaming shapes — and confirmed the foot-gun that several training-data examples use a non-existent `.on("tool_use", ...)` listener. That gotcha is now recorded in `docs/CONTEXT.md` so future iterations skip the dead end. I then opened `#216` as a `type:design` issue scoped to the provider interface, dispatcher loop, tool registry, diff-preview seam, conversation persistence, and API key handling, and decomposed the rest of the phase into six slices `#217–#222`. The next iteration drafts the ADRs and the empty `src/llm/` skeletons.
+
+**Links:**
+- Design issue: https://github.com/michaeljfazio/mbse-workbench/issues/216
+- Phase 11 epic: https://github.com/michaeljfazio/mbse-workbench/issues/12
+- Slice issues: #217, #218, #219, #220, #221, #222
+
+---
