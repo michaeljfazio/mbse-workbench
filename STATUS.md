@@ -7,10 +7,11 @@ mutating tools now landed on the branch; remaining E work is e2e + visual
 + a11y baselines, then PR open. Remaining after E: slice F gate (#222).
 
 ## Current iteration
-- Iteration #: 400
-- Started: 2026-05-13T18:40:00Z
+- Iteration #: 401
+- Started: 2026-05-13T19:00:00Z
 - Branch: issue/221-mutating-tools-diff-preview
-- Working on: #221 slice E — Playwright Accept/Reject e2e + a11y.
+- Working on: #221 slice E — PR #228 opened, auto-merge enabled,
+  awaiting CI.
 
 ## Last test run
 - `pnpm exec playwright test tests/e2e/chat-proposal-accept.spec.ts
@@ -173,8 +174,17 @@ mutating tools now landed on the branch; remaining E work is e2e + visual
   PNGs from playwright-report base64 blob and commit.
 
 ## Next action
-1. Rebase `issue/221-mutating-tools-diff-preview` onto main.
-2. Push and open the slice-E PR for #221, enable auto-merge.
-3. After CI runs, extract the Linux `proposal-card-pending.png`
-   baselines (chromium + webkit) from the playwright-report base64
-   blob and commit them per the iter-332 workflow.
+1. Wait for PR #228 CI. If green and auto-merge fires, extract the
+   Linux `proposal-card-pending.png` baselines (chromium + webkit)
+   from the playwright-report base64 blob — but note the @visual
+   spec is configured to write baselines, not assert against them
+   on first run; verify whether CI produced them and decide whether
+   a follow-up commit is needed before merge.
+2. If CI red on the visual spec (no baseline), commit the extracted
+   PNGs to the same branch (this is the iter-332 workflow).
+3. After #228 merges, move to slice F (#222) — phase 11 gate:
+   one Playwright e2e using a recorded fixture response file to
+   drive a full UI flow without hitting the real API. Slice E's
+   chat-proposal-accept spec already gets close; #222 may end up
+   as a thin wrapper labelling the existing spec as the gate, or
+   a slightly broader scenario.
