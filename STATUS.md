@@ -4,12 +4,12 @@
 phase:11 — LLM integration (epic #12). Slice A (#217) merged via PR #224. Slice B (#218) in flight on PR #225.
 
 ## Current iteration
-- Iteration #: 308
-- Started: 2026-05-13T07:33Z
+- Iteration #: 309
+- Started: 2026-05-13T07:34Z
 - Branch: issue/218-api-key-entry (PR #225) — head `38275df`.
-- Working on: CI run 25784810764 on `38275df` in_progress (~7m in,
-  createdAt 07:26:28Z, now 07:33:42Z). PR auto-merge SQUASH armed;
-  mergeStateStatus UNKNOWN. Idle wait.
+- Working on: CI run 25784810764 on `38275df` in_progress (~8m in,
+  createdAt 07:26:28Z, now 07:34:27Z). PR auto-merge SQUASH armed;
+  mergeStateStatus UNKNOWN. ~2m more expected. Idle wait.
 
 ## Last test run
 - CI run 25783763405 on `b75a44a` — failed exactly as predicted: pre-E2E
@@ -69,6 +69,7 @@ phase:11 — LLM integration (epic #12). Slice A (#217) merged via PR #224. Slic
 - 2026-05-13 (iter-306): CI 25784810764 still in_progress (~5.5m on server clock; createdAt 07:26:28Z, now 07:31:59Z). Auto-merge SQUASH armed; mergeStateStatus UNKNOWN. ~4.5m more expected. Idle wait.
 - 2026-05-13 (iter-307): CI 25784810764 still in_progress (~6.5m on server clock; createdAt 07:26:28Z, now 07:32:55Z). Auto-merge SQUASH armed; mergeStateStatus UNKNOWN. ~3.5m more expected. Idle wait.
 - 2026-05-13 (iter-308): CI 25784810764 still in_progress (~7m on server clock; createdAt 07:26:28Z, now 07:33:42Z). Auto-merge SQUASH armed; mergeStateStatus UNKNOWN. ~3m more expected. Idle wait.
+- 2026-05-13 (iter-309): CI 25784810764 still in_progress (~8m on server clock; createdAt 07:26:28Z, now 07:34:27Z). Auto-merge SQUASH armed; mergeStateStatus UNKNOWN. ~2m more expected. Idle wait.
 
 ## Next action
 Wait for CI run 25784810764 on `38275df`. Expected outcome: all green;
