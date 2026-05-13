@@ -5,10 +5,10 @@ phase:11 — LLM integration (epic #12). Slices A/B/C merged. Slice D (#220)
 in flight on PR #227. Remaining: slice E (#221), slice F gate (#222).
 
 ## Current iteration
-- Iteration #: 338
-- Started: 2026-05-13T08:52:45Z
+- Iteration #: 339
+- Started: 2026-05-13T08:53:45Z
 - Branch: issue/220-tool-dispatcher rev e6d8a60 (no changes this iter).
-- Working on: idle-wait — CI run 25788507469 in_progress (~5.5m elapsed).
+- Working on: idle-wait — CI run 25788507469 in_progress (~6.5m elapsed).
 
 ## Last test run
 - Local `pnpm run build` green after fix. `pnpm exec vitest run tests/unit/llm`
@@ -76,6 +76,8 @@ in flight on PR #227. Remaining: slice E (#221), slice F gate (#222).
   (~4.5m elapsed at 08:51:30Z, mergeStateStatus=UNKNOWN). No commit.
 - 2026-05-13 (iter-338): Idle-wait — CI run 25788507469 in_progress
   (~5.5m elapsed at 08:52:45Z, mergeStateStatus=UNKNOWN). No commit.
+- 2026-05-13 (iter-339): Idle-wait — CI run 25788507469 in_progress
+  (~6.5m elapsed at 08:53:45Z, mergeStateStatus=UNKNOWN). No commit.
 - 2026-05-13 (iter-332): CI run 25788009193 **FAILED** at 08:44:55Z — the
   2 chat-tool-cards `@visual` tests had no baselines on Linux. Extracted
   the Linux-rendered actual PNGs from the embedded playwright-report
