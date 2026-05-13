@@ -7,12 +7,12 @@ Mid-PR: auto-merge armed (SQUASH); iter 404 push fixed two real CI type
 errors. Remaining after E: slice F gate (#222).
 
 ## Current iteration
-- Iteration #: 410
-- Started: 2026-05-13T10:35Z
+- Iteration #: 411
+- Started: 2026-05-13T10:36Z
 - Branch: issue/221-mutating-tools-diff-preview
-- Working on: #221 slice E — idle-wait on CI run 25793695567
-  (commit 3b3db1e, in_progress as of 10:34Z). Auto-merge armed
-  (SQUASH). PR mergeable, BLOCKED on check. No action this iteration.
+- Working on: #221 slice E — idle-wait on CI run 25793764814
+  (started 10:35:59Z, in_progress). Auto-merge armed (SQUASH).
+  PR mergeable, BLOCKED on check. No action this iteration.
 
 ## Last test run
 - `pnpm exec tsc -b` (full project-refs build, same as CI's `pnpm
