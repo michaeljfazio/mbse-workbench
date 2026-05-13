@@ -4,12 +4,11 @@
 phase:11 — LLM integration (epic #12). Slice A (#217) merged via PR #224. Slice B (#218) in flight on PR #225.
 
 ## Current iteration
-- Iteration #: 290
-- Started: 2026-05-13T07:22Z
+- Iteration #: 291
+- Started: 2026-05-13T07:25Z
 - Branch: issue/218-api-key-entry (PR #225) — head `71fa453`.
-- Working on: CI run 25784313558 still in progress on `71fa453`. Pre-E2E
-  green; build done; Playwright browser install still running (~6 min in,
-  cold cache); E2E pending. Idle.
+- Working on: CI run 25784313558 still in progress on `71fa453`. Job
+  started 07:15:02Z; ~10 min elapsed; E2E phase. Idle wait.
 
 ## Last test run
 - CI run 25783763405 on `b75a44a` — failed exactly as predicted: pre-E2E
@@ -51,6 +50,7 @@ phase:11 — LLM integration (epic #12). Slice A (#217) merged via PR #224. Slic
 - 2026-05-13 (iter-288): CI run 25784313558 started 07:14:52Z on `71fa453`. Pre-E2E green at 07:15:49Z; build in progress. Idle.
 - 2026-05-13 (iter-289): CI 25784313558 advanced past build; Playwright browser install in progress; E2E pending. Idle wait.
 - 2026-05-13 (iter-290): CI 25784313558 still installing Playwright browsers (~6 min in, cold cache); E2E pending. Idle wait.
+- 2026-05-13 (iter-291): CI 25784313558 ~10 min in, E2E phase; still in progress. Idle wait.
 
 ## Next action
 Wait for CI run 25784313558 on `71fa453`. Expected outcome: all green;
