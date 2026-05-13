@@ -4,10 +4,10 @@
 phase:11 — LLM integration (epic #12). Design issue #216 resolved via ADR 0010 + type-only skeletons (PR #223 landing). Slice A (#217) unblocked once #223 merges.
 
 ## Current iteration
-- Iteration #: 247
-- Started: 2026-05-13T05:51Z
+- Iteration #: 248
+- Started: 2026-05-13T05:58Z
 - Branch: issue/216-llm-architecture-adr (rebased)
-- Working on: #216 — CI run 25781007103 in progress on rebased branch; auto-merge armed; idle wait
+- Working on: #216 — CI run 25781221709 in E2E phase (started 05:55Z); auto-merge armed; idle wait
 
 ## Last test run
 - Command: CI run 25780570646 on PR #223
@@ -26,6 +26,7 @@ phase:11 — LLM integration (epic #12). Design issue #216 resolved via ADR 0010
 - 2026-05-13 (iter-237→245): **CI rerun on PR #223.** First run wedged on Playwright browser install for ~8h. Cancelled + rerun cleared the hang (cache-related transient). Monitored E2E to completion across multiple short-wakeup iterations.
 - 2026-05-13 (iter-246): **CI green, PR conflict resolved.** Run 25780570646 succeeded. PR went `CONFLICTING` due to STATUS.md drift on `main` during the long wait. Rebased PR branch onto `origin/main` (kept branch STATUS.md since this iteration rewrites it), force-pushed `89a7f65`. Auto-merge still enabled. New CI run will trigger; on green, #223 lands and slice A (#217) starts next.
 - 2026-05-13 (iter-247): **Waiting on rebase CI.** PR #223 now `MERGEABLE`/`BLOCKED` on required `check`. Run 25781007103 started 05:49Z, status IN_PROGRESS. Auto-merge still armed (squash). No code work this iteration — wakeup scheduled.
+- 2026-05-13 (iter-248): **CI superseded.** Runs 25780978080 and 25781007103 both cancelled (likely by subsequent STATUS.md commits triggering re-runs). Latest run 25781221709 started 05:55Z, now in E2E phase. Auto-merge still armed. Wakeup scheduled for ~6min.
 
 ## Next action
 Wait for CI on the rebased PR #223 (force-push triggers a new run). On green, auto-merge lands #216. Then start slice A (#217 — repo scaffolding: install `@anthropic-ai/sdk@~0.32.1`, add `LLMProvider` impl stubs `AnthropicProvider`/`FixtureProvider` returning `throw new Error('not implemented')`, extend `Project.conversations` with the schema-tolerant load default, no UI yet).
