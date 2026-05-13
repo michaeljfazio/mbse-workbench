@@ -4,40 +4,33 @@
 phase:11 — LLM integration (epic #12). Slice A (#217) merged via PR #224. Slice B (#218) in flight on PR #225.
 
 ## Current iteration
-- Iteration #: 286
-- Started: 2026-05-13T07:10Z
-- Branch: issue/218-api-key-entry (PR #225) — head `b75a44a`.
-- Working on: Awaiting CI run 25783763405 on PR #225. E2E step in_progress (started 07:03:17Z, ~7.5min in). Idle iteration.
+- Iteration #: 287
+- Started: 2026-05-13T07:11Z
+- Branch: issue/218-api-key-entry (PR #225) — head `71fa453` (baseline lift).
+- Working on: Lifted 11 visual baselines from CI run 25783763405. Pushed; awaiting next CI run.
 
 ## Last test run
-- Command: `pnpm typecheck && pnpm lint && pnpm test:unit` + targeted Playwright (a11y + Chat-tab swap) on chromium
-- Result: **PASS** — 716 unit tests, typecheck clean, 4 pre-existing react-refresh warnings, a11y and Chat-tab swap pass locally.
+- CI run 25783763405 on `b75a44a` — failed exactly as predicted: pre-E2E
+  green, a11y green, Chat-tab swap green, 11 visual baselines (6 new + 5
+  stale viewpoints) failing. New `71fa453` lifts all 11.
 
 ## What changed this iteration
-- `src/workspace/ApiKeyModal.tsx` — modal card switched from `bg-card` (no
-  Tailwind mapping → transparent) to `bg-background` (opaque white). This
-  is what made axe see backdrop bleed-through at 1.6:1 contrast. Also
-  bumped Clear-button text from `text-muted-foreground` to `text-foreground`
-  to match Cancel.
-- `tests/e2e/workspace-shell.spec.ts` — Chat-tab swap assertion updated:
-  old placeholder text "Chat lands in Phase 11" is replaced by Slice B's
-  needs-key block; the auto-opened modal is Escape-dismissed first.
-
-## PR #225 CI failure mode (run 25783204661)
-Pre-E2E all green. E2E failures, by category:
-- `@a11y modal …` x2 browsers — fixed by bg-card → bg-background.
-- `@visual chip absent state`, `chip present state`, `modal layout` x2
-  browsers — missing baselines; lift from next CI run.
-- `workspace-shell · Chat tab swaps …` x2 browsers — stale assertion; fixed.
-- 5 viewpoint @visual diffs (`activity-empty`, `package-one`, `parametric-empty`,
-  `state-machine-empty`, `use-case-empty`) — header now contains the API-key
-  chip, so every page-level baseline that includes the header is stale.
-  These are *intended* changes; lift from next CI run per
-  `docs/CONTEXT.md` L435–488.
-- `phase-6-gate` was reported as **flaky** (passed on retry), not unexpected.
+- Downloaded `playwright-report` artifact and extracted the embedded
+  `report.zip` (base64-encoded inside `index.html`) to get the
+  per-(project,test) attachment manifest in the report JSONs — this is
+  more reliable than the trace zips, which only included the 5 viewpoint
+  cases (not the 3 "snapshot doesn't exist" modal tests).
+- 6 new baselines: `tests/e2e/__screenshots__/api-key-modal.spec.ts/`
+  (api-key-chip-absent, api-key-chip-present, api-key-modal) for both
+  chromium and webkit.
+- 5 stale baselines, per failing-browser-only:
+  - activity-empty (chromium), state-machine-empty (chromium)
+  - package-one (webkit), parametric-empty (webkit), use-case-empty (webkit)
+  - Each viewpoint failed on exactly **one** browser, not both. The
+    other browser's pre-chip baseline stays within `maxDiffPixelRatio:
+    0.01`. Pattern noted in CONTEXT for future global-header changes.
 
 ## Known issues / blockers
-- Need to lift 8 baselines after next CI run (3 new + 5 stale).
 - #161 — p2 inspector-transition flake. Deferred.
 
 ## Decisions log
@@ -49,18 +42,11 @@ Pre-E2E all green. E2E failures, by category:
 - 2026-05-13 (iter-255): **Slice A implemented.** Provider interface, AnthropicProvider, FixtureProvider on a shared translator.
 - 2026-05-13 (iter-256→265): **PR #224 CI cancel-loop diagnosed** — STATUS commits on PR branch were cancelling CI via concurrency group. Merged at 06:42Z.
 - 2026-05-13 (iter-266): **Slice B implemented and pushed as PR #225.**
-- 2026-05-13 (iter-267→275): Loop check-ins while PR #225 CI ran. Real elapsed ~9min (loop runs ~45s/iter so "minutes-in" estimates were inflated).
-- 2026-05-13 (iter-276): **PR #225 first CI diagnosed.** Found and fixed two real bugs (modal `bg-card` had no Tailwind mapping → transparent → axe contrast violation; stale workspace-shell Chat-tab assertion) and noted that 5 viewpoint visual diffs are intended (header chip is global). New commit `b75a44a` on PR branch.
-- 2026-05-13 (iter-277): CI run 25783763405 on `b75a44a` in progress (started 07:01:51Z, ~1min in). Idle iteration.
-- 2026-05-13 (iter-278): CI run 25783763405 still in E2E step (~1.5min in). Idle iteration.
-- 2026-05-13 (iter-279): Pre-E2E all green on `b75a44a`; E2E ~1min in. Idle iteration.
-- 2026-05-13 (iter-280): CI run 25783763405 still in_progress (E2E). Idle iteration.
-- 2026-05-13 (iter-281): CI run 25783763405 E2E ~3min in. Idle iteration.
-- 2026-05-13 (iter-282): CI run 25783763405 E2E ~3.5min in. Idle iteration.
-- 2026-05-13 (iter-283): CI run 25783763405 still in_progress (~5min). Idle iteration.
-- 2026-05-13 (iter-284): CI run 25783763405 still in_progress (~6.5min). Idle iteration.
-- 2026-05-13 (iter-285): CI run 25783763405 still in_progress (~7min). Idle iteration.
-- 2026-05-13 (iter-286): CI run 25783763405 E2E ~7.5min in. Idle iteration.
+- 2026-05-13 (iter-267→275): Loop check-ins while PR #225 CI ran.
+- 2026-05-13 (iter-276): **PR #225 first CI diagnosed.** Found and fixed modal `bg-card` opacity (a11y contrast) and stale workspace-shell Chat-tab assertion; pushed `b75a44a`.
+- 2026-05-13 (iter-277→286): CI run 25783763405 monitored to completion.
+- 2026-05-13 (iter-287): **Baseline lift.** CI 25783763405 failed on 11 visual baselines (6 new + 5 stale). Lifted all from the embedded `report.zip` per-(project,test) attachment map (more reliable than trace zips). Each viewpoint diff was single-browser; only the failing-browser baseline was rewritten. Commit `71fa453` pushed to PR #225.
 
 ## Next action
-Wait for next CI run on PR #225. Expected outcome: pre-E2E green, a11y green, Chat-tab swap green, and 8 visual-baseline failures (3 new + 5 stale-from-chip). Then lift chromium+webkit actuals from the report per `docs/CONTEXT.md` L435–488 and commit as baselines.
+Wait for next CI run on PR #225 head `71fa453`. Expected outcome: all
+green; auto-merge fires; epic #12 advances.
