@@ -5,11 +5,12 @@ phase:11 — LLM integration (epic #12). Slices A/B/C merged. Slice D (#220)
 in flight on PR #227. Remaining: slice E (#221), slice F gate (#222).
 
 ## Current iteration
-- Iteration #: 345
-- Started: 2026-05-13T08:57:00Z
-- Branch: issue/220-tool-dispatcher — updated from main (was BEHIND).
-- Working on: PR #227 CI green on e6d8a60 but BEHIND main. Ran
-  `gh pr update-branch 227` to fast-forward; new CI run triggered.
+- Iteration #: 346
+- Started: 2026-05-13T08:58:30Z
+- Branch: issue/220-tool-dispatcher.
+- Working on: Idle-wait on PR #227 re-run CI 25788984946
+  (started 08:56:52Z, ~1.5m elapsed, IN_PROGRESS, mergeStateStatus=UNKNOWN).
+  Auto-merge armed (squash).
 
 ## Last test run
 - Local `pnpm run build` green after fix. `pnpm exec vitest run tests/unit/llm`
@@ -90,6 +91,8 @@ in flight on PR #227. Remaining: slice E (#221), slice F gate (#222).
 - 2026-05-13 (iter-345): Idle-wait — new CI run 25788984946 started
   08:56:52Z (post update-branch), ~1m elapsed at 08:57:50Z,
   mergeStateStatus=UNKNOWN. No commit.
+- 2026-05-13 (iter-346): Idle-wait — CI run 25788984946 in_progress
+  (~1.5m elapsed at 08:58:27Z, mergeStateStatus=UNKNOWN). No commit.
 - 2026-05-13 (iter-344): CI run 25788507469 **SUCCESS** at 08:56:34Z but
   PR mergeStateStatus=BEHIND (main advanced while we waited). Ran
   `gh pr update-branch 227` which fast-forwarded the branch and queued
