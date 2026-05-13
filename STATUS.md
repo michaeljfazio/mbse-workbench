@@ -7,12 +7,12 @@ phase:11 — LLM integration (epic #12). Slices A/B/C/D merged. Slice E
 playwright-report run 25793854867.
 
 ## Current iteration
-- Iteration #: 449
+- Iteration #: 450
 - Started: 2026-05-14T00:00Z
 - Branch: issue/221-mutating-tools-diff-preview
-- Working on: #221 slice E — fresh CI run 25821186430 on head 8551e3c
-  in_progress (Setup pnpm). Prior run 25821078276 superseded.
-  mergeStateStatus=BLOCKED; auto-merge remains armed. Idle-wait.
+- Working on: #221 slice E — CI run 25821186430 on head 8551e3c still
+  in_progress (`check` job in_progress). mergeStateStatus=BLOCKED;
+  mergeable=MERGEABLE; auto-merge armed (squash). Idle-wait.
 
 ## Last test run
 - CI run 25820690853 on 0261ff8 PENDING (latest head, iter-443).
