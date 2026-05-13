@@ -12,17 +12,18 @@ export function ToolUseCard({ block }: ToolUseCardProps): JSX.Element {
     <div
       data-testid="tool-use-card"
       data-tool-name={block.name}
-      className="my-1 rounded border border-border bg-muted/50 text-xs"
+      className="my-1 rounded border border-border bg-muted text-xs"
     >
       <button
         type="button"
         aria-expanded={expanded}
+        aria-label={`Tool call: ${block.name}. Click to ${expanded ? 'collapse' : 'expand'}`}
         onClick={() => setExpanded((v) => !v)}
-        className="flex w-full items-center gap-1 px-2 py-1 text-left text-muted-foreground hover:text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+        className="flex w-full items-center gap-1 px-2 py-1 text-left text-foreground hover:bg-accent focus:outline-none focus:ring-2 focus:ring-primary"
       >
         <span aria-hidden="true">{expanded ? '▾' : '▸'}</span>
         <span className="font-mono font-medium">{block.name}</span>
-        <span className="ml-auto text-muted-foreground/60">tool call</span>
+        <span className="ml-auto text-foreground/70 text-[10px]">tool call</span>
       </button>
       {expanded && (
         <pre
@@ -52,17 +53,18 @@ export function ToolResultCard({ block }: ToolResultCardProps): JSX.Element {
       className={`my-1 rounded border text-xs ${
         isError
           ? 'border-destructive/40 bg-destructive/10'
-          : 'border-border bg-muted/30'
+          : 'border-border bg-muted'
       }`}
     >
       <button
         type="button"
         aria-expanded={expanded}
+        aria-label={`Tool ${isError ? 'error' : 'result'}. Click to ${expanded ? 'collapse' : 'expand'}`}
         onClick={() => setExpanded((v) => !v)}
         className="flex w-full items-center gap-1 px-2 py-1 text-left focus:outline-none focus:ring-2 focus:ring-primary"
       >
         <span aria-hidden="true">{expanded ? '▾' : '▸'}</span>
-        <span className={isError ? 'text-destructive' : 'text-muted-foreground'}>
+        <span className={isError ? 'text-destructive font-medium' : 'text-foreground'}>
           {isError ? 'tool error' : 'tool result'}
         </span>
       </button>
