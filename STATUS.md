@@ -4,8 +4,8 @@
 phase:10 — Requirements traceability. Slice 1 merged (PR #209 → `02a536f`). Slice 2 (#212) in flight as **PR #214** with auto-merge `--squash` enabled. On green: close epic #11, open `type:release`, tag `vphase-10`, exercise deployed Pages URL, append phase-completion entry to `JOURNAL.md`.
 
 ## Current iteration
-- Iteration #: 161
-- Started: 2026-05-13T04:25Z
+- Iteration #: 162
+- Started: 2026-05-13T04:27Z
 - Branch: `issue/212-visual-phase-10-final` (PR #214 open; auto-merge armed)
 - Working on: #212 — `@visual phase-10-final.png` baseline (slice 2 of #178)
 
@@ -28,6 +28,7 @@ phase:10 — Requirements traceability. Slice 1 merged (PR #209 → `02a536f`). 
 - 2026-05-13 (iter-159): PR #214 CI run `25778015755` still in-progress (~4 min in of ~7 min typical). No-op tick.
 - 2026-05-13 (iter-160): PR #214 CI run `25778015755` still in-progress (~5 min in of ~7 min typical). No-op tick.
 - 2026-05-13 (iter-161): PR #214 CI run `25778015755` still in-progress (~5.5 min in of ~7 min typical). No-op tick.
+- 2026-05-13 (iter-162): PR #214 CI run `25778015755` still in-progress (~7.5 min in; slightly past ~7 min typical). No-op tick.
 
 ## Next action
 Wait for PR #214 CI. On green merge: close epic #11, open a `type:release` issue, tag `vphase-10` from the new `main` HEAD, run the release workflow, then exercise the deployed Pages URL in Playwright, save the smoke screenshots under `artifacts/release-vphase-10/`, append phase-completion entry to `JOURNAL.md`, and move to phase 11 decomposition. If CI fails the visual diff on the arm64-generated baselines, pull the failed run's report and lift `*-actual.png` per CONTEXT.md.
