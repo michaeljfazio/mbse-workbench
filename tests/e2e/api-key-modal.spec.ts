@@ -32,9 +32,9 @@ test.describe('API key entry', () => {
     const chip = page.getByTestId('api-key-chip');
     await expect(chip).toHaveAttribute('data-state', 'present');
 
-    // Chat pane no longer shows the needs-key block.
+    // Chat pane no longer shows the needs-key block; now shows the chat UI.
     await expect(page.getByTestId('chat-needs-key')).toHaveCount(0);
-    await expect(page.getByTestId('chat-placeholder')).toBeVisible();
+    await expect(page.getByTestId('chat-empty')).toBeVisible();
 
     // Reload — sessionStorage survives same-tab reload, so the key remains.
     // The acceptance criterion ("reload reopens modal") is for a *new* tab;
