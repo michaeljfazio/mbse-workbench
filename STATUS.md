@@ -4,10 +4,10 @@
 phase:11 — LLM integration (epic #12). Design issue #216 resolved via ADR 0010 + type-only skeletons. Slice A (#217) unblocked once PR #223 lands.
 
 ## Current iteration
-- Iteration #: 243
-- Started: 2026-05-13T05:45Z
+- Iteration #: 244
+- Started: 2026-05-13T05:46Z
 - Branch: issue/216-llm-architecture-adr
-- Working on: #216 — PR #223 E2E ~5.5min in, still in_progress (normal)
+- Working on: #216 — PR #223 E2E ~6min in, still in_progress (normal)
 
 ## Last test run
 - Command: CI rerun on PR #223 (run 25780570646)
@@ -29,6 +29,7 @@ phase:11 — LLM integration (epic #12). Design issue #216 resolved via ADR 0010
 - 2026-05-13 (iter-241): **E2E still in_progress at 05:43Z** (same wall-clock minute as iter-240 — loop wake was fast). No code changes; scheduling a longer poll to avoid burning iterations on sub-minute reinvocations.
 - 2026-05-13 (iter-242): **E2E still in_progress at 05:44Z** (~5min elapsed since E2E start at 05:39:32Z). Within normal Playwright runtime. No code changes.
 - 2026-05-13 (iter-243): **E2E still in_progress at 05:45Z** (~5.5min elapsed). Normal. No code changes; longer wakeup to avoid burning iterations.
+- 2026-05-13 (iter-244): **E2E still in_progress at 05:46Z** (~6min elapsed since E2E start). Normal Playwright runtime; full suite typically 8–12min on this repo. No code changes.
 
 ## Next action
 Wait for E2E completion on run 25780570646. On green, auto-merge lands #216. Then start slice A (#217 — repo scaffolding: install `@anthropic-ai/sdk@~0.32.1`, add `LLMProvider` impl stubs `AnthropicProvider`/`FixtureProvider` returning `throw new Error('not implemented')`, extend `Project.conversations` with the schema-tolerant load default, no UI yet).
