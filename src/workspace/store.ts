@@ -2087,7 +2087,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
 
   setActiveSurface(kind) {
     if (get().activeSurfaceKind === kind) return;
-    set({ activeSurfaceKind: kind });
+    set({ activeSurfaceKind: kind, selectedElementIds: [] });
   },
 }));
 
