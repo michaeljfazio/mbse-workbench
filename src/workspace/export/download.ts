@@ -1,3 +1,5 @@
+import type { Project } from '@/repository/types';
+import { serializeProject } from '@/serializer';
 import { buildDiagramPng } from './png';
 import { buildDiagramSvg, type BuildDiagramSvgInput } from './svg';
 import { slugifyDiagramName } from './slug';
@@ -14,6 +16,18 @@ export async function downloadDiagramSvg({
   const svg = buildDiagramSvg(svgInput);
   const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
   triggerDownload(blob, `${slugifyDiagramName(diagramName)}.svg`);
+}
+
+export interface DownloadProjectSysmlOptions {
+  readonly project: Project;
+}
+
+export function downloadProjectSysml({
+  project,
+}: DownloadProjectSysmlOptions): void {
+  const text = serializeProject(project);
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  triggerDownload(blob, `${slugifyDiagramName(project.name)}.sysml`);
 }
 
 export async function downloadDiagramPng({

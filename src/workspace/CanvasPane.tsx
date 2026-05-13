@@ -80,7 +80,11 @@ import { PartUsageTypePopover } from './PartUsageTypePopover';
 import { TraceKindPopover } from './TraceKindPopover';
 import { UseCaseEdgeKindPopover } from './UseCaseEdgeKindPopover';
 import type { Diagram } from './diagram';
-import { downloadDiagramPng, downloadDiagramSvg } from './export';
+import {
+  downloadDiagramPng,
+  downloadDiagramSvg,
+  downloadProjectSysml,
+} from './export';
 import {
   getActiveDiagram,
   getActiveViewpoint,
@@ -970,6 +974,12 @@ function CanvasInner(): JSX.Element {
     });
   }, [viewpoint, diagram, elements, edges]);
 
+  const handleExportSysml = useCallback(() => {
+    const project = useWorkspaceStore.getState().project;
+    if (!project) return;
+    downloadProjectSysml({ project });
+  }, []);
+
   const handleExportSvg = useCallback(() => {
     if (!viewpoint || !diagram) return;
     const { width, height } = exportNodeSizeFor(viewpoint);
@@ -1422,6 +1432,7 @@ function CanvasInner(): JSX.Element {
             disabled={elementCount === 0}
             onExportPng={handleExportPng}
             onExportSvg={handleExportSvg}
+            onExportSysml={handleExportSysml}
           />
         </div>
       </div>
