@@ -8,6 +8,63 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
 
 ## Discovered facts
 
+- **2026-05-14** — **Chat scrollback @visual flake** (iter-456). After
+  iter-455's stabilisation (testid scoping + scrollTop=0 + blur focus),
+  two consecutive CI retry captures of the phase-11 gate's
+  `chat-scrollback` snapshot *still* differed by 23% of pixels. Diff
+  overlay showed every text glyph outlined — classic anti-aliasing /
+  sub-pixel font-hinting variance, not a layout regression. Headless
+  Chromium does not produce deterministic text rendering for tall
+  scrollable panels across runs. Decision: do not commit an @visual
+  baseline for the chat scrollback's multi-message end-state. Existing
+  `chat-proposal-accept.spec.ts` (proposal-card-pending) and
+  `api-key-modal.spec.ts` provide @visual coverage for individual chat
+  components; the multi-round end-state is covered functionally and by
+  @a11y in `phase-11-gate.spec.ts`. If a future iteration needs a
+  multi-message visual baseline, scope it to a *single* message bubble
+  rather than the whole scrollback.
+
+- **2026-05-14** — **@visual snapshots of the chat pane need a stable
+  scroll position and blurred focus** (iter-455). Two consecutive retries
+  of the phase-11 gate's @visual capture in the same CI run produced
+  Linux PNGs that differed in ~22% of pixels — every text row was shifted
+  by ~1px and the Send button changed colour. Two root causes: (a) the
+  scrollback's auto-scroll-to-bottom (`scrollTop = scrollHeight` in
+  `ChatPane.tsx`) lands at sub-pixel-different positions depending on
+  exactly when the final message is appended, and (b) the Send button's
+  focus / disabled state lingers across captures. Mitigation pattern for
+  any future @visual that includes the chat pane:
+  1. Wait for the *final assistant text content* to be visible (don't
+     rely on `data-streaming=true` going to 0 — ChatPane never sets that
+     flag on its own messages; see "ChatPane streaming semantics" below).
+  2. Before `toHaveScreenshot`, run `await page.evaluate(() => { ... })`
+     to blur active element and set the scrollback's `scrollTop = 0`.
+  3. Scope the screenshot to `data-testid="chat-scrollback"` (added to
+     ChatPane's scrollable div) rather than `chat-pane`, so the composer
+     button states are excluded.
+
+- **2026-05-14** — **ChatPane streaming semantics** (iter-454). The chat
+  pane in `src/workspace/chat/ChatPane.tsx` persists assistant messages
+  to the conversation **only after the dispatcher promise resolves**
+  (see `handleSend` line ~175, `result.appendedMessages.slice(1)`).
+  Consequences for e2e specs that drive multi-round tool flows with
+  mutating tools that pause for proposal acceptance: the round-N
+  assistant text + tool_use + tool_result cards are NOT visible mid-
+  flow — only the live proposal queue is. Assert tool-use/tool-result
+  cards after the full dispatcher returns (no streaming message).
+  Also: do NOT assert `proposal-card` count == 0 between sequential
+  mutating proposals — the dispatcher resumes immediately into the
+  next round and re-fills the queue with no observable empty state.
+
+- **2026-05-14** — **CI auto-cancellation on STATUS pushes** (iter-454).
+  Pushing a docs-only `STATUS.md` commit to a PR branch with CI in
+  flight triggers a new `pull_request` workflow run that cancels the
+  prior in-progress run. Don't push STATUS-only commits while CI is
+  running on the same branch — either wait for it to complete, or
+  amend STATUS.md into the next code commit. Keeping STATUS off the
+  PR branch entirely (committing on main only) is the cleanest fix
+  but currently we co-locate it for resume context.
+
 - **2026-05-11** — Repo name is exactly `mbse-workbench` (see AGENT.md
   "Phase 0 → Scaffold steps"). Pages base path is `/mbse-workbench/` in
   production builds; `vite.config.ts` already wires this. Any router /
