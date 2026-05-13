@@ -110,6 +110,114 @@ describe('<RequirementsSurface />', () => {
     );
   });
 
+  it('Add Requirement button is disabled when no Requirements diagram exists', async () => {
+    await bootstrap();
+    render(<RequirementsSurface />);
+    const button = screen.getByTestId(
+      'requirements-surface-add',
+    ) as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
+  });
+
+  it('Add Requirement button creates a requirement and selects it', async () => {
+    await bootstrap();
+    ensureRequirementsDiagram();
+    render(<RequirementsSurface />);
+    const button = screen.getByTestId(
+      'requirements-surface-add',
+    ) as HTMLButtonElement;
+    expect(button.disabled).toBe(false);
+    act(() => {
+      fireEvent.click(button);
+    });
+    const state = useWorkspaceStore.getState();
+    const reqs = state.elements.filter((e) => e.kind === 'Requirement');
+    expect(reqs.length).toBe(1);
+    expect(state.selectedElementIds).toEqual([reqs[0]!.id]);
+    expect(screen.getByTestId('requirements-surface-form')).toBeTruthy();
+  });
+
+  it('clicking a row selects it and opens the editor form', async () => {
+    await bootstrap();
+    const diagramId = ensureRequirementsDiagram();
+    const state = useWorkspaceStore.getState();
+    const r1 = state.createRequirement(diagramId, { x: 0, y: 0 });
+    if (!r1) throw new Error('createRequirement failed');
+
+    render(<RequirementsSurface />);
+    expect(screen.queryByTestId('requirements-surface-form')).toBeNull();
+    act(() => {
+      fireEvent.click(screen.getByTestId(`requirements-surface-row-${r1}`));
+    });
+    expect(useWorkspaceStore.getState().selectedElementIds).toEqual([r1]);
+    expect(screen.getByTestId('requirements-surface-form')).toBeTruthy();
+  });
+
+  it('form edits commit through store actions', async () => {
+    await bootstrap();
+    const diagramId = ensureRequirementsDiagram();
+    const r1 = useWorkspaceStore
+      .getState()
+      .createRequirement(diagramId, { x: 0, y: 0 });
+    if (!r1) throw new Error('createRequirement failed');
+    act(() => {
+      useWorkspaceStore.getState().setSelection([r1]);
+    });
+
+    render(<RequirementsSurface />);
+    act(() => {
+      fireEvent.change(screen.getByTestId('requirements-form-reqId'), {
+        target: { value: 'REQ-042' },
+      });
+      fireEvent.change(screen.getByTestId('requirements-form-name'), {
+        target: { value: 'Battery capacity' },
+      });
+      fireEvent.change(screen.getByTestId('requirements-form-text'), {
+        target: { value: 'System shall hold 50 kWh.' },
+      });
+      fireEvent.change(screen.getByTestId('requirements-form-priority'), {
+        target: { value: 'high' },
+      });
+      fireEvent.change(screen.getByTestId('requirements-form-status'), {
+        target: { value: 'approved' },
+      });
+      fireEvent.change(screen.getByTestId('requirements-form-rationale'), {
+        target: { value: 'Range target.' },
+      });
+    });
+    const req = useWorkspaceStore
+      .getState()
+      .elements.find((e) => e.id === r1);
+    if (!req || req.kind !== 'Requirement') throw new Error('lost requirement');
+    expect(req.reqId).toBe('REQ-042');
+    expect(req.name).toBe('Battery capacity');
+    expect(req.text).toBe('System shall hold 50 kWh.');
+    expect(req.priority).toBe('high');
+    expect(req.status).toBe('approved');
+    expect(req.rationale).toBe('Range target.');
+  });
+
+  it('Delete button removes the requirement and clears selection', async () => {
+    await bootstrap();
+    const diagramId = ensureRequirementsDiagram();
+    const r1 = useWorkspaceStore
+      .getState()
+      .createRequirement(diagramId, { x: 0, y: 0 });
+    if (!r1) throw new Error('createRequirement failed');
+    act(() => {
+      useWorkspaceStore.getState().setSelection([r1]);
+    });
+
+    render(<RequirementsSurface />);
+    act(() => {
+      fireEvent.click(screen.getByTestId('requirements-surface-delete'));
+    });
+    const state = useWorkspaceStore.getState();
+    expect(state.elements.find((e) => e.id === r1)).toBeUndefined();
+    expect(state.selectedElementIds).toEqual([]);
+    expect(screen.queryByTestId('requirements-surface-form')).toBeNull();
+  });
+
   it('shows the "no match" empty state when the filter matches nothing', async () => {
     await bootstrap();
     const diagramId = ensureRequirementsDiagram();
@@ -142,6 +250,19 @@ describe('workspace store — activeSurfaceKind', () => {
     expect(useWorkspaceStore.getState().activeSurfaceKind).toBe('requirements');
     useWorkspaceStore.getState().setActiveSurface('diagram');
     expect(useWorkspaceStore.getState().activeSurfaceKind).toBe('diagram');
+  });
+
+  it('setActiveSurface clears selectedElementIds on change (no stale Inspector)', async () => {
+    await bootstrap();
+    const diagramId = ensureRequirementsDiagram();
+    const r1 = useWorkspaceStore
+      .getState()
+      .createRequirement(diagramId, { x: 0, y: 0 });
+    if (!r1) throw new Error('createRequirement failed');
+    useWorkspaceStore.getState().setSelection([r1]);
+    expect(useWorkspaceStore.getState().selectedElementIds).toEqual([r1]);
+    useWorkspaceStore.getState().setActiveSurface('requirements');
+    expect(useWorkspaceStore.getState().selectedElementIds).toEqual([]);
   });
 
   it('is a no-op when the requested surface is already active (preserves reference equality)', () => {
