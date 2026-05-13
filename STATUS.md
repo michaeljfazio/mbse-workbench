@@ -6,20 +6,38 @@ in flight on branch `issue/221-mutating-tools-diff-preview`. Remaining
 after E: slice F gate (#222).
 
 ## Current iteration
-- Iteration #: 397
-- Started: 2026-05-13T18:09:00Z
+- Iteration #: 398
+- Started: 2026-05-13T18:12:00Z
 - Branch: issue/221-mutating-tools-diff-preview
-- Working on: #221 slice E — third mutating tool
-  (`generate_requirements_from_text`).
+- Working on: #221 slice E — fourth mutating tool
+  (`propose_decomposition`).
 
 ## Last test run
-- `pnpm exec vitest run tests/unit/llm` → 48 tests pass (14 new for
-  `generate_requirements_from_text`).
+- `pnpm exec vitest run tests/unit/llm` → 61 tests pass (13 new for
+  `propose_decomposition`).
 - `pnpm exec tsc --noEmit` → clean.
 - `pnpm exec eslint` on changed files → clean.
 
-## What changed this iteration (commit 1b86145)
-- New `src/llm/tools/generate-requirements-from-text.ts` exporting:
+## What changed this iteration (commit be281de)
+- New `src/llm/tools/propose-decomposition.ts` exporting:
+  - `proposeDecompositionSchema` — strict zod:
+    `{ parentPartDefinitionId, childNames: string[1..20] (each 1..120) }`.
+  - `proposeDecompositionDefinition` — Anthropic tool definition.
+  - `proposeDecompositionHandler` — validates parent is an existing
+    PartDefinition, rejects duplicate child names (case-insensitive),
+    rejects names that collide with an existing direct Composition child
+    of the same parent (case-insensitive; same name under a *different*
+    parent is fine). Emits one `create-element` + one `link`
+    (Composition, parent→child) command per name. Single ProposedChange
+    whose id is the first new child's id.
+- Registered in `src/llm/tools/index.ts` with `mutating: true`.
+- 13 new tests covering happy path, summary singular/plural, missing
+  parent, non-PartDefinition parent, duplicate names, sibling collision,
+  cross-parent non-collision, name trimming, schema bounds (empty array,
+  >20 names, >120-char name), strict extras, and unique id emission.
+
+## What changed prior iterations (commit 1b86145)
+- iter-397: new `src/llm/tools/generate-requirements-from-text.ts` exporting:
   - `generateRequirementsFromTextSchema` — strict zod:
     `{ text, owningPackageId?, defaultPriority?, defaultStatus? }` with
     enum-validated priority/status.
@@ -47,7 +65,7 @@ after E: slice F gate (#222).
   package error, non-Package owner error, empty-parse error, schema
   enum rejection, strict-mode extra-property rejection).
 
-## What changed prior iterations
+## What changed earlier prior iterations
 - iter-396 / commit 2e21fa4: `link_requirement` mutating tool.
 - iter-395 / commit cf9e29a: ChatPane wired to ProposalResolver +
   ProposalCard / PendingProposalsList UI.
@@ -59,14 +77,32 @@ after E: slice F gate (#222).
 - #161 — p2 inspector-transition flake. Deferred.
 - Pre-existing `text-muted-foreground` contrast violation on inactive
   sidebar tab button — deferred from slice C.
-- Slice E remaining work: 2 more mutating tools (`propose_decomposition`,
-  `suggest_missing_elements`); Playwright e2e exercising Accept path
-  with a recorded fixture; `@visual` baselines for diff card pending /
-  accepted / rejected; `@a11y` scan on diff card. Branch is now 9
-  commits ahead of main — slice E PR should be opened once the
-  remaining 2 mutating tools are in.
+- Slice E remaining work: 1 more mutating tool (`suggest_missing_elements`);
+  Playwright e2e exercising Accept path with a recorded fixture;
+  `@visual` baselines for diff card pending / accepted / rejected;
+  `@a11y` scan on diff card. Branch is now 10 commits ahead of main —
+  slice E PR should be opened once the remaining mutating tool is in.
 
 ## Decisions log
+- 2026-05-13 (iter-398): `propose_decomposition` rejects child names
+  that collide with an *existing direct Composition child of the same
+  parent* (case-insensitive), but does NOT block the same name under a
+  different parent. Reason: SysMLv2 PartDefinitions are namespace-free
+  globally; "Engine" can legitimately exist under both "Truck" and
+  "Boat". Blocking globally would force awkward renames during
+  decomposition. Per-parent uniqueness matches how users actually read
+  a BDD.
+- 2026-05-13 (iter-398): One ProposedChange containing 2N commands
+  (create + link, paired) rather than separate proposals per child.
+  Reason: a decomposition is a single mental act — approving the parent
+  → triplet of children as a unit is what the user expects, and a
+  single compound undo restores the state cleanly.
+- 2026-05-13 (iter-398): Decomposition only creates BDD-level
+  Composition edges, not PartUsages on the parent's `propertyIds`.
+  Reason: BDD is the structure-definition viewpoint; IBD authoring is
+  where PartUsages get instantiated (and the user picks port wiring).
+  An LLM-proposed decomposition should not silently pre-populate the
+  IBD-level usage tree.
 - 2026-05-13 (iter-397): `generate_requirements_from_text` returns ONE
   ProposedChange containing N create-element commands rather than N
   separate proposals. Reason: the user is approving a batch generated
@@ -108,11 +144,11 @@ after E: slice F gate (#222).
 
 ## Next action
 Continue slice E:
-1. Add `propose_decomposition` mutating tool — given a parent
-   PartDefinition and a list of child names, create child
-   PartDefinitions plus PartUsage compositions from parent → each
-   child. One ProposedChange, multiple commands.
-2. Then `suggest_missing_elements`.
-3. Then Playwright e2e (recorded fixture) + `@visual` + `@a11y`
+1. Add `suggest_missing_elements` mutating tool — read the current model
+   snapshot, propose Requirements/Parts that look obviously missing
+   (e.g. heuristics: PartDefinitions with no ports, Requirements with
+   no traces). One ProposedChange wrapping create-element +
+   link/update commands.
+2. Then Playwright e2e (recorded fixture) + `@visual` + `@a11y`
    baselines for the diff card.
-4. Open the slice-E PR for #221 once all 4 mutating tools are in.
+3. Open the slice-E PR for #221 once all 4 mutating tools are in.
