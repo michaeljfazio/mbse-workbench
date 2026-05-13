@@ -6,72 +6,71 @@ in flight on branch `issue/221-mutating-tools-diff-preview`. Remaining
 after E: slice F gate (#222).
 
 ## Current iteration
-- Iteration #: 394
-- Started: 2026-05-13T17:55:00Z
+- Iteration #: 395
+- Started: 2026-05-13T18:00:00Z
 - Branch: issue/221-mutating-tools-diff-preview
-- Working on: #221 slice E — PendingProposal store slice landed; next is
-  ChatPane wiring + remaining mutating tools.
+- Working on: #221 slice E — ChatPane wired to ProposalResolver; diff-card UI lands.
 
 ## Last test run
-- `pnpm exec vitest run tests/unit/workspace tests/unit/llm` → 348 tests
-  pass (8 new for PendingProposal actions).
+- `pnpm exec vitest run tests/unit/workspace tests/unit/llm` → 353 tests
+  pass (5 new for ProposalCard).
 - `pnpm exec tsc --noEmit` → clean.
 - `pnpm exec eslint` on changed files → clean.
 
-## What changed this iteration (commit 989891d)
-- New state field `pendingProposals: readonly ProposedChange[]` on the
-  workspace store. INITIAL_STATE empty.
-- New actions:
-  - `enqueueProposal(change) → Promise<ProposalResolution>`: appends to
-    pendingProposals and returns a Promise that resolves when the user
-    accepts or rejects.
-  - `acceptProposal(id)`: dispatches `{ kind: 'compound', commands }`
-    through the bus so accept = one undo step; removes from pending;
-    resolves the resolver with `{ kind: 'accepted', appliedSummary }`.
-  - `rejectProposal(id, reason?)`: removes from pending; resolves with
-    `{ kind: 'rejected', reason? }` (omits the `reason` field when not
-    given).
-- Resolvers stored in a **module-level** `Map<id, (res)=>void>` —
-  functions are not serialisable and only matter for the in-flight LLM
-  turn. Cleared by `resetWorkspaceStoreForTests`.
-- Public re-export of `ProposalResolution` / `ProposalResolver` types
-  from `@/llm` so the store and future UI can use them without reaching
-  into `@/llm/dispatcher`.
-- 8 new tests in `tests/unit/workspace/proposalActions.test.ts` cover:
-  enqueue adds to pending; accept dispatches + resolves with summary;
-  reject does not dispatch + resolves with reason; reject without reason
-  omits the field; accept/reject on unknown id are no-ops; accept of one
-  of multiple proposals only removes that one; accept/undo/redo of a
-  multi-command proposal is a single undo step.
+## What changed this iteration (commit cf9e29a)
+- New `src/workspace/chat/ProposalCard.tsx` exporting:
+  - `ProposalCard({ change })`: renders summary, a list of command kinds,
+    and Accept / Reject buttons. Buttons call `acceptProposal(id)` /
+    `rejectProposal(id)` on the store. Buttons go `disabled` once
+    clicked to prevent double-fire.
+  - `PendingProposalsList()`: subscribes to `pendingProposals`, renders
+    `null` when empty, otherwise a stack of `ProposalCard`s.
+- `ChatPane.tsx`:
+  - Imports `PendingProposalsList` and renders it above the composer.
+  - In `handleSend`, fetches `enqueueProposal` from the store and passes
+    it as `resolveProposal` to `createDispatcher`. The dispatcher's
+    `tool_result` for any mutating tool now reflects the user's
+    accept/reject decision.
+- 5 new unit tests in `tests/unit/workspace/ProposalCard.test.tsx`:
+  summary + commands render; Accept resolves with `kind: 'accepted'` and
+  clears pending; Reject resolves with `kind: 'rejected'` and clears
+  pending; empty list renders nothing; multi-pending renders multiple
+  cards.
 
 ## What changed prior iterations
+- iter-394 / commit 989891d: PendingProposal store slice (enqueue /
+  accept / reject + module-level resolver map).
 - iter-393 / commit 064d099: `create_element` mutating tool returning
-  ProposedChange. Curated kinds Package/PartDefinition/Requirement/
-  UseCase/Actor with optional `owningPackageId` chaining an
-  `update-element` command on the package's memberIds.
+  ProposedChange.
 - iter-391 / commit 68d4061: `ProposalResolver` hook on the dispatcher.
 
 ## Known issues / blockers
 - #161 — p2 inspector-transition flake. Deferred.
 - Pre-existing `text-muted-foreground` contrast violation on inactive
   sidebar tab button — deferred from slice C.
-- Visual baselines for `chat-tools.spec.ts` already in repo.
-- Slice E remaining work: ChatPane wiring (construct ProposalResolver
-  via `enqueueProposal`), diff-card UI with Accept/Reject buttons,
-  4 more mutating tools (link_requirement, propose_decomposition,
-  generate_requirements_from_text, suggest_missing_elements), e2e
-  fixture, `@visual` and `@a11y` baselines.
+- Slice E remaining work: 4 more mutating tools (link_requirement,
+  propose_decomposition, generate_requirements_from_text,
+  suggest_missing_elements); Playwright e2e exercising Accept path with
+  a recorded fixture; `@visual` baselines for diff card pending /
+  accepted / rejected; `@a11y` scan on diff card.
 
 ## Decisions log
+- 2026-05-13 (iter-395): `ProposalCard` shows command kinds as a simple
+  bullet list (`cmd.kind` string) rather than a synthesized natural-
+  language description. The dispatcher already produces a human-readable
+  `summary` field per ProposedChange; the per-command lines are an at-a-
+  glance fingerprint, not a re-translation. Avoids a second
+  serialisation surface that would drift from the actual command
+  semantics.
+- 2026-05-13 (iter-395): Buttons go `disabled` on click (local `busy`
+  state) rather than waiting for the proposal to disappear from the
+  store. The store removal happens synchronously in the action, but the
+  re-render order across multiple cards is not guaranteed; local busy
+  flag prevents a flash of double-click before unmount.
 - 2026-05-13 (iter-394): Resolvers stored in a module-level Map rather
-  than in Zustand state. Functions are not serialisable (`saveProject`
-  would otherwise need to skip them) and they're transient — only valid
-  for the current dispatcher turn. State holds the proposals themselves
-  for UI reactivity.
+  than in Zustand state.
 - 2026-05-13 (iter-394): `acceptProposal` always dispatches a
-  `compound` command (even for a single-command proposal). Makes
-  undo/redo uniform — every accepted proposal is exactly one history
-  step regardless of internal command count.
+  `compound` command — undo is one step regardless of internal count.
 - 2026-05-13 (iter-393, this branch's commit 064d099): create_element
   curated kinds — see prior STATUS.
 - 2026-05-13 (iter-391, this branch's commit 68d4061): Dispatcher
@@ -83,9 +82,9 @@ after E: slice F gate (#222).
 
 ## Next action
 Continue slice E:
-1. Wire ChatPane to construct a `ProposalResolver` that calls
-   `enqueueProposal(change)` and returns its promise — pass it to
-   `createDispatcher`.
-2. Render a diff-card list reading from `pendingProposals` with
-   Accept / Reject buttons calling the respective store actions.
-3. Then move on to remaining four mutating tool handlers.
+1. Add `link_requirement` mutating tool handler (returns ProposedChange
+   with `create-edge` commands for satisfy / verify / derive / refine).
+2. Then `generate_requirements_from_text` handler.
+3. Then `propose_decomposition` and `suggest_missing_elements`.
+4. Then Playwright e2e (recorded fixture) + `@visual` + `@a11y`
+   baselines for the diff card.
