@@ -6,11 +6,11 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 623
+- Iteration #: 624
 - Started: 2026-05-14
 - Branch: issue/253-card-tokens-square-ports
-- Working on: PR #254 — CI run 25846316947 still in progress
-  (E2E step running; other steps pending). Auto-merge SQUASH armed;
+- Working on: PR #254 — CI run 25846316947 still IN_PROGRESS
+  (single `check` job started 06:49:58Z). Auto-merge SQUASH armed;
   awaiting green.
 
 ## Last test run
