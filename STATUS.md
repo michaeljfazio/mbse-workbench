@@ -6,12 +6,12 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 621
+- Iteration #: 622
 - Started: 2026-05-14
 - Branch: issue/253-card-tokens-square-ports
 - Working on: PR #254 — CI run 25846316947 still in progress
-  (typecheck/lint/unit/build/Playwright install all green). Auto-merge
-  SQUASH armed; awaiting green.
+  (typecheck/lint/unit/build/Playwright install all green; E2E step
+  in progress since 06:51:39Z). Auto-merge SQUASH armed; awaiting green.
 
 ## Last test run
 - Command: pnpm typecheck && pnpm lint && pnpm test:unit && pnpm build && pnpm test:e2e (visual skipped on darwin per playwright.config grepInvert)
