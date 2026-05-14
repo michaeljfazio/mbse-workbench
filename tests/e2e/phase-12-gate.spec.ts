@@ -304,13 +304,19 @@ async function readPersistedProject(
 function canonicalize(
   list: ReadonlyArray<Record<string, unknown>>,
 ): ReadonlyArray<Record<string, unknown>> {
-  // Sort by id, then drop properties whose absence/`undefined` is
-  // semantically equivalent (e.g. an empty `documentation` field).
+  // ownerIndex is a derived sibling-ordering hint, not a structural
+  // property: the SysMLv2 text serializer emits in a canonical (sorted)
+  // order, so re-imported elements get parse-order indices that may
+  // differ from the pre-export indices even when the model is
+  // structurally identical (same ids/kinds/ownerId/ownerRole). The
+  // Phase-12 gate is "structurally identical modulo IDs" — ordering
+  // hints fall outside that contract.
   return [...list]
     .map((item) => {
       const cleaned: Record<string, unknown> = {};
       for (const [k, v] of Object.entries(item)) {
         if (v === undefined) continue;
+        if (k === 'ownerIndex') continue;
         cleaned[k] = v;
       }
       return cleaned;
