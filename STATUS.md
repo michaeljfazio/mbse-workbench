@@ -6,28 +6,31 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 714
+- Iteration #: 715
 - Started: 2026-05-14
 - Branch: issue/255-explorer-foundation-ownerid-context (PR #256)
-- Working on: #255 — first CI run on PR #256 failed with 34 e2e
-  failures (all symptomatic of the ownerId schema migration — local
-  e2e run had skipped visual on darwin but the functional cascade
-  was masked locally somehow; CI ground truth caught it).
-  Two categories of fix landed this iter (commit 192d420):
-    A. Element-count helpers in phase-4/5/6/7/8/12, final, and
-       json-import-export gate specs now filter out the root Package
-       (ownerId !== null), so "undo to empty" actually reaches 0
-       user elements. CanvasPane.elementCount likewise filters root
-       so the Export-disabled and empty-state surfaces re-engage on
-       a fresh project.
-    B. phase-9 gate now derives Package membership via
-       `elements.filter(e => e.ownerId === pkgId)` instead of reading
-       the removed `memberIds` field; inspector spec expects a non-
-       empty rootId in the owner field.
-  Visual baseline `package-empty.spec.ts:@visual` may still fail; not
-  patched this iter — likely needs deliberate baseline refresh once
-  T-13.31 (containment tree) lands and the ProjectTree settles. Will
-  re-evaluate after this CI run.
+- Working on: #255 — second CI run (b2426f3) cut the failure count
+  34 → 6. Surviving failures resolved this iter (commit d3a6e32):
+    A. phase-5-gate.spec.ts readProject now filters elements by
+       `ownerId !== null` before returning, so the gate's
+       `elements.toHaveLength(7)` assertion matches user-authored
+       ActionUsages (was over-counting by 1 root Package).
+    B. phase-12-gate.spec.ts round-trip poll compares against the
+       post-migration pre-export count instead of SEED_ELEMENTS.length.
+       The seed's p12-pkg-root has no ownerId and so the migrator
+       promotes it to project root, dropping the user-element count
+       from 13 to 12. Expected was 13+4=17; actual was 12+4=16.
+    C. Visual baselines refreshed from CI run 25854230466 actuals
+       (package-empty-webkit.png, package-one-chromium.png) via the
+       docs/CONTEXT.md 2026-05-12 procedure (lift `*-actual.png` sha1
+       from `data/<trace-hash>.zip` test.trace). amd64 CI is ground
+       truth — local arm64 podman regen is unreliable for text-heavy
+       canvases (delta sits right at the 0.02 tolerance band).
+- Iter-714 summary (prior): pushed 192d420 — element-count helpers in
+  phase-4/5/6/7/8/12, final, json-import-export specs filter the
+  synthesized root Package; phase-9 derives Package membership via
+  ownerId scan; CanvasPane.elementCount filters root so the
+  Export-disabled and empty-state surfaces re-engage.
 - Iter-713 summary (prior): closed out the 10 residual unit failures
   from the ownerId schema migration. Suite is 877/877 green; tsc -b 0
   errors; pnpm build clean. Pushed and opened PR #256.
@@ -176,11 +179,10 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
-Wait for PR #256's next CI run (post-192d420). If green, auto-merge
-fires. If `package-empty.spec.ts:@visual` is the only remaining red,
-update the baseline deliberately in a follow-up commit on this branch
-(documented as a side-effect of the root-Package becoming a real
-element). Once merged, start T-13.31
+Wait for PR #256's CI run on d3a6e32. If green, auto-merge fires; if
+red, diagnose the residual surface (expect at most baseline drift —
+the structural cascade should be fully cleared). Once merged, start
+T-13.31
 (replace flat-by-kind ProjectTree with containment-driven tree rooted
 at project.rootId, with representations nested under owners). The
 schema, registry helpers (childrenOf / parentOf), and DiagramContext
