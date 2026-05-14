@@ -519,3 +519,254 @@ adding it means writing one folder plus one config object.
 
 ---
 
+
+## Iteration 528 — 2026-05-14 — Phase 13 kickoff: post-v1.0.0 QA triage
+
+**Event:** phase-start
+
+**Phase:** phase:13 — Functional polish & feature accessibility
+
+**Narrative:** v1.0.0 ships green CI and a passing four-viewpoint smoke, but a human-operator walkthrough in headless Chromium against `pnpm dev` (capturing every button, input, console message, and context menu across the initial canvas, the Requirements surface, the project tree, and the Cmd-K palette) shows the gate spec proved structural correctness, not reach. The acceptance test scaffolds its own diagrams via the store, so the absent UI affordances never broke a test. Six of eight viewpoints (`requirements`, `activity`, `state-machine`, `use-case`, `parametric`, `package`) have no UI entry point: `createDiagram` is exported from the store but called from exactly one production path (IBD auto-create when drilling into a `PartDefinition`, store.ts:1299), and every other call site is a test fixture. Fresh projects bootstrap a single `Main BDD` diagram (store.ts:475 `newDefaultDiagram`) and ship empty otherwise. The `+ Add Requirement` button correctly reports `disabled: true, title: "Create a Requirements diagram first"` — but the UI exposes no way to create that diagram, so the tooltip names a step the operator cannot perform. The right-click context menu on `project-tree-pane` is empty (zero menuitems captured), so the tree offers no rename/delete/new affordance either. The Cmd-K palette announced in iter-524 as a "command palette" is in fact a search-only element finder (placeholder reads `Type a name or id…`) — it cannot invoke actions like "New Diagram → Requirements" or "Export JSON". Net effect: a first-time operator can add Blocks to the seeded BDD, open Chat, and import a prebuilt JSON; everything else (requirements authoring, activity/state/use-case/parametric/package modelling, split view, auto-layout, export, deletion of the default diagram, project rename) is unreachable from a cold start. Phase 13 enumerates these as discrete polish tasks; the autonomous loop resumes against this gap list rather than declaring done.
+
+**Gap inventory (P0 — feature inaccessible from UI):**
+- T-13.01 Diagram lifecycle UI: create / rename / delete diagrams per viewpoint. Surface as a toolbar `+ New Diagram ▾` (viewpoint picker) and as a tree-section action. Wire to existing `createDiagram(viewpointId, options)` in `src/workspace/store.ts:879`.
+- T-13.02 Project tree right-click context menu: empty today (`tree_contextmenu.json` capture has no menuitems). Add Rename / Delete / "New diagram from this element" entries; reuse `src/workspace/contextMenu` primitives.
+- T-13.03 Empty-state CTA "New Requirement" currently routes to the Requirements surface where `+ Add Requirement` is itself disabled (`canAdd = requirementsDiagramId !== null`, RequirementsSurface.tsx:90). Either auto-create the Requirements diagram on first use or relabel the CTA. Fix the dead-end loop.
+- T-13.04 Tree element creation: `Packages/Parts/Actions/States/Use Cases/Actors/Constraints/Values` sections all render `0` with no inline `+` affordance. Add per-section add buttons that create the corresponding element in the appropriate diagram (auto-creating the diagram if absent).
+
+**Gap inventory (P1 — workflow & discoverability):**
+- T-13.05 Promote Cmd-K from search-only to true command palette: register commands `Create Diagram…`, `Add Requirement`, `Export JSON`, `Export SysMLv2`, `Toggle Split View`, `Open Chat`. Reuse `src/commands` bus.
+- T-13.06 Disabled-toolbar tooltips: `Auto-layout`, `Export`, `Delete`, `Split` give no reason. Add `title` text explaining the precondition (e.g., `Add at least one element first`).
+- T-13.07 Inspector "Select an element to edit its properties" lacks any creation affordance when nothing is selected. Add a contextual `+ New Block / Part / Port` panel mirroring the diagram's viewpoint.
+- T-13.08 No project rename UI (header reads `Untitled Project` with no edit handle). Inline-edit the header label, persist via `repository.save`.
+- T-13.09 Save button is always enabled; no dirty indicator, no "saved at HH:MM" hint. Surface `modelVersion` vs last persisted version.
+- T-13.10 Toolbar undo/redo buttons (keyboard-only today); wire to the same bus `undo()`/`redo()` already used by Cmd-Z.
+
+**Gap inventory (P2 — completeness):**
+- T-13.11 SysMLv2 text import/export round-trip in the UI. Parser and serializer exist under `src/parser` and `src/serializer`; verify `ImportMenu`/`ExportMenu` expose them alongside JSON.
+- T-13.12 Multi-project management: list / create / switch / delete; the repository abstraction already supports it (`repository.list()`, store.ts:752) but `bootstrap` always loads the first project.
+- T-13.13 Diagrams sidebar section in the project tree (today diagrams are tabs only; no flat list, no thumbnails).
+- T-13.14 First-run nudge when `Open Chat` is invoked without an API key (today the chip silently shows `API key missing`).
+- T-13.15 Keyboard-shortcut help dialog (Cmd-?) — replace the static empty-state crib with a discoverable reference.
+
+**Method:** Phase 13 will work the P0 cluster first (T-13.01 → T-13.04), gated by a Playwright spec that opens the app cold, creates each viewpoint's diagram from the UI, authors one element per viewpoint, and asserts the project saves and reloads with all eight viewpoints populated. The gate spec for v1.0.0 used the store directly to scaffold diagrams — Phase 13's gate must use only user-facing affordances.
+
+**Artifacts:**
+- QA walkthrough capture: `/tmp/qa_walkthrough/` (screenshots `01_initial.png`…`05_palette.png`, button/input/testid inventories as JSON)
+- Reproduction: `python3 scripts/with_server.py --server "pnpm dev --host 127.0.0.1 --port 5173" --port 5173 -- python3 /tmp/qa_walkthrough.py`
+
+---
+
+## Iteration 529 — 2026-05-14 — Phase 13 expansion: visual rendering + transparency audit
+
+**Event:** scope-expansion
+
+**Phase:** phase:13 — Functional polish & feature accessibility
+
+**Narrative:** Re-ran the Chromium walkthrough with element creation (`+ Block` twice, then drag-connect, then Cmd-K) and dumped `getComputedStyle` on a block node and the palette dialog. Both came back `backgroundColor: rgba(0, 0, 0, 0)` while their className lists include `bg-card` — i.e. the class is in the markup but emits no CSS. Root cause: `tailwind.config.ts` defines `border, input, ring, background, foreground, primary, secondary, muted, accent, destructive` and stops there. There is no `card` color in the theme, even though 95 occurrences of `bg-card`, `bg-card/90`, `text-card-foreground`, or `border-card` are scattered across `src/viewpoints/**` and `src/workspace/**`. Tailwind's JIT silently drops unknown utilities, so every block/part/state/action/use-case/requirement/package/parametric node body, every popover (`TraceKindPopover`, `EdgeKindPopover`, `PartUsageTypePopover`, `UseCaseEdgeKindPopover`, the `CommandPalette` dialog), every edge-label badge, and every `bg-card` button is fully transparent on top of the canvas dot-grid. The dot-grid showing through "Block 1" / "Block 2" in `/tmp/qa_visual/10_bdd_two_blocks.png` is the visual proof. The Save button in the header is in this set too — the screenshot captures it as a bare outline.
+
+Parallel finding on notation conformance: IBD ports are rendered as `!rounded-full` circles (PartUsageNode.tsx:97 — `'!z-10 !h-3 !w-3 !rounded-full !border-2 !border-card !bg-primary'`). SysMLv2 (inherited from SysML 1.x and UML 2 Ports) prescribes a **small square straddling the boundary of the owning part**, optionally with a direction indicator (filled triangle for atomic, hollow for conjugated). Same `rounded-full` class is reused for connection handles on BDD blocks, actor anchors, and state nodes — which is acceptable for *connection handles* but wrong for *ports as semantic elements*. Note also: the handle classes name `!border-card` for their stroke, which (again, no `card` token) currently renders as no border, leaving the handle as a bare primary-coloured dot.
+
+Beyond ports, a first-pass conformance sweep against the SysMLv2 visual notation:
+
+- **Block (BDD):** rectangle + «block» keyword + name — correct structure; **missing** property/operation compartments (no place to surface `partIds`, `portIds`, `valueIds`, `constraintIds` that the model already carries). Body is transparent (see above).
+- **Part Usage (IBD):** rectangle with `name : Definition` — correct; **missing** the enclosing block frame ("ibd [Block] BlockName" header) that SysMLv2 IBDs draw around their contents.
+- **Port:** **wrong shape** (circle, should be square). No direction glyph (`in` / `out` / `inout`).
+- **Requirement:** rectangle with «requirement» keyword — verify it includes reqId/text/priority/status compartments per the spec stereotype (RequirementNode.tsx — confirm next iteration).
+- **Activity nodes:** `ActionUsageNode` switches on `nodeType` ∈ `initial | final | fork | join | decision | merge | action` — structure is right; need to verify initial = filled disc, final = bullseye, fork/join = solid bar, decision/merge = diamond, action = rounded rectangle.
+- **State Machine:** `StateUsageNode` similarly — initial/final/state. Verify pseudostate glyphs.
+- **Use Case:** ellipse expected; `UseCaseNode` uses `bg-card` (transparent) — need to add an SVG ellipse outline. Actor = stick figure (SVG, looks OK at first glance).
+- **Parametric:** `ConstraintUsageNode` should be a rounded rectangle with «constraint» keyword + expression; `ValuePropertyNode` should expose `name : type = value`. Verify.
+- **Package:** `PackageNode` is a tabbed rectangle (folder shape) — looks correct.
+- **Edges:** verify SysMLv2 line styles: Generalization = solid + hollow triangle arrowhead; Composition = solid + filled diamond; Trace family (satisfy/verify/derive/refine/trace) = dashed + open arrow + stereotype label; Item Flow = solid + open arrow + «itemFlow» + item-type label; Connection Usage = solid + no arrow; Include/Extend = dashed + open arrow + stereotype.
+
+**Backlog additions to Phase 13:**
+
+- T-13.16 **(P0)** Add `card` + `card-foreground` to `tailwind.config.ts` and define `--card` / `--card-foreground` HSL tokens for light + dark in `src/index.css`. Single-token fix instantly opaques 95 call sites: block bodies, popovers, edge labels, Save button. Gate via a Playwright spec asserting `getComputedStyle(node).backgroundColor !== 'rgba(0, 0, 0, 0)'` for each node kind and each popover.
+- T-13.17 **(P0)** Replace circular port glyphs with square port glyphs in `PartUsageNode` (`!rounded-full` → `!rounded-none` or explicit `rounded-[1px]`) and remove `!border-card` once T-13.16 lands. Keep connection-handle rendering distinct from port rendering — handles on BDD blocks should remain circular dots, since they're React Flow plumbing, not ports.
+- T-13.18 **(P1)** Add direction glyphs to ports: triangle inset for `in` / `out` / `inout`. Model already carries `PortDirection`.
+- T-13.19 **(P1)** Block compartments in BDD: render `parts`, `ports`, `values`, `constraints` as collapsible compartments beneath the name band.
+- T-13.20 **(P1)** IBD enclosing frame: draw the `ibd [PartDefinition] Name` outer rectangle around the diagram so part-usages visually live "inside" the definition. The model already carries `context: { kind: 'partDefinition', id }` on every IBD diagram (store.ts:1292) — use it.
+- T-13.21 **(P1)** Requirement compartments: reqId, text, priority, status as labelled rows inside the «requirement» rectangle. Truncate long text with hover-to-expand.
+- T-13.22 **(P1)** Use-case ellipse: replace `bg-card` rectangular fill in `UseCaseNode` with an SVG `<ellipse>` so the shape is genuinely oval and the label centres inside.
+- T-13.23 **(P1)** Activity pseudostate glyph review: initial (filled circle), final (bullseye), fork/join (heavy bar), decision/merge (diamond). Spec audit + per-kind snapshot tests.
+- T-13.24 **(P1)** State pseudostate glyph review: initial (filled circle), final (bullseye), composite-state inner region rendering.
+- T-13.25 **(P1)** Parametric: constraint expression compartment under «constraint»; value-property `: type = default`.
+- T-13.26 **(P1)** Edge style audit per SysMLv2: hollow-triangle Generalization arrowhead (currently CSS-derived — verify), filled-diamond Composition end (verify), dashed lines + stereotypes on Trace/Include/Extend/PackageImport edges, ItemFlow open arrow + item-type label.
+- T-13.27 **(P2)** Handle stroke colour: the `!border-card` on handles is currently no-op — restore visible handle outline once `card` lands, or switch handles to `!border-background` to keep them legible on both light and dark canvases.
+- T-13.28 **(P2)** Selection ring contrast: `ring-primary/30` is faint against the dot-grid; bump to `/50` or use a 2-px solid outline so selected nodes are unambiguous on light-mode canvases.
+
+**Method update:** Phase 13's gate spec must now (a) assert reachability of every viewpoint from a cold start (iter-528) and (b) assert visual fidelity of each node kind via a snapshot-based check or a `getComputedStyle` invariant set. The visual snapshot trap from Phase 11 (iter-466 — sub-pixel font hinting variance) suggests a per-element-kind computed-style assertion rather than a full-page pixel diff. Mask the dot-grid or run snapshots on a solid background.
+
+**Artifacts:**
+- Visual capture: `/tmp/qa_visual/10_bdd_two_blocks.png` (two transparent block nodes over dot-grid), `block_style.json` (`rgba(0, 0, 0, 0)`), `palette_style.json` (same), `12_cmdk_palette.png`.
+- Component refs: `src/viewpoints/ibd/PartUsageNode.tsx:97`, `src/viewpoints/bdd/BlockNode.tsx:56`, `tailwind.config.ts:14-40`, `src/index.css:6-23`.
+
+---
+
+## Iteration 530 — 2026-05-14 — Phase 13 expansion: hierarchical Project Explorer
+
+**Event:** scope-expansion
+
+**Phase:** phase:13 — Functional polish & feature accessibility
+
+**Narrative:** Reviewed the SysON Project Explorer documentation (doc.mbse-syson.org/syson/v2026.3.0/user-manual/features/explorer.html) to set a target for our own explorer. SysON's model is built around three node types — **Models** (containers, our `Project` / root `Package`), **Semantic Elements** (domain instances with their own children — our `PartDefinition`, `Package`, `ActionDefinition`, `Requirement`, etc.), and **Representations** (diagrams that nest *under* the semantic element they represent). The tree mirrors the ownership/membership graph; selecting a semantic element drives the inspector and highlights matching nodes in any open diagram, and selecting a representation opens (or focuses) it in a tab. A toolbar exposes "Add a Model" / "Upload a Model" / "Select element in Explorer" (reveal-in-tree). Each node carries a three-dots context menu with kind-specific options (rename, delete, create child element, create representation, expand-all, download). Drag-and-drop moves an element and its owning membership to the drop target, with the system rejecting moves that violate containment or read-only-library constraints. A filter bar narrows the tree.
+
+Our tree (`src/workspace/tree/ProjectTree.tsx`) is the opposite shape: it ignores all containment in the metamodel and renders flat kind buckets (`Packages, Blocks, Parts, Requirements, Actions, States, Use Cases, Actors, Constraints, Values`) at depth 1 with leaves at depth 2 — the same flat list regardless of which element owns which. Diagrams don't appear in the tree at all; they're tabs in the canvas header. The model has the bones of a proper hierarchy already: `PackageElement.memberIds` (elements.ts:68), `PartDefinitionElement.portIds`/`.propertyIds` (lines 75-76), `PartUsageElement.portUsageIds` (line 84), `ActionDefinitionElement.parameterIds` (line 128), `InterfaceDefinitionElement.portDefinitionIds` (line 101), and `Diagram.context: { kind: 'partDefinition', id }` for IBDs (diagram.ts:17-22). What's missing for a true tree is a single normalized `ownerId` on every element so reverse-lookup is O(1), and a uniform `DiagramContext` covering all eight viewpoints (today only `partDefinition` is typed; the other six viewpoints' diagrams hang free at the project root).
+
+**Target shape (ASCII sketch of an example project):**
+
+```
+▾ Untitled Project                              [⋯]
+  ▾ ⊞ Library (read-only)                       [⋯]
+  ▾ ⊞ MainPackage                               [⋯]
+  │ ▸ ◧ AvionicsSystem  (PartDefinition)        [⋯]
+  │ │   ⬚ powerIn  (PortDefinition, in)
+  │ │   ⬚ dataOut  (PortDefinition, out)
+  │ │   ⌬ AvionicsSystem BDD  (representation)
+  │ │   ⌬ AvionicsSystem IBD  (representation)
+  │ ▾ ◧ FlightController                        [⋯]
+  │ │   ⬚ powerIn
+  │ │   ⌬ FlightController IBD
+  │ ▸ ⚙ TakeoffSequence (ActionDefinition)
+  │ │   ◇ initial
+  │ │   ◇ start_engines
+  │ │   ⌬ TakeoffSequence Activity diagram
+  │ ▸ ❉ EmergencyMode (StateDefinition)
+  │ ▸ ◯ AvionicsUseCases
+  │ ▾ ☷ Requirements                            [⋯]
+  │ │   ▣ REQ-001  Lifts off within 30 s
+  │ │   ▣ REQ-002  Aborts on power loss
+  │ │   ⌬ AvionicsRequirements (representation)
+  │ ▾ ⌗ ConstraintLib
+  │     𝑓 MaxThrust
+  ▸ ⊞ Trash
+```
+
+The leading glyph mirrors the SysMLv2 stereotype (◧ part-definition, ⬚ port, ⚙ action, ❉ state, ◯ use-case, ▣ requirement, ⌬ representation, 𝑓 constraint, ⊞ package). `[⋯]` is the three-dots context-menu trigger. Representations sit under the element they belong to, not in a separate tab strip — opening the tab is what double-click does. Filter bar lives in the pane header; toolbar holds "+ New", "Upload JSON", and a reveal-in-tree pin.
+
+**Backlog additions to Phase 13:**
+
+- T-13.29 **(P0, foundation)** Normalize ownership in the metamodel. Add a uniform `ownerId: ElementId | null` to `ElementBase`. A migration backfills it from the existing scattered child arrays (`Package.memberIds`, `PartDefinition.portIds/propertyIds`, `ActionDefinition.parameterIds`, `InterfaceDefinition.portDefinitionIds`). Top-level elements get `ownerId: null` and are owned by the root project package. All container-mutation commands (`createElement`, `moveElement`) update both sides. Without this, the tree's hierarchy is rebuilt by scanning every list on every render.
+- T-13.30 **(P0, foundation)** Generalize `DiagramContext` to cover every viewpoint, not just IBD. Today `DiagramContext = PartDefinitionDiagramContext`; widen to a discriminated union: `{ kind: 'package'|'partDefinition'|'actionDefinition'|'stateDefinition'|'requirementGroup'|'useCaseSubject', id }`. Bootstrap routines for new diagrams must set context; the explorer uses this to dock representations under their owning element.
+- T-13.31 **(P0)** Replace `ProjectTree` with a containment-driven tree. Render the root project package + its `memberIds` recursively; each `PartDefinition`/`ActionDefinition`/`StateDefinition` expands to its owned ports/parameters/states; each element's owned diagrams appear as `⌬` leaves. Preserve the existing roving-tabindex keyboard model and selection sync.
+- T-13.32 **(P0)** Tree ↔ canvas selection sync (bidirectional). Selecting in the tree calls `setSelection`; React Flow's selection events push back into the tree so the leaf scrolls into view and highlights. Implement a `reveal-in-tree` toolbar action that maps an `ElementId` to its tree path and expands ancestors.
+- T-13.33 **(P0)** Three-dots context menu per leaf/group. Kind-specific actions: Rename, Delete, Create child… (filtered to legal child kinds), Create representation… (filtered to viewpoints whose context kind matches this element), Expand-all-children, Move to package…, Duplicate. Replaces the empty native right-click captured in iter-528.
+- T-13.34 **(P0)** Empty-state CTAs already in the canvas ("New Block", "New Requirement") should resolve through the explorer: a new element appears as a tree leaf under the current package, with the inline-rename input focused.
+- T-13.35 **(P1)** Filter bar in the pane header. Token-based filter (`name:foo kind:part status:approved`) backed by the same scorer that drives the Cmd-K palette (`commandPaletteSearch.ts`). Hide non-matching leaves but keep ancestors so context is preserved.
+- T-13.36 **(P1)** Drag-and-drop *move* semantics. Already partially wired (`PROJECT_TREE_DRAG_ELEMENT_ID` MIME, `ProjectTree.tsx:23`) but only the Package viewpoint handles drops. Generalize: dropping element A onto container B issues a compound `moveElement(A, B)` command. Reject and toast on illegal moves (e.g., dropping a `PartDefinition` onto an `ActionDefinition`).
+- T-13.37 **(P1)** Diagrams-as-representations. Move diagram-tabs into the tree (`⌬` leaves under their context element). The canvas header keeps a *current* tab strip showing only open diagrams; closing a tab leaves the representation in the tree.
+- T-13.38 **(P1)** Per-kind stereotype icons (lucide-react already a dep). One small SVG per `ElementKind`, matching SysMLv2 notation: ◧ definition, ◊ usage, ⬚ port, ⚙ action, ❉ state, ◯ use-case, 👤 actor, ▣ requirement, 𝑓 constraint, ⌬ representation, ⊞ package. Replace today's text-only leaves.
+- T-13.39 **(P1)** Stable tree path → URL fragment. `#/element/<id>` and `#/diagram/<id>` so deep links into a specific element survive reload and are shareable.
+- T-13.40 **(P2)** Tree node breadcrumb above the canvas (Eclipse-style): `Project / MainPackage / AvionicsSystem / AvionicsSystem IBD`. Click any segment to navigate.
+- T-13.41 **(P2)** Multi-select in the tree (Shift/Cmd-click) → batched delete / move / "open all as tabs".
+- T-13.42 **(P2)** Lazy-load very large branches (>200 children) with a "Load more" sentinel, mirroring SysON's behavior on imported standard libraries.
+
+**Method:** T-13.29 + T-13.30 are the architectural prereqs — every other tree task depends on a single owner relation and a generalized diagram context. Land those as one PR with a migration that converts existing saved projects in-place (the repository's `load` should run the back-fill on read). The explorer rewrite (T-13.31..34) follows in a single PR sized to keep the existing keyboard model intact. Filter, drag-move, representations-in-tree, and icons can land as independent slices.
+
+**Open questions:**
+- Should the root project map to a top-level `Package` element (so the tree has a single root) or stay implicit? SysON treats Models as first-class nodes — argues for making the project root an explicit `Package` named after the project, so `ownerId: null` exists only at that single root.
+- Library/import handling. SysON ships read-only standard libraries; we have `PackageImport` edges (edges.ts:49) but no library concept. Out of scope for Phase 13 unless a v1 use case needs it — flag as Phase 14.
+
+**Artifacts:**
+- Source refs: `src/workspace/tree/ProjectTree.tsx:42-94` (flat-by-kind grouping), `src/model/elements.ts:66-178` (existing child-id arrays), `src/workspace/diagram.ts:17-29` (single-kind diagram context).
+- Reference: SysON Explorer documentation (cited above).
+
+---
+
+## Iteration 531 — 2026-05-14 — Phase 13 design decisions: explorer foundations locked
+
+**Event:** decision-record
+
+**Phase:** phase:13 — Functional polish & feature accessibility
+
+**Narrative:** Two architectural questions were left open in iter-530 (explicit vs. implicit project root; library support in Phase 13). A third surfaced when sketching T-13.29 — whether to keep the scattered parent-side child-id arrays alongside a new `ownerId`, or normalize ownership to a single source of truth. Working an engineer's daily flow through each option, the cleanest answers fall out the same way: minimize special cases, single source of truth, no dual representation, no Phase 14 features bleeding into Phase 13. Decisions below are committed; revisit only on evidence.
+
+### Decision 1 — Project root is an explicit `Package` element
+
+The project root is a real `PackageElement` whose `id` is stored on `Project.rootId`. Invariant: exactly one element has `ownerId === null`, and that element is `Project.rootId`. Renaming the project renames the root package (single atomic command). Deleting the root is rejected at the command bus.
+
+**Why:**
+- SysMLv2 textual notation is rooted at a package — every emitted file is `package Foo { ... }`. Our serializer (`src/serializer/`) already needs to synthesize one on export; promoting it to a first-class element removes the synthesis step and makes round-trip identity natural.
+- The `Package` element + viewpoint already exist with `memberIds`. We reuse, not invent.
+- Every tree-rendering, drag-drop, context-menu, and ownership invariant becomes total. "What's the parent of an arbitrary element?" has a uniform answer for *every* element except one well-known root. No `if (top-level) { ... } else { ... }` branches.
+- Engineers expect a project to *be* a namespace they can rename and attach metadata to. A `Package` is exactly that.
+
+**Consequence:** repository `load()` migrates legacy projects by synthesizing a root `Package` whose name is the existing `project.name`, then setting every previously-orphan element's `ownerId` to it.
+
+### Decision 2 — `ownerId` is the single source of truth for containment
+
+Add `ownerId: ElementId | null`, `ownerRole: OwnerRole`, and `ownerIndex: number` to `ElementBase`. **Remove** the scattered parent-side arrays: `Package.memberIds`, `PartDefinition.portIds`/`propertyIds`, `PartUsage.portUsageIds`, `ActionDefinition.parameterIds`, `InterfaceDefinition.portDefinitionIds`. The `createElementRegistry()` already in `src/repository` materializes an `ownerId → child[]` index keyed by role; readers shift from `partDef.portIds.map(id => registry.get(id))` to `registry.childrenOf(partDef.id, 'port')`.
+
+`OwnerRole` is the finite enum: `'member' | 'port' | 'property' | 'parameter' | 'portUsage' | 'transition' | 'requirementMember' | ...` — one role per containment relationship the metamodel already names today.
+
+**Why:**
+- The current dual representation (child has no parent pointer, but parents track lists of children) is a consistency hazard: every mutation has to update both sides, and a missed update produces either an orphan (child exists, no parent points to it) or a dangling reference (parent points to a deleted child). Both failure modes are silent.
+- A single source of truth eliminates the entire bug class. The registry's child-index is reactive — there is no place for divergence.
+- Tree rendering becomes a single recursive `childrenOf(node)` traversal instead of N viewpoint-specific gather routines.
+- The migration is mechanical: for each parent kind, walk its existing child arrays and set the corresponding `ownerId`/`ownerRole`/`ownerIndex` on each child; drop the arrays.
+- Yes, this rewrites every reader of `portIds` / `memberIds` / etc. The change is grep-able and isolated. We just shipped v1.0.0, no external API is promised on the storage format, this is the right window.
+
+**Consequence:** one PR introduces the schema change, the migration, the registry index, and a codemod-style sweep of readers. After it lands, the metamodel is properly normalized and the explorer rewrite (T-13.31) is a pure UI patch with no metamodel branches.
+
+### Decision 3 — `DiagramContext` is a discriminated union over four container kinds; every diagram has one
+
+```ts
+type DiagramContext =
+  | { kind: 'package';          id: ElementId }
+  | { kind: 'partDefinition';   id: ElementId }
+  | { kind: 'actionDefinition'; id: ElementId }
+  | { kind: 'stateDefinition';  id: ElementId };
+```
+
+Each viewpoint declares the context kinds it accepts:
+
+| Viewpoint     | Accepted context kind(s) |
+|---------------|--------------------------|
+| BDD           | package, partDefinition  |
+| IBD           | partDefinition           |
+| Requirements  | package                  |
+| Activity      | actionDefinition         |
+| State Machine | stateDefinition          |
+| Use Case      | package                  |
+| Parametric    | partDefinition           |
+| Package       | package                  |
+
+This drives the "Create representation…" submenu directly: right-click a `PartDefinition` and the offered viewpoints are exactly `BDD | IBD | Parametric`. No ad-hoc switch statements anywhere in the menu code — the menu reads from the viewpoint registry.
+
+**Why:**
+- Today's `DiagramContext = PartDefinitionDiagramContext` (diagram.ts:22) hard-codes one kind, so six of eight viewpoints have free-floating diagrams with nothing to nest under in the tree. The natural fix is to widen the union to the four kinds the SysMLv2 metamodel actually uses as visual containers.
+- Required-not-optional means the explorer never has to handle "where do I put this diagram?" There's always an owner element to dock under.
+- Migration: pre-existing diagrams without a context become `{ kind: 'package', id: rootId }` — i.e. they nest under the project root, which is exactly where they appear today.
+
+**Consequence:** `Diagram.context` becomes non-optional. `createDiagram(viewpointId, options)` requires a context. The toolbar's `+ New Diagram` opens a two-step dialog: viewpoint, then container — defaulting the container to the current selection if it matches an accepted kind, otherwise to the root package.
+
+### Decision 4 — Libraries (KerML / SysML standard) are Phase 14, not Phase 13
+
+Phase 13 ships zero library content. Phase 13's design accommodates Phase 14 via two hooks:
+1. `PackageElement` gains `isReadOnly?: boolean` (undefined = false). The command bus rejects destructive operations on read-only-rooted subtrees; the explorer renders a lock badge.
+2. `Project` gains `libraryRootIds?: ElementId[]` (undefined or empty in Phase 13). The tree renders these as siblings of the user root, under a "Libraries" header when present.
+
+**Why:**
+- Library support is substantial: sourcing/authoring the KerML and SysML library content, namespace resolution, parser/serializer changes to emit `import` directives, version pinning, and search semantics ("include library symbols in filter?"). None of that unblocks anything currently broken in the UI walkthrough.
+- The user's reported friction (transparent nodes, no diagram-creation UI, flat tree) is all reachable without libraries. Phase 13 should fix the reachable surface first.
+- Adding libraries before the explorer rewrite would mean designing the explorer twice — once without library nodes, once with. By committing the two hooks above we accommodate libraries with zero redesign when Phase 14 lands.
+
+**Consequence:** Phase 13 backlog gains no library tasks. Phase 14 is now scoped: "Standard library import, namespace resolution, import directive in text round-trip." Carries forward T-13's `isReadOnly` flag and `libraryRootIds` field as starting points.
+
+### Updated invariants after Phase 13 foundations land
+
+- `elements.filter(e => e.ownerId === null).length === 1` and equals `project.rootId`.
+- For every element `e`, `e.ownerId === null || elements.some(p => p.id === e.ownerId)`.
+- For every diagram `d`, `d.context !== undefined && elements.some(e => e.id === d.context.id)`.
+- For every diagram `d`, the viewpoint accepts `d.context.kind`.
+- No `PackageElement.memberIds` / `PartDefinitionElement.portIds` / etc. exist in the persisted schema; all containment is via child `ownerId`.
+
+### Locked task scope (revisions to iter-530)
+
+- T-13.29 → "Add `ownerId`/`ownerRole`/`ownerIndex` to ElementBase; remove parent-side child arrays; backfill migration in repository.load; codemod readers to `registry.childrenOf`."
+- T-13.30 → "Widen DiagramContext to discriminated union over the four container kinds; make context required; migrate orphan diagrams to `{ kind: 'package', id: rootId }`."
+- Introduce a synthesized root Package as part of the T-13.29 migration; add `Project.rootId: ElementId`.
+- Phase 14 placeholder: "Standard library import (KerML / SysML), read-only subtree enforcement, import directive in text round-trip." Use `Package.isReadOnly` + `Project.libraryRootIds` hooks reserved in Phase 13.
+
+---

@@ -542,7 +542,7 @@ covering moving an element between packages.
 - **Gate:** Round-trip test (model → SysMLv2 text → model is structurally
   identical, modulo IDs); full smoke test exercising every viewpoint.
 
-## Final gate — COMPLETE
+## Final gate — COMPLETE (Phase 0–12, reached at v1.0.0 / iter-527)
 - All phase epics closed.
 - All `type:feature` and `type:bug` issues closed (excluding `status:needs-human`).
 - `v1.0.0` tag pushed; release workflow green; Pages deploy live.
@@ -550,6 +550,67 @@ covering moving an element between packages.
   viewpoints, add 5+ requirements, link them, ask LLM to critique (with
   recorded fixture), export to SysMLv2 text, re-import, model matches.
 - STATUS.md final line is exactly `COMPLETE`.
+
+## Phase 13 — Post-v1.0.0 functional polish & feature accessibility
+
+**Why this phase exists:** v1.0.0's gate scaffolded its model via the store,
+so the gate never exercised the human-operator UI surface. A walkthrough in
+headless Chromium (JOURNAL iter-528..530) surfaced classes of gaps the gate
+couldn't see: six of eight viewpoints have no UI entry point for creating
+diagrams; node bodies and popovers render fully transparent because
+`tailwind.config.ts` is missing the `card` color token; IBD ports render as
+circles instead of SysMLv2-standard squares; the project tree is a
+flat-by-kind list with no containment hierarchy and no representations.
+
+**Phase-13 backlog lives in STATUS.md, not GitHub issues.** Each task is
+numbered `T-13.xx`. The Ralph loop for Phase 13 differs from earlier phases:
+
+- The backlog is curated in `STATUS.md` and grouped P0 / P1 / P2.
+- Each iteration: pick the lowest-numbered task in the lowest-priority tier
+  that has no in-flight branch, file a GitHub issue with title "T-13.xx — <short>"
+  (label `phase:13`, `type:feature`, plus `p0`/`p1`/`p2` matching the tier),
+  then proceed with the normal flow: branch `issue/<num>-<slug>`, implement,
+  test, PR, auto-merge.
+- Treat T-13.29 + T-13.30 as a single PR (foundation: schema migration,
+  registry index, codemod readers, explicit root Package, discriminated
+  DiagramContext). Decisions for this PR are locked in JOURNAL iter-531 —
+  do not relitigate them; if a change of plan is needed, file a new ADR.
+- T-13.16 (card token) ships first; T-13.17 (square ports) bundles with it.
+
+**Phase-13 gate (must all pass before declaring phase complete):**
+
+1. Cold-start UI walkthrough: a Playwright spec opens the app fresh and,
+   using ONLY user-facing affordances (no direct store mutation), creates a
+   diagram per viewpoint, authors one element per viewpoint, saves the
+   project, reloads, and asserts all eight viewpoints persist with content.
+2. Visual fidelity invariants: every node kind has computed
+   `backgroundColor !== 'rgba(0, 0, 0, 0)'`; every popover dialog same;
+   IBD ports have square (not pill) DOM geometry; the Use-Case node is an
+   SVG ellipse.
+3. Containment invariants on the persisted schema:
+   - `elements.filter(e => e.ownerId === null).length === 1` and equals `project.rootId`
+   - every other `e.ownerId` resolves to an existing element
+   - every diagram has a `context` whose target element exists and whose
+     kind is in the active viewpoint's `acceptedContextKinds`
+   - persisted JSON contains no parent-side child arrays (`memberIds`,
+     `portIds`, `propertyIds`, `parameterIds`, `portUsageIds`, `portDefinitionIds`)
+4. Explorer affordances: tree renders containment hierarchy; representations
+   nest under their owning element; bidirectional selection sync; three-dots
+   context menu per node; filter bar; drag-drop move semantics work for any
+   container (not just Package).
+5. CI green; no console errors during a 60-second exploratory walk;
+   `pnpm run check` passes.
+
+**Phase 13 is COMPLETE when:** STATUS.md final line is exactly `COMPLETE`
+AND all five gate items above hold AND every task in the P0 + P1 backlog
+tiers is checked off (P2 items may carry forward to Phase 14).
+
+## Phase 14 — Standard library import (deferred from Phase 13)
+
+Out of scope for Phase 13. Reserved hooks: `PackageElement.isReadOnly`,
+`Project.libraryRootIds`. Phase 14 lands KerML + SysML standard library
+content, `import` directive in SysMLv2 text round-trip, namespace resolution,
+and read-only-subtree enforcement at the command bus.
 
 # Ralph loop protocol
 
