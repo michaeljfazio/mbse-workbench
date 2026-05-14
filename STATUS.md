@@ -6,24 +6,62 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 718
+- Iteration #: 722
 - Started: 2026-05-14
-- Branch: issue/259-containment-tree-foundation
-- Working on: #259 — T-13.31 foundation. Pure tree-builder
-  `buildContainmentTree(elements, diagrams, rootId)` returning a typed
-  `ContainmentTreeNode` shape (element nodes nested by ownerId/ownerIndex,
-  representations nested under their context.id element, orphan
-  representations attached to root). 13 unit tests cover root anchoring,
-  ownerIndex sort + id-tiebreak, deep nesting, orphan-tolerance for
-  both elements and diagrams, representation sort, and "reps after
-  elements" rule. ProjectTree component swap, keyboard nav, selection
-  sync, context menu, and drag-drop generalization all carry to
-  follow-up T-13.31 iterations. Suite: 892/892 unit / tsc -b clean /
-  lint clean (4 pre-existing react-refresh warnings only).
-- Iter-717 summary (prior): PR #258 merged 1403de4 — DiagramContext widened
-  to 4-kind union { package | partDefinition | actionDefinition |
-  stateDefinition }. Pure additive type change; no consumers migrate.
-  Unblocks T-13.31 nesting representations under any owner kind.
+- Branch: issue/261-containment-tree-renderer (PR #262 auto-merge enabled)
+- Iter-722: CI on 7479c9a came back with the contrast fix succeeding
+  (all a11y/color-contrast failures cleared) but 20 surviving
+  @visual baseline drifts (~9-11k px each, ratio 0.02). The drift
+  set was larger than iter-721 anticipated: not just the 5 chromium
+  canvases I'd flagged, but also their webkit twins plus webkit-only
+  specs in ibd-*, cross-diagram-trace, requirements-{coverage,trace-create},
+  state-machine-transitions, and use-case-edges. The bd48f4d→d1fda56
+  contrast iterations masked these because a11y failures fired first.
+  Refreshed all 21 baselines from CI run 25859487382 actuals using
+  the docs/CONTEXT.md 2026-05-12 lift-from-trace procedure (commit
+  9c23534). Waiting for CI to re-run with green visuals.
+- Iter-721: CI on d1fda56 came back red with 57 failures. ~50 are
+  `color-contrast` axe violations against the kind-badge span inside
+  selected Explorer rows: `text-muted-foreground` (#64748b) on
+  `bg-primary/10` (~#e7e8ea) = 3.88:1, below the 4.5:1 AA threshold.
+  Fix this iter: switch the kind badge from `text-muted-foreground`
+  to `text-foreground/75` so contrast holds on both bg-card and the
+  selected `bg-primary/10` tint (computed ~#3b404c on the selected
+  tint ≈ 7.5:1). The remaining ~5 failures are @visual baseline drift
+  on bdd-two-blocks-linked / package-empty / parametric-with-binding /
+  parametric-with-constraint-and-value / use-case-empty — they capture
+  fullPage:false, so the new Explorer section in the project-tree pane
+  shifts pixels. Plan: push contrast fix, let CI run, then regen those
+  baselines from CI actuals next iteration.
+- Iter-720 summary (prior): CI on bd48f4d came back red — 119 @a11y
+  failures from the new Explorer section: `text-muted-foreground/80`
+  on the section <h2>s (3.24:1) and `text-muted-foreground/70` on the
+  kind badge (2.71:1) at 10px font size, both below 4.5:1. Fix d1fda56
+  dropped the opacity modifiers so the full muted-foreground token
+  (~4.83:1) was used. That cut the a11y count from 119 to ~50 but
+  didn't address the selected-row case (bg-primary/10 background).
+- Working on: #261 — T-13.31 renderer. New ContainmentTree.tsx user-facing
+  component driven by buildContainmentTree. Mounted as new "Explorer"
+  section in ProjectTreePane above the existing palette ProjectTree
+  ("Palette" section) — additive to preserve the 13+ e2e specs that
+  depend on `project-tree-group-<Kind>` drag-source testids. Renderer
+  behaviours: rooted at project.rootId; element rows aria-selected from
+  store + click→setSelection; diagram rows aria-current=page from
+  activeDiagramId + click→setActiveDiagram; expand/collapse via
+  disclosure caret; keyboard nav (ArrowUp/Down/Left/Right, Home/End,
+  Enter) with roving tabindex; depth-indented; per-row testids
+  containment-tree-element-<id> / containment-tree-diagram-<id>.
+  10 unit tests added. Suite: 902/902 unit, tsc -b clean, lint clean,
+  build clean. Follow-ups: T-13.32 reveal-in-tree (likely deferred to
+  the explorer-becomes-primary cutover), T-13.33 three-dots menu,
+  T-13.35 filter bar, T-13.36 drag-drop generalization, plus the
+  palette-affordance migration (T-13.04) and flat-tree retirement.
+- Iter-718 summary (prior): PR #260 merged f6e0ae0 — pure
+  buildContainmentTree foundation (13 unit tests). Tree-builder
+  returns a ContainmentElementNode|null with element children sorted
+  by ownerIndex (id tiebreak) and representations sorted by name,
+  appended after element children of each parent. Orphan-tolerant
+  for both missing-owner elements and missing-context diagrams.
 
 ## Current iteration (archived 716 → 717)
 - Iteration #: 716
@@ -211,11 +249,11 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
-Push #259 and wait for CI. Once green and merged, the next T-13.31
-iteration replaces ProjectTree.tsx with a renderer driven by
-buildContainmentTree (rather than the flat-by-kind groups). That
-renderer rewrite will retire the 5 pre-existing ProjectTree.test.tsx
-specs (already noted as superseded in iter-713 summary) and add
-keyboard nav + bidirectional selection sync against the new shape.
-Context menu (T-13.33), filter bar (T-13.35), and drag-drop
-generalization (T-13.36) are subsequent iterations.
+Wait for PR #262 CI to merge. Next iteration: T-13.32 reveal-in-tree
+(canvas selection → scroll-into-view + auto-expand ancestors in the
+ContainmentTree). Then T-13.33 (three-dots context menu) and T-13.35
+(filter bar). The "retire flat-by-kind ProjectTree" cutover is its
+own larger iteration because it requires migrating 13+ e2e specs off
+`project-tree-group-<Kind>` drag-sources onto explicit "+" affordances
+(T-13.04). Scheduling that cutover after the explorer is feature-rich
+keeps each PR reviewable.
