@@ -6,16 +6,12 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 581
+- Iteration #: 582
 - Started: 2026-05-14
 - Branch: issue/253-card-tokens-square-ports
-- Working on: PR #254 — first CI run (25844671881) failed: 95 @visual
-  baseline mismatches (locally-regen'd podman/jammy fonts ≠ CI
-  ubuntu-latest fonts) + 1 chromium phase-6-gate retry-flake that
-  eventually passed on retry 2. Lifted per-test actual.png from the
-  failed run's playwright-report (per docs/CONTEXT.md 2026-05-12
-  playbook) — 96 baselines rewritten and pushed (commit cebb69e).
-  Auto-merge still armed; awaiting CI re-run.
+- Working on: PR #254 — CI re-run 25845528786 on rebaselined commit
+  cebb69e still in_progress (started 06:27 UTC). Auto-merge armed.
+  No actionable work this iteration; STATUS bump only.
 
 ## Last test run
 - Command: pnpm typecheck && pnpm lint && pnpm test:unit && pnpm build && pnpm test:e2e (visual skipped on darwin per playwright.config grepInvert)
