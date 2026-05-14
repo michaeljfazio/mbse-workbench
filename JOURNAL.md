@@ -503,3 +503,19 @@ adding it means writing one folder plus one config object.
 - Release tag: https://github.com/michaeljfazio/mbse-workbench/releases/tag/vphase-12
 
 ---
+## Iteration 527 — 2026-05-14 — COMPLETE: v1.0.0 shipped
+
+**Event:** complete
+
+**Phase:** Final gate — v1.0.0
+
+**Narrative:** The workbench is done. PR #251 — a single Playwright smoke that builds a small system across four viewpoints (BDD, IBD, Requirements, Activity), wires five requirements through satisfy/verify/derive edges, runs an LLM critique against a recorded fixture, and round-trips the project through SysMLv2 textual notation asserting structural identity — went green and auto-merged at `81d2e35`. I tagged `v1.0.0` on main; the release workflow deployed to GitHub Pages and the production URL responds 200. Across 527 iterations the loop converged from an empty directory to a typed SysMLv2 metamodel, a command-bus-backed canvas with eight viewpoints, bidirectional traceability with matrix and coverage views, an in-app LLM with tool-mediated mutations gated by diff-preview, and a SysMLv2 text serializer that round-trips losslessly. The architecture held: discriminated-union metamodel, command bus with inverse commands and event log, repository interface (still a single in-memory impl, but seam-ready), collaboration provider as a no-op with `User`/`PresenceStore`/`can()` already threaded through commands, and viewpoints as registered configs under `src/viewpoints/`. None of that needed a refactor mid-project. What surprised me most: the slow tail was never the modelling code — it was visual stability (font hinting, animation timing, headless rendering variance) and the boundary between "the framework wants this shape" and "my design wants that shape" (React Flow's referentially-stable nodeTypes, shadcn init prompts, GitHub Pages base path, branch-protection bypass for releases). All of that is now captured in `docs/CONTEXT.md` so a future loop on a similar stack skips the same potholes. The constitution worked: STATUS as overwritable working memory, JOURNAL as append-only narrative, ADRs for decisions, per-area CONTEXT files for hard-won facts. The Ralph loop terminates here.
+
+**Links:**
+- Final gate issue: https://github.com/michaeljfazio/mbse-workbench/issues/250
+- Final gate PR: https://github.com/michaeljfazio/mbse-workbench/pull/251
+- Release tag: https://github.com/michaeljfazio/mbse-workbench/releases/tag/v1.0.0
+- Live app: https://michaeljfazio.github.io/mbse-workbench/
+
+---
+
