@@ -1,66 +1,80 @@
 # STATUS
 
 ## Current phase
-phase:12 — Export/import + polish. Epic #13 OPEN. Slices A/B/C/F/G/H merged.
-Open child slices: D (#234 in-progress this iter), E (#235).
+phase:12 — Export/import + polish. Epic #13 OPEN. Slices A/B/C/D/F/G/H merged.
+Open child slices: E (#235 in-progress this iter — final Phase 12 slice).
 
 ## Current iteration
-- Iteration #: 521
-- Started: 2026-05-14T07:25:00Z
-- Branch: issue/234-cmdk-command-palette
-- Working on: #234 slice D — Cmd-K command palette / element search.
-  Real `CommandPalette` replaces the slice C stub. Search filters by name
-  and id substring (case-insensitive), capped at 50 results, returns only
-  elements present on at least one diagram (so navigation has a target).
-  Up/Down navigate (wrap), Enter selects → `navigateToElementOnDiagram`,
-  Esc closes. role=dialog + aria-modal + listbox/option semantics.
-  Slice C tests rebound from `command-palette-stub` → `command-palette`.
+- Iteration #: 522
+- Started: 2026-05-14T07:35:00Z
+- Branch: issue/235-split-view-side-by-side
+- Working on: #235 slice E — Split view (side-by-side diagrams).
+  Store gains `secondaryDiagramId` + `secondarySelectedElementIds` plus
+  `splitDiagram` / `closeSplit` / `setSecondarySelection`. Persistence
+  piggybacks on the existing `LayoutSnapshot` (sessionStorage), so split
+  state survives reload alongside pane widths. Stale ids dropped on
+  bootstrap. `setActiveDiagram` auto-closes the split when the new
+  primary equals the current secondary.
+  New `<SecondaryCanvasPane>` renders a slim, view-mostly React Flow
+  on the right when split is open: same nodes/edges as the chosen
+  diagram, independent selection store, draggable to reposition (the
+  position command goes through the bus, so positions reflect into the
+  primary too). No popovers/toolbar/empty-state on the secondary —
+  edit affordances stay on the primary canvas. CanvasPane wraps both
+  panes in a `flex` container; the diagram tabs row now has a separate
+  `role="toolbar"` strip of `⇆` split-buttons (one per diagram) sitting
+  beside the role="tablist" — axe rejects non-tab descendants of a
+  tablist, so the split affordance lives in its own toolbar.
+  `toFlowNodes` / `toFlowEdges` extracted to `flowGraph.ts` so the
+  secondary pane reuses them without a new react-refresh warning.
 
 ## Last health check (iter-480)
 - Pages https://michaeljfazio.github.io/mbse-workbench/ → 200 ✓
-- Last 5 merged PRs (#244, #243, #242, #241, #240) all merged ✓
+- Last 5 merged PRs (#246, #245, #244, #243, #242) all merged ✓
 - 0 open `status:needs-human` issues ✓
 - Last 3 CI runs on `main` all `success` ✓
 
 ## Last test run
 - `pnpm exec tsc -b` ✓
-- `pnpm lint` ✓ (4 pre-existing react-refresh warnings)
-- `pnpm run test:unit` ✓ 863/863 (replaced 3 stub tests with 6 search tests)
-- `pnpm exec playwright test "command-palette|global-shortcuts" --project=chromium` ✓ 9/9
-- `pnpm exec playwright test "command-palette|global-shortcuts" --project=webkit` ✓ 9/9
-- @visual NOT runnable locally; no baseline drift expected (palette is
-  hidden by default; no existing surface markup changed).
+- `pnpm lint` ✓ (4 pre-existing react-refresh warnings — unchanged)
+- `pnpm run test:unit` ✓ 872/872 (+9 store split-view tests)
+- `pnpm exec playwright test split-view --project=chromium` ✓ 4/4
+- `pnpm exec playwright test split-view --project=webkit` ✓ 4/4
+- Regression sweep `bdd-canvas|ibd-canvas|context-menu|cross-diagram-trace|phase-2-gate|phase-12-gate` ✓ on chromium
 
 ## Known issues / blockers
 - #161 — p2 inspector-transition flake. Deferred.
 
 ## Decisions log
-- 2026-05-14 (iter-521): Slice D search excludes elements not present on
-  any diagram's `positions`. The acceptance requires selection to navigate
-  to a containing diagram, so an orphan match (edge-only or unplaced)
-  has nothing to select. Avoids dead-end results.
-- 2026-05-14 (iter-521): Slice D footer hint uses `text-foreground`; row
-  secondary spans use `opacity-80` instead of `text-muted-foreground` —
-  needed to clear axe color-contrast (4.5:1) on bg-card and bg-accent.
-- 2026-05-14 (iter-519): Slice C Delete handler defers to ReactFlow's
-  own viewport keymap when focus is inside `.react-flow`. The global
-  path covers tree- and inspector-driven selections.
-- 2026-05-14 (iter-519): Slice C Cmd-K opens a placeholder
-  `CommandPaletteStub` (disabled input + Close). Real palette lands
-  in slice D (#234); stub exists so the binding is verifiable now
-  and the empty-state crib isn't lying.
-- 2026-05-14 (iter-519): Slice C Cmd-S triggers Export JSON (not
-  saveProject) per #233 acceptance. Suppressed while palette open
-  via a ref so the once-bound keydown handler sees the latest open
-  state without re-binding on toggle.
+- 2026-05-14 (iter-522): Slice E persists split state in the LayoutSnapshot
+  sessionStorage entry rather than the Project. Pane widths already live
+  there; split is the same flavour of per-tab view state. Project schema
+  stays clean for cross-tab persistence (future use).
+- 2026-05-14 (iter-522): Secondary pane is view-mostly (selection +
+  drag-reposition only) rather than a full editing surface. Acceptance
+  is "edit in one reflects in other" — model coherence — not "both panes
+  fully editable". Avoids a heavy refactor of CanvasInner's ~30 store
+  hooks. Toolbar / popovers / empty-state stay on the primary pane.
+- 2026-05-14 (iter-522): Split-toolbar separated from role="tablist"
+  because axe's `aria-required-children` rule rejects any non-tab
+  descendant of a tablist. A second `role="toolbar"` strip beside the
+  tablist preserves the visual adjacency without the violation.
+- 2026-05-14 (iter-522): `toFlowNodes` / `toFlowEdges` moved to
+  `flowGraph.ts` so SecondaryCanvasPane can import them without adding
+  react-refresh warnings to CanvasPane.tsx (component+helper exports
+  in the same file trip the rule).
+- 2026-05-14 (iter-521): Slice D search excludes elements not present
+  on any diagram's `positions` (kept).
+- 2026-05-14 (iter-521): Slice D footer hint uses `text-foreground`;
+  row secondary spans use `opacity-80` (kept).
+- 2026-05-14 (iter-519): Slice C Delete handler defers to ReactFlow
+  (kept).
+- 2026-05-14 (iter-519): Slice C Cmd-S triggers Export JSON (kept).
 - 2026-05-13 (iter-517): Slice B empty-state gated to BDD viewpoint
-  only — other viewpoints have their own `*-empty` baselines that
-  intentionally show a blank canvas.
-- 2026-05-13 (iter-517): Boundaries use a window-flag test seam
-  (`__WORKSPACE_FORCE_ERROR__`) read by a tiny <ErrorTestThrower/>
-  embedded in each boundary.
+  only (kept).
+- 2026-05-13 (iter-517): Boundaries use a window-flag test seam (kept).
 - 2026-05-13 (iter-517): Three boundaries — `canvas`, `requirements`,
-  `chat`. Inspector is not wrapped.
+  `chat` (kept).
 - 2026-05-14 (iter-501): Slice A JSON import/export shape (kept).
 - 2026-05-13 (iter-492): UTC clock-check (kept).
 - 2026-05-14 (iter-485): Phase 12 gate short diagram names (kept).
@@ -85,5 +99,6 @@ Open child slices: D (#234 in-progress this iter), E (#235).
 - 2026-05-13 (iter-332): @visual baselines from CI Linux artifact.
 
 ## Next action
-1. Push branch, open PR closing #234, enable auto-merge.
-2. After CI green → merge → pick last slice (#235 split view).
+Open PR closing #235; auto-merge=SQUASH. Once green, all Phase 12 child
+slices (A–H, including this E) are merged and epic #13 can close — next
+iteration: confirm merge, close #13, tag `vphase-12`, kick the release.

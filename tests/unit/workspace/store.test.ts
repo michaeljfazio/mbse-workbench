@@ -430,4 +430,116 @@ describe('workspace store', () => {
     useWorkspaceStore.getState().redo();
     expect(useWorkspaceStore.getState().elements).toHaveLength(1);
   });
+
+  describe('split view (#235)', () => {
+    async function bootWithTwoDiagrams(): Promise<{
+      storage: Storage;
+      primary: DiagramId;
+      secondary: DiagramId;
+    }> {
+      const storage = makeMemoryStorage();
+      const repository = createInMemorySessionRepository({ storage });
+      const user = createSessionUser();
+      await useWorkspaceStore.getState().bootstrap({ repository, user, storage });
+      const primary = useWorkspaceStore.getState().activeDiagramId!;
+      const secondary = useWorkspaceStore
+        .getState()
+        .createDiagram(BDD_VIEWPOINT_ID, { name: 'Second BDD' })!;
+      return { storage, primary, secondary };
+    }
+
+    it('starts with no secondary diagram and empty secondary selection', () => {
+      const s = useWorkspaceStore.getState();
+      expect(s.secondaryDiagramId).toBeNull();
+      expect(s.secondarySelectedElementIds).toEqual([]);
+    });
+
+    it('splitDiagram sets secondaryDiagramId and persists to layout storage', async () => {
+      const { storage, secondary } = await bootWithTwoDiagrams();
+      useWorkspaceStore.getState().splitDiagram(secondary);
+      expect(useWorkspaceStore.getState().secondaryDiagramId).toBe(secondary);
+
+      const raw = storage.getItem(LAYOUT_STORAGE_KEY);
+      expect(raw).not.toBeNull();
+      const parsed = JSON.parse(raw!) as { secondaryDiagramId: string };
+      expect(parsed.secondaryDiagramId).toBe(secondary);
+    });
+
+    it('splitDiagram refuses unknown diagram id', async () => {
+      await bootWithTwoDiagrams();
+      useWorkspaceStore
+        .getState()
+        .splitDiagram('not-a-real-id' as DiagramId);
+      expect(useWorkspaceStore.getState().secondaryDiagramId).toBeNull();
+    });
+
+    it('splitDiagram with the active primary id is a no-op', async () => {
+      const { primary } = await bootWithTwoDiagrams();
+      useWorkspaceStore.getState().splitDiagram(primary);
+      expect(useWorkspaceStore.getState().secondaryDiagramId).toBeNull();
+    });
+
+    it('closeSplit clears state and persists null to layout', async () => {
+      const { storage, secondary } = await bootWithTwoDiagrams();
+      useWorkspaceStore.getState().splitDiagram(secondary);
+      useWorkspaceStore.getState().setSecondarySelection([
+        mkElementId('x'),
+      ]);
+      useWorkspaceStore.getState().closeSplit();
+      expect(useWorkspaceStore.getState().secondaryDiagramId).toBeNull();
+      expect(useWorkspaceStore.getState().secondarySelectedElementIds).toEqual([]);
+      const parsed = JSON.parse(storage.getItem(LAYOUT_STORAGE_KEY)!) as {
+        secondaryDiagramId: string | null;
+      };
+      expect(parsed.secondaryDiagramId).toBeNull();
+    });
+
+    it('setActiveDiagram to the current secondary auto-closes the split', async () => {
+      const { secondary } = await bootWithTwoDiagrams();
+      useWorkspaceStore.getState().splitDiagram(secondary);
+      useWorkspaceStore.getState().setActiveDiagram(secondary);
+      const s = useWorkspaceStore.getState();
+      expect(s.activeDiagramId).toBe(secondary);
+      expect(s.secondaryDiagramId).toBeNull();
+    });
+
+    it('bootstrap restores secondaryDiagramId from layout when the diagram still exists', async () => {
+      const { storage, secondary } = await bootWithTwoDiagrams();
+      useWorkspaceStore.getState().splitDiagram(secondary);
+      // Simulate reload.
+      resetWorkspaceStoreForTests();
+      const repository = createInMemorySessionRepository({ storage });
+      const user = createSessionUser();
+      await useWorkspaceStore.getState().bootstrap({ repository, user, storage });
+      expect(useWorkspaceStore.getState().secondaryDiagramId).toBe(secondary);
+    });
+
+    it('bootstrap drops a stale secondaryDiagramId pointing at a missing diagram', async () => {
+      const storage = makeMemoryStorage();
+      storage.setItem(
+        LAYOUT_STORAGE_KEY,
+        JSON.stringify({
+          leftPaneWidth: DEFAULT_LEFT_PANE_WIDTH,
+          rightPaneWidth: DEFAULT_RIGHT_PANE_WIDTH,
+          secondaryDiagramId: 'nonexistent-diagram-id',
+        }),
+      );
+      const repository = createInMemorySessionRepository({ storage });
+      const user = createSessionUser();
+      await useWorkspaceStore.getState().bootstrap({ repository, user, storage });
+      expect(useWorkspaceStore.getState().secondaryDiagramId).toBeNull();
+    });
+
+    it('setSecondarySelection replaces the secondary selection', () => {
+      const a = mkElementId('a');
+      const b = mkElementId('b');
+      useWorkspaceStore.getState().setSecondarySelection([a, b]);
+      expect(useWorkspaceStore.getState().secondarySelectedElementIds).toEqual([
+        a,
+        b,
+      ]);
+      // Primary selection is untouched.
+      expect(useWorkspaceStore.getState().selectedElementIds).toEqual([]);
+    });
+  });
 });
