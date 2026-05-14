@@ -8,6 +8,19 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
 
 ## Discovered facts
 
+- **2026-05-14 (iter-532, T-13.16+17)** — Chat @visual baselines need a
+  test-mode preview build to regen. The default
+  `scripts/regen-baselines.sh` does `pnpm build` (production mode), which
+  strips the `window.__llm` test seam in `src/main.tsx` (gated on
+  `import.meta.env.DEV || import.meta.env.MODE === 'test'`). Chat specs
+  inject fixture providers through that seam, so they fail with `__llm
+  seam not found on window`. Trying `vite dev` inside the podman container
+  trips `ENOSPC` on Vite's file-watcher (`.pnpm-store` is huge).
+  Workaround: `scripts/regen-chat-baselines.sh` builds with `--mode test`
+  and serves via `vite preview --mode test` — keeps the seam, avoids the
+  watcher. Apply this trick for any future @visual that needs the LLM
+  fixture pipeline.
+
 - **2026-05-14** — **Chat scrollback @visual flake** (iter-456). After
   iter-455's stabilisation (testid scoping + scrollTop=0 + blur focus),
   two consecutive CI retry captures of the phase-11 gate's

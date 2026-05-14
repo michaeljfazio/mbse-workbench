@@ -94,7 +94,7 @@ export function PartUsageNode({
             position={placement.position}
             style={{ top: `${placement.top}%` }}
             data-testid={`ibd-handle-${port.portUsageId}`}
-            className="!z-10 !h-3 !w-3 !rounded-full !border-2 !border-card !bg-primary"
+            className="!z-10 !h-3 !w-3 !rounded-none !border-2 !border-card !bg-primary"
           />
         );
       })}
