@@ -6,10 +6,23 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 715
+- Iteration #: 716
 - Started: 2026-05-14
 - Branch: issue/255-explorer-foundation-ownerid-context (PR #256)
-- Working on: #255 — second CI run (b2426f3) cut the failure count
+- Working on: #255 — CI run 25854947120 on c7b83f6 came back red with
+  exactly 2 failures: phase-12-gate.spec.ts:332 round-trip+smoke on
+  both chromium and webkit. Diff was ownerIndex shifts after
+  SysMLv2 text re-import (Pump↔Vessel swap by alphabetic emit order;
+  Actor 0→9 same cause). The serializer emits in canonical sorted
+  order, so parse-order indices differ from pre-export indices even
+  when the model is structurally identical.
+- Fix this iter (c66cc37): canonicalize() in phase-12-gate.spec.ts
+  now strips ownerIndex before structural compare. The Phase-12
+  contract is "structurally identical modulo IDs" — ownerIndex is a
+  derived sibling-ordering hint, not a semantic property, so it's
+  outside that contract. ownerId / ownerRole / kind / name still
+  asserted exactly.
+- Iter-715 summary (prior): second CI run (b2426f3) cut the failure count
   34 → 6. Surviving failures resolved this iter (commit d3a6e32):
     A. phase-5-gate.spec.ts readProject now filters elements by
        `ownerId !== null` before returning, so the gate's
@@ -179,10 +192,10 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
-Wait for PR #256's CI run on d3a6e32. If green, auto-merge fires; if
-red, diagnose the residual surface (expect at most baseline drift —
-the structural cascade should be fully cleared). Once merged, start
-T-13.31
+Wait for PR #256's CI run on c66cc37. If green, auto-merge fires; if
+red, diagnose the residual surface (only round-trip canonicalize was
+touched this iter — expect the 2 phase-12 failures gone with no new
+regressions). Once merged, start T-13.31
 (replace flat-by-kind ProjectTree with containment-driven tree rooted
 at project.rootId, with representations nested under owners). The
 schema, registry helpers (childrenOf / parentOf), and DiagramContext
