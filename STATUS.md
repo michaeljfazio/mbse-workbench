@@ -6,26 +6,21 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 712
+- Iteration #: 713
 - Started: 2026-05-14
-- Branch: issue/255-explorer-foundation-ownerid-context
-- Working on: #255 — iter-712 drove the ownerId schema cascade to ZERO
-  typecheck errors (196 → 0). Shipped the helpers
-  (tests/unit/helpers/{elementFactories,registryReaders}.ts) and a
-  one-shot batch script (scripts/migrate-test-fixtures.mjs) that strips
-  parent-side child-array properties and injects ownerId/ownerRole/
-  ownerIndex after the `kind:` discriminator. Hand-migrated the
-  semantically-coupled files (ibdActions: portIdsOf/portUsageIdsOf
-  helpers; packageActions: memberIdsOf; partUsageHelpers: re-authored
-  buildRegistry to set port-usage owner correctly; Inspector and
-  bddActions: read containment via store.elements.filter).
-  pnpm test:unit: 877 tests, 864 passing, 13 failing across 7 files.
-  Remaining failures are narrowly semantic (root Package element
-  present after bootstrap; LLM handlers no longer chain update-element
-  on memberIds; ProjectTree spec asserts the flat-by-kind tree which
-  T-13.31 will replace).
-  Next iter: fix the 13 unit failures, then green
-  pnpm typecheck + pnpm test:unit + pnpm build, then push + open PR.
+- Branch: issue/255-explorer-foundation-ownerid-context (PR #256)
+- Working on: #255 — iter-713 closed out the 10 residual unit failures
+  from the ownerId schema migration. Suite is 877/877 green; tsc -b 0
+  errors; pnpm build clean. Pushed and opened PR #256 with auto-merge
+  enabled; awaiting CI (full e2e + visual baselines).
+  Fixes landed this iter:
+    - runAutoLayout filters elements by viewpoint.acceptedElementKinds
+      before feeding dagre (was including the implicit root Package).
+    - ProjectTree hides the project-root Package from the flat-by-kind
+      view (T-13.31 will replace this view wholesale).
+    - 4 unit tests re-anchored: parametric undo, store rehydrate, and
+      the two LLM tool tests (RequirementTrace via ownerId; owning-pkg
+      ownerId on create-element instead of trailing update-element).
   Specific failures to handle:
     - workspace/bddActions.test.ts: runAutoLayout-on-empty diagram is
       bumping modelVersion — root Package is now an element.
@@ -163,24 +158,8 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
-Continue #255 (T-13.29+T-13.30 bundle) on branch
-issue/255-explorer-foundation-ownerid-context.
-
-Done so far in this PR (committed locally, not pushed):
-- ADR 0011 + new element/registry schema (b5ba017, c586c88)
-- Workspace store migration (4551f42)
-- Repository codemod + repository test fixtures (846cf74)
-- Serializer + parser migration + tests (d6a9c0c)
-- LLM tool handlers (six tools) + ProjectReader.rootId (4e9a88c)
-- Production-code readers migrated (f8187f6)
-- src/**/__tests__ migrated: bus, impact-set, coverage, matrix (597b39e)
-- tests/unit/** migrated to zero typecheck errors via helpers + batch
-  script (71d03cd, cb03cf6).
-
-Remaining (in order):
-1. Fix the 13 remaining unit-test semantic failures (see "Specific
-   failures to handle" above).
-2. Re-run pnpm typecheck + pnpm test:unit + pnpm build; push + PR.
-
-Commit incrementally on the branch; do NOT push until pnpm typecheck +
-pnpm test:unit pass locally. Push when ready, open PR, auto-merge.
+Wait for PR #256 to merge on green CI. Once merged, start T-13.31
+(replace flat-by-kind ProjectTree with containment-driven tree rooted
+at project.rootId, with representations nested under owners). The
+schema, registry helpers (childrenOf / parentOf), and DiagramContext
+discriminated union are now in place to support it.
