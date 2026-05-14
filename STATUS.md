@@ -6,9 +6,20 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 721
+- Iteration #: 722
 - Started: 2026-05-14
 - Branch: issue/261-containment-tree-renderer (PR #262 auto-merge enabled)
+- Iter-722: CI on 7479c9a came back with the contrast fix succeeding
+  (all a11y/color-contrast failures cleared) but 20 surviving
+  @visual baseline drifts (~9-11k px each, ratio 0.02). The drift
+  set was larger than iter-721 anticipated: not just the 5 chromium
+  canvases I'd flagged, but also their webkit twins plus webkit-only
+  specs in ibd-*, cross-diagram-trace, requirements-{coverage,trace-create},
+  state-machine-transitions, and use-case-edges. The bd48f4d→d1fda56
+  contrast iterations masked these because a11y failures fired first.
+  Refreshed all 21 baselines from CI run 25859487382 actuals using
+  the docs/CONTEXT.md 2026-05-12 lift-from-trace procedure (commit
+  9c23534). Waiting for CI to re-run with green visuals.
 - Iter-721: CI on d1fda56 came back red with 57 failures. ~50 are
   `color-contrast` axe violations against the kind-badge span inside
   selected Explorer rows: `text-muted-foreground` (#64748b) on
