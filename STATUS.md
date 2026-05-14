@@ -6,13 +6,13 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 677
+- Iteration #: 678
 - Started: 2026-05-14
 - Branch: issue/253-card-tokens-square-ports
 - Working on: PR #254 — CI run 25848074264 still in progress.
   Steps 1-11 success (typecheck, lint, unit, build, Playwright install
   cache + browsers all green); step 12 "E2E tests" running since
-  07:38:44Z (≈2m10s elapsed at heartbeat 07:40:54Z). Auto-merge SQUASH
+  07:38:44Z (≈3m10s elapsed at heartbeat 07:41:54Z). Auto-merge SQUASH
   enabled. Waiting on CI.
 
 ## Last test run
