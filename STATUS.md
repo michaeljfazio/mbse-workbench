@@ -6,12 +6,13 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 684
+- Iteration #: 700
 - Started: 2026-05-14
 - Branch: issue/253-card-tokens-square-ports
-- Working on: PR #254 — CI run 25848074264 still in E2E tests step at
-  iter-684 heartbeat (07:46Z, ≈10m elapsed since job start 07:36:39Z).
-  Auto-merge SQUASH enabled. Waiting on CI.
+- Working on: PR #254 — CI run 25848479284 still IN_PROGRESS (07:47:21Z
+  start, ~12m elapsed at iter-700 check 07:59:18Z). mergeStateStatus
+  now BEHIND (main advanced) — auto-merge SQUASH armed and will need an
+  update-branch step before merge. Idle this iteration awaiting CI.
 
 ## Last test run
 - Command: pnpm typecheck && pnpm lint && pnpm test:unit && pnpm build && pnpm test:e2e (visual skipped on darwin per playwright.config grepInvert)
