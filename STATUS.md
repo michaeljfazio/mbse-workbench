@@ -6,24 +6,31 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 718
+- Iteration #: 719
 - Started: 2026-05-14
-- Branch: issue/259-containment-tree-foundation
-- Working on: #259 — T-13.31 foundation. Pure tree-builder
-  `buildContainmentTree(elements, diagrams, rootId)` returning a typed
-  `ContainmentTreeNode` shape (element nodes nested by ownerId/ownerIndex,
-  representations nested under their context.id element, orphan
-  representations attached to root). 13 unit tests cover root anchoring,
-  ownerIndex sort + id-tiebreak, deep nesting, orphan-tolerance for
-  both elements and diagrams, representation sort, and "reps after
-  elements" rule. ProjectTree component swap, keyboard nav, selection
-  sync, context menu, and drag-drop generalization all carry to
-  follow-up T-13.31 iterations. Suite: 892/892 unit / tsc -b clean /
-  lint clean (4 pre-existing react-refresh warnings only).
-- Iter-717 summary (prior): PR #258 merged 1403de4 — DiagramContext widened
-  to 4-kind union { package | partDefinition | actionDefinition |
-  stateDefinition }. Pure additive type change; no consumers migrate.
-  Unblocks T-13.31 nesting representations under any owner kind.
+- Branch: issue/261-containment-tree-renderer (PR #262 auto-merge enabled)
+- Working on: #261 — T-13.31 renderer. New ContainmentTree.tsx user-facing
+  component driven by buildContainmentTree. Mounted as new "Explorer"
+  section in ProjectTreePane above the existing palette ProjectTree
+  ("Palette" section) — additive to preserve the 13+ e2e specs that
+  depend on `project-tree-group-<Kind>` drag-source testids. Renderer
+  behaviours: rooted at project.rootId; element rows aria-selected from
+  store + click→setSelection; diagram rows aria-current=page from
+  activeDiagramId + click→setActiveDiagram; expand/collapse via
+  disclosure caret; keyboard nav (ArrowUp/Down/Left/Right, Home/End,
+  Enter) with roving tabindex; depth-indented; per-row testids
+  containment-tree-element-<id> / containment-tree-diagram-<id>.
+  10 unit tests added. Suite: 902/902 unit, tsc -b clean, lint clean,
+  build clean. Follow-ups: T-13.32 reveal-in-tree (likely deferred to
+  the explorer-becomes-primary cutover), T-13.33 three-dots menu,
+  T-13.35 filter bar, T-13.36 drag-drop generalization, plus the
+  palette-affordance migration (T-13.04) and flat-tree retirement.
+- Iter-718 summary (prior): PR #260 merged f6e0ae0 — pure
+  buildContainmentTree foundation (13 unit tests). Tree-builder
+  returns a ContainmentElementNode|null with element children sorted
+  by ownerIndex (id tiebreak) and representations sorted by name,
+  appended after element children of each parent. Orphan-tolerant
+  for both missing-owner elements and missing-context diagrams.
 
 ## Current iteration (archived 716 → 717)
 - Iteration #: 716
@@ -211,11 +218,11 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
-Push #259 and wait for CI. Once green and merged, the next T-13.31
-iteration replaces ProjectTree.tsx with a renderer driven by
-buildContainmentTree (rather than the flat-by-kind groups). That
-renderer rewrite will retire the 5 pre-existing ProjectTree.test.tsx
-specs (already noted as superseded in iter-713 summary) and add
-keyboard nav + bidirectional selection sync against the new shape.
-Context menu (T-13.33), filter bar (T-13.35), and drag-drop
-generalization (T-13.36) are subsequent iterations.
+Wait for PR #262 CI to merge. Next iteration: T-13.32 reveal-in-tree
+(canvas selection → scroll-into-view + auto-expand ancestors in the
+ContainmentTree). Then T-13.33 (three-dots context menu) and T-13.35
+(filter bar). The "retire flat-by-kind ProjectTree" cutover is its
+own larger iteration because it requires migrating 13+ e2e specs off
+`project-tree-group-<Kind>` drag-sources onto explicit "+" affordances
+(T-13.04). Scheduling that cutover after the explorer is feature-rich
+keeps each PR reviewable.
