@@ -6,27 +6,32 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 709
+- Iteration #: 710
 - Started: 2026-05-14
 - Branch: issue/255-explorer-foundation-ownerid-context
-- Working on: #255 — iter-709 migrated all six LLM tool handlers
-  (create-element, generate-requirements-from-text,
-  suggest-missing-elements, propose-decomposition, critique-model,
-  query-model) onto the ownerId schema. New elements stamp
-  ownerId/ownerRole/ownerIndex and inherit the project root package
-  as owner when `owningPackageId` is omitted. ProjectReader gained a
-  `rootId` field; ChatPane snapshot wiring updated. critique-model's
-  orphan-port check now reads `ownerRole === 'port'` + owner.kind
-  instead of `PartDefinition.portIds`. query-model's owningPackageId
-  filter is a direct `ownerId === filter` check. All six
-  src/llm/tools/* files compile clean against tsconfig.app.json.
-  Cascade: 287 → 295 errors (rootId now required on every snapshot
-  passed to createProjectReader — handful of test-side fixtures
-  missing it; offset by the LLM-tool source errors that disappeared).
-  Next iter: src/workspace/inspector/Inspector.tsx
-  (memberIds/portIds/portUsageIds/parameterIds → registry.childrenOf)
-  + PartUsageTypePopover.tsx + CanvasPane.tsx + flowGraph.ts (the
-  remaining production-code readers of parent-side arrays).
+- Working on: #255 — iter-710 migrated the remaining production-code
+  readers of parent-side child arrays onto the ownerId schema (ADR
+  0011): Inspector.tsx (PackageExtras members + candidates,
+  PartDefinitionExtras ports, ActionDefinitionExtras parameters,
+  describeConnectionEndpoint owner), PartUsageTypePopover (now takes a
+  portCountFor prop), CanvasPane (passes portCountFor + fixes the
+  fake-Package nodeSizeFor probe), flowGraph (Package memberCount
+  derived by scanning ownerId; RegistryLookup widened with
+  childrenOf), partUsageHelpers (resolvePartHandles uses
+  registry.childrenOf(id, 'port'); buildPortUsageOwnership reads
+  PortUsage.ownerId), isValidConnection (validates port-handle
+  ownership via registry.get(portUsageId).ownerId === partUsageId),
+  collab/permissions (reads ownerUserId, not the containment ownerId)
+  + the colocated permissions.test.ts and bus-wiring.test.ts fixtures.
+  Cascade: 229 → 207 errors. ALL remaining errors live in test files
+  (src/**/__tests__/* and tests/unit/**); production code (src/ minus
+  __tests__) is clean against tsconfig.app.json. Next iter: test
+  fixtures across tests/unit/** (model/elements, viewpoints/**,
+  workspace/**, llm/**) + the remaining 7 src/**/__tests__ files
+  (commands/bus.test.ts, workspace/impact/__tests__/impact-set.test,
+  workspace/requirements/__tests__/{coverage,matrix}.test). Goal next
+  iter: drive errors to zero, then green pnpm test:unit + pnpm build,
+  then push + open PR.
 
 ## Last test run
 - Command: pnpm typecheck && pnpm lint && pnpm test:unit && pnpm build && pnpm test:e2e (visual skipped on darwin per playwright.config grepInvert)
@@ -160,20 +165,17 @@ Done so far in this PR (committed locally, not pushed):
 - Repository codemod + repository test fixtures (846cf74)
 - Serializer + parser migration + tests (d6a9c0c)
 - LLM tool handlers (six tools) + ProjectReader.rootId (4e9a88c)
+- Production-code readers migrated: Inspector, PartUsageTypePopover,
+  CanvasPane, flowGraph, partUsageHelpers, isValidConnection,
+  collab/permissions + colocated collab tests (f8187f6)
 
 Remaining (in order):
-1. src/workspace/inspector/Inspector.tsx — replace memberIds/portIds/
-   portUsageIds/parameterIds reads with registry.childrenOf.
-2. src/workspace/PartUsageTypePopover.tsx (portIds reader).
-3. src/workspace/CanvasPane.tsx (memberIds writer at line 1060).
-4. src/workspace/flowGraph.ts (memberIds reader + PortUsageOwner type).
-5. src/viewpoints/ibd/partUsageHelpers.ts + isValidConnection.ts
-   (portUsageIds readers).
-6. src/collab/permissions.ts + collab tests (UserId/ElementId brand
-   confusion in the legacy `ownerId` permission hook).
-7. Test fixtures in tests/unit/** (model/elements, viewpoints/**,
+1. Test fixtures in src/**/__tests__/* (commands/bus.test.ts,
+   workspace/impact/__tests__/impact-set.test,
+   workspace/requirements/__tests__/{coverage,matrix}.test).
+2. Test fixtures in tests/unit/** (model/elements, viewpoints/**,
    workspace/**, llm/**) — re-author to the new schema.
-8. Re-run pnpm typecheck + pnpm test:unit; gate is zero errors + green.
+3. Re-run pnpm typecheck + pnpm test:unit; gate is zero errors + green.
 
 Commit incrementally on the branch; do NOT push until pnpm typecheck +
 pnpm test:unit pass locally. Push when ready, open PR, auto-merge.
