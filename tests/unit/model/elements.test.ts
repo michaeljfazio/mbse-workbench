@@ -1,15 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import {
   ELEMENT_KINDS,
+  createElementId,
   type ElementKind,
   type ModelElement,
 } from '@/model';
-import { assertNever, mkElementId, mkUserId } from './helpers';
+import { assertNever, mkElementId } from './helpers';
 
 function describeElement(element: ModelElement): string {
   switch (element.kind) {
     case 'Package':
-      return `Package(${element.memberIds.length} members)`;
+      return `Package(${element.name})`;
     case 'PartDefinition':
       return `PartDefinition(abstract=${element.isAbstract})`;
     case 'PartUsage':
@@ -19,7 +20,7 @@ function describeElement(element: ModelElement): string {
     case 'PortUsage':
       return `PortUsage(def=${element.definitionId})`;
     case 'InterfaceDefinition':
-      return `InterfaceDefinition(${element.portDefinitionIds.length} ports)`;
+      return `InterfaceDefinition(${element.name})`;
     case 'ConnectionUsage':
       return `ConnectionUsage(${element.sourceId}->${element.targetId})`;
     case 'ItemFlow':
@@ -27,7 +28,7 @@ function describeElement(element: ModelElement): string {
     case 'Requirement':
       return `Requirement(${element.priority}/${element.status})`;
     case 'ActionDefinition':
-      return `ActionDefinition(${element.parameterIds.length} params)`;
+      return `ActionDefinition(${element.name})`;
     case 'ActionUsage':
       return `ActionUsage(${element.nodeType})`;
     case 'StateDefinition':
@@ -51,45 +52,48 @@ function describeElement(element: ModelElement): string {
   }
 }
 
+const rootOwner = { ownerId: null, ownerRole: 'member' as const, ownerIndex: 0 };
+
 const sampleByKind: { [K in ElementKind]: () => Extract<ModelElement, { kind: K }> } = {
   Package: () => ({
     id: mkElementId('pkg-1'),
     kind: 'Package',
     name: 'root',
-    memberIds: [],
+    ...rootOwner,
   }),
   PartDefinition: () => ({
     id: mkElementId('pd-1'),
     kind: 'PartDefinition',
     name: 'Vehicle',
     isAbstract: false,
-    propertyIds: [],
-    portIds: [],
+    ...rootOwner,
   }),
   PartUsage: () => ({
     id: mkElementId('pu-1'),
     kind: 'PartUsage',
     name: 'wheel',
     definitionId: mkElementId('pd-1'),
-    portUsageIds: [],
+    ...rootOwner,
   }),
   PortDefinition: () => ({
     id: mkElementId('port-d-1'),
     kind: 'PortDefinition',
     name: 'fuel',
     direction: 'in',
+    ...rootOwner,
   }),
   PortUsage: () => ({
     id: mkElementId('port-u-1'),
     kind: 'PortUsage',
     name: 'fuelIn',
     definitionId: mkElementId('port-d-1'),
+    ...rootOwner,
   }),
   InterfaceDefinition: () => ({
     id: mkElementId('if-1'),
     kind: 'InterfaceDefinition',
     name: 'FuelLine',
-    portDefinitionIds: [],
+    ...rootOwner,
   }),
   ConnectionUsage: () => ({
     id: mkElementId('conn-1'),
@@ -97,6 +101,7 @@ const sampleByKind: { [K in ElementKind]: () => Extract<ModelElement, { kind: K 
     name: 'c1',
     sourceId: mkElementId('a'),
     targetId: mkElementId('b'),
+    ...rootOwner,
   }),
   ItemFlow: () => ({
     id: mkElementId('flow-1'),
@@ -104,6 +109,7 @@ const sampleByKind: { [K in ElementKind]: () => Extract<ModelElement, { kind: K 
     name: 'fuelFlow',
     sourceId: mkElementId('a'),
     targetId: mkElementId('b'),
+    ...rootOwner,
   }),
   Requirement: () => ({
     id: mkElementId('req-1'),
@@ -112,30 +118,34 @@ const sampleByKind: { [K in ElementKind]: () => Extract<ModelElement, { kind: K 
     text: 'The system shall start in under 5 seconds.',
     priority: 'high',
     status: 'draft',
+    ...rootOwner,
   }),
   ActionDefinition: () => ({
     id: mkElementId('ad-1'),
     kind: 'ActionDefinition',
     name: 'StartEngine',
-    parameterIds: [],
+    ...rootOwner,
   }),
   ActionUsage: () => ({
     id: mkElementId('au-1'),
     kind: 'ActionUsage',
     name: 'start',
     nodeType: 'action',
+    ...rootOwner,
   }),
   StateDefinition: () => ({
     id: mkElementId('sd-1'),
     kind: 'StateDefinition',
     name: 'EngineState',
     isComposite: false,
+    ...rootOwner,
   }),
   StateUsage: () => ({
     id: mkElementId('su-1'),
     kind: 'StateUsage',
     name: 'running',
     stateType: 'state',
+    ...rootOwner,
   }),
   Transition: () => ({
     id: mkElementId('tr-1'),
@@ -143,29 +153,33 @@ const sampleByKind: { [K in ElementKind]: () => Extract<ModelElement, { kind: K 
     name: 't1',
     sourceId: mkElementId('s1'),
     targetId: mkElementId('s2'),
+    ...rootOwner,
   }),
   UseCase: () => ({
     id: mkElementId('uc-1'),
     kind: 'UseCase',
     name: 'Drive',
+    ...rootOwner,
   }),
   Actor: () => ({
     id: mkElementId('actor-1'),
     kind: 'Actor',
     name: 'Driver',
+    ...rootOwner,
   }),
   ConstraintDefinition: () => ({
     id: mkElementId('cd-1'),
     kind: 'ConstraintDefinition',
     name: 'mass = volume * density',
     expression: 'mass = volume * density',
-    parameterIds: [],
+    ...rootOwner,
   }),
   ConstraintUsage: () => ({
     id: mkElementId('cu-1'),
     kind: 'ConstraintUsage',
     name: 'fuelMass',
     definitionId: mkElementId('cd-1'),
+    ...rootOwner,
   }),
   ValueProperty: () => ({
     id: mkElementId('vp-1'),
@@ -173,6 +187,7 @@ const sampleByKind: { [K in ElementKind]: () => Extract<ModelElement, { kind: K 
     name: 'mass',
     valueType: 'number',
     defaultValue: 0,
+    ...rootOwner,
   }),
 };
 
@@ -199,9 +214,10 @@ describe('metamodel — elements', () => {
     }
   });
 
-  it('ownerId is optional on every element', () => {
+  it('ownerId can be reassigned from null to a parent id', () => {
     const owned = sampleByKind.Package();
-    const withOwner: typeof owned = { ...owned, ownerId: mkUserId('u-1') };
-    expect(withOwner.ownerId).toBe('u-1');
+    const parentId = createElementId();
+    const withOwner: typeof owned = { ...owned, ownerId: parentId };
+    expect(withOwner.ownerId).toBe(parentId);
   });
 });

@@ -5,7 +5,6 @@ import type {
   ConnectionUsageElement,
   ElementId,
   ItemFlowElement,
-  PartDefinitionElement,
   PartUsageElement,
   PortDefinitionElement,
   PortUsageElement,
@@ -15,6 +14,15 @@ import {
   resetWorkspaceStoreForTests,
   useWorkspaceStore,
 } from '@/workspace';
+import { childIdsOf } from '../helpers/registryReaders';
+
+function portIdsOf(parentId: ElementId): ElementId[] {
+  return childIdsOf(useWorkspaceStore.getState().elements, parentId, 'port');
+}
+
+function portUsageIdsOf(parentId: ElementId): ElementId[] {
+  return childIdsOf(useWorkspaceStore.getState().elements, parentId, 'port');
+}
 
 function makeMemoryStorage(): Storage {
   const map = new Map<string, string>();
@@ -42,12 +50,6 @@ async function bootstrap() {
   return { storage, repository, user };
 }
 
-function findPartDef(id: string): PartDefinitionElement | undefined {
-  return useWorkspaceStore
-    .getState()
-    .elements.find((e): e is PartDefinitionElement => e.id === id && e.kind === 'PartDefinition');
-}
-
 function findPartUsage(id: string): PartUsageElement | undefined {
   return useWorkspaceStore
     .getState()
@@ -71,7 +73,7 @@ describe('workspace store — IBD actions (issue #50)', () => {
         .getState()
         .elements.find((e) => e.id === portId);
       expect(port?.kind).toBe('PortDefinition');
-      expect(findPartDef(defId)?.portIds).toEqual([portId]);
+      expect(portIdsOf(defId)).toEqual([portId]);
     });
 
     it('defaults port name to portN and direction to inout', async () => {
@@ -111,7 +113,7 @@ describe('workspace store — IBD actions (issue #50)', () => {
       expect(
         useWorkspaceStore.getState().elements.find((e) => e.id === portId),
       ).toBeUndefined();
-      expect(findPartDef(defId)?.portIds).toEqual([]);
+      expect(portIdsOf(defId)).toEqual([]);
     });
 
     it('redoes the port + portIds patch in one step', async () => {
@@ -126,7 +128,7 @@ describe('workspace store — IBD actions (issue #50)', () => {
       expect(
         useWorkspaceStore.getState().elements.find((e) => e.id === portId),
       ).toBeDefined();
-      expect(findPartDef(defId)?.portIds).toEqual([portId]);
+      expect(portIdsOf(defId)).toEqual([portId]);
     });
 
     it('is a no-op when the parent id is not a PartDefinition', async () => {
@@ -154,7 +156,7 @@ describe('workspace store — IBD actions (issue #50)', () => {
       expect(
         useWorkspaceStore.getState().elements.find((e) => e.id === portId),
       ).toBeUndefined();
-      expect(findPartDef(defId)?.portIds).toEqual([]);
+      expect(portIdsOf(defId)).toEqual([]);
     });
 
     it('undo restores the port and the parent portIds entry', async () => {
@@ -166,7 +168,7 @@ describe('workspace store — IBD actions (issue #50)', () => {
       useWorkspaceStore.getState().deletePort(portId);
       useWorkspaceStore.getState().undo();
 
-      expect(findPartDef(defId)?.portIds).toEqual([portId]);
+      expect(portIdsOf(defId)).toEqual([portId]);
       expect(
         useWorkspaceStore.getState().elements.find((e) => e.id === portId),
       ).toBeDefined();
@@ -230,9 +232,9 @@ describe('workspace store — IBD actions (issue #50)', () => {
       const partUsage = findPartUsage(partUsageId)!;
       expect(partUsage.kind).toBe('PartUsage');
       expect(partUsage.definitionId).toBe(defId);
-      expect(partUsage.portUsageIds).toHaveLength(2);
+      expect(portUsageIdsOf(partUsage.id)).toHaveLength(2);
 
-      for (const id of partUsage.portUsageIds) {
+      for (const id of portUsageIdsOf(partUsage.id)) {
         const portUsage = useWorkspaceStore
           .getState()
           .elements.find((e): e is PortUsageElement => e.id === id);
@@ -389,16 +391,16 @@ describe('workspace store — IBD actions (issue #50)', () => {
       const id = useWorkspaceStore.getState().connectPorts({
         source: partA.id,
         target: partB.id,
-        sourceHandle: partA.portUsageIds[0]!,
-        targetHandle: partB.portUsageIds[0]!,
+        sourceHandle: portUsageIdsOf(partA.id)[0]!,
+        targetHandle: portUsageIdsOf(partB.id)[0]!,
       })!;
 
       const connection = useWorkspaceStore
         .getState()
         .elements.find((e): e is ConnectionUsageElement => e.id === id);
       expect(connection?.kind).toBe('ConnectionUsage');
-      expect(connection?.sourceId).toBe(partA.portUsageIds[0]);
-      expect(connection?.targetId).toBe(partB.portUsageIds[0]);
+      expect(connection?.sourceId).toBe(portUsageIdsOf(partA.id)[0]);
+      expect(connection?.targetId).toBe(portUsageIdsOf(partB.id)[0]);
     });
 
     it('canonicalises in → out drags so the saved source is the out port', async () => {
@@ -422,8 +424,8 @@ describe('workspace store — IBD actions (issue #50)', () => {
       const a = findPartUsage(aId)!;
       const b = findPartUsage(bId)!;
 
-      const inPortUsage = a.portUsageIds[0]!;
-      const outPortUsage = b.portUsageIds[0]!;
+      const inPortUsage = portUsageIdsOf(a.id)[0]!;
+      const outPortUsage = portUsageIdsOf(b.id)[0]!;
       const id = useWorkspaceStore.getState().connectPorts({
         source: a.id,
         target: b.id,
@@ -464,8 +466,8 @@ describe('workspace store — IBD actions (issue #50)', () => {
       const id = useWorkspaceStore.getState().connectPorts({
         source: a.id,
         target: b.id,
-        sourceHandle: a.portUsageIds[0]!,
-        targetHandle: b.portUsageIds[0]!,
+        sourceHandle: portUsageIdsOf(a.id)[0]!,
+        targetHandle: portUsageIdsOf(b.id)[0]!,
       });
       expect(id).toBeNull();
     });
@@ -475,8 +477,8 @@ describe('workspace store — IBD actions (issue #50)', () => {
       const id = useWorkspaceStore.getState().connectPorts({
         source: partA.id,
         target: partB.id,
-        sourceHandle: partA.portUsageIds[0]!,
-        targetHandle: partB.portUsageIds[0]!,
+        sourceHandle: portUsageIdsOf(partA.id)[0]!,
+        targetHandle: portUsageIdsOf(partB.id)[0]!,
       })!;
       useWorkspaceStore.getState().undo();
 
@@ -516,14 +518,14 @@ describe('workspace store — IBD actions (issue #50)', () => {
       const first = useWorkspaceStore.getState().connectPorts({
         source: a2.id,
         target: b2.id,
-        sourceHandle: a2.portUsageIds[0]!,
-        targetHandle: b2.portUsageIds[0]!,
+        sourceHandle: portUsageIdsOf(a2.id)[0]!,
+        targetHandle: portUsageIdsOf(b2.id)[0]!,
       })!;
       const second = useWorkspaceStore.getState().connectPorts({
         source: a2.id,
         target: b2.id,
-        sourceHandle: a2.portUsageIds[1]!,
-        targetHandle: b2.portUsageIds[1]!,
+        sourceHandle: portUsageIdsOf(a2.id)[1]!,
+        targetHandle: portUsageIdsOf(b2.id)[1]!,
       })!;
       const firstEl = useWorkspaceStore
         .getState()
@@ -571,16 +573,16 @@ describe('workspace store — IBD actions (issue #50)', () => {
       const id = useWorkspaceStore.getState().connectItemFlow({
         source: partA.id,
         target: partB.id,
-        sourceHandle: partA.portUsageIds[0]!,
-        targetHandle: partB.portUsageIds[0]!,
+        sourceHandle: portUsageIdsOf(partA.id)[0]!,
+        targetHandle: portUsageIdsOf(partB.id)[0]!,
       })!;
 
       const flow = useWorkspaceStore
         .getState()
         .elements.find((e): e is ItemFlowElement => e.id === id);
       expect(flow?.kind).toBe('ItemFlow');
-      expect(flow?.sourceId).toBe(partA.portUsageIds[0]);
-      expect(flow?.targetId).toBe(partB.portUsageIds[0]);
+      expect(flow?.sourceId).toBe(portUsageIdsOf(partA.id)[0]);
+      expect(flow?.targetId).toBe(portUsageIdsOf(partB.id)[0]);
       expect(flow?.itemType).toBeUndefined();
     });
 
@@ -607,8 +609,8 @@ describe('workspace store — IBD actions (issue #50)', () => {
           .createPartUsage(ibdId, defB, { x: 200, y: 0 })!,
       )!;
 
-      const inPortUsage = a.portUsageIds[0]!;
-      const outPortUsage = b.portUsageIds[0]!;
+      const inPortUsage = portUsageIdsOf(a.id)[0]!;
+      const outPortUsage = portUsageIdsOf(b.id)[0]!;
       const id = useWorkspaceStore.getState().connectItemFlow({
         source: a.id,
         target: b.id,
@@ -649,8 +651,8 @@ describe('workspace store — IBD actions (issue #50)', () => {
       const id = useWorkspaceStore.getState().connectItemFlow({
         source: a.id,
         target: b.id,
-        sourceHandle: a.portUsageIds[0]!,
-        targetHandle: b.portUsageIds[0]!,
+        sourceHandle: portUsageIdsOf(a.id)[0]!,
+        targetHandle: portUsageIdsOf(b.id)[0]!,
       });
       expect(id).toBeNull();
     });
@@ -681,8 +683,8 @@ describe('workspace store — IBD actions (issue #50)', () => {
       const id = useWorkspaceStore.getState().connectItemFlow({
         source: a.id,
         target: b.id,
-        sourceHandle: a.portUsageIds[0]!,
-        targetHandle: b.portUsageIds[0]!,
+        sourceHandle: portUsageIdsOf(a.id)[0]!,
+        targetHandle: portUsageIdsOf(b.id)[0]!,
       });
       expect(id).not.toBeNull();
     });
@@ -715,14 +717,14 @@ describe('workspace store — IBD actions (issue #50)', () => {
       const first = useWorkspaceStore.getState().connectItemFlow({
         source: a2.id,
         target: b2.id,
-        sourceHandle: a2.portUsageIds[0]!,
-        targetHandle: b2.portUsageIds[0]!,
+        sourceHandle: portUsageIdsOf(a2.id)[0]!,
+        targetHandle: portUsageIdsOf(b2.id)[0]!,
       })!;
       const second = useWorkspaceStore.getState().connectItemFlow({
         source: a2.id,
         target: b2.id,
-        sourceHandle: a2.portUsageIds[1]!,
-        targetHandle: b2.portUsageIds[1]!,
+        sourceHandle: portUsageIdsOf(a2.id)[1]!,
+        targetHandle: portUsageIdsOf(b2.id)[1]!,
       })!;
       const firstEl = useWorkspaceStore
         .getState()
@@ -739,8 +741,8 @@ describe('workspace store — IBD actions (issue #50)', () => {
       const id = useWorkspaceStore.getState().connectItemFlow({
         source: partA.id,
         target: partB.id,
-        sourceHandle: partA.portUsageIds[0]!,
-        targetHandle: partB.portUsageIds[0]!,
+        sourceHandle: portUsageIdsOf(partA.id)[0]!,
+        targetHandle: portUsageIdsOf(partB.id)[0]!,
       })!;
       useWorkspaceStore.getState().undo();
       expect(
@@ -774,8 +776,8 @@ describe('workspace store — IBD actions (issue #50)', () => {
       return useWorkspaceStore.getState().connectItemFlow({
         source: a.id,
         target: b.id,
-        sourceHandle: a.portUsageIds[0]!,
-        targetHandle: b.portUsageIds[0]!,
+        sourceHandle: portUsageIdsOf(a.id)[0]!,
+        targetHandle: portUsageIdsOf(b.id)[0]!,
       })!;
     }
 
