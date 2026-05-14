@@ -1,5 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 
 import { createSessionUser } from '@/collab';
 import { createInMemorySessionRepository } from '@/repository';
@@ -168,6 +168,75 @@ describe('<ContainmentTree />', () => {
     const tree = screen.getByTestId('containment-tree');
     fireEvent.keyDown(tree, { key: 'ArrowLeft' });
     expect(root).toHaveAttribute('aria-expanded', 'false');
+  });
+
+  it('reveal-in-tree: external selection auto-expands collapsed ancestors', async () => {
+    await bootstrap();
+    const a = useWorkspaceStore.getState().createBlock()!;
+
+    render(<ContainmentTree />);
+    const root = screen.getByTestId(`containment-tree-element-${rootId()}`);
+    const caret = screen.getByTestId(
+      `containment-tree-element-disclosure-${rootId()}`,
+    );
+    fireEvent.click(caret);
+    expect(root).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByTestId(`containment-tree-element-${a}`)).toBeNull();
+
+    act(() => {
+      useWorkspaceStore.getState().setSelection([a]);
+    });
+
+    await waitFor(() => {
+      expect(root).toHaveAttribute('aria-expanded', 'true');
+    });
+    expect(
+      screen.getByTestId(`containment-tree-element-${a}`),
+    ).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('reveal-in-tree: scrollIntoView is called on the selected row', async () => {
+    await bootstrap();
+    const a = useWorkspaceStore.getState().createBlock()!;
+    const scrollSpy = vi.fn();
+    Element.prototype.scrollIntoView = scrollSpy as unknown as typeof Element.prototype.scrollIntoView;
+
+    render(<ContainmentTree />);
+    scrollSpy.mockClear();
+
+    act(() => {
+      useWorkspaceStore.getState().setSelection([a]);
+    });
+
+    await waitFor(() => {
+      expect(scrollSpy).toHaveBeenCalled();
+    });
+  });
+
+  it('reveal-in-tree: scrollIntoView is called when a diagram becomes active', async () => {
+    await bootstrap();
+    const second = useWorkspaceStore.getState().createDiagram(
+      useWorkspaceStore.getState().viewpoints.list()[0]!.id,
+    )!;
+    // Switch back to the first diagram so activating `second` is a real change.
+    const first = useWorkspaceStore.getState().diagrams[0]!.id;
+    act(() => {
+      useWorkspaceStore.getState().setActiveDiagram(first);
+    });
+
+    const scrollSpy = vi.fn();
+    Element.prototype.scrollIntoView = scrollSpy as unknown as typeof Element.prototype.scrollIntoView;
+
+    render(<ContainmentTree />);
+    scrollSpy.mockClear();
+
+    act(() => {
+      useWorkspaceStore.getState().setActiveDiagram(second);
+    });
+
+    await waitFor(() => {
+      expect(scrollSpy).toHaveBeenCalled();
+    });
   });
 
   it('Enter on an element row selects it', async () => {

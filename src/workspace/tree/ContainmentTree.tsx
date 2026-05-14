@@ -1,4 +1,11 @@
-import { useCallback, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from 'react';
 
 import type { ElementId, ModelElement } from '@/model';
 
@@ -70,6 +77,33 @@ export function ContainmentTree(): JSX.Element {
   const root = useMemo(
     () => buildContainmentTree({ elements, diagrams, rootId }),
     [elements, diagrams, rootId],
+  );
+
+  const elementsById = useMemo(() => {
+    const m = new Map<ElementId, ModelElement>();
+    for (const e of elements) m.set(e.id, e);
+    return m;
+  }, [elements]);
+
+  const diagramsById = useMemo(() => {
+    const m = new Map<DiagramId, Diagram>();
+    for (const d of diagrams) m.set(d.id, d);
+    return m;
+  }, [diagrams]);
+
+  const ancestorsOfElement = useCallback(
+    (id: ElementId): ElementId[] => {
+      const out: ElementId[] = [];
+      let cur = elementsById.get(id);
+      const seen = new Set<ElementId>();
+      while (cur && cur.ownerId && !seen.has(cur.ownerId)) {
+        seen.add(cur.ownerId);
+        out.push(cur.ownerId);
+        cur = elementsById.get(cur.ownerId);
+      }
+      return out;
+    },
+    [elementsById],
   );
 
   // Default: every element node starts expanded. Collapse-state lives in the
@@ -222,6 +256,66 @@ export function ContainmentTree(): JSX.Element {
     () => new Set(selectedElementIds),
     [selectedElementIds],
   );
+
+  const selectedElementId: ElementId | null = selectedElementIds[0] ?? null;
+
+  const expandAncestors = useCallback(
+    (ancestors: readonly ElementId[]) => {
+      if (ancestors.length === 0) return;
+      setCollapsed((prev) => {
+        let changed = false;
+        const next = new Set(prev);
+        for (const a of ancestors) {
+          const k = elKey(a);
+          if (next.has(k)) {
+            next.delete(k);
+            changed = true;
+          }
+        }
+        return changed ? next : prev;
+      });
+    },
+    [],
+  );
+
+  const scrollKeyIntoView = useCallback((key: FocusKey) => {
+    queueMicrotask(() => {
+      const el = refs.current.get(key);
+      if (el && typeof el.scrollIntoView === 'function') {
+        el.scrollIntoView({ block: 'nearest' });
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!root || !selectedElementId) return;
+    expandAncestors(ancestorsOfElement(selectedElementId));
+    scrollKeyIntoView(elKey(selectedElementId));
+  }, [
+    root,
+    selectedElementId,
+    ancestorsOfElement,
+    expandAncestors,
+    scrollKeyIntoView,
+  ]);
+
+  useEffect(() => {
+    if (!root || !activeDiagramId) return;
+    const dg = diagramsById.get(activeDiagramId);
+    const ctxId = dg?.context?.id;
+    const ancestors = ctxId
+      ? [ctxId, ...ancestorsOfElement(ctxId)]
+      : [];
+    expandAncestors(ancestors);
+    scrollKeyIntoView(dgKey(activeDiagramId));
+  }, [
+    root,
+    activeDiagramId,
+    diagramsById,
+    ancestorsOfElement,
+    expandAncestors,
+    scrollKeyIntoView,
+  ]);
 
   if (!root) {
     return (
