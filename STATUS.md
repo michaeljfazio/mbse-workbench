@@ -6,15 +6,14 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 672
+- Iteration #: 673
 - Started: 2026-05-14
 - Branch: issue/253-card-tokens-square-ports
-- Working on: PR #254 — prior CI run 25847671808 went GREEN at 07:35:45Z
-  but mergeStateStatus was BEHIND, so auto-merge SQUASH did not fire.
-  Ran `gh pr update-branch 254` this iteration; branch is now ahead of
-  main with a fresh merge commit. Awaiting new CI run to go green so
-  auto-merge can fire. mergeStateStatus now BLOCKED (expected, CI
-  pending).
+- Working on: PR #254 — post-update-branch CI run 25848074264 is in progress
+  (started 07:36:39Z; ~1 min elapsed at iter-673 check-in). Typecheck +
+  lint + setup steps all GREEN; unit tests now running. Auto-merge SQUASH
+  still enabled by michaeljfazio. Waiting on CI to complete so auto-merge
+  fires on the now-up-to-date branch.
 
 ## Last test run
 - Command: pnpm typecheck && pnpm lint && pnpm test:unit && pnpm build && pnpm test:e2e (visual skipped on darwin per playwright.config grepInvert)
