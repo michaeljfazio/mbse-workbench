@@ -21,10 +21,14 @@ export {
 } from './store';
 
 export type {
+  ActionDefinitionDiagramContext,
   Diagram,
   DiagramContext,
+  DiagramContextKind,
   DiagramId,
   NodePosition,
+  PackageDiagramContext,
   PartDefinitionDiagramContext,
+  StateDefinitionDiagramContext,
 } from './diagram';
 export { createDiagramId } from './diagram';
