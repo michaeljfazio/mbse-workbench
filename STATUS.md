@@ -6,12 +6,12 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 566
+- Iteration #: 567
 - Started: 2026-05-14
 - Branch: issue/253-card-tokens-square-ports
 - Working on: PR #254 — auto-merge armed, CI still IN_PROGRESS
-  (iter-566 observed check job still running; mergeStateStatus=BEHIND
-  but auto-merge handles update on green).
+  (iter-567 observed check job still running since 06:03Z; merge
+  state UNKNOWN; auto-merge handles update on green).
   Nothing actionable this iteration; idle wait.
 
 ## Last test run
