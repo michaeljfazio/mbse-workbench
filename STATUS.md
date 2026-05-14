@@ -6,12 +6,12 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 624
+- Iteration #: 625
 - Started: 2026-05-14
 - Branch: issue/253-card-tokens-square-ports
 - Working on: PR #254 — CI run 25846316947 still IN_PROGRESS
-  (single `check` job started 06:49:58Z). Auto-merge SQUASH armed;
-  awaiting green.
+  (E2E step started 06:51:39Z; ~6m elapsed at 06:57:54Z).
+  Auto-merge SQUASH armed; awaiting green.
 
 ## Last test run
 - Command: pnpm typecheck && pnpm lint && pnpm test:unit && pnpm build && pnpm test:e2e (visual skipped on darwin per playwright.config grepInvert)
