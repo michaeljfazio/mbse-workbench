@@ -6,12 +6,12 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 693
+- Iteration #: 694
 - Started: 2026-05-14
 - Branch: issue/253-card-tokens-square-ports
 - Working on: PR #254 — CI run 25848479284 still IN_PROGRESS (07:47:21Z
-  start, ~6m13s elapsed at iter-693 check 07:53:34Z). Prior runs on this
-  branch took ~11 min each; expect ~5 more min. Auto-merge SQUASH
+  start, ~7m05s elapsed at iter-694 check 07:54:26Z). Prior runs on this
+  branch took ~11 min each; expect ~4 more min. Auto-merge SQUASH
   armed; idle this iteration awaiting CI.
 
 ## Last test run
