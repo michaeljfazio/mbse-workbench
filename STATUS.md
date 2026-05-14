@@ -2,6 +2,26 @@ Phase 13 — Functional polish & feature accessibility (post-v1.0.0)
 
 Kickoff: 2026-05-14 (JOURNAL iter-528)
 
+## Current phase
+phase:13 — post-v1.0.0 polish + explorer rewrite
+
+## Current iteration
+- Iteration #: 533
+- Started: 2026-05-14
+- Branch: issue/253-card-tokens-square-ports
+- Working on: PR #254 — auto-merge enabled, CI in progress (awaiting green)
+
+## Last test run
+- Command: pnpm typecheck && pnpm lint && pnpm test:unit && pnpm build && pnpm test:e2e (visual skipped on darwin per playwright.config grepInvert)
+- Result: PASS — 875 unit / 458 e2e
+- Visual baselines: regenerated in podman/playwright:v1.48.2-jammy
+  container (full suite via scripts/regen-baselines.sh +
+  scripts/regen-chat-baselines.sh for the 8 chat specs that need the
+  test-mode preview build).
+
+## Known issues / blockers
+- (none for this iteration)
+
 Backlog (P0 — UI-unreachable features):
 - T-13.01 Diagram lifecycle UI (create/rename/delete per viewpoint)
 - T-13.02 Project-tree right-click context menu (Rename/Delete/New)
@@ -17,13 +37,11 @@ Backlog (P1 — discoverability/workflow):
 - T-13.10 Undo/redo toolbar buttons
 
 Backlog (P0 — visual rendering / transparency, JOURNAL iter-529):
-- T-13.16 Add `card` + `card-foreground` to tailwind.config.ts + define
-  `--card`/`--card-foreground` HSL tokens (light + dark) in index.css.
-  Root cause: 95 `bg-card`/`text-card-foreground` call sites silently no-op
-  today; every node body and every popover renders fully transparent
-  (computed `backgroundColor: rgba(0,0,0,0)` confirmed).
-- T-13.17 Replace circular port glyphs with square port glyphs in
-  PartUsageNode.tsx:97 (SysMLv2 spec: ports are squares on the boundary).
+- [x] T-13.16 Add `card` + `card-foreground` to tailwind.config.ts + define
+      `--card`/`--card-foreground` HSL tokens (light + dark) in index.css.
+      Shipped iter-532 (#253). 94 visual baselines regenerated.
+- [x] T-13.17 Replace circular port glyphs with square port glyphs in
+      PartUsageNode.tsx (rounded-full → rounded-none). Shipped iter-532 (#253).
 
 Backlog (P1 — SysMLv2 notation conformance, JOURNAL iter-529):
 - T-13.18 Port direction glyphs (in/out/inout) from PortDirection in model.
@@ -101,3 +119,16 @@ Phase 14 (deferred from Phase 13, iter-531):
 - Standard library import (KerML / SysML) using the Phase-13 hooks
   Package.isReadOnly and Project.libraryRootIds
 - Namespace resolution + `import` directive in SysMLv2 text round-trip
+
+## Decisions log
+- 2026-05-14 (iter-532): Bundle T-13.16 + T-13.17 in PR #253 per AGENT.md.
+  Chat @visual baselines regenerated against a `--mode test` preview build
+  (production build strips the `window.__llm` seam; `vite dev` in the
+  podman container trips ENOSPC on file watchers). Procedure recorded in
+  scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
+
+## Next action
+Wait for PR #254 auto-merge on green CI. On merge, pick next P0 task
+(likely T-13.29 — start of explorer foundation bundle: ownerId as
+single source of truth, explicit root Package, registry parentOf/
+childrenOf, codemod readers).
