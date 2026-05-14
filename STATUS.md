@@ -6,13 +6,19 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 704
+- Iteration #: 705
 - Started: 2026-05-14
 - Branch: issue/255-explorer-foundation-ownerid-context
-- Working on: #255 — T-13.29+T-13.30 bundled per AGENT.md. PR #254
-  (card+ports) merged 08:20:05Z. Opened #255, branched, wrote
-  ADR 0011 locking design. Schema migration + registry index next.
-  Multi-iteration work (~82 files impacted).
+- Working on: #255 — additive pieces of the bundle landed this iter:
+  exported OwnerRole/OWNER_ROLE_VALUES from model index, added
+  rootId: ElementId to Project, extended registry with parentOf +
+  childrenOf indexes (maintained on add/remove/update-reparent).
+  Cascade still red (219 errors / 26 files); next iters migrate
+  consumers. Important infra finding: root `pnpm typecheck` is a
+  no-op because tsconfig.json uses project references with files=[].
+  Direct `npx tsc -p tsconfig.app.json --noEmit` surfaces real errors.
+  Recorded for follow-up — do NOT fix typecheck script until cascade
+  clears or CI will go red mid-refactor.
 
 ## Last test run
 - Command: pnpm typecheck && pnpm lint && pnpm test:unit && pnpm build && pnpm test:e2e (visual skipped on darwin per playwright.config grepInvert)
@@ -124,6 +130,12 @@ Phase 14 (deferred from Phase 13, iter-531):
 - Namespace resolution + `import` directive in SysMLv2 text round-trip
 
 ## Decisions log
+- 2026-05-14 (iter-705): Discovered `pnpm typecheck` (= `tsc --noEmit` on
+  root tsconfig.json with files=[] + references) is a no-op; real errors
+  only surface via `tsc -p tsconfig.app.json` or `tsc -b`. Defer fixing
+  the npm script until the explorer-foundation cascade clears, otherwise
+  CI on this branch would block before the migration completes. Recorded
+  in docs/CONTEXT.md.
 - 2026-05-14 (iter-532): Bundle T-13.16 + T-13.17 in PR #253 per AGENT.md.
   Chat @visual baselines regenerated against a `--mode test` preview build
   (production build strips the `window.__llm` seam; `vite dev` in the

@@ -42,6 +42,7 @@ export type {
   StateNodeType,
   ValueType,
   ValueLiteral,
+  OwnerRole,
 } from './elements';
 
 export {
@@ -50,6 +51,7 @@ export {
   isActionNodeType,
   isStateNodeType,
   STATE_NODE_TYPE_VALUES,
+  OWNER_ROLE_VALUES,
 } from './elements';
 
 export type {
