@@ -1,5 +1,5 @@
+import { migrateLegacyProject } from '@/repository/migrate';
 import type { Project } from '@/repository/types';
-import { EMPTY_COMMAND_HISTORY } from '@/repository/types';
 
 export type ParseProjectJsonResult =
   | { readonly ok: true; readonly project: Project }
@@ -39,24 +39,11 @@ export function parseProjectJson(text: string): ParseProjectJsonResult {
   if (!Array.isArray(obj.diagrams) || obj.diagrams.length === 0) {
     return { ok: false, message: 'project.diagrams must be a non-empty array' };
   }
-  const history =
-    obj.history &&
-    typeof obj.history === 'object' &&
-    Array.isArray((obj.history as { undo?: unknown }).undo) &&
-    Array.isArray((obj.history as { redo?: unknown }).redo)
-      ? (obj.history as Project['history'])
-      : EMPTY_COMMAND_HISTORY;
-  const conversations = Array.isArray(obj.conversations) ? obj.conversations : [];
-  const project: Project = {
-    id: obj.id as Project['id'],
-    name: obj.name,
-    createdAt: obj.createdAt,
-    modifiedAt: obj.modifiedAt,
-    elements: obj.elements as Project['elements'],
-    edges: obj.edges as Project['edges'],
-    diagrams: obj.diagrams as Project['diagrams'],
-    history,
-    conversations: conversations as Project['conversations'],
-  };
-  return { ok: true, project };
+  // Delegate root synthesis + legacy schema migration to the shared codemod.
+  try {
+    return { ok: true, project: migrateLegacyProject(obj) };
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : 'invalid project';
+    return { ok: false, message: detail };
+  }
 }

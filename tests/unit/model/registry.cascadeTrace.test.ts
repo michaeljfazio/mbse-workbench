@@ -13,6 +13,9 @@ function mkRequirement(name: string): RequirementElement {
   return {
     id: createElementId(),
     kind: 'Requirement',
+    ownerId: null,
+    ownerRole: 'member',
+    ownerIndex: 0,
     name,
     text: '',
     priority: 'medium',
@@ -24,10 +27,11 @@ function mkPartDef(name: string): PartDefinitionElement {
   return {
     id: createElementId(),
     kind: 'PartDefinition',
+    ownerId: null,
+    ownerRole: 'member',
+    ownerIndex: 0,
     name,
     isAbstract: false,
-    propertyIds: [],
-    portIds: [],
   };
 }
 

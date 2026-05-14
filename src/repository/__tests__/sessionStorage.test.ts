@@ -47,25 +47,26 @@ function createFakeStorage(): Storage {
 const A = mkElementId('A');
 const B = mkElementId('B');
 
-function elementOf(kind: ElementKind, id: string): ModelElement {
-  const base = { id: mkElementId(id), name: `${kind}-${id}` };
+const ROOT_ID = mkElementId('root');
+
+function elementOf(kind: ElementKind, id: string, ownerIndex: number): ModelElement {
+  const base = {
+    id: mkElementId(id),
+    name: `${kind}-${id}`,
+    ownerId: ROOT_ID,
+    ownerRole: 'member' as const,
+    ownerIndex,
+  };
   switch (kind) {
     case 'Package':
-      return { ...base, kind: 'Package', memberIds: [A, B] };
+      return { ...base, kind: 'Package' };
     case 'PartDefinition':
-      return {
-        ...base,
-        kind: 'PartDefinition',
-        isAbstract: false,
-        propertyIds: [],
-        portIds: [],
-      };
+      return { ...base, kind: 'PartDefinition', isAbstract: false };
     case 'PartUsage':
       return {
         ...base,
         kind: 'PartUsage',
         definitionId: A,
-        portUsageIds: [],
         multiplicity: '1..*',
       };
     case 'PortDefinition':
@@ -73,7 +74,7 @@ function elementOf(kind: ElementKind, id: string): ModelElement {
     case 'PortUsage':
       return { ...base, kind: 'PortUsage', definitionId: A };
     case 'InterfaceDefinition':
-      return { ...base, kind: 'InterfaceDefinition', portDefinitionIds: [A] };
+      return { ...base, kind: 'InterfaceDefinition' };
     case 'ConnectionUsage':
       return { ...base, kind: 'ConnectionUsage', sourceId: A, targetId: B };
     case 'ItemFlow':
@@ -95,7 +96,7 @@ function elementOf(kind: ElementKind, id: string): ModelElement {
         rationale: 'because',
       };
     case 'ActionDefinition':
-      return { ...base, kind: 'ActionDefinition', parameterIds: [] };
+      return { ...base, kind: 'ActionDefinition' };
     case 'ActionUsage':
       return {
         ...base,
@@ -129,12 +130,7 @@ function elementOf(kind: ElementKind, id: string): ModelElement {
     case 'Actor':
       return { ...base, kind: 'Actor' };
     case 'ConstraintDefinition':
-      return {
-        ...base,
-        kind: 'ConstraintDefinition',
-        expression: 'x + y = z',
-        parameterIds: [],
-      };
+      return { ...base, kind: 'ConstraintDefinition', expression: 'x + y = z' };
     case 'ConstraintUsage':
       return { ...base, kind: 'ConstraintUsage', definitionId: A };
     case 'ValueProperty':
@@ -145,6 +141,17 @@ function elementOf(kind: ElementKind, id: string): ModelElement {
         defaultValue: 42,
       };
   }
+}
+
+function rootPackageElement(name: string): ModelElement {
+  return {
+    id: ROOT_ID,
+    kind: 'Package',
+    name,
+    ownerId: null,
+    ownerRole: 'member',
+    ownerIndex: 0,
+  };
 }
 
 function edgeOf(kind: EdgeKind, id: string): ModelEdge {
@@ -182,7 +189,11 @@ function projectWithEverything(id: string): Project {
     name: `project-${id}`,
     createdAt: '2026-05-11T10:00:00.000Z',
     modifiedAt: '2026-05-11T10:05:00.000Z',
-    elements: ELEMENT_KINDS.map((kind, i) => elementOf(kind, `e-${i}`)),
+    rootId: ROOT_ID,
+    elements: [
+      rootPackageElement(`project-${id}`),
+      ...ELEMENT_KINDS.map((kind, i) => elementOf(kind, `e-${i}`, i)),
+    ],
     edges: EDGE_KINDS.map((kind, i) => edgeOf(kind, `g-${i}`)),
     diagrams: [],
     history: EMPTY_COMMAND_HISTORY,
@@ -203,7 +214,8 @@ describe('InMemorySessionRepository', () => {
     await repo.save(project);
     const loaded = await repo.load(project.id);
 
-    expect(loaded.elements).toHaveLength(ELEMENT_KINDS.length);
+    // +1 for the synthesized/explicit root Package.
+    expect(loaded.elements).toHaveLength(ELEMENT_KINDS.length + 1);
     for (const kind of ELEMENT_KINDS) {
       expect(loaded.elements.some((e) => e.kind === kind)).toBe(true);
     }
@@ -230,7 +242,8 @@ describe('InMemorySessionRepository', () => {
       name: 'project-p2',
       createdAt: '2026-05-11T11:00:00.000Z',
       modifiedAt: '2026-05-11T11:05:00.000Z',
-      elements: [],
+      rootId: ROOT_ID,
+      elements: [rootPackageElement('project-p2')],
       edges: [],
       diagrams: [],
       history: EMPTY_COMMAND_HISTORY,
@@ -248,6 +261,7 @@ describe('InMemorySessionRepository', () => {
         name: m.name,
         createdAt: m.createdAt,
         modifiedAt: m.modifiedAt,
+        rootId: m.rootId,
       });
       expect('elements' in m).toBe(false);
       expect('edges' in m).toBe(false);
@@ -296,7 +310,7 @@ describe('InMemorySessionRepository', () => {
       ...first,
       name: 'renamed',
       modifiedAt: '2026-05-11T12:00:00.000Z',
-      elements: [],
+      elements: [rootPackageElement('renamed')],
       edges: [],
       diagrams: [],
       history: EMPTY_COMMAND_HISTORY,
@@ -306,7 +320,7 @@ describe('InMemorySessionRepository', () => {
 
     const loaded = await repo.load(first.id);
     expect(loaded.name).toBe('renamed');
-    expect(loaded.elements).toEqual([]);
+    expect(loaded.elements).toEqual([rootPackageElement('renamed')]);
     expect(loaded.edges).toEqual([]);
     expect(await repo.list()).toHaveLength(1);
   });
@@ -355,7 +369,8 @@ describe('InMemorySessionRepository', () => {
       name: 'p-ibd',
       createdAt: '2026-05-12T10:00:00.000Z',
       modifiedAt: '2026-05-12T10:05:00.000Z',
-      elements: [],
+      rootId: ROOT_ID,
+      elements: [rootPackageElement('p-ibd')],
       edges: [],
       diagrams: [
         {
@@ -412,7 +427,8 @@ describe('InMemorySessionRepository', () => {
       name: 'p1',
       createdAt: '2026-05-11T10:00:00.000Z',
       modifiedAt: '2026-05-11T10:05:00.000Z',
-      elements: [],
+      rootId: ROOT_ID,
+      elements: [rootPackageElement('p1')],
       edges: [],
       diagrams: [
         {
@@ -469,8 +485,9 @@ describe('InMemorySessionRepository', () => {
         kind: 'PartDefinition',
         name: 'Block-with-history',
         isAbstract: false,
-        propertyIds: [],
-        portIds: [],
+        ownerId: ROOT_ID,
+        ownerRole: 'member',
+        ownerIndex: 0,
       },
     };
     const deleteBlock: Command = { kind: 'delete-element', id: elementId };
@@ -527,5 +544,116 @@ describe('InMemorySessionRepository', () => {
     const repo = createInMemorySessionRepository({ storage });
     const loaded = await repo.load('bad-history' as ProjectId);
     expect(loaded.history).toEqual({ undo: [], redo: [] });
+  });
+
+  it('migrates legacy parent-side child arrays into ownerId/role/index (ADR 0011)', async () => {
+    // Pre-ADR-0011 persisted blob: Package.memberIds + PartDefinition.portIds +
+    // PartUsage.portUsageIds. No rootId, no ownerId on any element.
+    storage.setItem(
+      'mbse:v1:project:legacy-containment',
+      JSON.stringify({
+        id: 'legacy-containment',
+        name: 'legacy-containment',
+        createdAt: '2026-05-11T10:00:00.000Z',
+        modifiedAt: '2026-05-11T10:05:00.000Z',
+        elements: [
+          {
+            id: 'pkg-1',
+            kind: 'Package',
+            name: 'Root',
+            memberIds: ['part-def-1', 'part-usage-1'],
+          },
+          {
+            id: 'part-def-1',
+            kind: 'PartDefinition',
+            name: 'Engine',
+            isAbstract: false,
+            portIds: ['port-def-1'],
+            propertyIds: [],
+          },
+          {
+            id: 'port-def-1',
+            kind: 'PortDefinition',
+            name: 'fuelIn',
+            direction: 'in',
+          },
+          {
+            id: 'part-usage-1',
+            kind: 'PartUsage',
+            name: 'engine',
+            definitionId: 'part-def-1',
+            portUsageIds: ['port-usage-1'],
+          },
+          {
+            id: 'port-usage-1',
+            kind: 'PortUsage',
+            name: 'fuelIn',
+            definitionId: 'port-def-1',
+          },
+        ],
+        edges: [],
+        diagrams: [],
+      }),
+    );
+
+    const repo = createInMemorySessionRepository({ storage });
+    const loaded = await repo.load('legacy-containment' as ProjectId);
+
+    // Containment was reconstructed from the legacy arrays.
+    const byId = new Map(loaded.elements.map((e) => [e.id as string, e]));
+    expect(loaded.rootId).toBe('pkg-1');
+    expect(byId.get('pkg-1')?.ownerId).toBeNull();
+    expect(byId.get('part-def-1')?.ownerId).toBe('pkg-1');
+    expect(byId.get('part-def-1')?.ownerRole).toBe('member');
+    expect(byId.get('part-def-1')?.ownerIndex).toBe(0);
+    expect(byId.get('part-usage-1')?.ownerId).toBe('pkg-1');
+    expect(byId.get('part-usage-1')?.ownerIndex).toBe(1);
+    expect(byId.get('port-def-1')?.ownerId).toBe('part-def-1');
+    expect(byId.get('port-def-1')?.ownerRole).toBe('port');
+    expect(byId.get('port-usage-1')?.ownerId).toBe('part-usage-1');
+    expect(byId.get('port-usage-1')?.ownerRole).toBe('port');
+
+    // Parent-side arrays have been stripped from every element.
+    for (const el of loaded.elements) {
+      const raw = el as unknown as Record<string, unknown>;
+      expect(raw.memberIds).toBeUndefined();
+      expect(raw.portIds).toBeUndefined();
+      expect(raw.propertyIds).toBeUndefined();
+      expect(raw.portUsageIds).toBeUndefined();
+      expect(raw.parameterIds).toBeUndefined();
+      expect(raw.portDefinitionIds).toBeUndefined();
+    }
+  });
+
+  it('synthesizes a root Package when the legacy blob has none', async () => {
+    storage.setItem(
+      'mbse:v1:project:no-root',
+      JSON.stringify({
+        id: 'no-root',
+        name: 'NoRoot',
+        createdAt: '2026-05-11T10:00:00.000Z',
+        modifiedAt: '2026-05-11T10:05:00.000Z',
+        elements: [
+          {
+            id: 'p',
+            kind: 'PartDefinition',
+            name: 'Engine',
+            isAbstract: false,
+          },
+        ],
+        edges: [],
+        diagrams: [],
+      }),
+    );
+
+    const repo = createInMemorySessionRepository({ storage });
+    const loaded = await repo.load('no-root' as ProjectId);
+
+    const root = loaded.elements.find((e) => e.id === loaded.rootId);
+    expect(root?.kind).toBe('Package');
+    expect(root?.ownerId).toBeNull();
+    expect(loaded.elements.find((e) => e.id === 'p')?.ownerId).toBe(
+      loaded.rootId,
+    );
   });
 });

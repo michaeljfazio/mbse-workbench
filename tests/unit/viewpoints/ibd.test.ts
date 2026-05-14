@@ -51,9 +51,11 @@ describe('IBD viewpoint', () => {
       ibdViewpoint.nodeTypeFor({
         id: 'pu-1' as never,
         kind: 'PartUsage',
+        ownerId: null,
+        ownerRole: 'member',
+        ownerIndex: 0,
         name: 'p',
         definitionId: 'pd-1' as never,
-        portUsageIds: [],
       }),
     ).toBe(IBD_PART_USAGE_NODE_TYPE);
   });
@@ -63,10 +65,11 @@ describe('IBD viewpoint', () => {
       ibdViewpoint.nodeTypeFor({
         id: 'pd-1' as never,
         kind: 'PartDefinition',
+        ownerId: null,
+        ownerRole: 'member',
+        ownerIndex: 0,
         name: 'V',
         isAbstract: false,
-        propertyIds: [],
-        portIds: [],
       }),
     ).toThrow(/ibd viewpoint cannot render element kind/);
   });
@@ -87,6 +90,9 @@ describe('IBD viewpoint', () => {
       ibdViewpoint.edgeTypeForElement({
         id: 'cu' as never,
         kind: 'ConnectionUsage',
+        ownerId: null,
+        ownerRole: 'member',
+        ownerIndex: 0,
         name: 'connection1',
         sourceId: 'pu-a' as never,
         targetId: 'pu-b' as never,
@@ -99,6 +105,9 @@ describe('IBD viewpoint', () => {
       ibdViewpoint.edgeTypeForElement({
         id: 'if' as never,
         kind: 'ItemFlow',
+        ownerId: null,
+        ownerRole: 'member',
+        ownerIndex: 0,
         name: 'flow1',
         sourceId: 'pu-a' as never,
         targetId: 'pu-b' as never,
@@ -112,10 +121,11 @@ describe('IBD viewpoint', () => {
       ibdViewpoint.edgeTypeForElement({
         id: 'pd' as never,
         kind: 'PartDefinition',
+        ownerId: null,
+        ownerRole: 'member',
+        ownerIndex: 0,
         name: 'V',
         isAbstract: false,
-        propertyIds: [],
-        portIds: [],
       }),
     ).toThrow(/ibd viewpoint cannot render element-as-edge kind/);
   });

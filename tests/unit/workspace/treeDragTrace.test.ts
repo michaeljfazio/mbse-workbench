@@ -12,6 +12,9 @@ function mkReq(slug: string): ModelElement {
   return {
     id: mkElementId(slug),
     kind: 'Requirement',
+    ownerId: null,
+    ownerRole: 'member',
+    ownerIndex: 0,
     name: slug,
     text: '',
     priority: 'medium',
@@ -23,10 +26,11 @@ function mkBlock(slug: string): ModelElement {
   return {
     id: mkElementId(slug),
     kind: 'PartDefinition',
+    ownerId: null,
+    ownerRole: 'member',
+    ownerIndex: 0,
     name: slug,
     isAbstract: false,
-    propertyIds: [],
-    portIds: [],
   };
 }
 
@@ -34,6 +38,9 @@ function mkPort(slug: string): ModelElement {
   return {
     id: mkElementId(slug),
     kind: 'PortDefinition',
+    ownerId: null,
+    ownerRole: 'member',
+    ownerIndex: 0,
     name: slug,
     direction: 'inout',
   };

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { critiqueModelHandler, critiqueModelSchema } from '@/llm/tools/critique-model';
 import { createProjectReader } from '@/llm/project-reader';
-import type { ModelElement } from '@/model';
+import type { ElementId, ModelElement } from '@/model';
 import type { ModelEdge } from '@/model';
 
 const mkEl = (kind: string, name: string, id: string, extra?: Record<string, unknown>): ModelElement =>
@@ -17,6 +17,7 @@ describe('critique_model tool', () => {
       mkEl('Requirement', 'REQ-001', 'req-1'),
     ];
     const reader = createProjectReader({
+      rootId: 'root-pkg' as ElementId,
       projectName: 'Test Project',
       elements,
       edges: [],
@@ -43,6 +44,7 @@ describe('critique_model tool', () => {
       mkEl('PortDefinition', 'OrphanPort', 'port-1'),
     ];
     const reader = createProjectReader({
+      rootId: 'root-pkg' as ElementId,
       projectName: 'Test Project',
       elements,
       edges: [],
@@ -63,14 +65,19 @@ describe('critique_model tool', () => {
 
   it('returns summary for a model with a RequirementTrace edge satisfying requirements', async () => {
     const elements: ModelElement[] = [
-      mkEl('PartDefinition', 'Engine', 'el-1', { portIds: ['port-1'] }),
-      mkEl('PortDefinition', 'InletPort', 'port-1'),
+      mkEl('PartDefinition', 'Engine', 'el-1'),
+      mkEl('PortDefinition', 'InletPort', 'port-1', {
+        ownerId: 'el-1',
+        ownerRole: 'port',
+        ownerIndex: 0,
+      }),
       mkEl('Requirement', 'REQ-001', 'req-1'),
     ];
     const edges: ModelEdge[] = [
       mkEdge('RequirementTrace', 'edge-1', 'el-1', 'req-1'),
     ];
     const reader = createProjectReader({
+      rootId: 'root-pkg' as ElementId,
       projectName: 'Test Project',
       elements,
       edges,

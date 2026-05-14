@@ -1,9 +1,11 @@
-import type { ModelEdge, ModelElement } from '@/model';
+import type { ElementId, ModelEdge, ModelElement } from '@/model';
 import type { Diagram } from '@/workspace/diagram';
 
 /** Read-only snapshot of the active project state passed to tool handlers. */
 export interface ProjectReader {
   readonly projectName: string;
+  /** ElementId of the project's root Package. */
+  readonly rootId: ElementId;
   /** All elements across the active project. */
   elements(): readonly ModelElement[];
   /** All edges across the active project. */
@@ -23,6 +25,7 @@ export interface ProjectReader {
  */
 export function createProjectReader(snapshot: {
   readonly projectName: string;
+  readonly rootId: ElementId;
   readonly elements: readonly ModelElement[];
   readonly edges: readonly ModelEdge[];
   readonly diagrams: readonly Diagram[];
@@ -30,6 +33,7 @@ export function createProjectReader(snapshot: {
 }): ProjectReader {
   return {
     projectName: snapshot.projectName,
+    rootId: snapshot.rootId,
     elements: () => snapshot.elements,
     edges: () => snapshot.edges,
     diagrams: () => snapshot.diagrams,

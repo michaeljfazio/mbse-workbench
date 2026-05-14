@@ -18,15 +18,17 @@ function part(id: string, name: string): PartDefinitionElement {
   return {
     id: id as ElementId,
     kind: 'PartDefinition',
+    ownerId: null,
+    ownerRole: 'member',
+    ownerIndex: 0,
     name,
     isAbstract: false,
-    propertyIds: [],
-    portIds: [],
   };
 }
 
 function readerWith(elements: readonly ModelElement[], edges: readonly ModelEdge[] = []) {
   return createProjectReader({
+    rootId: 'root-pkg' as ElementId,
     projectName: 'Test',
     elements,
     edges,
@@ -98,8 +100,10 @@ describe('propose_decomposition tool', () => {
     const pkg: PackageElement = {
       id: 'pkg-1' as ElementId,
       kind: 'Package',
+      ownerId: null,
+      ownerRole: 'member',
+      ownerIndex: 0,
       name: 'P',
-      memberIds: [],
     };
     const reader = readerWith([pkg]);
     const input = proposeDecompositionSchema.parse({

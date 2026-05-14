@@ -34,8 +34,9 @@ function partDef(name: string): ModelElement {
     kind: 'PartDefinition',
     name,
     isAbstract: false,
-    propertyIds: [],
-    portIds: [],
+    ownerId: null,
+    ownerRole: 'member',
+    ownerIndex: 0,
   };
 }
 

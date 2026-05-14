@@ -1,6 +1,6 @@
 import { z } from 'zod';
-import type { Command, UpdateElementCommand } from '@/commands/types';
-import type { ElementId, RequirementElement } from '@/model';
+import type { Command } from '@/commands/types';
+import type { ElementId, ModelElement, RequirementElement } from '@/model';
 import { createElementId } from '@/model';
 import type { ToolContext } from '../registry';
 import type { ProjectReader } from '../project-reader';
@@ -37,7 +37,7 @@ export const generateRequirementsFromTextDefinition: LLMToolDefinition = {
       owningPackageId: {
         type: 'string',
         description:
-          'Optional ElementId of an existing Package. All generated requirements are added to its memberIds.',
+          'Optional ElementId of an existing Package. All generated requirements are owned by it. Defaults to the project root package.',
       },
       defaultPriority: {
         type: 'string',
@@ -68,6 +68,10 @@ export function parseRequirementLines(text: string): { name: string; text: strin
   return result;
 }
 
+function countMembers(elements: readonly ModelElement[], ownerId: ElementId): number {
+  return elements.filter((e) => e.ownerId === ownerId && e.ownerRole === 'member').length;
+}
+
 function deriveName(line: string): string {
   const firstSentence = line.split(/(?<=[.!?])\s/)[0] ?? line;
   const candidate = firstSentence.trim();
@@ -85,10 +89,12 @@ export async function generateRequirementsFromTextHandler(
     throw new Error('No requirement lines could be parsed from the supplied text.');
   }
 
-  let owningPackageId: ElementId | undefined;
+  const elements = reader.elements();
+  let ownerId: ElementId;
+  let explicitOwner = false;
   if (input.owningPackageId !== undefined) {
     const ownerCandidateId = input.owningPackageId as ElementId;
-    const owner = reader.elements().find((e) => e.id === ownerCandidateId);
+    const owner = elements.find((e) => e.id === ownerCandidateId);
     if (owner === undefined) {
       throw new Error(
         `owningPackageId "${input.owningPackageId}" does not refer to an existing element.`,
@@ -99,19 +105,27 @@ export async function generateRequirementsFromTextHandler(
         `owningPackageId "${input.owningPackageId}" refers to a ${owner.kind}, not a Package.`,
       );
     }
-    owningPackageId = ownerCandidateId;
+    ownerId = ownerCandidateId;
+    explicitOwner = true;
+  } else {
+    ownerId = reader.rootId;
   }
 
   const priority = input.defaultPriority ?? 'medium';
   const status = input.defaultStatus ?? 'draft';
+  const baseIndex = countMembers(elements, ownerId);
 
   const commands: Command[] = [];
   const newIds: ElementId[] = [];
-  for (const line of parsed) {
+  for (let i = 0; i < parsed.length; i++) {
+    const line = parsed[i]!;
     const id = createElementId();
     newIds.push(id);
     const element: RequirementElement = {
       id,
+      ownerId,
+      ownerRole: 'member',
+      ownerIndex: baseIndex + i,
       kind: 'Requirement',
       name: line.name,
       text: line.text,
@@ -121,27 +135,14 @@ export async function generateRequirementsFromTextHandler(
     commands.push({ kind: 'create-element', element });
   }
 
-  if (owningPackageId !== undefined) {
-    const owner = reader.elements().find((e) => e.id === owningPackageId);
-    if (owner !== undefined && owner.kind === 'Package') {
-      const updatePackage: UpdateElementCommand<'Package'> = {
-        kind: 'update-element',
-        id: owningPackageId,
-        patch: { memberIds: [...owner.memberIds, ...newIds] },
-      };
-      commands.push(updatePackage);
-    }
-  }
-
   const first = newIds[0];
   if (first === undefined) {
     throw new Error('Internal error: no requirements generated.');
   }
 
-  const summary =
-    owningPackageId !== undefined
-      ? `Generate ${parsed.length} requirement${parsed.length === 1 ? '' : 's'} in package ${owningPackageId}`
-      : `Generate ${parsed.length} requirement${parsed.length === 1 ? '' : 's'}`;
+  const summary = explicitOwner
+    ? `Generate ${parsed.length} requirement${parsed.length === 1 ? '' : 's'} in package ${ownerId}`
+    : `Generate ${parsed.length} requirement${parsed.length === 1 ? '' : 's'}`;
 
   const change: ProposedChange = {
     id: first,

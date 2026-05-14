@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { queryModelHandler, queryModelSchema } from '@/llm/tools/query-model';
 import { createProjectReader } from '@/llm/project-reader';
-import type { ModelElement } from '@/model';
+import type { ElementId, ModelElement } from '@/model';
 
 const mkEl = (kind: string, name: string, id: string): ModelElement =>
   ({ kind, name, id, isAbstract: false, propertyIds: [], portIds: [] }) as unknown as ModelElement;
 
 const reader = createProjectReader({
+  rootId: 'root-pkg' as ElementId,
   projectName: 'Test Project',
   elements: [
     mkEl('PartDefinition', 'Engine', 'el-1'),

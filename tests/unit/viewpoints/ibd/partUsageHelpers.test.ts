@@ -46,27 +46,40 @@ describe('HANDLE_TYPE_BY_DIRECTION', () => {
 describe('resolvePartHandles', () => {
   function buildRegistry() {
     const reg = createElementRegistry();
+    const puId = mkElementId('pu-1');
     reg.add({
       id: mkElementId('port-d-fuel'),
       kind: 'PortDefinition',
+      ownerId: null,
+      ownerRole: 'member',
+      ownerIndex: 0,
       name: 'fuel',
       direction: 'in',
     });
     reg.add({
       id: mkElementId('port-d-power'),
       kind: 'PortDefinition',
+      ownerId: null,
+      ownerRole: 'member',
+      ownerIndex: 1,
       name: 'power',
       direction: 'out',
     });
     reg.add({
       id: mkElementId('port-u-fuel'),
       kind: 'PortUsage',
+      ownerId: puId,
+      ownerRole: 'port',
+      ownerIndex: 0,
       name: 'fuel',
       definitionId: mkElementId('port-d-fuel'),
     });
     reg.add({
       id: mkElementId('port-u-power'),
       kind: 'PortUsage',
+      ownerId: puId,
+      ownerRole: 'port',
+      ownerIndex: 1,
       name: 'power',
       definitionId: mkElementId('port-d-power'),
     });
@@ -78,9 +91,11 @@ describe('resolvePartHandles', () => {
     const partUsage: PartUsageElement = {
       id: mkElementId('pu-1'),
       kind: 'PartUsage',
+      ownerId: null,
+      ownerRole: 'member',
+      ownerIndex: 0,
       name: 'engine',
       definitionId: mkElementId('pd-1'),
-      portUsageIds: [mkElementId('port-u-fuel'), mkElementId('port-u-power')],
     };
 
     const specs = resolvePartHandles({ partUsage, registry: reg });
@@ -101,21 +116,31 @@ describe('resolvePartHandles', () => {
     ]);
   });
 
-  it('skips ids that point at missing or wrong-kind elements (defensive)', () => {
+  it('skips children whose PortDefinition is missing or wrong-kind (defensive)', () => {
     const reg = buildRegistry();
+    // Add a third PortUsage under pu-1 whose definitionId points at nothing.
+    reg.add({
+      id: mkElementId('port-u-orphan'),
+      kind: 'PortUsage',
+      ownerId: mkElementId('pu-1'),
+      ownerRole: 'port',
+      ownerIndex: 2,
+      name: 'orphan',
+      definitionId: mkElementId('does-not-exist'),
+    });
     const partUsage: PartUsageElement = {
       id: mkElementId('pu-1'),
       kind: 'PartUsage',
+      ownerId: null,
+      ownerRole: 'member',
+      ownerIndex: 0,
       name: 'engine',
       definitionId: mkElementId('pd-1'),
-      portUsageIds: [
-        mkElementId('does-not-exist'),
-        mkElementId('port-u-fuel'),
-      ],
     };
 
     const specs = resolvePartHandles({ partUsage, registry: reg });
-    expect(specs).toHaveLength(1);
-    expect(specs[0]?.label).toBe('fuel');
+    // fuel + power resolve; orphan is dropped because its PortDefinition is missing.
+    expect(specs).toHaveLength(2);
+    expect(specs.map((s) => s.label)).toEqual(['fuel', 'power']);
   });
 });

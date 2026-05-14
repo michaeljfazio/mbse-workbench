@@ -10,11 +10,14 @@ import type { ModelElement, PackageElement } from '@/model';
 const pkg: PackageElement = {
   id: 'pkg-1' as ElementId,
   kind: 'Package',
+  ownerId: null,
+  ownerRole: 'member',
+  ownerIndex: 0,
   name: 'Root',
-  memberIds: ['existing-1' as ElementId],
 };
 
 const reader = createProjectReader({
+  rootId: 'root-pkg' as ElementId,
   projectName: 'Test',
   elements: [pkg] as readonly ModelElement[],
   edges: [],
@@ -57,16 +60,13 @@ describe('create_element tool', () => {
     expect(output.kind).toBe('proposed-change');
     if (output.kind !== 'proposed-change') return;
 
-    expect(output.change.commands).toHaveLength(2);
-    const [createCmd, updateCmd] = output.change.commands;
+    expect(output.change.commands).toHaveLength(1);
+    const [createCmd] = output.change.commands;
     expect(createCmd?.kind).toBe('create-element');
-    expect(updateCmd?.kind).toBe('update-element');
-    if (updateCmd?.kind !== 'update-element') return;
     if (createCmd?.kind !== 'create-element') return;
 
-    expect(updateCmd.id).toBe(pkg.id);
-    const patch = updateCmd.patch as Partial<PackageElement>;
-    expect(patch.memberIds).toEqual([...pkg.memberIds, createCmd.element.id]);
+    expect(createCmd.element.ownerId).toBe(pkg.id);
+    expect(createCmd.element.ownerRole).toBe('member');
   });
 
   it('builds a Requirement with defaults when only "text" is supplied', async () => {
@@ -108,15 +108,17 @@ describe('create_element tool', () => {
 
   it('throws when owningPackageId refers to an element that is not a Package', async () => {
     const nonPkgReader = createProjectReader({
+      rootId: 'root-pkg' as ElementId,
       projectName: 'Test',
       elements: [
         {
           id: 'part-1' as ElementId,
           kind: 'PartDefinition',
+          ownerId: null,
+          ownerRole: 'member',
+          ownerIndex: 0,
           name: 'X',
           isAbstract: false,
-          propertyIds: [],
-          portIds: [],
         },
       ] as readonly ModelElement[],
       edges: [],

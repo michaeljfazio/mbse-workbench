@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import type { Command, UpdateElementCommand } from '@/commands/types';
+import type { Command } from '@/commands/types';
 import type {
   ActorElement,
   ElementId,
@@ -50,7 +50,7 @@ export type CreateElementInput = z.infer<typeof createElementSchema>;
 export const createElementDefinition: LLMToolDefinition = {
   name: 'create_element',
   description:
-    'Propose creating a new model element. The user must accept the proposal before any change is applied. Supported kinds: Package, PartDefinition, Requirement, UseCase, Actor. For kind="Requirement" you MUST also pass a "requirement" object with at least { text }. If "owningPackageId" is provided and refers to an existing Package, the new element is also added as a member of that package.',
+    'Propose creating a new model element. The user must accept the proposal before any change is applied. Supported kinds: Package, PartDefinition, Requirement, UseCase, Actor. For kind="Requirement" you MUST also pass a "requirement" object with at least { text }. If "owningPackageId" is provided and refers to an existing Package, the new element is owned by that package; otherwise it is owned by the project root package.',
   input_schema: {
     type: 'object',
     properties: {
@@ -67,7 +67,7 @@ export const createElementDefinition: LLMToolDefinition = {
       owningPackageId: {
         type: 'string',
         description:
-          'Optional ElementId of an existing Package. When supplied, the new element is added to that package\'s memberIds.',
+          'Optional ElementId of an existing Package to own the new element. Defaults to the project root package.',
       },
       requirement: {
         type: 'object',
@@ -91,28 +91,35 @@ export const createElementDefinition: LLMToolDefinition = {
   },
 };
 
-function buildElement(input: CreateElementInput, id: ElementId): ModelElement {
+function nextOwnerIndex(elements: readonly ModelElement[], ownerId: ElementId): number {
+  return elements.filter((e) => e.ownerId === ownerId && e.ownerRole === 'member').length;
+}
+
+function buildElement(
+  input: CreateElementInput,
+  id: ElementId,
+  ownerId: ElementId,
+  ownerIndex: number,
+): ModelElement {
   const kind = input.kind as CreatableKind;
   const documentation = input.documentation;
+  const base = { id, ownerId, ownerRole: 'member' as const, ownerIndex };
   switch (kind) {
     case 'Package': {
       const el: PackageElement = {
-        id,
+        ...base,
         kind: 'Package',
         name: input.name,
-        memberIds: [],
         ...(documentation !== undefined ? { documentation } : {}),
       };
       return el;
     }
     case 'PartDefinition': {
       const el: PartDefinitionElement = {
-        id,
+        ...base,
         kind: 'PartDefinition',
         name: input.name,
         isAbstract: false,
-        propertyIds: [],
-        portIds: [],
         ...(documentation !== undefined ? { documentation } : {}),
       };
       return el;
@@ -123,7 +130,7 @@ function buildElement(input: CreateElementInput, id: ElementId): ModelElement {
         throw new Error('kind="Requirement" requires a "requirement" object with at least { text }.');
       }
       const el: RequirementElement = {
-        id,
+        ...base,
         kind: 'Requirement',
         name: input.name,
         text: req.text,
@@ -137,7 +144,7 @@ function buildElement(input: CreateElementInput, id: ElementId): ModelElement {
     }
     case 'UseCase': {
       const el: UseCaseElement = {
-        id,
+        ...base,
         kind: 'UseCase',
         name: input.name,
         ...(documentation !== undefined ? { documentation } : {}),
@@ -146,7 +153,7 @@ function buildElement(input: CreateElementInput, id: ElementId): ModelElement {
     }
     case 'Actor': {
       const el: ActorElement = {
-        id,
+        ...base,
         kind: 'Actor',
         name: input.name,
         ...(documentation !== undefined ? { documentation } : {}),
@@ -162,29 +169,31 @@ export async function createElementHandler(
   reader: ProjectReader,
 ): Promise<ToolOutput> {
   const id = createElementId();
-  const element = buildElement(input, id);
+  const elements = reader.elements();
 
-  const commands: Command[] = [{ kind: 'create-element', element }];
-
+  let ownerId: ElementId;
   if (input.owningPackageId !== undefined) {
-    const packageId = input.owningPackageId as ElementId;
-    const owner = reader.elements().find((e) => e.id === packageId);
+    const candidateId = input.owningPackageId as ElementId;
+    const owner = elements.find((e) => e.id === candidateId);
     if (owner === undefined) {
-      throw new Error(`owningPackageId "${input.owningPackageId}" does not refer to an existing element.`);
+      throw new Error(
+        `owningPackageId "${input.owningPackageId}" does not refer to an existing element.`,
+      );
     }
     if (owner.kind !== 'Package') {
       throw new Error(
         `owningPackageId "${input.owningPackageId}" refers to a ${owner.kind}, not a Package.`,
       );
     }
-    const nextMembers: ElementId[] = [...owner.memberIds, id];
-    const updatePackage: UpdateElementCommand<'Package'> = {
-      kind: 'update-element',
-      id: packageId,
-      patch: { memberIds: nextMembers },
-    };
-    commands.push(updatePackage);
+    ownerId = candidateId;
+  } else {
+    ownerId = reader.rootId;
   }
+
+  const ownerIndex = nextOwnerIndex(elements, ownerId);
+  const element = buildElement(input, id, ownerId, ownerIndex);
+
+  const commands: Command[] = [{ kind: 'create-element', element }];
 
   const summary =
     input.owningPackageId !== undefined

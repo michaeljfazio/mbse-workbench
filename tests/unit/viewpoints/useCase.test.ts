@@ -24,6 +24,9 @@ function makeActor(): ActorElement {
   return {
     id: 'a-1' as never,
     kind: 'Actor',
+    ownerId: null,
+    ownerRole: 'member',
+    ownerIndex: 0,
     name: 'Driver',
   };
 }
@@ -32,6 +35,9 @@ function makeUseCase(): UseCaseElement {
   return {
     id: 'uc-1' as never,
     kind: 'UseCase',
+    ownerId: null,
+    ownerRole: 'member',
+    ownerIndex: 0,
     name: 'Start Engine',
   };
 }
@@ -108,10 +114,11 @@ describe('Use Case viewpoint (ADR 0007)', () => {
     const block: PartDefinitionElement = {
       id: 'p-1' as never,
       kind: 'PartDefinition',
+      ownerId: null,
+      ownerRole: 'member',
+      ownerIndex: 0,
       name: 'Block',
       isAbstract: false,
-      propertyIds: [],
-      portIds: [],
     };
     expect(() => useCaseViewpoint.nodeTypeFor(block)).toThrow(
       /use case viewpoint cannot render element kind/,

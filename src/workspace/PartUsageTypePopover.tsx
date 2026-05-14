@@ -6,6 +6,7 @@ export interface PartUsageTypePopoverProps {
   readonly x: number;
   readonly y: number;
   readonly definitions: readonly PartDefinitionElement[];
+  readonly portCountFor: (definitionId: ElementId) => number;
   readonly onPick: (definitionId: ElementId) => void;
   readonly onCancel: () => void;
 }
@@ -14,6 +15,7 @@ export function PartUsageTypePopover({
   x,
   y,
   definitions,
+  portCountFor,
   onPick,
   onCancel,
 }: PartUsageTypePopoverProps): JSX.Element {
@@ -77,9 +79,10 @@ export function PartUsageTypePopover({
           >
             <span className="font-medium text-foreground">{def.name}</span>
             <span className="text-xs text-muted-foreground">
-              {def.portIds.length === 0
-                ? 'no ports'
-                : `${def.portIds.length} port${def.portIds.length === 1 ? '' : 's'}`}
+              {(() => {
+                const n = portCountFor(def.id);
+                return n === 0 ? 'no ports' : `${n} port${n === 1 ? '' : 's'}`;
+              })()}
             </span>
           </button>
         ))

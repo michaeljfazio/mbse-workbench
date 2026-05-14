@@ -60,9 +60,7 @@ export async function queryModelHandler(
     if (namePattern !== undefined && !el.name.toLowerCase().includes(namePattern.toLowerCase()))
       return false;
     if (owningPackageId !== undefined) {
-      const pkg = allElements.find((e) => e.kind === 'Package' && e.id === owningPackageId);
-      if (pkg === undefined || pkg.kind !== 'Package') return false;
-      if (!(pkg.memberIds as readonly string[]).includes(el.id)) return false;
+      if (el.ownerId !== owningPackageId) return false;
     }
     return true;
   });

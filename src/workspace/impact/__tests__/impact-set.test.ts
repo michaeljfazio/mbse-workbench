@@ -19,8 +19,9 @@ function partDef(name: string): ModelElement {
     kind: 'PartDefinition',
     name,
     isAbstract: false,
-    propertyIds: [],
-    portIds: [],
+    ownerId: null,
+    ownerRole: 'member',
+    ownerIndex: 0,
   };
 }
 
@@ -30,7 +31,9 @@ function partUsage(name: string, definitionId: ModelElement['id']): ModelElement
     kind: 'PartUsage',
     name,
     definitionId,
-    portUsageIds: [],
+    ownerId: null,
+    ownerRole: 'member',
+    ownerIndex: 0,
   };
 }
 
@@ -40,6 +43,9 @@ function action(name: string): ModelElement {
     kind: 'ActionUsage',
     name,
     nodeType: 'action',
+    ownerId: null,
+    ownerRole: 'member',
+    ownerIndex: 0,
   };
 }
 

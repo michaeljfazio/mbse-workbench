@@ -16,3 +16,4 @@ to the index below in chronological order.
 - [0008 — Parametric Diagram shape: scope, edge model, endpoint typing, equations](0008-parametric-diagram-shape.md)
 - [0009 — Package Diagram shape: scope, containment model, import edges, move-between-packages](0009-package-diagram-shape.md)
 - [0010 — LLM architecture: provider, dispatcher, tool registry, diff-preview seam](0010-llm-architecture.md)
+- [0011 — Explorer foundation: ownerId single source of truth + required DiagramContext](0011-explorer-foundation-ownerid-context.md)

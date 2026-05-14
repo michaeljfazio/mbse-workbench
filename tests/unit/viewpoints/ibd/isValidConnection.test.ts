@@ -7,9 +7,7 @@ import {
   type ElementRegistry,
   type PartDefinitionElement,
   type PartUsageElement,
-  type PortDefinitionElement,
   type PortDirection,
-  type PortUsageElement,
 } from '@/model';
 import {
   canonicalizeIbdConnection,
@@ -42,46 +40,52 @@ function seed(partA: PartSeed, partB: PartSeed): SeededRegistry {
 
   function buildPart(seed: PartSeed): PartUsageElement {
     const defId = mkElementId(seed.defId);
-    const portDefinitionIds: ElementId[] = [];
-    const portUsageIds: ElementId[] = [];
-    for (const port of seed.ports) {
-      const portDefId = mkElementId(`${port.id}-def`);
-      const portUsageId = mkElementId(`${port.id}-usage`);
-      const portDef: PortDefinitionElement = {
-        id: portDefId,
-        kind: 'PortDefinition',
-        name: port.id,
-        direction: port.direction,
-      };
-      const portUsage: PortUsageElement = {
-        id: portUsageId,
-        kind: 'PortUsage',
-        name: port.id,
-        definitionId: portDefId,
-      };
-      registry.add(portDef);
-      registry.add(portUsage);
-      portDefinitionIds.push(portDefId);
-      portUsageIds.push(portUsageId);
-      portUsageByName.set(port.id, portUsageId);
-    }
+    const usageId = mkElementId(seed.id);
     const definition: PartDefinitionElement = {
       id: defId,
       kind: 'PartDefinition',
+      ownerId: null,
+      ownerRole: 'member',
+      ownerIndex: 0,
       name: seed.defId,
       isAbstract: false,
-      propertyIds: [],
-      portIds: portDefinitionIds,
     };
     const usage: PartUsageElement = {
-      id: mkElementId(seed.id),
+      id: usageId,
       kind: 'PartUsage',
+      ownerId: null,
+      ownerRole: 'member',
+      ownerIndex: 0,
       name: seed.id,
       definitionId: defId,
-      portUsageIds,
     };
     registry.add(definition);
     registry.add(usage);
+    let portIndex = 0;
+    for (const port of seed.ports) {
+      const portDefId = mkElementId(`${port.id}-def`);
+      const portUsageId = mkElementId(`${port.id}-usage`);
+      registry.add({
+        id: portDefId,
+        kind: 'PortDefinition',
+        ownerId: defId,
+        ownerRole: 'port',
+        ownerIndex: portIndex,
+        name: port.id,
+        direction: port.direction,
+      });
+      registry.add({
+        id: portUsageId,
+        kind: 'PortUsage',
+        ownerId: usageId,
+        ownerRole: 'port',
+        ownerIndex: portIndex,
+        name: port.id,
+        definitionId: portDefId,
+      });
+      portUsageByName.set(port.id, portUsageId);
+      portIndex++;
+    }
     return usage;
   }
 

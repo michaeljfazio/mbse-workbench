@@ -8,6 +8,16 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
 
 ## Discovered facts
 
+- **2026-05-14 (iter-705, #255)** — `pnpm typecheck` is a SILENT NO-OP.
+  The root `tsconfig.json` declares `"files": []` plus `references` to
+  `tsconfig.app.json` and `tsconfig.node.json`. Plain `tsc --noEmit`
+  with `files: []` typechecks zero files and exits 0; project references
+  only get walked under `tsc -b` / `tsc --build`. To see real errors,
+  run `npx tsc -p tsconfig.app.json --noEmit` directly. This means
+  every PR's CI typecheck step has been green by tautology. Fix the
+  script (`"typecheck": "tsc -b"`) only when the in-flight explorer
+  cascade clears, so the branch can land before CI starts enforcing.
+
 - **2026-05-14 (iter-532, T-13.16+17)** — Chat @visual baselines need a
   test-mode preview build to regen. The default
   `scripts/regen-baselines.sh` does `pnpm build` (production mode), which

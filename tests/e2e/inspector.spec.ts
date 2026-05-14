@@ -33,9 +33,10 @@ test.describe('Inspector panel (issue #32)', () => {
     await expect(inspector).toContainText('PartDefinition');
     await expect(page.getByTestId('inspector-name')).toHaveValue('Block 1');
     await expect(page.getByTestId('inspector-description')).toHaveValue('');
-    await expect(page.getByTestId('inspector-owner')).toContainText(
-      /unassigned/i,
-    );
+    // Every new element is owned by the project's root Package, so the
+    // inspector-owner field now shows the root Package's ID rather than
+    // "unassigned". We assert it is non-empty.
+    await expect(page.getByTestId('inspector-owner')).not.toBeEmpty();
   });
 
   test('editing the name field commits on blur and the block label updates', async ({

@@ -15,10 +15,11 @@ function makeBlock(id: string, name: string): ModelElement {
   return {
     id: mk<ElementId>(id),
     kind: 'PartDefinition',
+    ownerId: null,
+    ownerRole: 'member',
+    ownerIndex: 0,
     name,
     isAbstract: false,
-    propertyIds: [],
-    portIds: [],
   };
 }
 

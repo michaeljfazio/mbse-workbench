@@ -1,5 +1,10 @@
 import type { EdgeKind, EdgeOfKind, ModelEdge } from './edges';
-import type { ElementKind, ElementOfKind, ModelElement } from './elements';
+import type {
+  ElementKind,
+  ElementOfKind,
+  ModelElement,
+  OwnerRole,
+} from './elements';
 import type { EdgeId, ElementId } from './id';
 
 export type EndpointRole = 'source' | 'target';
@@ -46,6 +51,17 @@ export interface ElementRegistry {
   elements(): readonly ModelElement[];
   edges(): readonly ModelEdge[];
   checkIntegrity(): IntegrityResult;
+  /**
+   * Containment parent of `id`, or `undefined` if `id` has no owner (i.e. the
+   * project's root Package) or is not in the registry. O(1). See ADR 0011.
+   */
+  parentOf(id: ElementId): ModelElement | undefined;
+  /**
+   * Children of `id` under containment, sorted by `ownerIndex` ascending.
+   * Pass `role` to filter to a single OwnerRole slot. O(k) where k is the
+   * number of children. See ADR 0011.
+   */
+  childrenOf(id: ElementId, role?: OwnerRole): readonly ModelElement[];
 }
 
 type ElementWithEndpoints = Extract<
@@ -107,6 +123,27 @@ function hasEndpoints(element: ModelElement): element is ElementWithEndpoints {
 export function createElementRegistry(): ElementRegistry {
   const elements = new Map<ElementId, ModelElement>();
   const edges = new Map<EdgeId, ModelEdge>();
+  // ownerId -> children. Maintained alongside `elements`. Insertion order is
+  // not significant; consumers sort by `ownerIndex` on read. Null owner
+  // (root) lives under a sentinel key.
+  const childrenByOwner = new Map<ElementId | null, Set<ElementId>>();
+
+  function indexAdd(element: ModelElement): void {
+    const owner = element.ownerId;
+    let bucket = childrenByOwner.get(owner);
+    if (!bucket) {
+      bucket = new Set<ElementId>();
+      childrenByOwner.set(owner, bucket);
+    }
+    bucket.add(element.id);
+  }
+
+  function indexRemove(element: ModelElement): void {
+    const bucket = childrenByOwner.get(element.ownerId);
+    if (!bucket) return;
+    bucket.delete(element.id);
+    if (bucket.size === 0) childrenByOwner.delete(element.ownerId);
+  }
 
   return {
     add(element) {
@@ -114,6 +151,7 @@ export function createElementRegistry(): ElementRegistry {
         throw new Error(`duplicate element id: ${element.id}`);
       }
       elements.set(element.id, element);
+      indexAdd(element);
     },
 
     addEdge(edge) {
@@ -142,6 +180,8 @@ export function createElementRegistry(): ElementRegistry {
     },
 
     remove(id) {
+      const existing = elements.get(id);
+      if (existing) indexRemove(existing);
       elements.delete(id);
       for (const [edgeId, edge] of edges) {
         if (edge.sourceId === id || edge.targetId === id) {
@@ -180,6 +220,12 @@ export function createElementRegistry(): ElementRegistry {
       }
       // Replace with a new object so prior snapshots stay frozen in time.
       const updated = { ...existing, ...patch } as ModelElement;
+      // Owner relocation: keep the containment index consistent if the
+      // patch reparented this element.
+      if (existing.ownerId !== updated.ownerId) {
+        indexRemove(existing);
+        indexAdd(updated);
+      }
       elements.set(id, updated);
     },
 
@@ -285,6 +331,26 @@ export function createElementRegistry(): ElementRegistry {
         danglingEdges,
         danglingElementRefs,
       };
+    },
+
+    parentOf(id) {
+      const element = elements.get(id);
+      if (!element || element.ownerId === null) return undefined;
+      return elements.get(element.ownerId);
+    },
+
+    childrenOf(id, role) {
+      const bucket = childrenByOwner.get(id);
+      if (!bucket) return [];
+      const out: ModelElement[] = [];
+      for (const childId of bucket) {
+        const child = elements.get(childId);
+        if (!child) continue;
+        if (role !== undefined && child.ownerRole !== role) continue;
+        out.push(child);
+      }
+      out.sort((a, b) => a.ownerIndex - b.ownerIndex);
+      return out;
     },
   };
 }

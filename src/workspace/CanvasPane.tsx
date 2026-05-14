@@ -1057,7 +1057,9 @@ function CanvasInner(): JSX.Element {
           id: '' as ElementId,
           kind: 'Package',
           name: '',
-          memberIds: [],
+          ownerId: null,
+          ownerRole: 'member',
+          ownerIndex: 0,
         });
         const id = createPackage(diagram.id, {
           x: flowPos.x - width / 2,
@@ -1124,7 +1126,7 @@ function CanvasInner(): JSX.Element {
 
   const cancelPendingPart = useCallback(() => setPendingPart(null), []);
 
-  const elementCount = elements.length;
+  const elementCount = elements.filter((e) => e.ownerId !== null).length;
 
   useEffect(() => {
     if (!pending) return;
@@ -1332,6 +1334,17 @@ function CanvasInner(): JSX.Element {
             x={pendingPart.popoverX}
             y={pendingPart.popoverY}
             definitions={partDefinitions}
+            portCountFor={(definitionId) =>
+              elements.reduce(
+                (n, e) =>
+                  e.kind === 'PortDefinition' &&
+                  e.ownerId === definitionId &&
+                  e.ownerRole === 'port'
+                    ? n + 1
+                    : n,
+                0,
+              )
+            }
             onPick={confirmPendingPart}
             onCancel={cancelPendingPart}
           />

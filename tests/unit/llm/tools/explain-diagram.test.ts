@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { explainDiagramHandler, explainDiagramSchema } from '@/llm/tools/explain-diagram';
 import { createProjectReader } from '@/llm/project-reader';
-import type { ModelElement } from '@/model';
+import type { ElementId, ModelElement } from '@/model';
 import type { Diagram } from '@/workspace/diagram';
 
 const mkEl = (kind: string, name: string, id: string): ModelElement =>
@@ -35,6 +35,7 @@ describe('explain_diagram tool', () => {
     };
 
     const reader = createProjectReader({
+      rootId: 'root-pkg' as ElementId,
       projectName: 'Test Project',
       elements,
       edges: [],
@@ -63,6 +64,7 @@ describe('explain_diagram tool', () => {
 
   it('returns a no-active-diagram message when no diagram is open', async () => {
     const reader = createProjectReader({
+      rootId: 'root-pkg' as ElementId,
       projectName: 'Test Project',
       elements,
       edges: [],

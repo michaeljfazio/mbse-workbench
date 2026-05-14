@@ -9,6 +9,11 @@ import {
   useWorkspaceStore,
 } from '@/workspace';
 import { packageViewpoint } from '@/viewpoints';
+import { childIdsOf } from '../helpers/registryReaders';
+
+function memberIdsOf(pkgId: ElementId): ElementId[] {
+  return childIdsOf(useWorkspaceStore.getState().elements, pkgId, 'member');
+}
 
 function makeMemoryStorage(): Storage {
   const map = new Map<string, string>();
@@ -120,19 +125,19 @@ describe('workspace store — Package actions', () => {
     const blockId = useWorkspaceStore.getState().createBlock()!;
 
     useWorkspaceStore.getState().addPackageMember(pkgId, blockId);
-    expect(pkgById(pkgId)?.memberIds).toEqual([blockId]);
+    expect(memberIdsOf(pkgId)).toEqual([blockId]);
 
     useWorkspaceStore.getState().undo();
-    expect(pkgById(pkgId)?.memberIds).toEqual([]);
+    expect(memberIdsOf(pkgId)).toEqual([]);
 
     useWorkspaceStore.getState().redo();
-    expect(pkgById(pkgId)?.memberIds).toEqual([blockId]);
+    expect(memberIdsOf(pkgId)).toEqual([blockId]);
 
     useWorkspaceStore.getState().removePackageMember(pkgId, blockId);
-    expect(pkgById(pkgId)?.memberIds).toEqual([]);
+    expect(memberIdsOf(pkgId)).toEqual([]);
 
     useWorkspaceStore.getState().undo();
-    expect(pkgById(pkgId)?.memberIds).toEqual([blockId]);
+    expect(memberIdsOf(pkgId)).toEqual([blockId]);
   });
 
   it('addPackageMember is a no-op when the member is already in the list', async () => {
@@ -149,7 +154,7 @@ describe('workspace store — Package actions', () => {
     const versionAfterAdd = useWorkspaceStore.getState().modelVersion;
     useWorkspaceStore.getState().addPackageMember(pkgId, blockId);
     expect(useWorkspaceStore.getState().modelVersion).toBe(versionAfterAdd);
-    expect(pkgById(pkgId)?.memberIds).toEqual([blockId]);
+    expect(memberIdsOf(pkgId)).toEqual([blockId]);
   });
 
   it('deleteElement removes a Package and undo restores its memberIds', async () => {
@@ -168,7 +173,7 @@ describe('workspace store — Package actions', () => {
     expect(pkgById(pkgId)).toBeUndefined();
 
     useWorkspaceStore.getState().undo();
-    expect(pkgById(pkgId)?.memberIds).toEqual([blockId]);
+    expect(memberIdsOf(pkgId)).toEqual([blockId]);
   });
 
   it('getActiveDiagram returns the seeded Package diagram after bootstrap', async () => {
@@ -283,21 +288,21 @@ describe('workspace store — Package actions', () => {
     useWorkspaceStore.getState().setActiveDiagram(defaultDiagramId);
     const blockId = useWorkspaceStore.getState().createBlock()!;
     useWorkspaceStore.getState().addPackageMember(p1, blockId);
-    expect(pkgById(p1)?.memberIds).toEqual([blockId]);
+    expect(memberIdsOf(p1)).toEqual([blockId]);
 
     const moved = useWorkspaceStore
       .getState()
       .moveElementBetweenPackages(blockId, p2);
     expect(moved).toBe(true);
-    expect(pkgById(p1)?.memberIds).toEqual([]);
-    expect(pkgById(p2)?.memberIds).toEqual([blockId]);
+    expect(memberIdsOf(p1)).toEqual([]);
+    expect(memberIdsOf(p2)).toEqual([blockId]);
 
     useWorkspaceStore.getState().undo();
-    expect(pkgById(p1)?.memberIds).toEqual([blockId]);
-    expect(pkgById(p2)?.memberIds).toEqual([]);
+    expect(memberIdsOf(p1)).toEqual([blockId]);
+    expect(memberIdsOf(p2)).toEqual([]);
 
     useWorkspaceStore.getState().redo();
-    expect(pkgById(p2)?.memberIds).toEqual([blockId]);
+    expect(memberIdsOf(p2)).toEqual([blockId]);
   });
 
   it('moveElementBetweenPackages also handles the "no current owner" case', async () => {
@@ -314,9 +319,9 @@ describe('workspace store — Package actions', () => {
       .getState()
       .moveElementBetweenPackages(blockId, p1);
     expect(moved).toBe(true);
-    expect(pkgById(p1)?.memberIds).toEqual([blockId]);
+    expect(memberIdsOf(p1)).toEqual([blockId]);
     useWorkspaceStore.getState().undo();
-    expect(pkgById(p1)?.memberIds).toEqual([]);
+    expect(memberIdsOf(p1)).toEqual([]);
   });
 
   it('moveElementBetweenPackages rejects invalid moves', async () => {

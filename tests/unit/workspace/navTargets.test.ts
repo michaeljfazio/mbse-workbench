@@ -60,29 +60,33 @@ const defId = mkElementId('def-1');
 const def2Id = mkElementId('def-2');
 const portDefId = mkElementId('port-d-1');
 const partUsageId = mkElementId('pu-1');
-const portUsageId = mkElementId('puu-1');
 
 const partDef: PartDefinitionElement = {
   id: defId,
   kind: 'PartDefinition',
+  ownerId: null,
+  ownerRole: 'member',
+  ownerIndex: 0,
   name: 'Engine',
   isAbstract: false,
-  propertyIds: [],
-  portIds: [portDefId],
 };
 
 const otherDef: PartDefinitionElement = {
   id: def2Id,
   kind: 'PartDefinition',
+  ownerId: null,
+  ownerRole: 'member',
+  ownerIndex: 0,
   name: 'Wheel',
   isAbstract: false,
-  propertyIds: [],
-  portIds: [],
 };
 
 const portDef: PortDefinitionElement = {
   id: portDefId,
   kind: 'PortDefinition',
+  ownerId: null,
+  ownerRole: 'member',
+  ownerIndex: 0,
   name: 'power',
   direction: 'out',
 };
@@ -90,9 +94,11 @@ const portDef: PortDefinitionElement = {
 const partUsage: PartUsageElement = {
   id: partUsageId,
   kind: 'PartUsage',
+  ownerId: null,
+  ownerRole: 'member',
+  ownerIndex: 0,
   name: 'engine',
   definitionId: defId,
-  portUsageIds: [portUsageId],
 };
 
 const bddDiagram: Diagram = {
@@ -348,6 +354,9 @@ describe('deriveNavTargets', () => {
     const req: RequirementElement = {
       id: reqId,
       kind: 'Requirement',
+      ownerId: null,
+      ownerRole: 'member',
+      ownerIndex: 0,
       name: 'Stop on red',
       reqId: 'R-001',
       text: '',
@@ -447,6 +456,9 @@ describe('deriveNavTargets', () => {
       const req2: RequirementElement = {
         id: mkElementId('req-2'),
         kind: 'Requirement',
+        ownerId: null,
+        ownerRole: 'member',
+        ownerIndex: 0,
         name: 'Brake',
         text: '',
         priority: 'medium',

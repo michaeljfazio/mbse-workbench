@@ -304,13 +304,19 @@ async function readPersistedProject(
 function canonicalize(
   list: ReadonlyArray<Record<string, unknown>>,
 ): ReadonlyArray<Record<string, unknown>> {
-  // Sort by id, then drop properties whose absence/`undefined` is
-  // semantically equivalent (e.g. an empty `documentation` field).
+  // ownerIndex is a derived sibling-ordering hint, not a structural
+  // property: the SysMLv2 text serializer emits in a canonical (sorted)
+  // order, so re-imported elements get parse-order indices that may
+  // differ from the pre-export indices even when the model is
+  // structurally identical (same ids/kinds/ownerId/ownerRole). The
+  // Phase-12 gate is "structurally identical modulo IDs" — ordering
+  // hints fall outside that contract.
   return [...list]
     .map((item) => {
       const cleaned: Record<string, unknown> = {};
       for (const [k, v] of Object.entries(item)) {
         if (v === undefined) continue;
+        if (k === 'ownerIndex') continue;
         cleaned[k] = v;
       }
       return cleaned;
@@ -351,6 +357,12 @@ test.describe('Phase 12 gate (issue #238) — round-trip + full-viewpoint smoke'
     // 'diagram' (see CanvasPane onClick handler).
     await activateDiagramTab(page, DIAGRAM_TABS[0]!);
 
+    // Capture the pre-export persisted state (already through migration pipeline)
+    // so we can compare against the post-import state without relying on the
+    // shape of the seed constants (which use the pre-T-13.29 schema).
+    const preExport = await readPersistedProject(page, SEED_PROJECT_ID);
+    expect(preExport).not.toBeNull();
+
     // Step 4 — Export SysMLv2 and capture the downloaded text.
     await page.getByTestId('toolbar-export').click();
     const [download] = await Promise.all([
@@ -380,32 +392,49 @@ test.describe('Phase 12 gate (issue #238) — round-trip + full-viewpoint smoke'
     });
 
     // Wait for the import to settle: the active diagram surface should be
-    // back to the new project's default empty diagram. We detect this by
-    // polling persisted state — the elements+edges should match the seed
-    // (modulo positions which the serializer doesn't carry).
+    // back to the project's default empty diagram. We detect this by
+    // polling persisted state — the post-import user-element + edge count
+    // should match the post-migration pre-export count. The seed's
+    // p12-pkg-root is promoted to the project root by the migrator (its
+    // ownerId becomes null), so user-element counts derived from the raw
+    // SEED_ELEMENTS array would be off by one. Compare against preExport
+    // instead, which has already been through the same migration pipeline.
+    const preExportUserCount = preExport!.elements.filter(
+      (e) => (e as { ownerId?: unknown }).ownerId !== null,
+    ).length;
+    const expectedRoundTripCount = preExportUserCount + preExport!.edges.length;
     await expect
       .poll(
         async () => {
           const proj = await readPersistedProject(page, SEED_PROJECT_ID);
           if (!proj) return -1;
-          return proj.elements.length + proj.edges.length;
+          const userElements = proj.elements.filter(
+            (e) => (e as { ownerId?: unknown }).ownerId !== null,
+          );
+          return userElements.length + proj.edges.length;
         },
         { timeout: 15_000 },
       )
-      .toBe(SEED_ELEMENTS.length + SEED_EDGES.length);
+      .toBe(expectedRoundTripCount);
 
     // Step 6 — structural equality assertion (modulo IDs is satisfied
     // because the serializer's `// id:` comments are the parser's
     // ID-recovery channel — so IDs round-trip exactly).
+    // Compare post-import user elements against pre-export user elements:
+    // both have been through the migration pipeline (ownerId/ownerRole/
+    // ownerIndex set, legacy arrays stripped), so they should match exactly.
     const persisted = await readPersistedProject(page, SEED_PROJECT_ID);
     expect(persisted).not.toBeNull();
-    const expectedElements = canonicalize(
-      SEED_ELEMENTS as unknown as ReadonlyArray<Record<string, unknown>>,
+    const preExportUserElements = preExport!.elements.filter(
+      (e) => (e as { ownerId?: unknown }).ownerId !== null,
+    );
+    const persistedUserElements = persisted!.elements.filter(
+      (e) => (e as { ownerId?: unknown }).ownerId !== null,
     );
     const expectedEdges = canonicalize(
       SEED_EDGES as unknown as ReadonlyArray<Record<string, unknown>>,
     );
-    expect(canonicalize(persisted!.elements)).toEqual(expectedElements);
+    expect(canonicalize(persistedUserElements)).toEqual(canonicalize(preExportUserElements));
     expect(canonicalize(persisted!.edges)).toEqual(expectedEdges);
   });
 

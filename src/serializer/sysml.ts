@@ -4,6 +4,7 @@ import type {
   ElementKind,
   ModelEdge,
   ModelElement,
+  OwnerRole,
   PackageElement,
   ValueLiteral,
 } from '@/model';
@@ -23,15 +24,41 @@ export interface SerializeOptions {
   readonly header?: string | null;
 }
 
+interface ChildIndex {
+  /** Children of `id`, sorted by ownerIndex ascending. */
+  children(id: ElementId, role?: OwnerRole): readonly ModelElement[];
+}
+
+function buildChildIndex(elements: readonly ModelElement[]): ChildIndex {
+  const byOwner = new Map<ElementId, ModelElement[]>();
+  for (const e of elements) {
+    if (e.ownerId === null) continue;
+    const bucket = byOwner.get(e.ownerId);
+    if (bucket) bucket.push(e);
+    else byOwner.set(e.ownerId, [e]);
+  }
+  for (const bucket of byOwner.values()) {
+    bucket.sort((a, b) => a.ownerIndex - b.ownerIndex);
+  }
+  return {
+    children(id, role) {
+      const bucket = byOwner.get(id);
+      if (!bucket) return [];
+      if (role === undefined) return bucket;
+      return bucket.filter((c) => c.ownerRole === role);
+    },
+  };
+}
+
 export function serializeProject(
   project: Project,
   options: SerializeOptions = {},
 ): string {
   const byId = new Map<ElementId, ModelElement>();
   for (const e of project.elements) byId.set(e.id, e);
+  const index = buildChildIndex(project.elements);
 
-  const containedIds = collectContainedIds(project.elements);
-  const topLevel = project.elements.filter((e) => !containedIds.has(e.id));
+  const topLevel = project.elements.filter((e) => e.ownerId === null);
   const sortedTop = sortElements(topLevel);
 
   const blocks: string[] = [];
@@ -42,41 +69,13 @@ export function serializeProject(
   if (header !== null) blocks.push(header);
 
   for (const element of sortedTop) {
-    blocks.push(renderElement(element, byId, 0));
+    blocks.push(renderElement(element, byId, index, 0));
   }
 
   const edgeBlock = renderEdges(project.edges);
   if (edgeBlock) blocks.push(edgeBlock);
 
   return blocks.join('\n\n') + '\n';
-}
-
-function collectContainedIds(elements: readonly ModelElement[]): Set<ElementId> {
-  const contained = new Set<ElementId>();
-  for (const e of elements) {
-    switch (e.kind) {
-      case 'Package':
-        for (const m of e.memberIds) contained.add(m);
-        break;
-      case 'PartDefinition':
-        for (const m of e.propertyIds) contained.add(m);
-        for (const m of e.portIds) contained.add(m);
-        break;
-      case 'PartUsage':
-        for (const m of e.portUsageIds) contained.add(m);
-        break;
-      case 'InterfaceDefinition':
-        for (const m of e.portDefinitionIds) contained.add(m);
-        break;
-      case 'ActionDefinition':
-      case 'ConstraintDefinition':
-        for (const m of e.parameterIds) contained.add(m);
-        break;
-      default:
-        break;
-    }
-  }
-  return contained;
 }
 
 function sortElements(elements: readonly ModelElement[]): ModelElement[] {
@@ -99,21 +98,22 @@ function idTail(id: string): string {
 function renderElement(
   element: ModelElement,
   byId: Map<ElementId, ModelElement>,
+  index: ChildIndex,
   depth: number,
 ): string {
   switch (element.kind) {
     case 'Package':
-      return renderPackage(element, byId, depth);
+      return renderPackage(element, byId, index, depth);
     case 'PartDefinition':
-      return renderPartDefinition(element, byId, depth);
+      return renderPartDefinition(element, byId, index, depth);
     case 'PartUsage':
-      return renderPartUsage(element, byId, depth);
+      return renderPartUsage(element, byId, index, depth);
     case 'PortDefinition':
       return renderPortDefinition(element, byId, depth);
     case 'PortUsage':
       return renderPortUsage(element, byId, depth);
     case 'InterfaceDefinition':
-      return renderInterfaceDefinition(element, byId, depth);
+      return renderInterfaceDefinition(element, byId, index, depth);
     case 'ConnectionUsage':
       return renderConnectionUsage(element, depth);
     case 'ItemFlow':
@@ -121,7 +121,7 @@ function renderElement(
     case 'Requirement':
       return renderRequirement(element, depth);
     case 'ActionDefinition':
-      return renderActionDefinition(element, byId, depth);
+      return renderActionDefinition(element, byId, index, depth);
     case 'ActionUsage':
       return renderActionUsage(element, byId, depth);
     case 'StateDefinition':
@@ -135,7 +135,7 @@ function renderElement(
     case 'Actor':
       return renderActor(element, depth);
     case 'ConstraintDefinition':
-      return renderConstraintDefinition(element, byId, depth);
+      return renderConstraintDefinition(element, byId, index, depth);
     case 'ConstraintUsage':
       return renderConstraintUsage(element, byId, depth);
     case 'ValueProperty':
@@ -159,18 +159,15 @@ function renderDoc(doc: string | undefined, depth: number): string[] {
 function renderPackage(
   el: PackageElement,
   byId: Map<ElementId, ModelElement>,
+  index: ChildIndex,
   depth: number,
 ): string {
   const lines: string[] = [];
   lines.push(`${pad(depth)}package ${el.name} {${idTail(el.id)}`);
   lines.push(...renderDoc(el.documentation, depth + 1));
-  const members: ModelElement[] = [];
-  for (const memberId of el.memberIds) {
-    const m = byId.get(memberId);
-    if (m) members.push(m);
-  }
-  for (const m of sortElements(members)) {
-    lines.push(renderElement(m, byId, depth + 1));
+  const members = sortElements(index.children(el.id, 'member'));
+  for (const m of members) {
+    lines.push(renderElement(m, byId, index, depth + 1));
   }
   lines.push(`${pad(depth)}}`);
   return lines.join('\n');
@@ -179,23 +176,19 @@ function renderPackage(
 function renderPartDefinition(
   el: Extract<ModelElement, { kind: 'PartDefinition' }>,
   byId: Map<ElementId, ModelElement>,
+  index: ChildIndex,
   depth: number,
 ): string {
   const abstract = el.isAbstract ? 'abstract ' : '';
   const lines: string[] = [];
   lines.push(`${pad(depth)}${abstract}part def ${el.name} {${idTail(el.id)}`);
   lines.push(...renderDoc(el.documentation, depth + 1));
-  const inner: ModelElement[] = [];
-  for (const id of el.portIds) {
-    const m = byId.get(id);
-    if (m) inner.push(m);
-  }
-  for (const id of el.propertyIds) {
-    const m = byId.get(id);
-    if (m) inner.push(m);
-  }
+  const inner = [
+    ...index.children(el.id, 'port'),
+    ...index.children(el.id, 'property'),
+  ];
   for (const m of sortElements(inner)) {
-    lines.push(renderElement(m, byId, depth + 1));
+    lines.push(renderElement(m, byId, index, depth + 1));
   }
   lines.push(`${pad(depth)}}`);
   return lines.join('\n');
@@ -204,6 +197,7 @@ function renderPartDefinition(
 function renderPartUsage(
   el: Extract<ModelElement, { kind: 'PartUsage' }>,
   byId: Map<ElementId, ModelElement>,
+  index: ChildIndex,
   depth: number,
 ): string {
   const defName = refName(el.definitionId, byId);
@@ -213,13 +207,9 @@ function renderPartUsage(
     `${pad(depth)}part ${el.name} : ${defName}${mult} {${idTail(el.id)}`,
   );
   lines.push(...renderDoc(el.documentation, depth + 1));
-  const ports: ModelElement[] = [];
-  for (const id of el.portUsageIds) {
-    const m = byId.get(id);
-    if (m) ports.push(m);
-  }
-  for (const m of sortElements(ports)) {
-    lines.push(renderElement(m, byId, depth + 1));
+  const ports = sortElements(index.children(el.id, 'port'));
+  for (const m of ports) {
+    lines.push(renderElement(m, byId, index, depth + 1));
   }
   lines.push(`${pad(depth)}}`);
   return lines.join('\n');
@@ -246,18 +236,15 @@ function renderPortUsage(
 function renderInterfaceDefinition(
   el: Extract<ModelElement, { kind: 'InterfaceDefinition' }>,
   byId: Map<ElementId, ModelElement>,
+  index: ChildIndex,
   depth: number,
 ): string {
   const lines: string[] = [];
   lines.push(`${pad(depth)}interface def ${el.name} {${idTail(el.id)}`);
   lines.push(...renderDoc(el.documentation, depth + 1));
-  const ports: ModelElement[] = [];
-  for (const id of el.portDefinitionIds) {
-    const m = byId.get(id);
-    if (m) ports.push(m);
-  }
-  for (const m of sortElements(ports)) {
-    lines.push(renderElement(m, byId, depth + 1));
+  const ports = sortElements(index.children(el.id, 'portDefinition'));
+  for (const m of ports) {
+    lines.push(renderElement(m, byId, index, depth + 1));
   }
   lines.push(`${pad(depth)}}`);
   return lines.join('\n');
@@ -301,18 +288,15 @@ function renderRequirement(
 function renderActionDefinition(
   el: Extract<ModelElement, { kind: 'ActionDefinition' }>,
   byId: Map<ElementId, ModelElement>,
+  index: ChildIndex,
   depth: number,
 ): string {
   const lines: string[] = [];
   lines.push(`${pad(depth)}action def ${el.name} {${idTail(el.id)}`);
   lines.push(...renderDoc(el.documentation, depth + 1));
-  const params: ModelElement[] = [];
-  for (const id of el.parameterIds) {
-    const m = byId.get(id);
-    if (m) params.push(m);
-  }
-  for (const m of sortElements(params)) {
-    lines.push(renderElement(m, byId, depth + 1));
+  const params = sortElements(index.children(el.id, 'parameter'));
+  for (const m of params) {
+    lines.push(renderElement(m, byId, index, depth + 1));
   }
   lines.push(`${pad(depth)}}`);
   return lines.join('\n');
@@ -393,18 +377,15 @@ function renderActor(
 function renderConstraintDefinition(
   el: Extract<ModelElement, { kind: 'ConstraintDefinition' }>,
   byId: Map<ElementId, ModelElement>,
+  index: ChildIndex,
   depth: number,
 ): string {
   const lines: string[] = [];
   lines.push(`${pad(depth)}constraint def ${el.name} {${idTail(el.id)}`);
   lines.push(`${pad(depth + 1)}expr ${quote(el.expression)};`);
-  const params: ModelElement[] = [];
-  for (const id of el.parameterIds) {
-    const m = byId.get(id);
-    if (m) params.push(m);
-  }
-  for (const m of sortElements(params)) {
-    lines.push(renderElement(m, byId, depth + 1));
+  const params = sortElements(index.children(el.id, 'parameter'));
+  for (const m of params) {
+    lines.push(renderElement(m, byId, index, depth + 1));
   }
   lines.push(`${pad(depth)}}`);
   return lines.join('\n');

@@ -4,23 +4,33 @@ import { createDiagramId } from '@/workspace/diagram';
 import type { Diagram } from '@/workspace/diagram';
 import { bddViewpoint } from '@/viewpoints';
 import { createElementId, createProjectId } from '@/model';
-import type { ModelElement, PartDefinitionElement } from '@/model';
+import type { ModelElement, PackageElement, PartDefinitionElement } from '@/model';
 import type { Project } from '@/repository/types';
 import { EMPTY_COMMAND_HISTORY } from '@/repository/types';
 
 import { parseProjectJson, serializeProjectJson } from '../jsonProject';
 
 function makeProject(): Project {
+  const rootId = createElementId();
   const blockId = createElementId();
+  const root: PackageElement = {
+    kind: 'Package',
+    id: rootId,
+    name: 'Demo',
+    ownerId: null,
+    ownerRole: 'member',
+    ownerIndex: 0,
+  };
   const block: PartDefinitionElement = {
     kind: 'PartDefinition',
     id: blockId,
     name: 'Block 1',
     isAbstract: false,
-    propertyIds: [],
-    portIds: [],
+    ownerId: rootId,
+    ownerRole: 'member',
+    ownerIndex: 0,
   };
-  const elements: readonly ModelElement[] = [block];
+  const elements: readonly ModelElement[] = [root, block];
   const diagram: Diagram = {
     id: createDiagramId(),
     viewpointId: bddViewpoint.id,
@@ -32,6 +42,7 @@ function makeProject(): Project {
     name: 'Demo',
     createdAt: '2026-05-14T00:00:00.000Z',
     modifiedAt: '2026-05-14T00:00:00.000Z',
+    rootId,
     elements,
     edges: [],
     diagrams: [diagram],

@@ -86,18 +86,25 @@ export async function proposeDecompositionHandler(
     }
   }
 
+  const rootId = reader.rootId;
+  const baseIndex = elements.filter(
+    (e) => e.ownerId === rootId && e.ownerRole === 'member',
+  ).length;
+
   const commands: Command[] = [];
   const newChildIds: ElementId[] = [];
-  for (const name of input.childNames) {
+  for (let i = 0; i < input.childNames.length; i++) {
+    const name = input.childNames[i]!;
     const id = createElementId();
     newChildIds.push(id);
     const child: PartDefinitionElement = {
       id,
+      ownerId: rootId,
+      ownerRole: 'member',
+      ownerIndex: baseIndex + i,
       kind: 'PartDefinition',
       name: name.trim(),
       isAbstract: false,
-      propertyIds: [],
-      portIds: [],
     };
     commands.push({ kind: 'create-element', element: child });
     const edge: CompositionEdge = {

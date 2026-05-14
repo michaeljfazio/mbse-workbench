@@ -17,6 +17,9 @@ import type {
 const req: RequirementElement = {
   id: 'req-1' as ElementId,
   kind: 'Requirement',
+  ownerId: null,
+  ownerRole: 'member',
+  ownerIndex: 0,
   name: 'Cooling',
   text: 'System shall remain under 80°C',
   priority: 'medium',
@@ -26,14 +29,16 @@ const req: RequirementElement = {
 const part: PartDefinitionElement = {
   id: 'part-1' as ElementId,
   kind: 'PartDefinition',
+  ownerId: null,
+  ownerRole: 'member',
+  ownerIndex: 0,
   name: 'Radiator',
   isAbstract: false,
-  propertyIds: [],
-  portIds: [],
 };
 
 function readerWith(elements: readonly ModelElement[], edges: readonly ModelEdge[] = []) {
   return createProjectReader({
+    rootId: 'root-pkg' as ElementId,
     projectName: 'Test',
     elements,
     edges,

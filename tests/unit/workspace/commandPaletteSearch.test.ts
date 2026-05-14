@@ -24,10 +24,11 @@ function partDef(idStr: string, name: string): PartDefinitionElement {
   return {
     id: id(idStr),
     kind: 'PartDefinition',
+    ownerId: null,
+    ownerRole: 'member',
+    ownerIndex: 0,
     name,
     isAbstract: false,
-    propertyIds: [],
-    portIds: [],
   };
 }
 
@@ -39,9 +40,11 @@ function partUsage(
   return {
     id: id(idStr),
     kind: 'PartUsage',
+    ownerId: null,
+    ownerRole: 'member',
+    ownerIndex: 0,
     name,
     definitionId: id(defId),
-    portUsageIds: [],
   };
 }
 
@@ -49,6 +52,9 @@ function requirement(idStr: string, name: string): RequirementElement {
   return {
     id: id(idStr),
     kind: 'Requirement',
+    ownerId: null,
+    ownerRole: 'member',
+    ownerIndex: 0,
     name,
     reqId: 'REQ-1',
     text: '',

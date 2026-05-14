@@ -126,7 +126,9 @@ test.describe('Phase 12 slice A — JSON import/export', () => {
     const text = readFileSync(tmpPath!, 'utf-8');
     const parsed = JSON.parse(text) as StoredProject;
     expect(parsed.id).toBe(SEED_PROJECT_ID);
-    expect(parsed.elements).toHaveLength(SEED_ELEMENTS.length);
+    // The exported JSON includes the synthesized root Package (ownerId === null)
+    // in addition to the user-authored elements.
+    expect(parsed.elements).toHaveLength(SEED_ELEMENTS.length + 1);
     expect(parsed.edges).toHaveLength(SEED_EDGES.length);
     expect(parsed.diagrams).toHaveLength(1);
   });
@@ -134,6 +136,10 @@ test.describe('Phase 12 slice A — JSON import/export', () => {
   test('round-trips: Export JSON → Import JSON yields identical model', async ({
     page,
   }) => {
+    // Capture the pre-export state (already migrated by the repository layer).
+    const preExport = await readPersistedProject(page, SEED_PROJECT_ID);
+    expect(preExport).not.toBeNull();
+
     // Export
     await page.getByTestId('toolbar-export').click();
     const [download] = await Promise.all([
@@ -155,21 +161,26 @@ test.describe('Phase 12 slice A — JSON import/export', () => {
     });
 
     // After import, the persisted project should have identical
-    // elements, edges, and diagrams (positions included).
+    // elements, edges, and diagrams (positions included). The project now
+    // includes a synthesized root Package (ownerId === null) in addition to
+    // the user-authored SEED_ELEMENTS, so total = SEED_ELEMENTS + root + edges + diagram.
     await expect
       .poll(async () => {
         const proj = await readPersistedProject(page, SEED_PROJECT_ID);
         if (!proj) return -1;
         return proj.elements.length + proj.edges.length + proj.diagrams.length;
       })
-      .toBe(SEED_ELEMENTS.length + SEED_EDGES.length + 1);
+      .toBe(SEED_ELEMENTS.length + 1 + SEED_EDGES.length + 1);
 
     const persisted = await readPersistedProject(page, SEED_PROJECT_ID);
     expect(persisted).not.toBeNull();
     expect(persisted!.id).toBe(SEED_PROJECT_ID);
     expect(persisted!.name).toBe('JSON Round-trip');
-    expect(canonicalize(persisted!.elements)).toEqual(canonicalize(SEED_ELEMENTS));
-    expect(canonicalize(persisted!.edges)).toEqual(canonicalize(SEED_EDGES));
+    // The round-trip is lossless: the re-imported migrated elements match the
+    // pre-export migrated elements exactly (same ownerId/ownerRole/ownerIndex
+    // fields; the codemod is idempotent).
+    expect(canonicalize(persisted!.elements)).toEqual(canonicalize(preExport!.elements));
+    expect(canonicalize(persisted!.edges)).toEqual(canonicalize(preExport!.edges));
     expect(canonicalize(persisted!.diagrams)).toEqual(canonicalize([SEED_DIAGRAM]));
 
     // No import error banner.
@@ -194,9 +205,10 @@ test.describe('Phase 12 slice A — JSON import/export', () => {
       /invalid JSON/i,
     );
 
-    // Persisted project should be untouched (still has original elements).
+    // Persisted project should be untouched (still has original elements plus
+    // the synthesized root Package added by the repository migration layer).
     const persisted = await readPersistedProject(page, SEED_PROJECT_ID);
     expect(persisted).not.toBeNull();
-    expect(persisted!.elements).toHaveLength(SEED_ELEMENTS.length);
+    expect(persisted!.elements).toHaveLength(SEED_ELEMENTS.length + 1);
   });
 });

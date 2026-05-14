@@ -70,6 +70,7 @@ interface StoredElement {
   readonly id: string;
   readonly kind: string;
   readonly name?: string;
+  readonly ownerId?: string | null;
   readonly expression?: string;
   readonly defaultValue?: string | number | boolean;
   readonly definitionId?: string;
@@ -308,7 +309,12 @@ test.describe('Phase 8 gate (issue #138)', () => {
         const raw = sessionStorage.getItem(`mbse:v1:project:${id}`);
         if (!raw) return 0;
         const p = JSON.parse(raw);
-        return (p.elements?.length ?? 0) + (p.edges?.length ?? 0);
+        // Exclude the synthesized root Package (ownerId === null) — it
+        // always exists and should not block the "empty" termination check.
+        return (
+          (p.elements?.filter((e: { ownerId: unknown }) => e.ownerId !== null).length ?? 0) +
+          (p.edges?.length ?? 0)
+        );
       }, SEED_PROJECT_ID);
 
     const undoUntilEmpty = async (maxSteps: number): Promise<void> => {
@@ -325,7 +331,8 @@ test.describe('Phase 8 gate (issue #138)', () => {
     await undoUntilEmpty(40);
 
     snapshot = await readProject(page);
-    expect(snapshot.elements).toEqual([]);
+    // After full undo only the synthesized root Package (ownerId === null) remains.
+    expect(snapshot.elements.filter((e) => e.ownerId !== null)).toEqual([]);
     expect(snapshot.edges).toEqual([]);
 
     // Step 9 — redo all the way forward. Termination needs 4 signals:
@@ -353,13 +360,16 @@ test.describe('Phase 8 gate (issue #138)', () => {
             };
           }
           const p = JSON.parse(raw);
-          const elements = (p.elements ?? []) as Array<{
+          const allElements = (p.elements ?? []) as Array<{
             id: string;
             kind: string;
             name?: string;
+            ownerId?: string | null;
             expression?: string;
             defaultValue?: unknown;
           }>;
+          // Exclude synthesized root Package so the count reflects user elements only.
+          const elements = allElements.filter((e) => e.ownerId !== null);
           const edges = (p.edges ?? []) as Array<{ kind: string }>;
           const constraintUsage = elements.find(
             (e) => e.id === constraintUsageId,

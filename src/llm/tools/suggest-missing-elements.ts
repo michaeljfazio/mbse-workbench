@@ -1,7 +1,8 @@
 import { z } from 'zod';
-import type { Command, UpdateElementCommand } from '@/commands/types';
+import type { Command } from '@/commands/types';
 import type {
   ElementId,
+  ModelElement,
   PartDefinitionElement,
   RequirementElement,
   RequirementTraceEdge,
@@ -30,7 +31,7 @@ export const suggestMissingElementsDefinition: LLMToolDefinition = {
       owningPackageId: {
         type: 'string',
         description:
-          'Optional ElementId of an existing Package. All generated requirements are added to its memberIds.',
+          'Optional ElementId of an existing Package. All generated requirements are owned by it. Defaults to the project root package.',
       },
       maxSuggestions: {
         type: 'integer',
@@ -44,6 +45,10 @@ export const suggestMissingElementsDefinition: LLMToolDefinition = {
   },
 };
 
+function countMembers(elements: readonly ModelElement[], ownerId: ElementId): number {
+  return elements.filter((e) => e.ownerId === ownerId && e.ownerRole === 'member').length;
+}
+
 export async function suggestMissingElementsHandler(
   input: SuggestMissingElementsInput,
   _ctx: ToolContext,
@@ -52,7 +57,8 @@ export async function suggestMissingElementsHandler(
   const elements = reader.elements();
   const edges = reader.edges();
 
-  let owningPackageId: ElementId | undefined;
+  let ownerId: ElementId;
+  let explicitOwner = false;
   if (input.owningPackageId !== undefined) {
     const ownerCandidateId = input.owningPackageId as ElementId;
     const owner = elements.find((e) => e.id === ownerCandidateId);
@@ -66,7 +72,10 @@ export async function suggestMissingElementsHandler(
         `owningPackageId "${input.owningPackageId}" refers to a ${owner.kind}, not a Package.`,
       );
     }
-    owningPackageId = ownerCandidateId;
+    ownerId = ownerCandidateId;
+    explicitOwner = true;
+  } else {
+    ownerId = reader.rootId;
   }
 
   const tracedTargetIds = new Set<ElementId>(
@@ -86,13 +95,18 @@ export async function suggestMissingElementsHandler(
   const cap = input.maxSuggestions ?? 5;
   const selected = candidates.slice(0, cap);
 
+  const baseIndex = countMembers(elements, ownerId);
   const commands: Command[] = [];
   const newRequirementIds: ElementId[] = [];
-  for (const part of selected) {
+  for (let i = 0; i < selected.length; i++) {
+    const part = selected[i]!;
     const reqId = createElementId();
     newRequirementIds.push(reqId);
     const requirement: RequirementElement = {
       id: reqId,
+      ownerId,
+      ownerRole: 'member',
+      ownerIndex: baseIndex + i,
       kind: 'Requirement',
       name: `${part.name} requirement`,
       text: `${part.name} shall fulfil its intended purpose.`,
@@ -110,18 +124,6 @@ export async function suggestMissingElementsHandler(
     commands.push({ kind: 'link', edge });
   }
 
-  if (owningPackageId !== undefined) {
-    const owner = elements.find((e) => e.id === owningPackageId);
-    if (owner !== undefined && owner.kind === 'Package') {
-      const updatePackage: UpdateElementCommand<'Package'> = {
-        kind: 'update-element',
-        id: owningPackageId,
-        patch: { memberIds: [...owner.memberIds, ...newRequirementIds] },
-      };
-      commands.push(updatePackage);
-    }
-  }
-
   const first = newRequirementIds[0];
   if (first === undefined) {
     throw new Error('Internal error: no suggestions generated.');
@@ -129,8 +131,7 @@ export async function suggestMissingElementsHandler(
 
   const n = selected.length;
   const base = `Suggest ${n} placeholder Requirement${n === 1 ? '' : 's'} for un-required PartDefinition${n === 1 ? '' : 's'}`;
-  const summary =
-    owningPackageId !== undefined ? `${base} in package ${owningPackageId}` : base;
+  const summary = explicitOwner ? `${base} in package ${ownerId}` : base;
 
   const change: ProposedChange = {
     id: first,

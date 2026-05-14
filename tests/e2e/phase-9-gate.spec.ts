@@ -78,18 +78,11 @@ async function gotoPackage(page: Page): Promise<void> {
   );
 }
 
-interface StoredPackage {
-  readonly id: string;
-  readonly kind: 'Package';
-  readonly name: string;
-  readonly memberIds: readonly string[];
-}
-
 interface StoredElement {
   readonly id: string;
   readonly kind: string;
   readonly name: string;
-  readonly memberIds?: readonly string[];
+  readonly ownerId?: string | null;
 }
 
 interface StoredEdge {
@@ -114,15 +107,14 @@ async function readProject(page: Page): Promise<{
   }, SEED_PROJECT_ID);
 }
 
-function getPackageById(
+/** Derive the list of member element IDs owned by a Package. */
+function getMemberIds(
   elements: readonly StoredElement[],
-  id: string,
-): StoredPackage {
-  const pkg = elements.find((e) => e.id === id);
-  if (!pkg || pkg.kind !== 'Package') {
-    throw new Error(`expected Package element ${id}, got ${pkg?.kind}`);
-  }
-  return pkg as StoredPackage;
+  packageId: string,
+): readonly string[] {
+  return elements
+    .filter((e) => e.ownerId === packageId)
+    .map((e) => e.id);
 }
 
 async function dropPackageFromPalette(
@@ -220,16 +212,16 @@ test.describe('Phase 9 gate (issue #157)', () => {
     // Step 2 — drag the seeded PartDefinition tree leaf onto P1.
     await dragTreeLeafOntoPackageNode(page, SEED_PART_ID, p1Id);
     let snapshot = await readProject(page);
-    expect(getPackageById(snapshot.elements, p1Id).memberIds).toEqual([
+    expect(getMemberIds(snapshot.elements, p1Id)).toEqual([
       SEED_PART_ID,
     ]);
-    expect(getPackageById(snapshot.elements, p2Id).memberIds).toEqual([]);
+    expect(getMemberIds(snapshot.elements, p2Id)).toEqual([]);
 
-    // Step 3 — drag the same part onto P2; P1.memberIds empties, P2 gains it.
+    // Step 3 — drag the same part onto P2; P1 loses the member, P2 gains it.
     await dragTreeLeafOntoPackageNode(page, SEED_PART_ID, p2Id);
     snapshot = await readProject(page);
-    expect(getPackageById(snapshot.elements, p1Id).memberIds).toEqual([]);
-    expect(getPackageById(snapshot.elements, p2Id).memberIds).toEqual([
+    expect(getMemberIds(snapshot.elements, p1Id)).toEqual([]);
+    expect(getMemberIds(snapshot.elements, p2Id)).toEqual([
       SEED_PART_ID,
     ]);
     await expect(page.getByTestId(`package-node-members-${p1Id}`)).toHaveText(
@@ -257,10 +249,10 @@ test.describe('Phase 9 gate (issue #157)', () => {
       '1 member',
     );
     snapshot = await readProject(page);
-    expect(getPackageById(snapshot.elements, p1Id).memberIds).toEqual([
+    expect(getMemberIds(snapshot.elements, p1Id)).toEqual([
       SEED_PART_ID,
     ]);
-    expect(getPackageById(snapshot.elements, p2Id).memberIds).toEqual([]);
+    expect(getMemberIds(snapshot.elements, p2Id)).toEqual([]);
 
     // Redo so the final shape matches the issue's "1 part in P2" expectation.
     await page.keyboard.press(`${modifier}+Shift+KeyZ`);
@@ -294,11 +286,11 @@ test.describe('Phase 9 gate (issue #157)', () => {
     ).toHaveCount(1);
 
     // Step 6 — final shape: 2 Packages + 1 PartDefinition + 1 PackageImport
-    // edge; P2 owns the member.
+    // edge; P2 owns the member. Exclude the synthesized root Package (ownerId === null).
     snapshot = await readProject(page);
-    expect(snapshot.elements.filter((e) => e.kind === 'Package')).toHaveLength(
-      2,
-    );
+    expect(
+      snapshot.elements.filter((e) => e.kind === 'Package' && e.ownerId !== null),
+    ).toHaveLength(2);
     expect(
       snapshot.elements.filter((e) => e.kind === 'PartDefinition'),
     ).toHaveLength(1);
@@ -306,7 +298,7 @@ test.describe('Phase 9 gate (issue #157)', () => {
     expect(snapshot.edges[0]!.kind).toBe('PackageImport');
     expect(snapshot.edges[0]!.sourceId).toBe(p1Id);
     expect(snapshot.edges[0]!.targetId).toBe(p2Id);
-    expect(getPackageById(snapshot.elements, p2Id).memberIds).toEqual([
+    expect(getMemberIds(snapshot.elements, p2Id)).toEqual([
       SEED_PART_ID,
     ]);
   });

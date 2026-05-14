@@ -72,8 +72,22 @@ function resolveConnection(
 
   const sourcePortUsageId = sourceHandle as ElementId;
   const targetPortUsageId = targetHandle as ElementId;
-  if (!sourcePart.portUsageIds.includes(sourcePortUsageId)) return null;
-  if (!targetPart.portUsageIds.includes(targetPortUsageId)) return null;
+  const sourcePortUsage = registry.get(sourcePortUsageId);
+  if (
+    !sourcePortUsage ||
+    sourcePortUsage.kind !== 'PortUsage' ||
+    sourcePortUsage.ownerId !== sourcePart.id
+  ) {
+    return null;
+  }
+  const targetPortUsage = registry.get(targetPortUsageId);
+  if (
+    !targetPortUsage ||
+    targetPortUsage.kind !== 'PortUsage' ||
+    targetPortUsage.ownerId !== targetPart.id
+  ) {
+    return null;
+  }
 
   const sourceDirection = portUsageDirection(registry, sourcePortUsageId);
   const targetDirection = portUsageDirection(registry, targetPortUsageId);

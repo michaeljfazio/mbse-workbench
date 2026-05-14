@@ -24,6 +24,9 @@ function seed(states: readonly StateSeed[]): ElementRegistry {
     const state: StateUsageElement = {
       id: mkElementId(s.id),
       kind: 'StateUsage',
+      ownerId: null,
+      ownerRole: 'member',
+      ownerIndex: 0,
       name: s.id,
       stateType: s.stateType,
     };
@@ -132,16 +135,20 @@ describe('isValidStateMachineConnection', () => {
     const state: StateUsageElement = {
       id: mkElementId('s1'),
       kind: 'StateUsage',
+      ownerId: null,
+      ownerRole: 'member',
+      ownerIndex: 0,
       name: 's1',
       stateType: 'state',
     };
     const block: PartDefinitionElement = {
       id: mkElementId('b1'),
       kind: 'PartDefinition',
+      ownerId: null,
+      ownerRole: 'member',
+      ownerIndex: 0,
       name: 'Block',
       isAbstract: false,
-      propertyIds: [],
-      portIds: [],
     };
     registry.add(state);
     registry.add(block);
@@ -154,12 +161,18 @@ describe('isValidStateMachineConnection', () => {
     const state: StateUsageElement = {
       id: mkElementId('s1'),
       kind: 'StateUsage',
+      ownerId: null,
+      ownerRole: 'member',
+      ownerIndex: 0,
       name: 's1',
       stateType: 'state',
     };
     const requirement: RequirementElement = {
       id: mkElementId('r1'),
       kind: 'Requirement',
+      ownerId: null,
+      ownerRole: 'member',
+      ownerIndex: 0,
       name: 'R1',
       text: '',
       priority: 'medium',

@@ -407,9 +407,10 @@ describe('workspace store', () => {
 
     // Bootstrap, create a block (which goes through the command bus).
     await useWorkspaceStore.getState().bootstrap({ repository, user, storage });
+    const baseline = useWorkspaceStore.getState().elements.length;
     const blockId = useWorkspaceStore.getState().createBlock();
     expect(blockId).not.toBeNull();
-    expect(useWorkspaceStore.getState().elements).toHaveLength(1);
+    expect(useWorkspaceStore.getState().elements).toHaveLength(baseline + 1);
     // Confirm the bus has one undo entry to persist (compound: create + position).
     expect(useWorkspaceStore.getState().bus!.getHistory().undo).toHaveLength(1);
 
@@ -421,14 +422,14 @@ describe('workspace store', () => {
     // After rehydration the bus has the same undo entry; undo() reverts the
     // block creation.
     const rehydrated = useWorkspaceStore.getState();
-    expect(rehydrated.elements).toHaveLength(1);
+    expect(rehydrated.elements).toHaveLength(baseline + 1);
     expect(rehydrated.bus!.getHistory().undo).toHaveLength(1);
     rehydrated.undo();
-    expect(useWorkspaceStore.getState().elements).toHaveLength(0);
+    expect(useWorkspaceStore.getState().elements).toHaveLength(baseline);
 
     // Redo restores the block.
     useWorkspaceStore.getState().redo();
-    expect(useWorkspaceStore.getState().elements).toHaveLength(1);
+    expect(useWorkspaceStore.getState().elements).toHaveLength(baseline + 1);
   });
 
   describe('split view (#235)', () => {

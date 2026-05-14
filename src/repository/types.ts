@@ -1,6 +1,6 @@
 import type { CommandHistory } from '@/commands';
 import type { Conversation } from '@/llm/types';
-import type { ModelEdge, ModelElement, ProjectId } from '@/model';
+import type { ElementId, ModelEdge, ModelElement, ProjectId } from '@/model';
 import type { Diagram } from '@/workspace/diagram';
 
 export interface Project {
@@ -8,6 +8,12 @@ export interface Project {
   name: string;
   readonly createdAt: string;
   modifiedAt: string;
+  /**
+   * Containment root. Always points to an existing Package element in
+   * `elements` whose `ownerId === null`. Synthesized at load time for
+   * legacy projects that predate the explicit-root invariant. See ADR 0011.
+   */
+  rootId: ElementId;
   elements: readonly ModelElement[];
   edges: readonly ModelEdge[];
   diagrams: readonly Diagram[];

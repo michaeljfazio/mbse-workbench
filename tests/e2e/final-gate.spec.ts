@@ -397,7 +397,12 @@ test.describe('v1.0.0 final gate (issue #250) — full smoke + LLM critique + ro
         async () => {
           const proj = await readPersistedProject(page, SEED_PROJECT_ID);
           if (!proj) return -1;
-          return proj.elements.length + proj.edges.length;
+          // Exclude the synthesized root Package (ownerId === null) when
+          // counting, so the total reflects user elements only.
+          const userElements = proj.elements.filter(
+            (e) => (e as { ownerId?: unknown }).ownerId !== null,
+          );
+          return userElements.length + proj.edges.length;
         },
         { timeout: 15_000 },
       )
@@ -407,15 +412,21 @@ test.describe('v1.0.0 final gate (issue #250) — full smoke + LLM critique + ro
     // the serializer's `// id:` comments are the parser's ID-recovery
     // channel; positions are not part of the SysMLv2 round-trip
     // surface).
+    // Compare post-import user elements against pre-export user elements:
+    // both have been through the migration pipeline (ownerId/ownerRole/
+    // ownerIndex set, legacy arrays stripped), so they should match exactly.
     const persisted = await readPersistedProject(page, SEED_PROJECT_ID);
     expect(persisted).not.toBeNull();
-    const expectedElements = canonicalize(
-      SEED_ELEMENTS as unknown as ReadonlyArray<Record<string, unknown>>,
+    const preExportUserElements = preExport!.elements.filter(
+      (e) => (e as { ownerId?: unknown }).ownerId !== null,
+    );
+    const persistedUserElements = persisted!.elements.filter(
+      (e) => (e as { ownerId?: unknown }).ownerId !== null,
     );
     const expectedEdges = canonicalize(
       SEED_EDGES as unknown as ReadonlyArray<Record<string, unknown>>,
     );
-    expect(canonicalize(persisted!.elements)).toEqual(expectedElements);
+    expect(canonicalize(persistedUserElements)).toEqual(canonicalize(preExportUserElements));
     expect(canonicalize(persisted!.edges)).toEqual(expectedEdges);
   });
 });

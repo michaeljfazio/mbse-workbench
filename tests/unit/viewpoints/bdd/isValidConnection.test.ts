@@ -16,10 +16,11 @@ function block(id: ElementId, name: string): PartDefinitionElement {
   return {
     id,
     kind: 'PartDefinition',
+    ownerId: null,
+    ownerRole: 'member',
+    ownerIndex: 0,
     name,
     isAbstract: false,
-    propertyIds: [],
-    portIds: [],
   };
 }
 
@@ -27,6 +28,9 @@ function requirement(id: ElementId, name: string): RequirementElement {
   return {
     id,
     kind: 'Requirement',
+    ownerId: null,
+    ownerRole: 'member',
+    ownerIndex: 0,
     name,
     text: 'spec',
     priority: 'medium',

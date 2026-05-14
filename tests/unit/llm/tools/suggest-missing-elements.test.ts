@@ -19,10 +19,11 @@ function part(id: string, name: string): PartDefinitionElement {
   return {
     id: id as ElementId,
     kind: 'PartDefinition',
+    ownerId: null,
+    ownerRole: 'member',
+    ownerIndex: 0,
     name,
     isAbstract: false,
-    propertyIds: [],
-    portIds: [],
   };
 }
 
@@ -30,6 +31,9 @@ function req(id: string, name: string): RequirementElement {
   return {
     id: id as ElementId,
     kind: 'Requirement',
+    ownerId: null,
+    ownerRole: 'member',
+    ownerIndex: 0,
     name,
     text: `${name} text`,
     priority: 'medium',
@@ -39,6 +43,7 @@ function req(id: string, name: string): RequirementElement {
 
 function readerWith(elements: readonly ModelElement[], edges: readonly ModelEdge[] = []) {
   return createProjectReader({
+    rootId: 'root-pkg' as ElementId,
     projectName: 'Test',
     elements,
     edges,
@@ -162,8 +167,10 @@ describe('suggest_missing_elements tool', () => {
     const pkg: PackageElement = {
       id: 'pkg-1' as ElementId,
       kind: 'Package',
+      ownerId: null,
+      ownerRole: 'member',
+      ownerIndex: 0,
       name: 'Reqs',
-      memberIds: ['existing' as ElementId],
     };
     const reader = readerWith([a, pkg]);
     const input = suggestMissingElementsSchema.parse({ owningPackageId: 'pkg-1' });
@@ -174,11 +181,8 @@ describe('suggest_missing_elements tool', () => {
       (c) => c.kind === 'create-element' && c.element.kind === 'Requirement',
     );
     if (newReq?.kind !== 'create-element') throw new Error('expected create-element');
-    const update = output.change.commands.find((c) => c.kind === 'update-element');
-    if (update?.kind !== 'update-element') throw new Error('expected update-element');
-    expect(update.id).toBe('pkg-1');
-    const patch = update.patch as Partial<PackageElement>;
-    expect(patch.memberIds).toEqual(['existing', newReq.element.id]);
+    expect(newReq.element.ownerId).toBe('pkg-1');
+    expect(newReq.element.ownerRole).toBe('member');
     expect(output.change.summary).toContain('pkg-1');
   });
 

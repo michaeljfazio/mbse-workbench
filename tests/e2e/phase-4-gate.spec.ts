@@ -362,7 +362,11 @@ test.describe('Phase 4 gate (issue #74)', () => {
           const raw = sessionStorage.getItem(`mbse:v1:project:${id}`);
           if (!raw) return 0;
           const p = JSON.parse(raw);
-          return (p.elements?.length ?? 0) + (p.edges?.length ?? 0);
+          // Exclude the synthesized root Package (ownerId === null).
+          return (
+            (p.elements?.filter((e: { ownerId: unknown }) => e.ownerId !== null).length ?? 0) +
+            (p.edges?.length ?? 0)
+          );
         }, SEED_PROJECT_ID);
         if (remaining === 0) return;
         await undo();
@@ -372,7 +376,10 @@ test.describe('Phase 4 gate (issue #74)', () => {
         const raw = sessionStorage.getItem(`mbse:v1:project:${id}`);
         if (!raw) return -1;
         const p = JSON.parse(raw);
-        return (p.elements?.length ?? 0) + (p.edges?.length ?? 0);
+        return (
+          (p.elements?.filter((e: { ownerId: unknown }) => e.ownerId !== null).length ?? 0) +
+          (p.edges?.length ?? 0)
+        );
       }, SEED_PROJECT_ID);
       expect(finalRemaining, `Undo cascade did not fully roll back in ${maxSteps} presses`).toBe(0);
     };
@@ -383,7 +390,8 @@ test.describe('Phase 4 gate (issue #74)', () => {
     const elementsAfterUndo = await page.evaluate((id) => {
       const raw = sessionStorage.getItem(`mbse:v1:project:${id}`);
       const p = JSON.parse(raw!);
-      return p.elements;
+      // Exclude the synthesized root Package (ownerId === null).
+      return (p.elements ?? []).filter((e: { ownerId: unknown }) => e.ownerId !== null);
     }, SEED_PROJECT_ID);
     expect(elementsAfterUndo).toEqual([]);
 
@@ -396,7 +404,8 @@ test.describe('Phase 4 gate (issue #74)', () => {
           if (!raw) return { elements: 0, edges: 0 };
           const p = JSON.parse(raw);
           return {
-            elements: p.elements?.length ?? 0,
+            // Exclude the synthesized root Package (ownerId === null).
+            elements: (p.elements ?? []).filter((e: { ownerId: unknown }) => e.ownerId !== null).length,
             edges: p.edges?.length ?? 0,
           };
         }, SEED_PROJECT_ID);
@@ -408,7 +417,7 @@ test.describe('Phase 4 gate (issue #74)', () => {
         const raw = sessionStorage.getItem(`mbse:v1:project:${id}`);
         const p = JSON.parse(raw!);
         return {
-          elements: p.elements?.length ?? 0,
+          elements: (p.elements ?? []).filter((e: { ownerId: unknown }) => e.ownerId !== null).length,
           edges: p.edges?.length ?? 0,
         };
       }, SEED_PROJECT_ID);

@@ -17,6 +17,9 @@ function mkReq(idSlug: string): ModelElement {
   return {
     id: mkElementId(idSlug),
     kind: 'Requirement',
+    ownerId: null,
+    ownerRole: 'member',
+    ownerIndex: 0,
     name: idSlug,
     text: '',
     priority: 'medium',
@@ -28,10 +31,11 @@ function mkBlock(idSlug: string): ModelElement {
   return {
     id: mkElementId(idSlug),
     kind: 'PartDefinition',
+    ownerId: null,
+    ownerRole: 'member',
+    ownerIndex: 0,
     name: idSlug,
     isAbstract: false,
-    propertyIds: [],
-    portIds: [],
   };
 }
 
@@ -39,6 +43,9 @@ function mkPort(idSlug: string): ModelElement {
   return {
     id: mkElementId(idSlug),
     kind: 'PortDefinition',
+    ownerId: null,
+    ownerRole: 'member',
+    ownerIndex: 0,
     name: idSlug,
     direction: 'inout',
   };
@@ -146,34 +153,50 @@ describe('isValidRequirementTraceConnection', () => {
       {
         id: mkElementId('pu1'),
         kind: 'PartUsage',
+        ownerId: null,
+        ownerRole: 'member',
+        ownerIndex: 0,
         name: 'pu1',
         definitionId: mkElementId('b1'),
-        portUsageIds: [],
       } as ModelElement,
       {
         id: mkElementId('ad1'),
         kind: 'ActionDefinition',
+        ownerId: null,
+        ownerRole: 'member',
+        ownerIndex: 0,
         name: 'ad1',
-        parameterIds: [],
       } as ModelElement,
       {
         id: mkElementId('au1'),
         kind: 'ActionUsage',
+        ownerId: null,
+        ownerRole: 'member',
+        ownerIndex: 0,
         name: 'au1',
       } as ModelElement,
       {
         id: mkElementId('sd1'),
         kind: 'StateDefinition',
+        ownerId: null,
+        ownerRole: 'member',
+        ownerIndex: 0,
         name: 'sd1',
       } as ModelElement,
       {
         id: mkElementId('su1'),
         kind: 'StateUsage',
+        ownerId: null,
+        ownerRole: 'member',
+        ownerIndex: 0,
         name: 'su1',
       } as ModelElement,
       {
         id: mkElementId('uc1'),
         kind: 'UseCase',
+        ownerId: null,
+        ownerRole: 'member',
+        ownerIndex: 0,
         name: 'uc1',
       } as ModelElement,
     ];
