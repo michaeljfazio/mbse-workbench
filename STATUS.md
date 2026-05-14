@@ -6,12 +6,12 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 640
+- Iteration #: 659
 - Started: 2026-05-14
 - Branch: issue/253-card-tokens-square-ports
-- Working on: PR #254 — CI run 25846704432 E2E tests step still
-  IN_PROGRESS (started 07:00Z; rechecked 07:09Z iter-640).
-  Auto-merge SQUASH armed; awaiting green.
+- Working on: PR #254 — CI run 25847085564 still in_progress
+  (started 07:10:40Z; ~14m25s elapsed at 07:25:05Z). Auto-merge SQUASH
+  remains armed. No state change vs iter-658.
 
 ## Last test run
 - Command: pnpm typecheck && pnpm lint && pnpm test:unit && pnpm build && pnpm test:e2e (visual skipped on darwin per playwright.config grepInvert)
@@ -130,8 +130,8 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
-Wait for PR #254 CI on the freshly-updated branch (now caught up with
-main). On green + auto-merge, pick next P0 task (likely T-13.29 —
+Wait for PR #254 CI rerun (triggered iter-641 after branch update).
+On green + auto-merge, pick next P0 task (likely T-13.29 —
 start of explorer foundation bundle: ownerId as single source of
 truth, explicit root Package, registry parentOf/childrenOf, codemod
 readers).
