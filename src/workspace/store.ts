@@ -20,6 +20,7 @@ import type {
   ModelEdge,
   ModelElement,
   ObjectFlowEdge,
+  OwnerRole,
   PackageElement,
   PackageImportEdge,
   ParameterBindingEdge,
@@ -459,12 +460,22 @@ const proposalResolvers = new Map<string, (resolution: ProposalResolution) => vo
 
 function newEmptyProject(): Project {
   const now = new Date().toISOString();
+  const projectName = 'Untitled Project';
+  const rootPackage: PackageElement = {
+    id: createElementId(),
+    kind: 'Package',
+    name: projectName,
+    ownerId: null,
+    ownerRole: 'member',
+    ownerIndex: 0,
+  };
   return {
     id: createProjectId(),
-    name: 'Untitled Project',
+    name: projectName,
     createdAt: now,
     modifiedAt: now,
-    elements: [],
+    rootId: rootPackage.id,
+    elements: [rootPackage],
     edges: [],
     diagrams: [],
     history: EMPTY_COMMAND_HISTORY,
@@ -502,11 +513,14 @@ function nextPortName(
   parent: PartDefinitionElement,
   elements: readonly ModelElement[],
 ): string {
-  const portIds = new Set(parent.portIds);
   const taken = new Set(
     elements
-      .filter((e): e is PortDefinitionElement => e.kind === 'PortDefinition')
-      .filter((e) => portIds.has(e.id))
+      .filter(
+        (e): e is PortDefinitionElement =>
+          e.kind === 'PortDefinition' &&
+          e.ownerId === parent.id &&
+          e.ownerRole === 'port',
+      )
       .map((e) => e.name),
   );
   let n = taken.size + 1;
@@ -733,6 +747,38 @@ function nextTransitionName(elements: readonly ModelElement[]): string {
   let n = taken.size + 1;
   while (taken.has(`Transition${n}`)) n += 1;
   return `Transition${n}`;
+}
+
+/**
+ * Returns children of `ownerId` under the given role (or all roles if
+ * `role` is omitted), sorted by `ownerIndex` ascending. Operates directly
+ * on the flat elements array — no registry required. O(n).
+ */
+function childrenOf(
+  elements: readonly ModelElement[],
+  ownerId: ElementId,
+  role?: OwnerRole,
+): readonly ModelElement[] {
+  return elements
+    .filter(
+      (e) =>
+        e.ownerId === ownerId && (role === undefined || e.ownerRole === role),
+    )
+    .sort((a, b) => a.ownerIndex - b.ownerIndex);
+}
+
+/**
+ * Returns the next `ownerIndex` to assign when appending a child under
+ * `(ownerId, role)`. Equivalent to the current child count for that slot.
+ */
+function nextOwnerIndex(
+  elements: readonly ModelElement[],
+  ownerId: ElementId,
+  role: OwnerRole,
+): number {
+  return elements.filter(
+    (e) => e.ownerId === ownerId && e.ownerRole === role,
+  ).length;
 }
 
 export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
@@ -979,16 +1025,18 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   },
 
   createBlock(position) {
-    const { bus, user, diagrams, activeDiagramId, elements } = get();
-    if (!bus || !user) return null;
+    const { bus, user, diagrams, activeDiagramId, elements, project } = get();
+    if (!bus || !user || !project) return null;
     const id = createElementId();
+    const ownerId = project.rootId;
     const block: PartDefinitionElement = {
       id,
       kind: 'PartDefinition',
       name: nextBlockName(elements),
       isAbstract: false,
-      propertyIds: [],
-      portIds: [],
+      ownerId,
+      ownerRole: 'member',
+      ownerIndex: nextOwnerIndex(elements, ownerId, 'member'),
     };
     const activeDiagram = diagrams.find((d) => d.id === activeDiagramId) ?? null;
     const pos = position ?? nextBlockPosition(activeDiagram);
@@ -1139,22 +1187,12 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       kind: 'PortDefinition',
       name: options?.name?.trim() ?? nextPortName(parent, elements),
       direction,
-    };
-    const portIdsPatch: ElementPatch<'PartDefinition'> = {
-      portIds: [...parent.portIds, portId],
+      ownerId: definitionId,
+      ownerRole: 'port',
+      ownerIndex: nextOwnerIndex(elements, definitionId, 'port'),
     };
     bus.dispatch(
-      {
-        kind: 'compound',
-        commands: [
-          { kind: 'create-element', element: port },
-          {
-            kind: 'update-element',
-            id: definitionId,
-            patch: portIdsPatch,
-          },
-        ],
-      },
+      { kind: 'create-element', element: port },
       user,
     );
     return portId;
@@ -1165,33 +1203,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
     if (!bus || !user || !registry) return;
     const port = registry.get(portDefinitionId);
     if (!port || port.kind !== 'PortDefinition') return;
-    const parent = registry
-      .elements()
-      .find(
-        (e): e is PartDefinitionElement =>
-          e.kind === 'PartDefinition' && e.portIds.includes(portDefinitionId),
-      );
-    if (!parent) {
-      // Orphaned port — just remove it.
-      bus.dispatch({ kind: 'delete-element', id: portDefinitionId }, user);
-      return;
-    }
-    const nextPortIds = parent.portIds.filter((id) => id !== portDefinitionId);
-    const portIdsPatch: ElementPatch<'PartDefinition'> = { portIds: nextPortIds };
-    bus.dispatch(
-      {
-        kind: 'compound',
-        commands: [
-          {
-            kind: 'update-element',
-            id: parent.id,
-            patch: portIdsPatch,
-          },
-          { kind: 'delete-element', id: portDefinitionId },
-        ],
-      },
-      user,
-    );
+    bus.dispatch({ kind: 'delete-element', id: portDefinitionId }, user);
   },
 
   setPortDirection(portDefinitionId, direction) {
@@ -1212,8 +1224,8 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   },
 
   createPartUsage(diagramId, definitionId, position) {
-    const { bus, user, registry, diagrams, elements } = get();
-    if (!bus || !user || !registry) return null;
+    const { bus, user, registry, diagrams, elements, project } = get();
+    if (!bus || !user || !registry || !project) return null;
     if (!diagrams.some((d) => d.id === diagramId)) return null;
     const definition = registry.get(definitionId);
     if (!definition || definition.kind !== 'PartDefinition') return null;
@@ -1222,29 +1234,34 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
     // PartUsage carries a stable list of port endpoints. Skip ports whose
     // PortDefinition is missing from the registry (defensive — should not
     // happen under normal flow).
+    const partUsageId = createElementId();
     const portUsageCreates: Command[] = [];
-    const portUsageIds: ElementId[] = [];
-    for (const portId of definition.portIds) {
-      const portDef = registry.get(portId);
-      if (!portDef || portDef.kind !== 'PortDefinition') continue;
+    const portDefs = childrenOf(elements, definitionId, 'port').filter(
+      (e): e is PortDefinitionElement => e.kind === 'PortDefinition',
+    );
+    for (let i = 0; i < portDefs.length; i++) {
+      const portDef = portDefs[i]!;
       const portUsageId = createElementId();
-      portUsageIds.push(portUsageId);
       const portUsage: PortUsageElement = {
         id: portUsageId,
         kind: 'PortUsage',
         name: portDef.name,
         definitionId: portDef.id,
+        ownerId: partUsageId,
+        ownerRole: 'port',
+        ownerIndex: i,
       };
       portUsageCreates.push({ kind: 'create-element', element: portUsage });
     }
 
-    const partUsageId = createElementId();
     const partUsage: PartUsageElement = {
       id: partUsageId,
       kind: 'PartUsage',
       name: nextPartUsageName(definition, elements),
       definitionId,
-      portUsageIds,
+      ownerId: project.rootId,
+      ownerRole: 'member',
+      ownerIndex: nextOwnerIndex(elements, project.rootId, 'member'),
     };
 
     const commands: Command[] = [
@@ -1349,34 +1366,42 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   },
 
   connectPorts(connection) {
-    const { bus, user, registry, elements } = get();
-    if (!bus || !user || !registry) return null;
+    const { bus, user, registry, elements, project } = get();
+    if (!bus || !user || !registry || !project) return null;
     const canonical = canonicalizeIbdConnection(connection, registry);
     if (!canonical) return null;
     const id = createElementId();
+    const ownerId = project.rootId;
     const element: ConnectionUsageElement = {
       id,
       kind: 'ConnectionUsage',
       name: nextConnectionUsageName(elements),
       sourceId: canonical.sourcePortUsageId,
       targetId: canonical.targetPortUsageId,
+      ownerId,
+      ownerRole: 'member',
+      ownerIndex: nextOwnerIndex(elements, ownerId, 'member'),
     };
     bus.dispatch({ kind: 'create-element', element }, user);
     return id;
   },
 
   connectItemFlow(connection) {
-    const { bus, user, registry, elements } = get();
-    if (!bus || !user || !registry) return null;
+    const { bus, user, registry, elements, project } = get();
+    if (!bus || !user || !registry || !project) return null;
     const canonical = canonicalizeIbdConnection(connection, registry);
     if (!canonical) return null;
     const id = createElementId();
+    const ownerId = project.rootId;
     const element: ItemFlowElement = {
       id,
       kind: 'ItemFlow',
       name: nextItemFlowName(elements),
       sourceId: canonical.sourcePortUsageId,
       targetId: canonical.targetPortUsageId,
+      ownerId,
+      ownerRole: 'member',
+      ownerIndex: nextOwnerIndex(elements, ownerId, 'member'),
     };
     bus.dispatch({ kind: 'create-element', element }, user);
     return id;
@@ -1395,10 +1420,11 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   },
 
   createRequirement(diagramId, position, options) {
-    const { bus, user, registry, diagrams, elements } = get();
-    if (!bus || !user || !registry) return null;
+    const { bus, user, registry, diagrams, elements, project } = get();
+    if (!bus || !user || !registry || !project) return null;
     if (!diagrams.some((d) => d.id === diagramId)) return null;
     const id = createElementId();
+    const ownerId = project.rootId;
     const requirement: RequirementElement = {
       id,
       kind: 'Requirement',
@@ -1407,6 +1433,9 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       priority: options?.priority ?? REQUIREMENT_PRIORITY_DEFAULT,
       status: options?.status ?? REQUIREMENT_STATUS_DEFAULT,
       reqId: options?.reqId ?? nextRequirementReqId(elements),
+      ownerId,
+      ownerRole: 'member',
+      ownerIndex: nextOwnerIndex(elements, ownerId, 'member'),
       ...(options?.rationale !== undefined && options.rationale.length > 0
         ? { rationale: options.rationale }
         : {}),
@@ -1430,8 +1459,8 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   },
 
   createActionUsage(diagramId, position, nodeType, options) {
-    const { bus, user, registry, diagrams, elements } = get();
-    if (!bus || !user || !registry) return null;
+    const { bus, user, registry, diagrams, elements, project } = get();
+    if (!bus || !user || !registry || !project) return null;
     if (!diagrams.some((d) => d.id === diagramId)) return null;
     // Initial / final pseudostates have no displayed name. Skipping the
     // default name keeps the canvas visually clean and the spec's intent
@@ -1440,11 +1469,15 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       nodeType !== 'initial' && nodeType !== 'final';
     const defaultName = isNameableByDefault ? nextActionName(elements) : '';
     const id = createElementId();
+    const ownerId = project.rootId;
     const action: ActionUsageElement = {
       id,
       kind: 'ActionUsage',
       name: options?.name?.trim() ?? defaultName,
       nodeType,
+      ownerId,
+      ownerRole: 'member',
+      ownerIndex: nextOwnerIndex(elements, ownerId, 'member'),
       ...(options?.definitionId !== undefined
         ? { definitionId: options.definitionId }
         : {}),
@@ -1468,8 +1501,8 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   },
 
   createStateUsage(diagramId, position, stateType, options) {
-    const { bus, user, registry, diagrams, elements } = get();
-    if (!bus || !user || !registry) return null;
+    const { bus, user, registry, diagrams, elements, project } = get();
+    if (!bus || !user || !registry || !project) return null;
     if (!diagrams.some((d) => d.id === diagramId)) return null;
     // Initial / final pseudostates have no displayed name. Skipping the
     // default name keeps the canvas visually clean and matches the Activity
@@ -1477,11 +1510,15 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
     const isNameableByDefault = stateType === 'state';
     const defaultName = isNameableByDefault ? nextStateName(elements) : '';
     const id = createElementId();
+    const ownerId = project.rootId;
     const state: StateUsageElement = {
       id,
       kind: 'StateUsage',
       name: options?.name?.trim() ?? defaultName,
       stateType,
+      ownerId,
+      ownerRole: 'member',
+      ownerIndex: nextOwnerIndex(elements, ownerId, 'member'),
       ...(options?.definitionId !== undefined
         ? { definitionId: options.definitionId }
         : {}),
@@ -1505,14 +1542,18 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   },
 
   createActor(diagramId, position, options) {
-    const { bus, user, registry, diagrams, elements } = get();
-    if (!bus || !user || !registry) return null;
+    const { bus, user, registry, diagrams, elements, project } = get();
+    if (!bus || !user || !registry || !project) return null;
     if (!diagrams.some((d) => d.id === diagramId)) return null;
     const id = createElementId();
+    const ownerId = project.rootId;
     const actor: ActorElement = {
       id,
       kind: 'Actor',
       name: options?.name?.trim() ?? nextActorName(elements),
+      ownerId,
+      ownerRole: 'member',
+      ownerIndex: nextOwnerIndex(elements, ownerId, 'member'),
     };
     bus.dispatch(
       {
@@ -1533,15 +1574,18 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   },
 
   createPackage(diagramId, position, options) {
-    const { bus, user, registry, diagrams, elements } = get();
-    if (!bus || !user || !registry) return null;
+    const { bus, user, registry, diagrams, elements, project } = get();
+    if (!bus || !user || !registry || !project) return null;
     if (!diagrams.some((d) => d.id === diagramId)) return null;
     const id = createElementId();
+    const ownerId = project.rootId;
     const pkg: PackageElement = {
       id,
       kind: 'Package',
       name: options?.name?.trim() ?? nextPackageName(elements),
-      memberIds: options?.memberIds ? [...options.memberIds] : [],
+      ownerId,
+      ownerRole: 'member',
+      ownerIndex: nextOwnerIndex(elements, ownerId, 'member'),
     };
     bus.dispatch(
       {
@@ -1562,18 +1606,24 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   },
 
   addPackageMember(packageId, memberId) {
-    const { bus, user, registry } = get();
+    const { bus, user, registry, elements } = get();
     if (!bus || !user || !registry) return;
     const pkg = registry.get(packageId);
     if (!pkg || pkg.kind !== 'Package') return;
     const member = registry.get(memberId);
     if (!member) return;
-    if (pkg.memberIds.includes(memberId)) return;
-    const patch: ElementPatch<'Package'> = {
-      memberIds: [...pkg.memberIds, memberId],
-    };
+    // Already owned by this package — no-op.
+    if (member.ownerId === packageId && member.ownerRole === 'member') return;
     bus.dispatch(
-      { kind: 'update-element', id: packageId, patch },
+      {
+        kind: 'update-element',
+        id: memberId,
+        patch: {
+          ownerId: packageId,
+          ownerRole: 'member' as OwnerRole,
+          ownerIndex: nextOwnerIndex(elements, packageId, 'member'),
+        },
+      },
       user,
     );
   },
@@ -1581,27 +1631,33 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   removePackageMember(packageId, memberId) {
     const { bus, user, registry } = get();
     if (!bus || !user || !registry) return;
-    const pkg = registry.get(packageId);
-    if (!pkg || pkg.kind !== 'Package') return;
-    if (!pkg.memberIds.includes(memberId)) return;
-    const patch: ElementPatch<'Package'> = {
-      memberIds: pkg.memberIds.filter((m) => m !== memberId),
-    };
+    const member = registry.get(memberId);
+    if (!member) return;
+    if (member.ownerId !== packageId || member.ownerRole !== 'member') return;
+    // Remove from this package by clearing the owner reference.
     bus.dispatch(
-      { kind: 'update-element', id: packageId, patch },
+      {
+        kind: 'update-element',
+        id: memberId,
+        patch: { ownerId: null },
+      },
       user,
     );
   },
 
   createUseCase(diagramId, position, options) {
-    const { bus, user, registry, diagrams, elements } = get();
-    if (!bus || !user || !registry) return null;
+    const { bus, user, registry, diagrams, elements, project } = get();
+    if (!bus || !user || !registry || !project) return null;
     if (!diagrams.some((d) => d.id === diagramId)) return null;
     const id = createElementId();
+    const ownerId = project.rootId;
     const useCase: UseCaseElement = {
       id,
       kind: 'UseCase',
       name: options?.name?.trim() ?? nextUseCaseName(elements),
+      ownerId,
+      ownerRole: 'member',
+      ownerIndex: nextOwnerIndex(elements, ownerId, 'member'),
       ...(options?.text !== undefined && options.text.length > 0
         ? { text: options.text }
         : {}),
@@ -1637,19 +1693,22 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   },
 
   createConstraintUsage(diagramId, position, options) {
-    const { bus, user, registry, diagrams, elements } = get();
-    if (!bus || !user || !registry) return null;
+    const { bus, user, registry, diagrams, elements, project } = get();
+    if (!bus || !user || !registry || !project) return null;
     if (!diagrams.some((d) => d.id === diagramId)) return null;
     const usageName = options?.name?.trim() ?? nextConstraintUsageName(elements);
     const definitionName =
       options?.definitionName?.trim() ?? nextConstraintDefinitionName(elements);
     const definitionId = createElementId();
+    const ownerId = project.rootId;
     const definition: ConstraintDefinitionElement = {
       id: definitionId,
       kind: 'ConstraintDefinition',
       name: definitionName,
       expression: options?.expression ?? '',
-      parameterIds: [],
+      ownerId,
+      ownerRole: 'member',
+      ownerIndex: nextOwnerIndex(elements, ownerId, 'member'),
     };
     const usageId = createElementId();
     const usage: ConstraintUsageElement = {
@@ -1657,6 +1716,9 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       kind: 'ConstraintUsage',
       name: usageName,
       definitionId,
+      ownerId,
+      ownerRole: 'member',
+      ownerIndex: nextOwnerIndex(elements, ownerId, 'member') + 1,
     };
     bus.dispatch(
       {
@@ -1678,15 +1740,19 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   },
 
   createValueProperty(diagramId, position, options) {
-    const { bus, user, registry, diagrams, elements } = get();
-    if (!bus || !user || !registry) return null;
+    const { bus, user, registry, diagrams, elements, project } = get();
+    if (!bus || !user || !registry || !project) return null;
     if (!diagrams.some((d) => d.id === diagramId)) return null;
     const id = createElementId();
+    const ownerId = project.rootId;
     const valueProperty: ValuePropertyElement = {
       id,
       kind: 'ValueProperty',
       name: options?.name?.trim() ?? nextValuePropertyName(elements),
       valueType: options?.valueType ?? VALUE_PROPERTY_TYPE_DEFAULT,
+      ownerId,
+      ownerRole: 'member',
+      ownerIndex: nextOwnerIndex(elements, ownerId, 'member'),
       ...(options?.defaultValue !== undefined
         ? { defaultValue: options.defaultValue }
         : {}),
@@ -1794,18 +1860,28 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   },
 
   addActionDefinitionParameter(actionDefinitionId, valuePropertyId) {
-    const { bus, user, registry } = get();
+    const { bus, user, registry, elements } = get();
     if (!bus || !user || !registry) return;
     const existing = registry.get(actionDefinitionId);
     if (!existing || existing.kind !== 'ActionDefinition') return;
     const param = registry.get(valuePropertyId);
     if (!param || param.kind !== 'ValueProperty') return;
-    if (existing.parameterIds.includes(valuePropertyId)) return;
-    const patch: ElementPatch<'ActionDefinition'> = {
-      parameterIds: [...existing.parameterIds, valuePropertyId],
-    };
+    // Already owned as a parameter of this definition — no-op.
+    if (
+      param.ownerId === actionDefinitionId &&
+      param.ownerRole === 'parameter'
+    )
+      return;
     bus.dispatch(
-      { kind: 'update-element', id: actionDefinitionId, patch },
+      {
+        kind: 'update-element',
+        id: valuePropertyId,
+        patch: {
+          ownerId: actionDefinitionId,
+          ownerRole: 'parameter' as OwnerRole,
+          ownerIndex: nextOwnerIndex(elements, actionDefinitionId, 'parameter'),
+        },
+      },
       user,
     );
   },
@@ -1813,16 +1889,19 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   removeActionDefinitionParameter(actionDefinitionId, valuePropertyId) {
     const { bus, user, registry } = get();
     if (!bus || !user || !registry) return;
-    const existing = registry.get(actionDefinitionId);
-    if (!existing || existing.kind !== 'ActionDefinition') return;
-    if (!existing.parameterIds.includes(valuePropertyId)) return;
-    const patch: ElementPatch<'ActionDefinition'> = {
-      parameterIds: existing.parameterIds.filter(
-        (pid) => pid !== valuePropertyId,
-      ),
-    };
+    const param = registry.get(valuePropertyId);
+    if (!param || param.kind !== 'ValueProperty') return;
+    if (
+      param.ownerId !== actionDefinitionId ||
+      param.ownerRole !== 'parameter'
+    )
+      return;
     bus.dispatch(
-      { kind: 'update-element', id: actionDefinitionId, patch },
+      {
+        kind: 'update-element',
+        id: valuePropertyId,
+        patch: { ownerId: null },
+      },
       user,
     );
   },
@@ -1978,18 +2057,22 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   },
 
   connectStateTransition(connection) {
-    const { bus, user, registry, elements } = get();
-    if (!bus || !user || !registry) return null;
+    const { bus, user, registry, elements, project } = get();
+    if (!bus || !user || !registry || !project) return null;
     if (!isValidStateMachineConnection(connection, registry)) return null;
     const { source, target } = connection;
     if (!source || !target) return null;
     const id = createElementId();
+    const ownerId = project.rootId;
     const element: TransitionElement = {
       id,
       kind: 'Transition',
       name: nextTransitionName(elements),
       sourceId: source as ElementId,
       targetId: target as ElementId,
+      ownerId,
+      ownerRole: 'member',
+      ownerIndex: nextOwnerIndex(elements, ownerId, 'member'),
     };
     bus.dispatch({ kind: 'create-element', element }, user);
     return id;
@@ -2152,32 +2235,22 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
     if (member.id === targetPkg.id) return false;
     // A Package itself cannot be a member of another Package per ADR 0009 § 2.
     if (member.kind === 'Package') return false;
-    if (targetPkg.memberIds.includes(elementId)) return false;
+    // Already a member of the target package — no-op.
+    if (member.ownerId === targetPackageId && member.ownerRole === 'member') return false;
 
-    // Find the (at most one) Package that currently owns this element.
-    const sourcePkg = elements.find(
-      (e): e is PackageElement =>
-        e.kind === 'Package' && e.memberIds.includes(elementId),
-    );
-
-    const commands: Command[] = [];
-    if (sourcePkg) {
-      commands.push({
+    // Update the element's owner to point at the target package.
+    bus.dispatch(
+      {
         kind: 'update-element',
-        id: sourcePkg.id,
+        id: elementId,
         patch: {
-          memberIds: sourcePkg.memberIds.filter((m) => m !== elementId),
-        } as ElementPatch<'Package'>,
-      });
-    }
-    commands.push({
-      kind: 'update-element',
-      id: targetPkg.id,
-      patch: {
-        memberIds: [...targetPkg.memberIds, elementId],
-      } as ElementPatch<'Package'>,
-    });
-    bus.dispatch({ kind: 'compound', commands }, user);
+          ownerId: targetPackageId,
+          ownerRole: 'member' as OwnerRole,
+          ownerIndex: nextOwnerIndex(elements, targetPackageId, 'member'),
+        },
+      },
+      user,
+    );
     return true;
   },
 
@@ -2380,12 +2453,35 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
     }
     const now = new Date().toISOString();
     const projectId = parsed.value.projectId ?? createProjectId();
+    const importedElements = parsed.value.elements;
+    // Find an existing root Package (ownerId === null), or synthesize one.
+    const existingRoot = importedElements.find(
+      (e): e is PackageElement => e.kind === 'Package' && e.ownerId === null,
+    );
+    let rootId: ElementId;
+    let elements: readonly ModelElement[];
+    if (existingRoot) {
+      rootId = existingRoot.id;
+      elements = importedElements;
+    } else {
+      const rootPkg: PackageElement = {
+        id: createElementId(),
+        kind: 'Package',
+        name: parsed.value.projectName ?? 'Imported Project',
+        ownerId: null,
+        ownerRole: 'member',
+        ownerIndex: 0,
+      };
+      rootId = rootPkg.id;
+      elements = [rootPkg, ...importedElements];
+    }
     const project: Project = {
       id: projectId,
       name: parsed.value.projectName ?? get().project?.name ?? 'Imported Project',
       createdAt: now,
       modifiedAt: now,
-      elements: parsed.value.elements,
+      rootId,
+      elements,
       edges: parsed.value.edges,
       diagrams: [newDefaultDiagram()],
       history: EMPTY_COMMAND_HISTORY,

@@ -1,3 +1,5 @@
+import type { ModelElement, PackageElement } from '@/model';
+import { createElementId } from '@/model';
 import type { Project } from '@/repository/types';
 import { EMPTY_COMMAND_HISTORY } from '@/repository/types';
 
@@ -47,12 +49,40 @@ export function parseProjectJson(text: string): ParseProjectJsonResult {
       ? (obj.history as Project['history'])
       : EMPTY_COMMAND_HISTORY;
   const conversations = Array.isArray(obj.conversations) ? obj.conversations : [];
+  const parsedElements = obj.elements as ModelElement[];
+  // Find or synthesize the root Package so that rootId is always populated.
+  let rootId: Project['rootId'];
+  let elements: Project['elements'];
+  if (typeof obj.rootId === 'string' && obj.rootId.length > 0) {
+    rootId = obj.rootId as Project['rootId'];
+    elements = parsedElements;
+  } else {
+    const existingRoot = parsedElements.find(
+      (e): e is PackageElement => e.kind === 'Package' && e.ownerId === null,
+    );
+    if (existingRoot) {
+      rootId = existingRoot.id;
+      elements = parsedElements;
+    } else {
+      const rootPkg: PackageElement = {
+        id: createElementId(),
+        kind: 'Package',
+        name: obj.name as string,
+        ownerId: null,
+        ownerRole: 'member',
+        ownerIndex: 0,
+      };
+      rootId = rootPkg.id;
+      elements = [rootPkg, ...parsedElements];
+    }
+  }
   const project: Project = {
     id: obj.id as Project['id'],
     name: obj.name,
     createdAt: obj.createdAt,
     modifiedAt: obj.modifiedAt,
-    elements: obj.elements as Project['elements'],
+    rootId,
+    elements,
     edges: obj.edges as Project['edges'],
     diagrams: obj.diagrams as Project['diagrams'],
     history,
