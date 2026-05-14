@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { critiqueModelHandler, critiqueModelSchema } from '@/llm/tools/critique-model';
 import { createProjectReader } from '@/llm/project-reader';
-import type { ModelElement } from '@/model';
+import type { ElementId, ModelElement } from '@/model';
 import type { ModelEdge } from '@/model';
 
 const mkEl = (kind: string, name: string, id: string, extra?: Record<string, unknown>): ModelElement =>
@@ -17,6 +17,7 @@ describe('critique_model tool', () => {
       mkEl('Requirement', 'REQ-001', 'req-1'),
     ];
     const reader = createProjectReader({
+      rootId: 'root-pkg' as ElementId,
       projectName: 'Test Project',
       elements,
       edges: [],
@@ -43,6 +44,7 @@ describe('critique_model tool', () => {
       mkEl('PortDefinition', 'OrphanPort', 'port-1'),
     ];
     const reader = createProjectReader({
+      rootId: 'root-pkg' as ElementId,
       projectName: 'Test Project',
       elements,
       edges: [],
@@ -71,6 +73,7 @@ describe('critique_model tool', () => {
       mkEdge('RequirementTrace', 'edge-1', 'el-1', 'req-1'),
     ];
     const reader = createProjectReader({
+      rootId: 'root-pkg' as ElementId,
       projectName: 'Test Project',
       elements,
       edges,

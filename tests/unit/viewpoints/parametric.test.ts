@@ -58,6 +58,9 @@ describe('Parametric viewpoint (issues #135 / #136)', () => {
       parametricViewpoint.nodeTypeFor({
         id: 'c-1' as never,
         kind: 'ConstraintUsage',
+        ownerId: null,
+        ownerRole: 'member',
+        ownerIndex: 0,
         name: 'Newton',
         definitionId: 'cd-1' as never,
       }),
@@ -66,6 +69,9 @@ describe('Parametric viewpoint (issues #135 / #136)', () => {
       parametricViewpoint.nodeTypeFor({
         id: 'v-1' as never,
         kind: 'ValueProperty',
+        ownerId: null,
+        ownerRole: 'member',
+        ownerIndex: 0,
         name: 'mass',
         valueType: 'number',
       }),
@@ -77,10 +83,11 @@ describe('Parametric viewpoint (issues #135 / #136)', () => {
       parametricViewpoint.nodeTypeFor({
         id: 'b-1' as never,
         kind: 'PartDefinition',
+        ownerId: null,
+        ownerRole: 'member',
+        ownerIndex: 0,
         name: 'Block',
         isAbstract: false,
-        propertyIds: [],
-        portIds: [],
       }),
     ).toThrow(/parametric viewpoint cannot render element kind/);
   });
@@ -112,6 +119,9 @@ describe('Parametric viewpoint (issues #135 / #136)', () => {
       parametricViewpoint.edgeTypeForElement({
         id: 'c-1' as never,
         kind: 'ConstraintUsage',
+        ownerId: null,
+        ownerRole: 'member',
+        ownerIndex: 0,
         name: 'Newton',
         definitionId: 'cd-1' as never,
       }),
@@ -123,6 +133,9 @@ describe('Parametric viewpoint (issues #135 / #136)', () => {
       parametricViewpoint.nodeSizeFor({
         id: 'c-1' as never,
         kind: 'ConstraintUsage',
+        ownerId: null,
+        ownerRole: 'member',
+        ownerIndex: 0,
         name: 'Newton',
         definitionId: 'cd-1' as never,
       }),
@@ -134,6 +147,9 @@ describe('Parametric viewpoint (issues #135 / #136)', () => {
       parametricViewpoint.nodeSizeFor({
         id: 'v-1' as never,
         kind: 'ValueProperty',
+        ownerId: null,
+        ownerRole: 'member',
+        ownerIndex: 0,
         name: 'mass',
         valueType: 'number',
       }),

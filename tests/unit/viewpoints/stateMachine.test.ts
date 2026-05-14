@@ -22,6 +22,9 @@ function makeState(stateType: StateUsageElement['stateType']): StateUsageElement
   return {
     id: 's-1' as never,
     kind: 'StateUsage',
+    ownerId: null,
+    ownerRole: 'member',
+    ownerIndex: 0,
     name: 'State',
     stateType,
   };
@@ -31,6 +34,9 @@ function makeTransition(): TransitionElement {
   return {
     id: 't-1' as never,
     kind: 'Transition',
+    ownerId: null,
+    ownerRole: 'member',
+    ownerIndex: 0,
     name: 'transition',
     sourceId: 's-1' as never,
     targetId: 's-2' as never,
@@ -120,6 +126,9 @@ describe('State Machine viewpoint (ADR 0006)', () => {
       stateMachineViewpoint.nodeSizeFor({
         id: 's-def-1' as never,
         kind: 'StateDefinition',
+        ownerId: null,
+        ownerRole: 'member',
+        ownerIndex: 0,
         name: 'Brewing',
         isComposite: false,
       }),
@@ -155,10 +164,11 @@ describe('State Machine viewpoint (ADR 0006)', () => {
     const block: PartDefinitionElement = {
       id: 'p-1' as never,
       kind: 'PartDefinition',
+      ownerId: null,
+      ownerRole: 'member',
+      ownerIndex: 0,
       name: 'Block',
       isAbstract: false,
-      propertyIds: [],
-      portIds: [],
     };
     expect(() => stateMachineViewpoint.nodeTypeFor(block)).toThrow(
       /state machine viewpoint cannot render element kind/,

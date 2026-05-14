@@ -69,8 +69,10 @@ describe('Package viewpoint', () => {
       packageViewpoint.nodeTypeFor({
         id: 'p-1' as never,
         kind: 'Package',
+        ownerId: null,
+        ownerRole: 'member' as const,
+        ownerIndex: 0,
         name: 'Root',
-        memberIds: [],
       }),
     ).toBe(PACKAGE_NODE_TYPE);
   });
@@ -80,10 +82,11 @@ describe('Package viewpoint', () => {
       packageViewpoint.nodeTypeFor({
         id: 'pd-1' as never,
         kind: 'PartDefinition',
+        ownerId: null,
+        ownerRole: 'member' as const,
+        ownerIndex: 0,
         name: 'Wheel',
         isAbstract: false,
-        propertyIds: [],
-        portIds: [],
       }),
     ).toThrow(/package viewpoint cannot render element kind/);
   });
@@ -115,8 +118,10 @@ describe('Package viewpoint', () => {
       packageViewpoint.edgeTypeForElement({
         id: 'p-1' as never,
         kind: 'Package',
+        ownerId: null,
+        ownerRole: 'member' as const,
+        ownerIndex: 0,
         name: 'Root',
-        memberIds: [],
       }),
     ).toThrow(/package viewpoint cannot render element-as-edge kind/);
   });
@@ -130,18 +135,21 @@ describe('Package viewpoint', () => {
       packageViewpoint.nodeSizeFor({
         id: 'p-1' as never,
         kind: 'Package',
+        ownerId: null,
+        ownerRole: 'member' as const,
+        ownerIndex: 0,
         name: 'Root',
-        memberIds: [],
       }),
     ).toEqual(expected);
     expect(
       packageViewpoint.nodeSizeFor({
         id: 'pd-1' as never,
         kind: 'PartDefinition',
+        ownerId: null,
+        ownerRole: 'member' as const,
+        ownerIndex: 0,
         name: 'Wheel',
         isAbstract: false,
-        propertyIds: [],
-        portIds: [],
       }),
     ).toEqual(expected);
   });
@@ -153,22 +161,27 @@ describe('isValidPackageConnection', () => {
     const p1 = {
       id: createElementId(),
       kind: 'Package' as const,
+      ownerId: null,
+      ownerRole: 'member' as const,
+      ownerIndex: 0,
       name: 'P1',
-      memberIds: [],
     };
     const p2 = {
       id: createElementId(),
       kind: 'Package' as const,
+      ownerId: null,
+      ownerRole: 'member' as const,
+      ownerIndex: 0,
       name: 'P2',
-      memberIds: [],
     };
     const block = {
       id: createElementId(),
       kind: 'PartDefinition' as const,
+      ownerId: null,
+      ownerRole: 'member' as const,
+      ownerIndex: 0,
       name: 'B',
       isAbstract: false,
-      propertyIds: [],
-      portIds: [],
     };
     registry.add(p1);
     registry.add(p2);

@@ -149,7 +149,8 @@ describe('workspace store — BDD actions', () => {
     const b = useWorkspaceStore.getState().createBlock()!;
     useWorkspaceStore.getState().setSelection([a, b]);
     useWorkspaceStore.getState().deleteSelection();
-    expect(useWorkspaceStore.getState().elements).toHaveLength(0);
+    // Only the project's root Package should remain after deleting both blocks.
+    expect(useWorkspaceStore.getState().elements.filter((e) => e.id === a || e.id === b)).toHaveLength(0);
     expect(useWorkspaceStore.getState().selectedElementIds).toEqual([]);
   });
 
@@ -272,14 +273,15 @@ describe('workspace store — BDD actions', () => {
   it('undo restores the prior model version; redo replays it', async () => {
     await bootstrap();
     const versionBefore = useWorkspaceStore.getState().modelVersion;
+    const baselineCount = useWorkspaceStore.getState().elements.length;
     useWorkspaceStore.getState().createBlock();
     const versionAfterCreate = useWorkspaceStore.getState().modelVersion;
     expect(versionAfterCreate).toBeGreaterThan(versionBefore);
 
     useWorkspaceStore.getState().undo();
-    expect(useWorkspaceStore.getState().elements).toHaveLength(0);
+    expect(useWorkspaceStore.getState().elements).toHaveLength(baselineCount);
 
     useWorkspaceStore.getState().redo();
-    expect(useWorkspaceStore.getState().elements).toHaveLength(1);
+    expect(useWorkspaceStore.getState().elements).toHaveLength(baselineCount + 1);
   });
 });

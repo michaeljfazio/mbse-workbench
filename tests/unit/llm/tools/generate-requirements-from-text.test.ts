@@ -14,6 +14,7 @@ import type {
 
 function readerWith(elements: readonly ModelElement[]) {
   return createProjectReader({
+    rootId: 'root-pkg' as ElementId,
     projectName: 'Test',
     elements,
     edges: [],
@@ -133,8 +134,10 @@ describe('generate_requirements_from_text tool', () => {
     const pkg: PackageElement = {
       id: 'pkg-1' as ElementId,
       kind: 'Package',
+      ownerId: null,
+      ownerRole: 'member',
+      ownerIndex: 0,
       name: 'Requirements',
-      memberIds: ['existing-1' as ElementId],
     };
     const reader = readerWith([pkg]);
 
@@ -173,10 +176,11 @@ describe('generate_requirements_from_text tool', () => {
     const part: PartDefinitionElement = {
       id: 'part-1' as ElementId,
       kind: 'PartDefinition',
+      ownerId: null,
+      ownerRole: 'member',
+      ownerIndex: 0,
       name: 'Radiator',
       isAbstract: false,
-      propertyIds: [],
-      portIds: [],
     };
     const reader = readerWith([part]);
     const input = generateRequirementsFromTextSchema.parse({

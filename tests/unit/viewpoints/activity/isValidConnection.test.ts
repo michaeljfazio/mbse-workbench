@@ -23,6 +23,9 @@ function seed(actions: readonly ActionSeed[]): ElementRegistry {
     const action: ActionUsageElement = {
       id: mkElementId(a.id),
       kind: 'ActionUsage',
+      ownerId: null,
+      ownerRole: 'member',
+      ownerIndex: 0,
       name: a.id,
       nodeType: a.nodeType,
     };
@@ -125,16 +128,20 @@ describe('isValidActivityConnection', () => {
     const action: ActionUsageElement = {
       id: mkElementId('a1'),
       kind: 'ActionUsage',
+      ownerId: null,
+      ownerRole: 'member',
+      ownerIndex: 0,
       name: 'a1',
       nodeType: 'action',
     };
     const block: PartDefinitionElement = {
       id: mkElementId('b1'),
       kind: 'PartDefinition',
+      ownerId: null,
+      ownerRole: 'member',
+      ownerIndex: 0,
       name: 'Block',
       isAbstract: false,
-      propertyIds: [],
-      portIds: [],
     };
     registry.add(action);
     registry.add(block);

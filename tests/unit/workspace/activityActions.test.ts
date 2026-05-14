@@ -15,6 +15,11 @@ import {
   resetWorkspaceStoreForTests,
   useWorkspaceStore,
 } from '@/workspace';
+import { childIdsOf } from '../helpers/registryReaders';
+
+function parameterIdsOf(defId: ElementId): ElementId[] {
+  return childIdsOf(useWorkspaceStore.getState().elements, defId, 'parameter');
+}
 
 function makeMemoryStorage(): Storage {
   const map = new Map<string, string>();
@@ -154,8 +159,10 @@ describe('workspace store — Activity actions', () => {
     const definition: ActionDefinitionElement = {
       id: defId,
       kind: 'ActionDefinition',
+      ownerId: null,
+      ownerRole: 'member',
+      ownerIndex: 0,
       name: 'PrintLine',
-      parameterIds: [],
     };
     bus.dispatch({ kind: 'create-element', element: definition }, user);
     expect(registry.get(defId)?.kind).toBe('ActionDefinition');
@@ -178,8 +185,10 @@ describe('workspace store — Activity actions', () => {
     const definition: ActionDefinitionElement = {
       id: defId,
       kind: 'ActionDefinition',
+      ownerId: null,
+      ownerRole: 'member',
+      ownerIndex: 0,
       name: 'Sum',
-      parameterIds: [],
     };
     bus.dispatch({ kind: 'create-element', element: definition }, user);
 
@@ -188,12 +197,18 @@ describe('workspace store — Activity actions', () => {
     const valueA: ValuePropertyElement = {
       id: pAId,
       kind: 'ValueProperty',
+      ownerId: null,
+      ownerRole: 'member',
+      ownerIndex: 0,
       name: 'lhs',
       valueType: 'number',
     };
     const valueB: ValuePropertyElement = {
       id: pBId,
       kind: 'ValueProperty',
+      ownerId: null,
+      ownerRole: 'member',
+      ownerIndex: 0,
       name: 'rhs',
       valueType: 'number',
     };
@@ -202,22 +217,13 @@ describe('workspace store — Activity actions', () => {
 
     useWorkspaceStore.getState().addActionDefinitionParameter(defId, pAId);
     useWorkspaceStore.getState().addActionDefinitionParameter(defId, pBId);
-    let def = useWorkspaceStore
-      .getState()
-      .elements.find((e): e is ActionDefinitionElement => e.id === defId)!;
-    expect(def.parameterIds).toEqual([pAId, pBId]);
+    expect(parameterIdsOf(defId)).toEqual([pAId, pBId]);
 
     // Duplicate add is a no-op.
     useWorkspaceStore.getState().addActionDefinitionParameter(defId, pAId);
-    def = useWorkspaceStore
-      .getState()
-      .elements.find((e): e is ActionDefinitionElement => e.id === defId)!;
-    expect(def.parameterIds).toEqual([pAId, pBId]);
+    expect(parameterIdsOf(defId)).toEqual([pAId, pBId]);
 
     useWorkspaceStore.getState().removeActionDefinitionParameter(defId, pAId);
-    def = useWorkspaceStore
-      .getState()
-      .elements.find((e): e is ActionDefinitionElement => e.id === defId)!;
-    expect(def.parameterIds).toEqual([pBId]);
+    expect(parameterIdsOf(defId)).toEqual([pBId]);
   });
 });

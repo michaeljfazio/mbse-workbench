@@ -33,7 +33,7 @@ async function bootstrap() {
 
 function makePackageProposal(name = 'Pkg'): ProposedChange {
   const id = createElementId();
-  const pkg: PackageElement = { id, kind: 'Package', name, memberIds: [] };
+  const pkg: PackageElement = { id, kind: 'Package', name, ownerId: null, ownerRole: 'member' as const, ownerIndex: 0 };
   return {
     id,
     summary: `Create Package "${name}"`,
@@ -141,17 +141,18 @@ describe('workspace store — pending proposal actions (issue #221)', () => {
       commands: [
         {
           kind: 'create-element',
-          element: { id: pkgId, kind: 'Package', name: 'P', memberIds: [] },
+          element: { id: pkgId, kind: 'Package', name: 'P', ownerId: null, ownerRole: 'member' as const, ownerIndex: 0 },
         },
         {
           kind: 'create-element',
           element: {
             id: blockId,
             kind: 'PartDefinition',
+            ownerId: null,
+            ownerRole: 'member',
+            ownerIndex: 0,
             name: 'B',
             isAbstract: false,
-            propertyIds: [],
-            portIds: [],
           },
         },
       ],

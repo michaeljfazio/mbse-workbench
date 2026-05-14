@@ -76,7 +76,11 @@ describe('parametric workspace actions (#136)', () => {
     );
     expect(def).toBeDefined();
     expect(def!.expression).toBe('');
-    expect(def!.parameterIds).toEqual([]);
+    expect(
+      s.elements.filter(
+        (e) => e.ownerId === def!.id && e.ownerRole === 'parameter',
+      ),
+    ).toEqual([]);
 
     const diagram = s.diagrams.find((d) => d.id === diagramId);
     expect(diagram?.positions[id!]).toEqual({ x: 100, y: 120 });

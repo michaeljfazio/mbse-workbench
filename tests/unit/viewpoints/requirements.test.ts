@@ -51,6 +51,9 @@ describe('Requirements viewpoint', () => {
       requirementsViewpoint.nodeTypeFor({
         id: 'r-1' as never,
         kind: 'Requirement',
+        ownerId: null,
+        ownerRole: 'member',
+        ownerIndex: 0,
         name: 'R1',
         reqId: 'REQ-1',
         text: 'Something',
@@ -64,10 +67,11 @@ describe('Requirements viewpoint', () => {
     const block: PartDefinitionElement = {
       id: 'p-1' as never,
       kind: 'PartDefinition',
+      ownerId: null,
+      ownerRole: 'member',
+      ownerIndex: 0,
       name: 'Block',
       isAbstract: false,
-      propertyIds: [],
-      portIds: [],
     };
     expect(() => requirementsViewpoint.nodeTypeFor(block)).toThrow(
       /requirements viewpoint cannot render element kind/,
@@ -102,6 +106,9 @@ describe('Requirements viewpoint', () => {
       requirementsViewpoint.edgeTypeForElement({
         id: 'r-1' as never,
         kind: 'Requirement',
+        ownerId: null,
+        ownerRole: 'member',
+        ownerIndex: 0,
         name: 'R1',
         reqId: 'REQ-1',
         text: 'Something',

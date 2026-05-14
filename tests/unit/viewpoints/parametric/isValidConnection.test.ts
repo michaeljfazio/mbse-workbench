@@ -18,6 +18,9 @@ function mkConstraintUsage(idSlug: string): ModelElement {
   return {
     id: mkElementId(idSlug),
     kind: 'ConstraintUsage',
+    ownerId: null,
+    ownerRole: 'member',
+    ownerIndex: 0,
     name: idSlug,
     definitionId: mkElementId(`${idSlug}-def`),
   };
@@ -27,6 +30,9 @@ function mkValueProperty(idSlug: string): ModelElement {
   return {
     id: mkElementId(idSlug),
     kind: 'ValueProperty',
+    ownerId: null,
+    ownerRole: 'member',
+    ownerIndex: 0,
     name: idSlug,
     valueType: 'number',
   };
@@ -36,10 +42,11 @@ function mkBlock(idSlug: string): ModelElement {
   return {
     id: mkElementId(idSlug),
     kind: 'PartDefinition',
+    ownerId: null,
+    ownerRole: 'member',
+    ownerIndex: 0,
     name: idSlug,
     isAbstract: false,
-    propertyIds: [],
-    portIds: [],
   };
 }
 

@@ -172,8 +172,12 @@ describe('<Inspector />', () => {
     const id = useWorkspaceStore.getState().connectPorts({
       source: partA,
       target: partB,
-      sourceHandle: portUsageA.portUsageIds[0]!,
-      targetHandle: portUsageB.portUsageIds[0]!,
+      sourceHandle: useWorkspaceStore
+        .getState()
+        .elements.find((e) => e.ownerId === partA && e.ownerRole === 'port')!.id,
+      targetHandle: useWorkspaceStore
+        .getState()
+        .elements.find((e) => e.ownerId === partB && e.ownerRole === 'port')!.id,
     })!;
     useWorkspaceStore.getState().setSelection([id]);
 

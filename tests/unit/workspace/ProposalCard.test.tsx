@@ -35,7 +35,7 @@ async function bootstrap() {
 
 function makePackageProposal(name = 'Pkg'): ProposedChange {
   const id = createElementId();
-  const pkg: PackageElement = { id, kind: 'Package', name, memberIds: [] };
+  const pkg: PackageElement = { id, kind: 'Package', name, ownerId: null, ownerRole: 'member' as const, ownerIndex: 0 };
   return {
     id,
     summary: `Create Package "${name}"`,

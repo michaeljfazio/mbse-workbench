@@ -17,10 +17,11 @@ function block(name: string, id: string): PartDefinitionElement {
   return {
     id: mkElementId(id),
     kind: 'PartDefinition',
+    ownerId: null,
+    ownerRole: 'member',
+    ownerIndex: 0,
     name,
     isAbstract: false,
-    propertyIds: [],
-    portIds: [],
   };
 }
 

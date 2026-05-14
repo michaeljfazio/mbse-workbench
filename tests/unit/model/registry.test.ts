@@ -16,10 +16,11 @@ function mkPartDef(name: string, id?: ElementId): PartDefinitionElement {
   return {
     id: id ?? createElementId(),
     kind: 'PartDefinition',
+    ownerId: null,
+    ownerRole: 'member',
+    ownerIndex: 0,
     name,
     isAbstract: false,
-    propertyIds: [],
-    portIds: [],
   };
 }
 
@@ -379,6 +380,9 @@ describe('ElementRegistry — checkIntegrity', () => {
     const orphan: ModelElement = {
       id: createElementId(),
       kind: 'ConnectionUsage',
+      ownerId: null,
+      ownerRole: 'member',
+      ownerIndex: 0,
       name: 'orphan',
       sourceId: a.id,
       targetId: mkElementId('does-not-exist'),

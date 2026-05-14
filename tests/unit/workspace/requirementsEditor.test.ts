@@ -21,6 +21,9 @@ function makeReq(
   return {
     id: mkElementId(id),
     kind: 'Requirement',
+    ownerId: null,
+    ownerRole: 'member',
+    ownerIndex: 0,
     name: `Req-${id}`,
     text: '',
     priority: 'medium',

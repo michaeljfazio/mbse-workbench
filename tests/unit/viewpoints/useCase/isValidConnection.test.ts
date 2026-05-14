@@ -16,6 +16,9 @@ function mkActor(idSlug: string): ModelElement {
   return {
     id: mkElementId(idSlug),
     kind: 'Actor',
+    ownerId: null,
+    ownerRole: 'member',
+    ownerIndex: 0,
     name: idSlug,
   };
 }
@@ -24,6 +27,9 @@ function mkUseCase(idSlug: string): ModelElement {
   return {
     id: mkElementId(idSlug),
     kind: 'UseCase',
+    ownerId: null,
+    ownerRole: 'member',
+    ownerIndex: 0,
     name: idSlug,
   };
 }
@@ -32,10 +38,11 @@ function mkBlock(idSlug: string): ModelElement {
   return {
     id: mkElementId(idSlug),
     kind: 'PartDefinition',
+    ownerId: null,
+    ownerRole: 'member',
+    ownerIndex: 0,
     name: idSlug,
     isAbstract: false,
-    propertyIds: [],
-    portIds: [],
   };
 }
 

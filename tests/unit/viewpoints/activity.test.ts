@@ -26,6 +26,9 @@ function makeAction(nodeType: ActionUsageElement['nodeType']): ActionUsageElemen
   return {
     id: 'a-1' as never,
     kind: 'ActionUsage',
+    ownerId: null,
+    ownerRole: 'member',
+    ownerIndex: 0,
     name: 'Action',
     nodeType,
   };
@@ -149,10 +152,11 @@ describe('Activity viewpoint', () => {
     const block: PartDefinitionElement = {
       id: 'p-1' as never,
       kind: 'PartDefinition',
+      ownerId: null,
+      ownerRole: 'member',
+      ownerIndex: 0,
       name: 'Block',
       isAbstract: false,
-      propertyIds: [],
-      portIds: [],
     };
     expect(() => activityViewpoint.nodeTypeFor(block)).toThrow(
       /activity viewpoint cannot render element kind/,
