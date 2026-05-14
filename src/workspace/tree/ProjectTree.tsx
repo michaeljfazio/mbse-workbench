@@ -94,11 +94,20 @@ function flattenVisible(
 }
 
 export function ProjectTree(): JSX.Element {
-  const elements = useWorkspaceStore((s) => s.elements);
+  const allElements = useWorkspaceStore((s) => s.elements);
+  const projectRootId = useWorkspaceStore((s) => s.project?.rootId ?? null);
   const viewpoints = useWorkspaceStore((s) => s.viewpoints);
   const activeViewpoint = useWorkspaceStore(getActiveViewpoint);
   const selectedElementIds = useWorkspaceStore((s) => s.selectedElementIds);
   const setSelection = useWorkspaceStore((s) => s.setSelection);
+
+  // The implicit project-root Package is hidden from the flat-by-kind tree:
+  // it represents the project itself, not a user-modelled package. T-13.31
+  // replaces this view with a containment tree where the root is the root.
+  const elements = useMemo(
+    () => (projectRootId ? allElements.filter((e) => e.id !== projectRootId) : allElements),
+    [allElements, projectRootId],
+  );
 
   const [collapsed, setCollapsed] = useState<ReadonlySet<ElementKind>>(
     () => new Set(),

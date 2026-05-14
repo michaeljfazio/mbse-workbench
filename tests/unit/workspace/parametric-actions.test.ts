@@ -160,14 +160,15 @@ describe('parametric workspace actions (#136)', () => {
 
   it('undo reverts ConstraintUsage + ConstraintDefinition together (compound command)', async () => {
     const diagramId = await bootstrapParametric();
+    const baseline = useWorkspaceStore.getState().elements.length;
     useWorkspaceStore
       .getState()
       .createConstraintUsage(diagramId, { x: 0, y: 0 });
-    expect(useWorkspaceStore.getState().elements).toHaveLength(2);
+    expect(useWorkspaceStore.getState().elements).toHaveLength(baseline + 2);
     useWorkspaceStore.getState().undo();
-    expect(useWorkspaceStore.getState().elements).toHaveLength(0);
+    expect(useWorkspaceStore.getState().elements).toHaveLength(baseline);
     useWorkspaceStore.getState().redo();
-    expect(useWorkspaceStore.getState().elements).toHaveLength(2);
+    expect(useWorkspaceStore.getState().elements).toHaveLength(baseline + 2);
   });
 });
 

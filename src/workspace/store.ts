@@ -1154,11 +1154,19 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   },
 
   runAutoLayout(diagramId) {
-    const { bus, user, diagrams, elements, edges } = get();
+    const { bus, user, diagrams, elements, edges, viewpoints } = get();
     if (!bus || !user) return;
     const diagram = diagrams.find((d) => d.id === diagramId);
     if (!diagram) return;
-    const layout = dagreLayout(elements, edges, {
+    const viewpoint = viewpoints.get(diagram.viewpointId);
+    const accepted = viewpoint
+      ? new Set<string>(viewpoint.acceptedElementKinds)
+      : null;
+    const layoutInput = accepted
+      ? elements.filter((e) => accepted.has(e.kind))
+      : elements;
+    if (layoutInput.length === 0) return;
+    const layout = dagreLayout(layoutInput, edges, {
       nodeWidth: BDD_BLOCK_WIDTH,
       nodeHeight: BDD_BLOCK_HEIGHT,
     });

@@ -65,8 +65,12 @@ describe('critique_model tool', () => {
 
   it('returns summary for a model with a RequirementTrace edge satisfying requirements', async () => {
     const elements: ModelElement[] = [
-      mkEl('PartDefinition', 'Engine', 'el-1', { portIds: ['port-1'] }),
-      mkEl('PortDefinition', 'InletPort', 'port-1'),
+      mkEl('PartDefinition', 'Engine', 'el-1'),
+      mkEl('PortDefinition', 'InletPort', 'port-1', {
+        ownerId: 'el-1',
+        ownerRole: 'port',
+        ownerIndex: 0,
+      }),
       mkEl('Requirement', 'REQ-001', 'req-1'),
     ];
     const edges: ModelEdge[] = [

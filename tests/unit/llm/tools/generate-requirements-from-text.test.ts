@@ -130,7 +130,7 @@ describe('generate_requirements_from_text tool', () => {
     expect(cmd.element.status).toBe('draft');
   });
 
-  it('appends an update-element command for the owning package when supplied', async () => {
+  it('assigns ownerId to the owning package on every created requirement', async () => {
     const pkg: PackageElement = {
       id: 'pkg-1' as ElementId,
       kind: 'Package',
@@ -151,13 +151,12 @@ describe('generate_requirements_from_text tool', () => {
       reader,
     );
     if (output.kind !== 'proposed-change') throw new Error('expected proposed-change');
-    expect(output.change.commands).toHaveLength(3);
-    const last = output.change.commands[output.change.commands.length - 1];
-    if (last?.kind !== 'update-element') throw new Error('expected update-element last');
-    expect(last.id).toBe(pkg.id);
-    const patch = last.patch as { memberIds: ElementId[] };
-    expect(patch.memberIds[0]).toBe('existing-1');
-    expect(patch.memberIds).toHaveLength(3);
+    expect(output.change.commands).toHaveLength(2);
+    for (const cmd of output.change.commands) {
+      if (cmd.kind !== 'create-element') throw new Error('expected create-element');
+      expect(cmd.element.ownerId).toBe(pkg.id);
+      expect(cmd.element.ownerRole).toBe('member');
+    }
     expect(output.change.summary).toContain('pkg-1');
   });
 
