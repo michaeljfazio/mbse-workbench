@@ -17,6 +17,7 @@ import {
   type ContainmentElementNode,
   type ContainmentTreeNode,
 } from './buildContainmentTree';
+import { ContainmentTreeRowMenu } from './ContainmentTreeRowMenu';
 
 type FocusKey = `el:${ElementId}` | `dg:${DiagramId}`;
 
@@ -73,6 +74,32 @@ export function ContainmentTree(): JSX.Element {
   const activeDiagramId = useWorkspaceStore((s) => s.activeDiagramId);
   const setSelection = useWorkspaceStore((s) => s.setSelection);
   const setActiveDiagram = useWorkspaceStore((s) => s.setActiveDiagram);
+  const renameElementAction = useWorkspaceStore((s) => s.renameElement);
+  const deleteElementAction = useWorkspaceStore((s) => s.deleteElement);
+
+  const [renamingId, setRenamingId] = useState<ElementId | null>(null);
+
+  const beginRename = useCallback((id: ElementId) => {
+    setRenamingId(id);
+  }, []);
+
+  const commitRename = useCallback(
+    (id: ElementId, name: string) => {
+      const trimmed = name.trim();
+      if (trimmed.length > 0) renameElementAction(id, trimmed);
+      setRenamingId(null);
+    },
+    [renameElementAction],
+  );
+
+  const cancelRename = useCallback(() => setRenamingId(null), []);
+
+  const requestDelete = useCallback(
+    (id: ElementId) => {
+      deleteElementAction(id);
+    },
+    [deleteElementAction],
+  );
 
   const root = useMemo(
     () => buildContainmentTree({ elements, diagrams, rootId }),
@@ -354,6 +381,11 @@ export function ContainmentTree(): JSX.Element {
               syncFocus,
               toggleExpanded,
               handleActivate,
+              renamingId,
+              beginRename,
+              commitRename,
+              cancelRename,
+              requestDelete,
             })
           : renderDiagramRow(row, row.node.diagram, {
               focusKey,
@@ -377,6 +409,11 @@ interface ElementRowContext {
   readonly syncFocus: (key: FocusKey) => void;
   readonly toggleExpanded: (key: FocusKey) => void;
   readonly handleActivate: (row: FlatRow) => void;
+  readonly renamingId: ElementId | null;
+  readonly beginRename: (id: ElementId) => void;
+  readonly commitRename: (id: ElementId, name: string) => void;
+  readonly cancelRename: () => void;
+  readonly requestDelete: (id: ElementId) => void;
 }
 
 function renderElementRow(
@@ -389,7 +426,9 @@ function renderElementRow(
   const isSelected = ctx.selectedSet.has(element.id);
   const isExpanded = ctx.expanded.has(row.key);
   const hasChildren = row.hasChildren;
+  const isRenaming = ctx.renamingId === element.id;
   const displayName = elementDisplayName(element);
+  const canDelete = element.ownerId !== null;
   return (
     <div
       key={row.key}
@@ -405,12 +444,13 @@ function renderElementRow(
       ref={(el) => ctx.setRef(row.key, el)}
       onFocus={() => ctx.syncFocus(row.key)}
       onClick={(e) => {
+        if (isRenaming) return;
         e.stopPropagation();
         ctx.focusItem(row.key);
         ctx.handleActivate(row);
       }}
       style={{ paddingLeft: `${row.depth * 12 + 4}px` }}
-      className={`flex cursor-pointer select-none items-center gap-1 rounded px-1 py-1 text-sm text-foreground hover:bg-accent focus:outline-none focus:ring-1 focus:ring-primary ${
+      className={`group flex cursor-pointer select-none items-center gap-1 rounded px-1 py-1 text-sm text-foreground hover:bg-accent focus:outline-none focus:ring-1 focus:ring-primary ${
         isSelected ? 'bg-primary/10' : ''
       }`}
     >
@@ -426,14 +466,81 @@ function renderElementRow(
       >
         {hasChildren ? (isExpanded ? '▾' : '▸') : ''}
       </span>
-      <span className="truncate">{displayName}</span>
+      {isRenaming ? (
+        <ContainmentTreeRenameInput
+          elementId={element.id}
+          initialValue={displayName}
+          onCommit={(name) => ctx.commitRename(element.id, name)}
+          onCancel={ctx.cancelRename}
+        />
+      ) : (
+        <span className="truncate">{displayName}</span>
+      )}
       <span
         aria-hidden="true"
         className="ml-auto shrink-0 truncate text-[10px] uppercase tracking-wide text-foreground/75"
       >
         {element.kind}
       </span>
+      {!isRenaming ? (
+        <ContainmentTreeRowMenu
+          elementId={element.id}
+          canDelete={canDelete}
+          onRename={() => ctx.beginRename(element.id)}
+          onDelete={() => ctx.requestDelete(element.id)}
+        />
+      ) : null}
     </div>
+  );
+}
+
+interface RenameInputProps {
+  readonly elementId: ElementId;
+  readonly initialValue: string;
+  readonly onCommit: (name: string) => void;
+  readonly onCancel: () => void;
+}
+
+function ContainmentTreeRenameInput({
+  elementId,
+  initialValue,
+  onCommit,
+  onCancel,
+}: RenameInputProps): JSX.Element {
+  const [value, setValue] = useState(initialValue);
+  const ref = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const input = ref.current;
+    if (!input) return;
+    input.focus();
+    input.select();
+  }, []);
+
+  return (
+    <input
+      ref={ref}
+      type="text"
+      value={value}
+      data-testid={`containment-tree-element-rename-${elementId}`}
+      onChange={(e) => setValue(e.target.value)}
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          e.stopPropagation();
+          onCommit(value);
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          e.stopPropagation();
+          onCancel();
+        } else {
+          e.stopPropagation();
+        }
+      }}
+      onBlur={() => onCommit(value)}
+      className="min-w-0 flex-1 rounded border border-border bg-card px-1 py-0 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+    />
   );
 }
 
