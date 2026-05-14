@@ -6,29 +6,39 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 711
+- Iteration #: 712
 - Started: 2026-05-14
 - Branch: issue/255-explorer-foundation-ownerid-context
-- Working on: #255 — iter-711 migrated the 4 src/**/__tests__/* test
-  files onto the ownerId schema (commands/bus.test.ts,
-  workspace/impact/__tests__/impact-set.test.ts,
-  workspace/requirements/__tests__/{coverage,matrix}.test.ts). Fixture
-  builders mkPartDef / partDef / partUsage / action now construct with
-  { ownerId: null, ownerRole: 'member', ownerIndex: 0 } and drop the
-  legacy parent-side arrays. tsconfig.app.json src/** is now FULLY
-  clean (0 errors); cascade 207 → 196, all remaining in tests/unit/**.
-  Next iter: tests/unit/** — note many of these tests semantically
-  assert against the deprecated parent-side arrays (e.g.
-  `findPartDef(defId)?.portIds`), so they require re-authoring against
-  registry.childrenOf(id, role), not just fixture shape patches.
-  Suggested order: (a) build tests/unit/helpers/elementFactories.ts to
-  centralise the new owner-bearing constructors, (b) sweep the
-  fixture-only files (smallest first: bdd/isValidConnection.test 2,
-  activity.test 2, viewpoints/activity/isValidConnection.test 3, etc.),
-  (c) re-author the semantically-coupled files (ibdActions 39,
-  packageActions 15, activityActions 7, navTargets 6, parametric.test
-  6, ibd/partUsageHelpers 6). Goal: drive errors to zero, then green
-  pnpm test:unit + pnpm build, then push + open PR.
+- Working on: #255 — iter-712 drove the ownerId schema cascade to ZERO
+  typecheck errors (196 → 0). Shipped the helpers
+  (tests/unit/helpers/{elementFactories,registryReaders}.ts) and a
+  one-shot batch script (scripts/migrate-test-fixtures.mjs) that strips
+  parent-side child-array properties and injects ownerId/ownerRole/
+  ownerIndex after the `kind:` discriminator. Hand-migrated the
+  semantically-coupled files (ibdActions: portIdsOf/portUsageIdsOf
+  helpers; packageActions: memberIdsOf; partUsageHelpers: re-authored
+  buildRegistry to set port-usage owner correctly; Inspector and
+  bddActions: read containment via store.elements.filter).
+  pnpm test:unit: 877 tests, 864 passing, 13 failing across 7 files.
+  Remaining failures are narrowly semantic (root Package element
+  present after bootstrap; LLM handlers no longer chain update-element
+  on memberIds; ProjectTree spec asserts the flat-by-kind tree which
+  T-13.31 will replace).
+  Next iter: fix the 13 unit failures, then green
+  pnpm typecheck + pnpm test:unit + pnpm build, then push + open PR.
+  Specific failures to handle:
+    - workspace/bddActions.test.ts: runAutoLayout-on-empty diagram is
+      bumping modelVersion — root Package is now an element.
+    - workspace/parametric-actions.test.ts: undo of compound
+      ConstraintUsage+ConstraintDefinition no longer single-step.
+    - workspace/store.test.ts: command-bus history persist + rehydrate.
+    - llm/tools/critique-model.test.ts: summary text for
+      RequirementTrace assertion shifted.
+    - llm/tools/generate-requirements-from-text.test.ts: "appends
+      update-element for owning package" — handler no longer does this.
+    - workspace/tree/ProjectTree.test.tsx (5 specs): asserts flat-by-
+      kind shape that T-13.31 will replace. Treat as superseded by
+      T-13.31 — likely re-author against the new containment tree.
 
 ## Last test run
 - Command: pnpm typecheck && pnpm lint && pnpm test:unit && pnpm build && pnpm test:e2e (visual skipped on darwin per playwright.config grepInvert)
@@ -162,15 +172,15 @@ Done so far in this PR (committed locally, not pushed):
 - Repository codemod + repository test fixtures (846cf74)
 - Serializer + parser migration + tests (d6a9c0c)
 - LLM tool handlers (six tools) + ProjectReader.rootId (4e9a88c)
-- Production-code readers migrated: Inspector, PartUsageTypePopover,
-  CanvasPane, flowGraph, partUsageHelpers, isValidConnection,
-  collab/permissions + colocated collab tests (f8187f6)
+- Production-code readers migrated (f8187f6)
 - src/**/__tests__ migrated: bus, impact-set, coverage, matrix (597b39e)
+- tests/unit/** migrated to zero typecheck errors via helpers + batch
+  script (71d03cd, cb03cf6).
 
 Remaining (in order):
-1. tests/unit/** — re-author against the new schema. Build a shared
-   helper at tests/unit/helpers/elementFactories.ts first.
-2. Re-run pnpm typecheck + pnpm test:unit; gate is zero errors + green.
+1. Fix the 13 remaining unit-test semantic failures (see "Specific
+   failures to handle" above).
+2. Re-run pnpm typecheck + pnpm test:unit + pnpm build; push + PR.
 
 Commit incrementally on the branch; do NOT push until pnpm typecheck +
 pnpm test:unit pass locally. Push when ready, open PR, auto-merge.
