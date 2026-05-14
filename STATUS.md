@@ -6,13 +6,31 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 713
+- Iteration #: 714
 - Started: 2026-05-14
 - Branch: issue/255-explorer-foundation-ownerid-context (PR #256)
-- Working on: #255 — iter-713 closed out the 10 residual unit failures
+- Working on: #255 — first CI run on PR #256 failed with 34 e2e
+  failures (all symptomatic of the ownerId schema migration — local
+  e2e run had skipped visual on darwin but the functional cascade
+  was masked locally somehow; CI ground truth caught it).
+  Two categories of fix landed this iter (commit 192d420):
+    A. Element-count helpers in phase-4/5/6/7/8/12, final, and
+       json-import-export gate specs now filter out the root Package
+       (ownerId !== null), so "undo to empty" actually reaches 0
+       user elements. CanvasPane.elementCount likewise filters root
+       so the Export-disabled and empty-state surfaces re-engage on
+       a fresh project.
+    B. phase-9 gate now derives Package membership via
+       `elements.filter(e => e.ownerId === pkgId)` instead of reading
+       the removed `memberIds` field; inspector spec expects a non-
+       empty rootId in the owner field.
+  Visual baseline `package-empty.spec.ts:@visual` may still fail; not
+  patched this iter — likely needs deliberate baseline refresh once
+  T-13.31 (containment tree) lands and the ProjectTree settles. Will
+  re-evaluate after this CI run.
+- Iter-713 summary (prior): closed out the 10 residual unit failures
   from the ownerId schema migration. Suite is 877/877 green; tsc -b 0
-  errors; pnpm build clean. Pushed and opened PR #256 with auto-merge
-  enabled; awaiting CI (full e2e + visual baselines).
+  errors; pnpm build clean. Pushed and opened PR #256.
   Fixes landed this iter:
     - runAutoLayout filters elements by viewpoint.acceptedElementKinds
       before feeding dagre (was including the implicit root Package).
@@ -158,7 +176,11 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
-Wait for PR #256 to merge on green CI. Once merged, start T-13.31
+Wait for PR #256's next CI run (post-192d420). If green, auto-merge
+fires. If `package-empty.spec.ts:@visual` is the only remaining red,
+update the baseline deliberately in a follow-up commit on this branch
+(documented as a side-effect of the root-Package becoming a real
+element). Once merged, start T-13.31
 (replace flat-by-kind ProjectTree with containment-driven tree rooted
 at project.rootId, with representations nested under owners). The
 schema, registry helpers (childrenOf / parentOf), and DiagramContext
