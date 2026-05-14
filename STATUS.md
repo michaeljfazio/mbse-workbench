@@ -6,11 +6,11 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 546
+- Iteration #: 547
 - Started: 2026-05-14
 - Branch: issue/253-card-tokens-square-ports
-- Working on: PR #254 — CI still IN_PROGRESS (mergeStateStatus
-  BLOCKED pending the single `check` workflow run); auto-merge armed
+- Working on: PR #254 — rebased onto main (resolved STATUS.md conflict
+  from iter-546 loop bump); force-pushed; auto-merge re-armed; awaiting CI
 
 ## Last test run
 - Command: pnpm typecheck && pnpm lint && pnpm test:unit && pnpm build && pnpm test:e2e (visual skipped on darwin per playwright.config grepInvert)
