@@ -6,22 +6,24 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 717
+- Iteration #: 718
 - Started: 2026-05-14
-- Branch: issue/257-diagram-context-union-widening
-- Working on: #257 — T-13.30 prep. Widen DiagramContext from one-member
-  (partDefinition only) to the 4-kind discriminated union specified by
-  ADR 0011: { package | partDefinition | actionDefinition |
-  stateDefinition }. Pure additive type change — `context` stays
-  optional and no consumers migrate. Re-exports new interfaces from
-  src/workspace/index.ts. Unit test covers exhaustive-switch narrowing.
+- Branch: issue/259-containment-tree-foundation
+- Working on: #259 — T-13.31 foundation. Pure tree-builder
+  `buildContainmentTree(elements, diagrams, rootId)` returning a typed
+  `ContainmentTreeNode` shape (element nodes nested by ownerId/ownerIndex,
+  representations nested under their context.id element, orphan
+  representations attached to root). 13 unit tests cover root anchoring,
+  ownerIndex sort + id-tiebreak, deep nesting, orphan-tolerance for
+  both elements and diagrams, representation sort, and "reps after
+  elements" rule. ProjectTree component swap, keyboard nav, selection
+  sync, context menu, and drag-drop generalization all carry to
+  follow-up T-13.31 iterations. Suite: 892/892 unit / tsc -b clean /
+  lint clean (4 pre-existing react-refresh warnings only).
+- Iter-717 summary (prior): PR #258 merged 1403de4 — DiagramContext widened
+  to 4-kind union { package | partDefinition | actionDefinition |
+  stateDefinition }. Pure additive type change; no consumers migrate.
   Unblocks T-13.31 nesting representations under any owner kind.
-- Iter-716 summary (prior): PR #256 merged on c66cc37 — phase-12
-  round-trip canonicalize strips ownerIndex (derived sibling-ordering
-  hint, not a semantic property). CI green; auto-merge fired.
-  Explorer foundation now in place: ownerId/ownerRole/ownerIndex single
-  source of truth, registry parentOf/childrenOf, explicit root Package.
-  Remaining T-13.30 piece (DiagramContext widening) carries here.
 
 ## Current iteration (archived 716 → 717)
 - Iteration #: 716
@@ -209,11 +211,11 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
-Push #257 and wait for CI. Once green and merged, start T-13.31
-(replace flat-by-kind ProjectTree with containment-driven tree rooted
-at project.rootId, with representations nested under owners). The
-schema, registry helpers (childrenOf / parentOf), and now the
-widened DiagramContext union are all in place to support it.
-DiagramContext stays optional this iter; T-13.31 will decide whether
-to make it required as it migrates the first real consumer (the
-explorer rewrite).
+Push #259 and wait for CI. Once green and merged, the next T-13.31
+iteration replaces ProjectTree.tsx with a renderer driven by
+buildContainmentTree (rather than the flat-by-kind groups). That
+renderer rewrite will retire the 5 pre-existing ProjectTree.test.tsx
+specs (already noted as superseded in iter-713 summary) and add
+keyboard nav + bidirectional selection sync against the new shape.
+Context menu (T-13.33), filter bar (T-13.35), and drag-drop
+generalization (T-13.36) are subsequent iterations.
