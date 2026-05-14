@@ -6,9 +6,26 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 716
+- Iteration #: 717
 - Started: 2026-05-14
-- Branch: issue/255-explorer-foundation-ownerid-context (PR #256)
+- Branch: issue/257-diagram-context-union-widening
+- Working on: #257 — T-13.30 prep. Widen DiagramContext from one-member
+  (partDefinition only) to the 4-kind discriminated union specified by
+  ADR 0011: { package | partDefinition | actionDefinition |
+  stateDefinition }. Pure additive type change — `context` stays
+  optional and no consumers migrate. Re-exports new interfaces from
+  src/workspace/index.ts. Unit test covers exhaustive-switch narrowing.
+  Unblocks T-13.31 nesting representations under any owner kind.
+- Iter-716 summary (prior): PR #256 merged on c66cc37 — phase-12
+  round-trip canonicalize strips ownerIndex (derived sibling-ordering
+  hint, not a semantic property). CI green; auto-merge fired.
+  Explorer foundation now in place: ownerId/ownerRole/ownerIndex single
+  source of truth, registry parentOf/childrenOf, explicit root Package.
+  Remaining T-13.30 piece (DiagramContext widening) carries here.
+
+## Current iteration (archived 716 → 717)
+- Iteration #: 716
+- Branch: issue/255-explorer-foundation-ownerid-context (PR #256 merged)
 - Working on: #255 — CI run 25854947120 on c7b83f6 came back red with
   exactly 2 failures: phase-12-gate.spec.ts:332 round-trip+smoke on
   both chromium and webkit. Diff was ownerIndex shifts after
@@ -192,11 +209,11 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
-Wait for PR #256's CI run on c66cc37. If green, auto-merge fires; if
-red, diagnose the residual surface (only round-trip canonicalize was
-touched this iter — expect the 2 phase-12 failures gone with no new
-regressions). Once merged, start T-13.31
+Push #257 and wait for CI. Once green and merged, start T-13.31
 (replace flat-by-kind ProjectTree with containment-driven tree rooted
 at project.rootId, with representations nested under owners). The
-schema, registry helpers (childrenOf / parentOf), and DiagramContext
-discriminated union are now in place to support it.
+schema, registry helpers (childrenOf / parentOf), and now the
+widened DiagramContext union are all in place to support it.
+DiagramContext stays optional this iter; T-13.31 will decide whether
+to make it required as it migrates the first real consumer (the
+explorer rewrite).

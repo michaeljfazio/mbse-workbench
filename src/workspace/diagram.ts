@@ -12,14 +12,38 @@ export interface NodePosition {
   readonly y: number;
 }
 
-// Per ADR 0003: an IBD diagram is associated with exactly one PartDefinition.
-// BDD diagrams leave `context` `undefined`.
+// A diagram's context anchors it to the owning element whose internal
+// structure it depicts. ADR 0011 widens this to a four-kind discriminated
+// union so diagrams can hang off any container in the containment tree.
+// Until T-13.31 wires the explorer to use it, `context` remains optional;
+// only `partDefinition` currently has consumers (IBD / Parametric).
+export interface PackageDiagramContext {
+  readonly kind: 'package';
+  readonly id: ElementId;
+}
+
 export interface PartDefinitionDiagramContext {
   readonly kind: 'partDefinition';
   readonly id: ElementId;
 }
 
-export type DiagramContext = PartDefinitionDiagramContext;
+export interface ActionDefinitionDiagramContext {
+  readonly kind: 'actionDefinition';
+  readonly id: ElementId;
+}
+
+export interface StateDefinitionDiagramContext {
+  readonly kind: 'stateDefinition';
+  readonly id: ElementId;
+}
+
+export type DiagramContext =
+  | PackageDiagramContext
+  | PartDefinitionDiagramContext
+  | ActionDefinitionDiagramContext
+  | StateDefinitionDiagramContext;
+
+export type DiagramContextKind = DiagramContext['kind'];
 
 export interface Diagram {
   readonly id: DiagramId;
