@@ -335,7 +335,7 @@ function renderElementRow(
       <span className="truncate">{displayName}</span>
       <span
         aria-hidden="true"
-        className="ml-auto shrink-0 truncate text-[10px] uppercase tracking-wide text-muted-foreground"
+        className="ml-auto shrink-0 truncate text-[10px] uppercase tracking-wide text-foreground/75"
       >
         {element.kind}
       </span>

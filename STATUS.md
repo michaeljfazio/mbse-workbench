@@ -6,9 +6,29 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 719
+- Iteration #: 721
 - Started: 2026-05-14
 - Branch: issue/261-containment-tree-renderer (PR #262 auto-merge enabled)
+- Iter-721: CI on d1fda56 came back red with 57 failures. ~50 are
+  `color-contrast` axe violations against the kind-badge span inside
+  selected Explorer rows: `text-muted-foreground` (#64748b) on
+  `bg-primary/10` (~#e7e8ea) = 3.88:1, below the 4.5:1 AA threshold.
+  Fix this iter: switch the kind badge from `text-muted-foreground`
+  to `text-foreground/75` so contrast holds on both bg-card and the
+  selected `bg-primary/10` tint (computed ~#3b404c on the selected
+  tint ≈ 7.5:1). The remaining ~5 failures are @visual baseline drift
+  on bdd-two-blocks-linked / package-empty / parametric-with-binding /
+  parametric-with-constraint-and-value / use-case-empty — they capture
+  fullPage:false, so the new Explorer section in the project-tree pane
+  shifts pixels. Plan: push contrast fix, let CI run, then regen those
+  baselines from CI actuals next iteration.
+- Iter-720 summary (prior): CI on bd48f4d came back red — 119 @a11y
+  failures from the new Explorer section: `text-muted-foreground/80`
+  on the section <h2>s (3.24:1) and `text-muted-foreground/70` on the
+  kind badge (2.71:1) at 10px font size, both below 4.5:1. Fix d1fda56
+  dropped the opacity modifiers so the full muted-foreground token
+  (~4.83:1) was used. That cut the a11y count from 119 to ~50 but
+  didn't address the selected-row case (bg-primary/10 background).
 - Working on: #261 — T-13.31 renderer. New ContainmentTree.tsx user-facing
   component driven by buildContainmentTree. Mounted as new "Explorer"
   section in ProjectTreePane above the existing palette ProjectTree
