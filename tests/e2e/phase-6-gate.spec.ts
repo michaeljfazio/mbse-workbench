@@ -78,6 +78,7 @@ interface StoredElement {
   readonly id: string;
   readonly kind: string;
   readonly name?: string;
+  readonly ownerId?: string | null;
   readonly stateType?: string;
   readonly entryAction?: string;
   readonly doAction?: string;
@@ -383,7 +384,12 @@ test.describe('Phase 6 gate (issue #107)', () => {
         const raw = sessionStorage.getItem(`mbse:v1:project:${id}`);
         if (!raw) return 0;
         const p = JSON.parse(raw);
-        return (p.elements?.length ?? 0) + (p.edges?.length ?? 0);
+        // Exclude the synthesized root Package (ownerId === null) — it
+        // always exists and should not block the "empty" termination check.
+        return (
+          (p.elements?.filter((e: { ownerId: unknown }) => e.ownerId !== null).length ?? 0) +
+          (p.edges?.length ?? 0)
+        );
       }, SEED_PROJECT_ID);
 
     const undoUntilEmpty = async (maxSteps: number): Promise<void> => {
@@ -400,7 +406,8 @@ test.describe('Phase 6 gate (issue #107)', () => {
     await undoUntilEmpty(40);
 
     snapshot = await readProject(page);
-    expect(snapshot.elements).toEqual([]);
+    // After full undo only the synthesized root Package (ownerId === null) remains.
+    expect(snapshot.elements.filter((e) => e.ownerId !== null)).toEqual([]);
 
     // Step 9 — redo all the way forward. Termination needs all four signals:
     // 5 states + 4 transitions + transitionExtras present (trigger/guard/

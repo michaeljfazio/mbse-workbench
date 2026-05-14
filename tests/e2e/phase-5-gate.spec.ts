@@ -77,6 +77,7 @@ interface StoredElement {
   readonly id: string;
   readonly kind: string;
   readonly name?: string;
+  readonly ownerId?: string | null;
   readonly nodeType?: string;
 }
 
@@ -396,7 +397,11 @@ test.describe('Phase 5 gate (issue #90)', () => {
           const raw = sessionStorage.getItem(`mbse:v1:project:${id}`);
           if (!raw) return 0;
           const p = JSON.parse(raw);
-          return (p.elements?.length ?? 0) + (p.edges?.length ?? 0);
+          // Exclude the synthesized root Package (ownerId === null).
+          return (
+            (p.elements?.filter((e: { ownerId: unknown }) => e.ownerId !== null).length ?? 0) +
+            (p.edges?.length ?? 0)
+          );
         }, SEED_PROJECT_ID);
         if (remaining === 0) return;
         await undo();
@@ -406,7 +411,10 @@ test.describe('Phase 5 gate (issue #90)', () => {
         const raw = sessionStorage.getItem(`mbse:v1:project:${id}`);
         if (!raw) return -1;
         const p = JSON.parse(raw);
-        return (p.elements?.length ?? 0) + (p.edges?.length ?? 0);
+        return (
+          (p.elements?.filter((e: { ownerId: unknown }) => e.ownerId !== null).length ?? 0) +
+          (p.edges?.length ?? 0)
+        );
       }, SEED_PROJECT_ID);
       expect(
         finalRemaining,
@@ -416,7 +424,8 @@ test.describe('Phase 5 gate (issue #90)', () => {
     await undoUntilEmpty(40);
 
     snapshot = await readProject(page);
-    expect(snapshot.elements).toEqual([]);
+    // After full undo only the synthesized root Package (ownerId === null) remains.
+    expect(snapshot.elements.filter((e) => e.ownerId !== null)).toEqual([]);
     expect(snapshot.edges).toEqual([]);
 
     // Step 9 — redo all the way forward. Termination needs all four signals:
@@ -443,7 +452,8 @@ test.describe('Phase 5 gate (issue #90)', () => {
             itemType?: string;
           }>;
           return {
-            elements: (p.elements ?? []).length,
+            // Exclude the synthesized root Package (ownerId === null).
+            elements: (p.elements ?? []).filter((e: { ownerId: unknown }) => e.ownerId !== null).length,
             edges: edges.length,
             hasGuard: edges.some(
               (e) => e.kind === 'ControlFlow' && e.guard === 'age >= 18',
@@ -473,7 +483,7 @@ test.describe('Phase 5 gate (issue #90)', () => {
           itemType?: string;
         }>;
         return {
-          elements: (p.elements ?? []).length,
+          elements: (p.elements ?? []).filter((e: { ownerId: unknown }) => e.ownerId !== null).length,
           edges: edges.length,
           hasGuard: edges.some(
             (e) => e.kind === 'ControlFlow' && e.guard === 'age >= 18',
@@ -499,7 +509,8 @@ test.describe('Phase 5 gate (issue #90)', () => {
     await page.reload();
     await page.getByRole('tab', { name: 'System Activity' }).click();
     snapshot = await readProject(page);
-    expect(snapshot.elements).toHaveLength(7);
+    // Exclude the synthesized root Package (ownerId === null) when counting user elements.
+    expect(snapshot.elements.filter((e) => e.ownerId !== null)).toHaveLength(7);
     expect(snapshot.edges).toHaveLength(8);
     expect(
       snapshot.edges.filter((e) => e.kind === 'ControlFlow'),

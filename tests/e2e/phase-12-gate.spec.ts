@@ -351,6 +351,12 @@ test.describe('Phase 12 gate (issue #238) — round-trip + full-viewpoint smoke'
     // 'diagram' (see CanvasPane onClick handler).
     await activateDiagramTab(page, DIAGRAM_TABS[0]!);
 
+    // Capture the pre-export persisted state (already through migration pipeline)
+    // so we can compare against the post-import state without relying on the
+    // shape of the seed constants (which use the pre-T-13.29 schema).
+    const preExport = await readPersistedProject(page, SEED_PROJECT_ID);
+    expect(preExport).not.toBeNull();
+
     // Step 4 — Export SysMLv2 and capture the downloaded text.
     await page.getByTestId('toolbar-export').click();
     const [download] = await Promise.all([
@@ -382,13 +388,18 @@ test.describe('Phase 12 gate (issue #238) — round-trip + full-viewpoint smoke'
     // Wait for the import to settle: the active diagram surface should be
     // back to the new project's default empty diagram. We detect this by
     // polling persisted state — the elements+edges should match the seed
-    // (modulo positions which the serializer doesn't carry).
+    // (modulo positions which the serializer doesn't carry). The re-imported
+    // project includes a synthesized root Package (ownerId === null) in
+    // addition to the user elements, so we exclude it when counting.
     await expect
       .poll(
         async () => {
           const proj = await readPersistedProject(page, SEED_PROJECT_ID);
           if (!proj) return -1;
-          return proj.elements.length + proj.edges.length;
+          const userElements = proj.elements.filter(
+            (e) => (e as { ownerId?: unknown }).ownerId !== null,
+          );
+          return userElements.length + proj.edges.length;
         },
         { timeout: 15_000 },
       )
@@ -397,15 +408,21 @@ test.describe('Phase 12 gate (issue #238) — round-trip + full-viewpoint smoke'
     // Step 6 — structural equality assertion (modulo IDs is satisfied
     // because the serializer's `// id:` comments are the parser's
     // ID-recovery channel — so IDs round-trip exactly).
+    // Compare post-import user elements against pre-export user elements:
+    // both have been through the migration pipeline (ownerId/ownerRole/
+    // ownerIndex set, legacy arrays stripped), so they should match exactly.
     const persisted = await readPersistedProject(page, SEED_PROJECT_ID);
     expect(persisted).not.toBeNull();
-    const expectedElements = canonicalize(
-      SEED_ELEMENTS as unknown as ReadonlyArray<Record<string, unknown>>,
+    const preExportUserElements = preExport!.elements.filter(
+      (e) => (e as { ownerId?: unknown }).ownerId !== null,
+    );
+    const persistedUserElements = persisted!.elements.filter(
+      (e) => (e as { ownerId?: unknown }).ownerId !== null,
     );
     const expectedEdges = canonicalize(
       SEED_EDGES as unknown as ReadonlyArray<Record<string, unknown>>,
     );
-    expect(canonicalize(persisted!.elements)).toEqual(expectedElements);
+    expect(canonicalize(persistedUserElements)).toEqual(canonicalize(preExportUserElements));
     expect(canonicalize(persisted!.edges)).toEqual(expectedEdges);
   });
 

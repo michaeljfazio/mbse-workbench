@@ -1126,7 +1126,7 @@ function CanvasInner(): JSX.Element {
 
   const cancelPendingPart = useCallback(() => setPendingPart(null), []);
 
-  const elementCount = elements.length;
+  const elementCount = elements.filter((e) => e.ownerId !== null).length;
 
   useEffect(() => {
     if (!pending) return;
