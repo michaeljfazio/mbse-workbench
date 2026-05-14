@@ -6,13 +6,12 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 628
+- Iteration #: 629
 - Started: 2026-05-14
 - Branch: issue/253-card-tokens-square-ports
-- Working on: PR #254 — prior CI run 25846316947 went green
-  (SUCCESS at 06:59:34Z) but PR was BEHIND main. Updated branch
-  via `gh pr update-branch 254` at iter-628; CI re-queued on the
-  freshly-merged tip. Auto-merge SQUASH still armed; awaiting green.
+- Working on: PR #254 — CI run 25846704432 IN_PROGRESS on the
+  freshly-updated branch (Unit tests step running, Build + E2E
+  pending). Auto-merge SQUASH armed; awaiting green.
 
 ## Last test run
 - Command: pnpm typecheck && pnpm lint && pnpm test:unit && pnpm build && pnpm test:e2e (visual skipped on darwin per playwright.config grepInvert)
