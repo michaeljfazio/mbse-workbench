@@ -6,11 +6,11 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 583
+- Iteration #: 584
 - Started: 2026-05-14
 - Branch: issue/253-card-tokens-square-ports
 - Working on: PR #254 — CI re-run 25845528786 on rebaselined commit
-  cebb69e still in_progress (started 06:27 UTC). Auto-merge armed.
+  cebb69e still in_progress (~2min in at 06:30 UTC). Auto-merge armed.
   No actionable work this iteration; STATUS bump only.
 
 ## Last test run
