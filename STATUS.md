@@ -6,12 +6,14 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 684
+- Iteration #: 685
 - Started: 2026-05-14
 - Branch: issue/253-card-tokens-square-ports
-- Working on: PR #254 — CI run 25848074264 still in E2E tests step at
-  iter-684 heartbeat (07:46Z, ≈10m elapsed since job start 07:36:39Z).
-  Auto-merge SQUASH enabled. Waiting on CI.
+- Working on: PR #254 — CI run 25848074264 completed SUCCESS at
+  07:46:48Z, but branch protection is strict (required up-to-date)
+  and PR was BEHIND main. Ran `gh pr update-branch 254` at iter-685;
+  new CI run will fire on the merged commit, then auto-merge SQUASH
+  will land it.
 
 ## Last test run
 - Command: pnpm typecheck && pnpm lint && pnpm test:unit && pnpm build && pnpm test:e2e (visual skipped on darwin per playwright.config grepInvert)
