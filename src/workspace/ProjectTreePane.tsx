@@ -1,3 +1,4 @@
+import { ContainmentTree } from './tree/ContainmentTree';
 import { ProjectTree } from './tree/ProjectTree';
 import { useWorkspaceStore } from './store';
 
@@ -23,7 +24,22 @@ export function ProjectTreePane({ width }: ProjectTreePaneProps): JSX.Element {
         {projectName ?? 'Loading…'}
       </header>
       <div className="flex-1 overflow-auto">
-        <ProjectTree />
+        <section
+          aria-label="Explorer"
+          data-testid="project-tree-explorer-section"
+          className="border-b border-border"
+        >
+          <h2 className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/80">
+            Explorer
+          </h2>
+          <ContainmentTree />
+        </section>
+        <section aria-label="Palette" data-testid="project-tree-palette-section">
+          <h2 className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/80">
+            Palette
+          </h2>
+          <ProjectTree />
+        </section>
       </div>
     </aside>
   );
