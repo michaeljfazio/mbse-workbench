@@ -6,32 +6,29 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 710
+- Iteration #: 711
 - Started: 2026-05-14
 - Branch: issue/255-explorer-foundation-ownerid-context
-- Working on: #255 — iter-710 migrated the remaining production-code
-  readers of parent-side child arrays onto the ownerId schema (ADR
-  0011): Inspector.tsx (PackageExtras members + candidates,
-  PartDefinitionExtras ports, ActionDefinitionExtras parameters,
-  describeConnectionEndpoint owner), PartUsageTypePopover (now takes a
-  portCountFor prop), CanvasPane (passes portCountFor + fixes the
-  fake-Package nodeSizeFor probe), flowGraph (Package memberCount
-  derived by scanning ownerId; RegistryLookup widened with
-  childrenOf), partUsageHelpers (resolvePartHandles uses
-  registry.childrenOf(id, 'port'); buildPortUsageOwnership reads
-  PortUsage.ownerId), isValidConnection (validates port-handle
-  ownership via registry.get(portUsageId).ownerId === partUsageId),
-  collab/permissions (reads ownerUserId, not the containment ownerId)
-  + the colocated permissions.test.ts and bus-wiring.test.ts fixtures.
-  Cascade: 229 → 207 errors. ALL remaining errors live in test files
-  (src/**/__tests__/* and tests/unit/**); production code (src/ minus
-  __tests__) is clean against tsconfig.app.json. Next iter: test
-  fixtures across tests/unit/** (model/elements, viewpoints/**,
-  workspace/**, llm/**) + the remaining 7 src/**/__tests__ files
-  (commands/bus.test.ts, workspace/impact/__tests__/impact-set.test,
-  workspace/requirements/__tests__/{coverage,matrix}.test). Goal next
-  iter: drive errors to zero, then green pnpm test:unit + pnpm build,
-  then push + open PR.
+- Working on: #255 — iter-711 migrated the 4 src/**/__tests__/* test
+  files onto the ownerId schema (commands/bus.test.ts,
+  workspace/impact/__tests__/impact-set.test.ts,
+  workspace/requirements/__tests__/{coverage,matrix}.test.ts). Fixture
+  builders mkPartDef / partDef / partUsage / action now construct with
+  { ownerId: null, ownerRole: 'member', ownerIndex: 0 } and drop the
+  legacy parent-side arrays. tsconfig.app.json src/** is now FULLY
+  clean (0 errors); cascade 207 → 196, all remaining in tests/unit/**.
+  Next iter: tests/unit/** — note many of these tests semantically
+  assert against the deprecated parent-side arrays (e.g.
+  `findPartDef(defId)?.portIds`), so they require re-authoring against
+  registry.childrenOf(id, role), not just fixture shape patches.
+  Suggested order: (a) build tests/unit/helpers/elementFactories.ts to
+  centralise the new owner-bearing constructors, (b) sweep the
+  fixture-only files (smallest first: bdd/isValidConnection.test 2,
+  activity.test 2, viewpoints/activity/isValidConnection.test 3, etc.),
+  (c) re-author the semantically-coupled files (ibdActions 39,
+  packageActions 15, activityActions 7, navTargets 6, parametric.test
+  6, ibd/partUsageHelpers 6). Goal: drive errors to zero, then green
+  pnpm test:unit + pnpm build, then push + open PR.
 
 ## Last test run
 - Command: pnpm typecheck && pnpm lint && pnpm test:unit && pnpm build && pnpm test:e2e (visual skipped on darwin per playwright.config grepInvert)
@@ -168,14 +165,12 @@ Done so far in this PR (committed locally, not pushed):
 - Production-code readers migrated: Inspector, PartUsageTypePopover,
   CanvasPane, flowGraph, partUsageHelpers, isValidConnection,
   collab/permissions + colocated collab tests (f8187f6)
+- src/**/__tests__ migrated: bus, impact-set, coverage, matrix (597b39e)
 
 Remaining (in order):
-1. Test fixtures in src/**/__tests__/* (commands/bus.test.ts,
-   workspace/impact/__tests__/impact-set.test,
-   workspace/requirements/__tests__/{coverage,matrix}.test).
-2. Test fixtures in tests/unit/** (model/elements, viewpoints/**,
-   workspace/**, llm/**) — re-author to the new schema.
-3. Re-run pnpm typecheck + pnpm test:unit; gate is zero errors + green.
+1. tests/unit/** — re-author against the new schema. Build a shared
+   helper at tests/unit/helpers/elementFactories.ts first.
+2. Re-run pnpm typecheck + pnpm test:unit; gate is zero errors + green.
 
 Commit incrementally on the branch; do NOT push until pnpm typecheck +
 pnpm test:unit pass locally. Push when ready, open PR, auto-merge.
