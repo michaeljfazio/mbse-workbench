@@ -52,19 +52,19 @@ export async function critiqueModelHandler(
     }
   }
 
-  // Orphan ports: PortDefinition with no PartDefinition that references it via portIds
-  const portsOwnedByPart = new Set(
-    elements
-      .filter((e) => e.kind === 'PartDefinition')
-      .flatMap((e) => (e.kind === 'PartDefinition' ? (e.portIds as readonly string[]) : [])),
+  // Orphan ports: PortDefinition not owned (as a port child) by any PartDefinition.
+  const partDefIds = new Set(
+    elements.filter((e) => e.kind === 'PartDefinition').map((e) => e.id),
   );
   const orphanPorts = elements.filter(
-    (e) => e.kind === 'PortDefinition' && !portsOwnedByPart.has(e.id),
+    (e) =>
+      e.kind === 'PortDefinition' &&
+      !(e.ownerRole === 'port' && e.ownerId !== null && partDefIds.has(e.ownerId)),
   );
   for (const port of orphanPorts) {
     findings.push({
       category: 'orphan-port',
-      message: `PortDefinition "${port.name}" is not referenced by any PartDefinition.portIds.`,
+      message: `PortDefinition "${port.name}" is not owned by any PartDefinition.`,
       elementIds: [port.id],
     });
   }

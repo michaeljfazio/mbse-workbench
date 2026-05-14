@@ -133,8 +133,12 @@ export function ChatPane(): JSX.Element {
       // Build the registry with a reader that reads from the store at handler call time
       const getReader = () => {
         const s = useWorkspaceStore.getState();
+        if (!s.project) {
+          throw new Error('No active project; cannot run LLM tools.');
+        }
         return createProjectReader({
-          projectName: s.project?.name ?? 'Untitled Project',
+          projectName: s.project.name,
+          rootId: s.project.rootId,
           elements: s.elements,
           edges: s.edges,
           diagrams: s.diagrams,
