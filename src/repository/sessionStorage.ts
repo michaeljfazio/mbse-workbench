@@ -1,5 +1,5 @@
+import { migrateLegacyProject } from './migrate';
 import {
-  EMPTY_COMMAND_HISTORY,
   ProjectNotFoundError,
   StorageQuotaError,
   type ModelRepository,
@@ -25,6 +25,7 @@ function toMetadata(project: Project): ProjectMetadata {
     name: project.name,
     createdAt: project.createdAt,
     modifiedAt: project.modifiedAt,
+    rootId: project.rootId,
   };
 }
 
@@ -50,18 +51,11 @@ export function createInMemorySessionRepository(
     const raw = storage.getItem(projectKey(id));
     if (raw === null) return undefined;
     try {
-      const parsed = JSON.parse(raw) as Partial<Project> & { id: Project['id'] };
-      // Forward-compat: older entries may pre-date the `diagrams` and `history`
-      // fields. Default both so the workspace bootstrap can seed safely.
-      const diagrams = Array.isArray(parsed.diagrams) ? parsed.diagrams : [];
-      const history =
-        parsed.history &&
-        Array.isArray(parsed.history.undo) &&
-        Array.isArray(parsed.history.redo)
-          ? parsed.history
-          : EMPTY_COMMAND_HISTORY;
-      const conversations = Array.isArray(parsed.conversations) ? parsed.conversations : [];
-      return { ...(parsed as Project), diagrams, history, conversations };
+      const parsed = JSON.parse(raw);
+      // Run every legacy entry through the codemod — it backfills
+      // ownerId/role/index, synthesizes an explicit root Package, and
+      // defaults the optional history/diagrams/conversations fields.
+      return migrateLegacyProject(parsed);
     } catch {
       return undefined;
     }
@@ -97,7 +91,7 @@ export function createInMemorySessionRepository(
         const raw = storage.getItem(key);
         if (raw === null) continue;
         try {
-          const project = JSON.parse(raw) as Project;
+          const project = migrateLegacyProject(JSON.parse(raw));
           metadata.push(toMetadata(project));
         } catch {
           // Corrupt entry — skip; load() will surface the error per-id.

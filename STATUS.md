@@ -6,19 +6,26 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 705
+- Iteration #: 707
 - Started: 2026-05-14
 - Branch: issue/255-explorer-foundation-ownerid-context
-- Working on: #255 — additive pieces of the bundle landed this iter:
-  exported OwnerRole/OWNER_ROLE_VALUES from model index, added
-  rootId: ElementId to Project, extended registry with parentOf +
-  childrenOf indexes (maintained on add/remove/update-reparent).
-  Cascade still red (219 errors / 26 files); next iters migrate
-  consumers. Important infra finding: root `pnpm typecheck` is a
-  no-op because tsconfig.json uses project references with files=[].
-  Direct `npx tsc -p tsconfig.app.json --noEmit` surfaces real errors.
-  Recorded for follow-up — do NOT fix typecheck script until cascade
-  clears or CI will go red mid-refactor.
+- Working on: #255 — iter-707 landed the repository codemod
+  (src/repository/migrate.ts) and wired it into both
+  sessionStorage.readProject + sessionStorage.list, and replaced
+  jsonProject's ad-hoc root-synthesis with a delegating call to the
+  same migrator. The codemod reads legacy parent-side arrays
+  (memberIds/portIds/propertyIds/portUsageIds/parameterIds/
+  portDefinitionIds), assigns ownerId/ownerRole/ownerIndex to the
+  children, strips the arrays, and synthesizes an explicit root
+  Package when missing. New tests assert legacy schema migration +
+  root synthesis. Repository test fixtures (sessionStorage,
+  conversations, jsonProject) updated to the new element shape.
+  Cascade: 371 → 343 errors. Repository module is now schema-clean.
+  Next iter: serializer/parser pair (src/serializer/sysml.ts +
+  src/parser/sysml.ts — 28 + 13 errors) — they need the same
+  ownerId/role/index surface and to drop the parent-side arrays
+  from their output/input. Then LLM tools (create-element 7 +
+  consumers).
 
 ## Last test run
 - Command: pnpm typecheck && pnpm lint && pnpm test:unit && pnpm build && pnpm test:e2e (visual skipped on darwin per playwright.config grepInvert)
@@ -146,21 +153,25 @@ Phase 14 (deferred from Phase 13, iter-531):
 Continue #255 (T-13.29+T-13.30 bundle) on branch
 issue/255-explorer-foundation-ownerid-context.
 
-Plan, in order:
-1. ElementBase: ownerId required (root excepted), add ownerRole + ownerIndex;
-   drop parent-side child arrays from elements.ts.
-2. id.ts/index.ts: OwnerRole type, helpers.
-3. Project: add rootId; legacy projects synthesize root Package at load.
-4. Registry: parentOf/childrenOf indexes; rebuild on replaceAll; maintain
-   on add/remove/setOwner; load-time invariant check.
-5. Repository.sessionStorage: codemod reader (legacy schema → new shape).
-6. DiagramContext: discriminated union, required; viewpoints declare
-   acceptedContextKinds; legacy migrate to { kind:'package', id:rootId }.
-7. Update all 82 consumers (LLM tools, serializer/parser, store, viewpoints,
-   workspace, tests) to use registry.childrenOf instead of parent arrays.
-8. Add unit tests: schema migration round-trip, registry invariants,
-   load-time invariant rejection, every viewpoint command produces valid
-   ownerId.
+Done so far in this PR (committed locally, not pushed):
+- ADR 0011 + new element/registry schema (b5ba017, c586c88)
+- Workspace store migration (4551f42)
+- Repository codemod + repository test fixtures (this iteration)
+
+Remaining (in order):
+1. src/serializer/sysml.ts + tests — drop parent-side arrays from output
+   (containment derived from registry.childrenOf at write time).
+2. src/parser/sysml.ts + tests — produce children with ownerId/role/index
+   instead of populating parent-side arrays.
+3. src/llm/tools/create-element.ts + suggest-missing-elements + tests.
+4. src/workspace/inspector/Inspector.tsx — replace memberIds/etc. lookups
+   with registry.childrenOf.
+5. Viewpoint helpers (ibd/partUsageHelpers, packageActions, ibdActions,
+   activityActions, parametric, isValidConnection variants) — every
+   reader of a parent-side array gets rewritten to registry.childrenOf.
+6. Test fixtures in tests/unit/** (model/elements, viewpoints/**,
+   workspace/**, llm/**) — re-author to the new schema.
+7. Re-run pnpm typecheck + pnpm test:unit; gate is zero errors + green.
 
 Commit incrementally on the branch; do NOT push until pnpm typecheck +
 pnpm test:unit pass locally. Push when ready, open PR, auto-merge.

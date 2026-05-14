@@ -1,7 +1,5 @@
-import type { ModelElement, PackageElement } from '@/model';
-import { createElementId } from '@/model';
+import { migrateLegacyProject } from '@/repository/migrate';
 import type { Project } from '@/repository/types';
-import { EMPTY_COMMAND_HISTORY } from '@/repository/types';
 
 export type ParseProjectJsonResult =
   | { readonly ok: true; readonly project: Project }
@@ -41,52 +39,11 @@ export function parseProjectJson(text: string): ParseProjectJsonResult {
   if (!Array.isArray(obj.diagrams) || obj.diagrams.length === 0) {
     return { ok: false, message: 'project.diagrams must be a non-empty array' };
   }
-  const history =
-    obj.history &&
-    typeof obj.history === 'object' &&
-    Array.isArray((obj.history as { undo?: unknown }).undo) &&
-    Array.isArray((obj.history as { redo?: unknown }).redo)
-      ? (obj.history as Project['history'])
-      : EMPTY_COMMAND_HISTORY;
-  const conversations = Array.isArray(obj.conversations) ? obj.conversations : [];
-  const parsedElements = obj.elements as ModelElement[];
-  // Find or synthesize the root Package so that rootId is always populated.
-  let rootId: Project['rootId'];
-  let elements: Project['elements'];
-  if (typeof obj.rootId === 'string' && obj.rootId.length > 0) {
-    rootId = obj.rootId as Project['rootId'];
-    elements = parsedElements;
-  } else {
-    const existingRoot = parsedElements.find(
-      (e): e is PackageElement => e.kind === 'Package' && e.ownerId === null,
-    );
-    if (existingRoot) {
-      rootId = existingRoot.id;
-      elements = parsedElements;
-    } else {
-      const rootPkg: PackageElement = {
-        id: createElementId(),
-        kind: 'Package',
-        name: obj.name as string,
-        ownerId: null,
-        ownerRole: 'member',
-        ownerIndex: 0,
-      };
-      rootId = rootPkg.id;
-      elements = [rootPkg, ...parsedElements];
-    }
+  // Delegate root synthesis + legacy schema migration to the shared codemod.
+  try {
+    return { ok: true, project: migrateLegacyProject(obj) };
+  } catch (err) {
+    const detail = err instanceof Error ? err.message : 'invalid project';
+    return { ok: false, message: detail };
   }
-  const project: Project = {
-    id: obj.id as Project['id'],
-    name: obj.name,
-    createdAt: obj.createdAt,
-    modifiedAt: obj.modifiedAt,
-    rootId,
-    elements,
-    edges: obj.edges as Project['edges'],
-    diagrams: obj.diagrams as Project['diagrams'],
-    history,
-    conversations: conversations as Project['conversations'],
-  };
-  return { ok: true, project };
 }

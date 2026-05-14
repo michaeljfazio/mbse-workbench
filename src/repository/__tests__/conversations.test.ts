@@ -5,7 +5,7 @@ import {
   EMPTY_COMMAND_HISTORY,
   type Project,
 } from '@/repository';
-import type { ProjectId } from '@/model';
+import type { ElementId, ProjectId } from '@/model';
 
 function createFakeStorage(): Storage {
   const map = new Map<string, string>();
@@ -63,12 +63,23 @@ const CONVERSATION: Conversation = {
 };
 
 function makeProject(): Project {
+  const rootId = 'p-conv-root' as ElementId;
   return {
     id: 'p-conv' as ProjectId,
     name: 'conv-test',
     createdAt: '2026-05-13T09:00:00.000Z',
     modifiedAt: '2026-05-13T10:05:00.000Z',
-    elements: [],
+    rootId,
+    elements: [
+      {
+        id: rootId,
+        kind: 'Package',
+        name: 'conv-test',
+        ownerId: null,
+        ownerRole: 'member',
+        ownerIndex: 0,
+      },
+    ],
     edges: [],
     diagrams: [],
     history: EMPTY_COMMAND_HISTORY,
