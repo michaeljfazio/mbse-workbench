@@ -6,6 +6,21 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
+- Iteration #: 723
+- Started: 2026-05-14
+- Branch: issue/263-tree-canvas-selection-sync (PR opening)
+- Iter-723: PR #262 merged green (CI 25860078819). Started T-13.32:
+  reveal-in-tree on canvas selection / diagram activation. Two
+  useEffects in ContainmentTree.tsx: one watches selectedElementIds[0],
+  walks ownerId chain to compute ancestors, drops them from `collapsed`
+  set, and queues scrollIntoView({block:'nearest'}) on the row ref.
+  The second mirrors the same for activeDiagramId via diagram.context.id.
+  Ancestor walker is cycle-guarded. expandAncestors returns prev unchanged
+  when no ancestors are collapsed (no needless rerender). 3 new unit
+  specs (auto-expand, scrollIntoView for element, scrollIntoView for
+  diagram); 905/905 unit, tsc -b clean, lint clean.
+
+## Current iteration (archived 722 → 723)
 - Iteration #: 722
 - Started: 2026-05-14
 - Branch: issue/261-containment-tree-renderer (PR #262 auto-merge enabled)
@@ -249,10 +264,10 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
-Wait for PR #262 CI to merge. Next iteration: T-13.32 reveal-in-tree
-(canvas selection → scroll-into-view + auto-expand ancestors in the
-ContainmentTree). Then T-13.33 (three-dots context menu) and T-13.35
-(filter bar). The "retire flat-by-kind ProjectTree" cutover is its
+Wait for PR #263 CI to merge. Next iteration: T-13.33 (three-dots
+context menu per node: Rename / Delete / Create child / Create
+representation / Move). Then T-13.35 (filter bar) and T-13.36
+(generalized drag-drop move). The "retire flat-by-kind ProjectTree" cutover is its
 own larger iteration because it requires migrating 13+ e2e specs off
 `project-tree-group-<Kind>` drag-sources onto explicit "+" affordances
 (T-13.04). Scheduling that cutover after the explorer is feature-rich
