@@ -2,23 +2,33 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import type { ElementId } from '@/model';
 
+import type { ChildKindOption } from './childAcceptance';
+
 export interface ContainmentTreeRowMenuProps {
   readonly elementId: ElementId;
   readonly canDelete: boolean;
+  readonly childKinds: readonly ChildKindOption[];
   readonly onRename: () => void;
   readonly onDelete: () => void;
+  readonly onCreateChild: (option: ChildKindOption) => void;
 }
 
 export function ContainmentTreeRowMenu({
   elementId,
   canDelete,
+  childKinds,
   onRename,
   onDelete,
+  onCreateChild,
 }: ContainmentTreeRowMenuProps): JSX.Element {
   const [open, setOpen] = useState(false);
+  const [createOpen, setCreateOpen] = useState(false);
   const rootRef = useRef<HTMLSpanElement>(null);
 
-  const close = useCallback(() => setOpen(false), []);
+  const closeAll = useCallback(() => {
+    setOpen(false);
+    setCreateOpen(false);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -27,10 +37,14 @@ export function ContainmentTreeRowMenu({
       if (!root) return;
       if (event.target instanceof Node && !root.contains(event.target)) {
         setOpen(false);
+        setCreateOpen(false);
       }
     }
     function onKeyDown(event: KeyboardEvent): void {
-      if (event.key === 'Escape') setOpen(false);
+      if (event.key === 'Escape') {
+        setOpen(false);
+        setCreateOpen(false);
+      }
     }
     document.addEventListener('pointerdown', onPointerDown);
     document.addEventListener('keydown', onKeyDown);
@@ -39,6 +53,8 @@ export function ContainmentTreeRowMenu({
       document.removeEventListener('keydown', onKeyDown);
     };
   }, [open]);
+
+  const canCreateChild = childKinds.length > 0;
 
   return (
     <span ref={rootRef} className="relative ml-1 inline-flex shrink-0">
@@ -51,7 +67,10 @@ export function ContainmentTreeRowMenu({
         data-testid={`containment-tree-element-menu-trigger-${elementId}`}
         onClick={(e) => {
           e.stopPropagation();
-          setOpen((v) => !v);
+          setOpen((v) => {
+            if (v) setCreateOpen(false);
+            return !v;
+          });
         }}
         className="inline-flex h-5 w-5 items-center justify-center rounded text-foreground/70 opacity-0 transition hover:bg-accent group-hover:opacity-100 group-focus-within:opacity-100 data-[open=true]:opacity-100"
         data-open={open}
@@ -66,7 +85,7 @@ export function ContainmentTreeRowMenu({
           aria-label="Row actions"
           data-testid={`containment-tree-element-menu-${elementId}`}
           onClick={(e) => e.stopPropagation()}
-          className="absolute right-0 top-full z-20 mt-1 w-36 overflow-hidden rounded-md border border-border bg-card text-xs shadow-lg"
+          className="absolute right-0 top-full z-20 mt-1 w-44 overflow-hidden rounded-md border border-border bg-card text-xs shadow-lg"
         >
           <button
             type="button"
@@ -74,13 +93,57 @@ export function ContainmentTreeRowMenu({
             data-testid={`containment-tree-element-menu-rename-${elementId}`}
             onClick={(e) => {
               e.stopPropagation();
-              close();
+              closeAll();
               onRename();
             }}
             className="block w-full px-3 py-2 text-left text-foreground transition hover:bg-accent"
           >
             Rename
           </button>
+          {canCreateChild ? (
+            <button
+              type="button"
+              role="menuitem"
+              aria-haspopup="menu"
+              aria-expanded={createOpen}
+              data-testid={`containment-tree-element-menu-create-child-${elementId}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                setCreateOpen((v) => !v);
+              }}
+              className="flex w-full items-center justify-between px-3 py-2 text-left text-foreground transition hover:bg-accent"
+            >
+              <span>Create child…</span>
+              <span aria-hidden="true" className="text-foreground/60">
+                ▸
+              </span>
+            </button>
+          ) : null}
+          {createOpen && canCreateChild ? (
+            <div
+              role="menu"
+              aria-label="Create child"
+              data-testid={`containment-tree-element-menu-create-child-list-${elementId}`}
+              className="border-t border-border bg-card"
+            >
+              {childKinds.map((option) => (
+                <button
+                  key={option.kind + ':' + option.ownerRole}
+                  type="button"
+                  role="menuitem"
+                  data-testid={`containment-tree-element-menu-create-${option.kind}-${option.ownerRole}-${elementId}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    closeAll();
+                    onCreateChild(option);
+                  }}
+                  className="block w-full px-3 py-2 text-left text-foreground transition hover:bg-accent"
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
           {canDelete ? (
             <button
               type="button"
@@ -88,7 +151,7 @@ export function ContainmentTreeRowMenu({
               data-testid={`containment-tree-element-menu-delete-${elementId}`}
               onClick={(e) => {
                 e.stopPropagation();
-                close();
+                closeAll();
                 onDelete();
               }}
               className="block w-full px-3 py-2 text-left text-destructive transition hover:bg-accent"

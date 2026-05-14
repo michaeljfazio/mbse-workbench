@@ -17,6 +17,7 @@ import {
   type ContainmentElementNode,
   type ContainmentTreeNode,
 } from './buildContainmentTree';
+import { acceptedChildKinds, type ChildKindOption } from './childAcceptance';
 import { ContainmentTreeRowMenu } from './ContainmentTreeRowMenu';
 
 type FocusKey = `el:${ElementId}` | `dg:${DiagramId}`;
@@ -76,6 +77,7 @@ export function ContainmentTree(): JSX.Element {
   const setActiveDiagram = useWorkspaceStore((s) => s.setActiveDiagram);
   const renameElementAction = useWorkspaceStore((s) => s.renameElement);
   const deleteElementAction = useWorkspaceStore((s) => s.deleteElement);
+  const createChildElementAction = useWorkspaceStore((s) => s.createChildElement);
 
   const [renamingId, setRenamingId] = useState<ElementId | null>(null);
 
@@ -99,6 +101,30 @@ export function ContainmentTree(): JSX.Element {
       deleteElementAction(id);
     },
     [deleteElementAction],
+  );
+
+  const requestCreateChild = useCallback(
+    (ownerId: ElementId, option: ChildKindOption) => {
+      const defaultName = `New ${option.label}`;
+      const newId = createChildElementAction(
+        ownerId,
+        option.kind,
+        option.ownerRole,
+        defaultName,
+      );
+      if (!newId) return;
+      // Auto-expand parent so the new child is visible.
+      setCollapsed((prev) => {
+        const key = elKey(ownerId);
+        if (!prev.has(key)) return prev;
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+      setSelection([newId]);
+      setRenamingId(newId);
+    },
+    [createChildElementAction, setSelection],
   );
 
   const root = useMemo(
@@ -386,6 +412,7 @@ export function ContainmentTree(): JSX.Element {
               commitRename,
               cancelRename,
               requestDelete,
+              requestCreateChild,
             })
           : renderDiagramRow(row, row.node.diagram, {
               focusKey,
@@ -414,6 +441,7 @@ interface ElementRowContext {
   readonly commitRename: (id: ElementId, name: string) => void;
   readonly cancelRename: () => void;
   readonly requestDelete: (id: ElementId) => void;
+  readonly requestCreateChild: (ownerId: ElementId, option: ChildKindOption) => void;
 }
 
 function renderElementRow(
@@ -486,8 +514,10 @@ function renderElementRow(
         <ContainmentTreeRowMenu
           elementId={element.id}
           canDelete={canDelete}
+          childKinds={acceptedChildKinds(element.kind)}
           onRename={() => ctx.beginRename(element.id)}
           onDelete={() => ctx.requestDelete(element.id)}
+          onCreateChild={(option) => ctx.requestCreateChild(element.id, option)}
         />
       ) : null}
     </div>
