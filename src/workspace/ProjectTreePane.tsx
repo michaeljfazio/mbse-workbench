@@ -29,13 +29,13 @@ export function ProjectTreePane({ width }: ProjectTreePaneProps): JSX.Element {
           data-testid="project-tree-explorer-section"
           className="border-b border-border"
         >
-          <h2 className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/80">
+          <h2 className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             Explorer
           </h2>
           <ContainmentTree />
         </section>
         <section aria-label="Palette" data-testid="project-tree-palette-section">
-          <h2 className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/80">
+          <h2 className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             Palette
           </h2>
           <ProjectTree />
