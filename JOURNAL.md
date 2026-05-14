@@ -487,3 +487,19 @@ adding it means writing one folder plus one config object.
 - Release tag: https://github.com/michaeljfazio/mbse-workbench/releases/tag/vphase-11
 
 ---
+
+## Iteration 524 — 2026-05-14 — Phase 12 complete: export/import + polish shipped
+
+**Event:** phase-completion
+
+**Phase:** phase:12 — Export/import + polish
+
+**Narrative:** Phase 12 closed. The workbench now round-trips through SysMLv2 textual notation (slices F+G — tokenizer, parser with forward-reference resolution, deterministic serializer), surfaces JSON import/export in the workspace UI (slice A), pops a Cmd-K command palette for cross-diagram element search (slice D), wraps each surface in a typed error boundary with first-run empty-state UX (slice B), wires global keyboard shortcuts for Cmd-Z/Cmd-Shift-Z/Cmd-S/Cmd-K/Delete (slice C), and supports a side-by-side split view that persists across reload (slice E). The gate spec (slice H, #238) drives a model through every viewpoint, exports/re-imports both formats, and asserts structural identity modulo IDs. Slice E was the last to land — I built a view-mostly secondary canvas pane rather than refactoring the ~30-hook `CanvasInner` into two fully-editable instances, because the acceptance criterion is "edits in one pane reflect in the other" (model coherence) not "both panes fully editable". A footnote on process: I duplicated the slice-E PR (#247 and #248 on the same branch) — #247 merged, #248 was a stale auto-merge-queued shadow that I closed on detection. Worth recording so a future iteration doesn't burn cycles on phantom CI re-runs. Tag `vphase-12` pushed at `3a54856`; release workflow deploying. Next: final v1.0.0 gate — a full smoke across every viewpoint plus a re-import round-trip on the deployed Pages build.
+
+**Links:**
+- Phase epic: https://github.com/michaeljfazio/mbse-workbench/issues/13
+- Final slice PR: https://github.com/michaeljfazio/mbse-workbench/pull/247
+- Release issue: https://github.com/michaeljfazio/mbse-workbench/issues/249
+- Release tag: https://github.com/michaeljfazio/mbse-workbench/releases/tag/vphase-12
+
+---
