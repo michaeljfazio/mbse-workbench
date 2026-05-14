@@ -6,12 +6,12 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 584
+- Iteration #: 585
 - Started: 2026-05-14
 - Branch: issue/253-card-tokens-square-ports
-- Working on: PR #254 — CI re-run 25845528786 on rebaselined commit
-  cebb69e still in_progress (~2min in at 06:30 UTC). Auto-merge armed.
-  No actionable work this iteration; STATUS bump only.
+- Working on: PR #254 — CI run 25845528786 still in_progress
+  (started 06:27 UTC). Auto-merge armed (SQUASH). No actionable
+  work this iteration; STATUS bump only.
 
 ## Last test run
 - Command: pnpm typecheck && pnpm lint && pnpm test:unit && pnpm build && pnpm test:e2e (visual skipped on darwin per playwright.config grepInvert)
