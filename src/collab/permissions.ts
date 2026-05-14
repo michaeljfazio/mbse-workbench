@@ -20,8 +20,8 @@ export const allowAll: PermissionHook = () => true;
 
 export const can: PermissionHook = (user, _action, target) => {
   if (!target) return true;
-  if (!('ownerId' in target)) return true;
-  const ownerId = (target as { ownerId?: User['id'] }).ownerId;
-  if (ownerId === undefined) return true;
-  return ownerId === user.id;
+  if (!('ownerUserId' in target)) return true;
+  const ownerUserId = (target as { ownerUserId?: User['id'] }).ownerUserId;
+  if (ownerUserId === undefined) return true;
+  return ownerUserId === user.id;
 };

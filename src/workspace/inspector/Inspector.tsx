@@ -348,28 +348,27 @@ function PackageExtras({ element }: PackageExtrasProps): JSX.Element {
   const setSelection = useWorkspaceStore((s) => s.setSelection);
 
   const members = useMemo(() => {
-    const ids = new Set(element.memberIds);
     return elements
-      .filter((e) => ids.has(e.id))
+      .filter((e) => e.ownerId === element.id && e.ownerRole === 'member')
       .slice()
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [elements, element.memberIds]);
+  }, [elements, element.id]);
 
   // Membership is exclusive across packages: an element belongs to at most
-  // one Package. Candidates for "add member" are elements not already
-  // claimed by any Package (and not the Package itself).
+  // one Package via its containment ownerId. Candidates for "add member"
+  // are non-Package elements currently held by some other package (i.e.
+  // not already in this one).
   const candidates = useMemo(() => {
-    const claimed = new Set<ElementId>();
-    for (const e of elements) {
-      if (e.kind === 'Package') {
-        for (const mid of e.memberIds) claimed.add(mid);
-      }
-    }
     return elements
-      .filter((e) => e.kind !== 'Package' && !claimed.has(e.id))
+      .filter(
+        (e) =>
+          e.kind !== 'Package' &&
+          e.ownerRole === 'member' &&
+          e.ownerId !== element.id,
+      )
       .slice()
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [elements]);
+  }, [elements, element.id]);
 
   const [pick, setPick] = useState<ElementId | ''>('');
 
@@ -470,12 +469,13 @@ function PartDefinitionExtras({
   const openInternalDiagram = useWorkspaceStore((s) => s.openInternalDiagram);
 
   const ports = useMemo(() => {
-    const portIdSet = new Set(element.portIds);
     return elements.filter(
       (e): e is PortDefinitionElement =>
-        e.kind === 'PortDefinition' && portIdSet.has(e.id),
+        e.kind === 'PortDefinition' &&
+        e.ownerId === element.id &&
+        e.ownerRole === 'port',
     );
-  }, [elements, element.portIds]);
+  }, [elements, element.id]);
 
   return (
     <>
@@ -1168,7 +1168,7 @@ function describeConnectionEndpoint(
   );
   const owner = elements.find(
     (e): e is PartUsageElement =>
-      e.kind === 'PartUsage' && e.portUsageIds.includes(portUsageId),
+      e.kind === 'PartUsage' && e.id === portUsage.ownerId,
   );
   const parts = [
     owner?.name ?? 'unknown',
@@ -1816,20 +1816,21 @@ function ActionDefinitionExtras({
   );
 
   const params = useMemo(() => {
-    const paramSet = new Set(element.parameterIds);
     return elements.filter(
       (e): e is ValuePropertyElement =>
-        e.kind === 'ValueProperty' && paramSet.has(e.id),
+        e.kind === 'ValueProperty' &&
+        e.ownerId === element.id &&
+        e.ownerRole === 'parameter',
     );
-  }, [elements, element.parameterIds]);
+  }, [elements, element.id]);
 
   const candidates = useMemo(() => {
-    const taken = new Set(element.parameterIds);
     return elements.filter(
       (e): e is ValuePropertyElement =>
-        e.kind === 'ValueProperty' && !taken.has(e.id),
+        e.kind === 'ValueProperty' &&
+        !(e.ownerId === element.id && e.ownerRole === 'parameter'),
     );
-  }, [elements, element.parameterIds]);
+  }, [elements, element.id]);
 
   const pickerId = useMemo(
     () => `inspector-action-def-add-param-${element.id}`,

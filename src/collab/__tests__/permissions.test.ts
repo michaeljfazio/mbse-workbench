@@ -21,8 +21,9 @@ describe('allowAll', () => {
           kind: 'PartDefinition',
           name: 'X',
           isAbstract: false,
-          propertyIds: [],
-          portIds: [],
+          ownerId: null,
+          ownerRole: 'member',
+          ownerIndex: 0,
         }),
       ).toBe(true);
     }
@@ -36,7 +37,7 @@ describe('can (default single-user hook)', () => {
     expect(can(user, 'delete', undefined)).toBe(true);
   });
 
-  it('returns false when the element has an ownerId that is not the actor', () => {
+  it('returns false when the element has an ownerUserId that is not the actor', () => {
     const owner = createUserId();
     const actor = createSessionUser();
     expect(
@@ -45,14 +46,15 @@ describe('can (default single-user hook)', () => {
         kind: 'PartDefinition',
         name: 'Owned',
         isAbstract: false,
-        propertyIds: [],
-        portIds: [],
-        ownerId: owner,
+        ownerId: null,
+        ownerRole: 'member',
+        ownerIndex: 0,
+        ownerUserId: owner,
       }),
     ).toBe(false);
   });
 
-  it('returns true when the element has an ownerId that matches the actor', () => {
+  it('returns true when the element has an ownerUserId that matches the actor', () => {
     const actor = createSessionUser();
     expect(
       can(actor, 'update', {
@@ -60,9 +62,10 @@ describe('can (default single-user hook)', () => {
         kind: 'PartDefinition',
         name: 'Mine',
         isAbstract: false,
-        propertyIds: [],
-        portIds: [],
-        ownerId: actor.id,
+        ownerId: null,
+        ownerRole: 'member',
+        ownerIndex: 0,
+        ownerUserId: actor.id,
       }),
     ).toBe(true);
   });

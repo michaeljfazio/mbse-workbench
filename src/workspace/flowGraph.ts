@@ -17,6 +17,7 @@ import type { Diagram } from './diagram';
 
 export interface RegistryLookup {
   get(id: ElementId): ModelElement | undefined;
+  childrenOf(id: ElementId, role?: 'port'): readonly ModelElement[];
 }
 
 export function toFlowNodes(
@@ -74,10 +75,20 @@ export function toFlowNodes(
       } else if (el.kind === 'Actor' || el.kind === 'UseCase') {
         data = { elementId: el.id, name: el.name, onRename };
       } else if (el.kind === 'Package') {
+        const packageId = el.id;
+        let memberCount = 0;
+        for (const other of elements) {
+          if (
+            other.ownerId === packageId &&
+            other.ownerRole === 'member'
+          ) {
+            memberCount += 1;
+          }
+        }
         data = {
           elementId: el.id,
           name: el.name,
-          memberCount: el.memberIds.length,
+          memberCount,
           onRename,
         };
       } else if (el.kind === 'ConstraintUsage') {
