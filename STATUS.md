@@ -6,15 +6,12 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 641
+- Iteration #: 642
 - Started: 2026-05-14
 - Branch: issue/253-card-tokens-square-ports
-- Working on: PR #254 — prior CI run completed SUCCESS but PR was
-  BEHIND main across iters 636–640 without merging. iter-641 ran
-  `gh pr update-branch 254` which fast-forwarded the branch and
-  re-triggered CI (status IN_PROGRESS, mergeState BLOCKED on the
-  new check). Auto-merge SQUASH remains armed; expected to fire
-  once the rerun goes green.
+- Working on: PR #254 — CI rerun (post branch-update iter-641) still
+  IN_PROGRESS at 07:10Z. Auto-merge SQUASH remains armed; will fire
+  on green.
 
 ## Last test run
 - Command: pnpm typecheck && pnpm lint && pnpm test:unit && pnpm build && pnpm test:e2e (visual skipped on darwin per playwright.config grepInvert)
