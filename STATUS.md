@@ -6,12 +6,15 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 640
+- Iteration #: 641
 - Started: 2026-05-14
 - Branch: issue/253-card-tokens-square-ports
-- Working on: PR #254 — CI run 25846704432 E2E tests step still
-  IN_PROGRESS (started 07:00Z; rechecked 07:09Z iter-640).
-  Auto-merge SQUASH armed; awaiting green.
+- Working on: PR #254 — prior CI run completed SUCCESS but PR was
+  BEHIND main across iters 636–640 without merging. iter-641 ran
+  `gh pr update-branch 254` which fast-forwarded the branch and
+  re-triggered CI (status IN_PROGRESS, mergeState BLOCKED on the
+  new check). Auto-merge SQUASH remains armed; expected to fire
+  once the rerun goes green.
 
 ## Last test run
 - Command: pnpm typecheck && pnpm lint && pnpm test:unit && pnpm build && pnpm test:e2e (visual skipped on darwin per playwright.config grepInvert)
@@ -130,8 +133,8 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
-Wait for PR #254 CI on the freshly-updated branch (now caught up with
-main). On green + auto-merge, pick next P0 task (likely T-13.29 —
+Wait for PR #254 CI rerun (triggered iter-641 after branch update).
+On green + auto-merge, pick next P0 task (likely T-13.29 —
 start of explorer foundation bundle: ownerId as single source of
 truth, explicit root Package, registry parentOf/childrenOf, codemod
 readers).
