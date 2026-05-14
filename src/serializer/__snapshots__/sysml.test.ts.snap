@@ -3,14 +3,16 @@
 exports[`serializeProject — determinism + snapshot > snapshot of a small mixed-kind project 1`] = `
 "// SysMLv2 textual notation — project: TestProject // id: P1
 
-package CarSys { // id: pkg
-  part def Engine { // id: engine
-    attribute mass : number = 200; // id: mass
-  }
-  requirement REQ-1 EngineWeight { // id: req1
-    priority high;
-    status draft;
-    text "Engine mass below 300kg";
+package Root { // id: R
+  package CarSys { // id: pkg
+    part def Engine { // id: engine
+      attribute mass : number = 200; // id: mass
+    }
+    requirement REQ-1 EngineWeight { // id: req1
+      priority high;
+      status draft;
+      text "Engine mass below 300kg";
+    }
   }
 }
 

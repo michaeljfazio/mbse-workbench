@@ -2,8 +2,11 @@ import type {
   ActionNodeType,
   EdgeId,
   ElementId,
+  ElementKind,
+  ElementOfKind,
   ModelEdge,
   ModelElement,
+  OwnerRole,
   PortDirection,
   ProjectId,
   RequirementPriority,
@@ -101,15 +104,12 @@ function tokenize(src: string): Token[] {
       i += 1;
       continue;
     }
-    // Comments: //...EOL. Special case `// id: <id>` and `// id: <id>...` (header).
     if (ch === '/' && src[i + 1] === '/') {
-      // Capture full comment text
       const startLine = line;
       const startCol = col;
       let j = i + 2;
       while (j < n && src[j] !== '\n') j += 1;
       const body = src.slice(i + 2, j);
-      // Look for "id: <token>" — supports multiple in one comment (header line)
       const idRegex = /id:\s*([A-Za-z0-9_-]+)/g;
       let m: RegExpExecArray | null;
       while ((m = idRegex.exec(body)) !== null) {
@@ -120,7 +120,6 @@ function tokenize(src: string): Token[] {
           col: startCol,
         });
       }
-      // Advance past comment
       const consumed = j - i;
       for (let k = 0; k < consumed; k += 1) {
         col += 1;
@@ -208,9 +207,6 @@ function tokenize(src: string): Token[] {
       i = j;
       continue;
     }
-    // Fallback: emit any other printable character as a single-char punct
-    // token. The parser consumes raw token values inside bracketed segments
-    // (multiplicities, guards), so this preserves arithmetic-ish characters.
     tokens.push({ type: 'punct', value: ch, line, col });
     col += 1;
     i += 1;
@@ -233,6 +229,32 @@ function isNumberStart(c: string, src: string, i: number): boolean {
 
 // -- parser ----------------------------------------------------------
 
+/** A "loose" element — every parser method returns one of these (no owner
+ * fields yet). The caller stamps `ownerId`/`ownerRole`/`ownerIndex` based on
+ * lexical containment. Distributed over `ElementKind` so each per-kind
+ * variant retains its discriminant-specific required fields. */
+type LooseElement = {
+  [K in ElementKind]: Omit<
+    ElementOfKind<K>,
+    'ownerId' | 'ownerRole' | 'ownerIndex'
+  >;
+}[ElementKind];
+
+interface OwnerInfo {
+  readonly ownerId: ElementId | null;
+  readonly role: OwnerRole;
+  readonly index: number;
+}
+
+function stamp(loose: LooseElement, owner: OwnerInfo): ModelElement {
+  return {
+    ...loose,
+    ownerId: owner.ownerId,
+    ownerRole: owner.role,
+    ownerIndex: owner.index,
+  } as ModelElement;
+}
+
 class Parser {
   private readonly tokens: Token[];
   private pos = 0;
@@ -240,53 +262,43 @@ class Parser {
   private readonly pendingRefs: Array<{ name: string; apply: (id: ElementId) => void }> = [];
   private projectId?: ProjectId;
   private projectName?: string;
+  private readonly elements: ModelElement[] = [];
 
   constructor(tokens: Token[]) {
     this.tokens = tokens;
   }
 
   parseFile(): ParsedProject {
-    const elements: ModelElement[] = [];
     const edges: ModelEdge[] = [];
 
-    // Header `// id: <projectId>` is the first idmark before any statements.
-    // The serializer also embeds the name in the comment text — we cannot
-    // recover it from a token, so we keep it undefined; the import action
-    // can fall back to a caller-supplied default. If present, the first
-    // idmark BEFORE any other token is treated as the project id.
     if (this.peek().type === 'idmark') {
       this.projectId = this.consume().value as ProjectId;
     }
 
+    let topIndex = 0;
     while (this.peek().type !== 'eof') {
-      const top = this.parseTopLevel();
-      if (Array.isArray(top)) {
-        for (const item of top) {
-          if (isElement(item)) elements.push(item);
-          else edges.push(item);
-        }
-      } else if (isElement(top)) {
-        elements.push(top);
-      } else {
-        edges.push(top);
+      const t = this.peek();
+      if (this.isEdgeKeyword(t.value)) {
+        edges.push(this.parseEdge());
+        continue;
       }
+      const loose = this.parseElement();
+      const stamped = stamp(loose, {
+        ownerId: null,
+        role: 'member',
+        index: topIndex,
+      });
+      this.elements.push(stamped);
+      topIndex += 1;
     }
-    // Drain nested elements collected while parsing block-bodies.
-    if (this.pendingFlat.length > 0) {
-      elements.push(...this.pendingFlat);
-      this.pendingFlat.length = 0;
-    }
-    // Resolve forward references using the now-complete name->id map.
+
     for (const ref of this.pendingRefs) {
       const id = this.nameToId.get(ref.name);
       if (id) ref.apply(id);
     }
 
-    // Resolve name-based references on edge-like elements (Connection, ItemFlow,
-    // Transition emit IDs directly, so no lookup needed). All edges in the
-    // `// edges` block also emit IDs directly.
     const result: ParsedProject = {
-      elements,
+      elements: this.elements,
       edges,
     };
     if (this.projectId !== undefined) {
@@ -296,6 +308,20 @@ class Parser {
       (result as { projectName?: string }).projectName = this.projectName;
     }
     return result;
+  }
+
+  private isEdgeKeyword(value: string): boolean {
+    return [
+      'composition',
+      'generalization',
+      'trace',
+      'control-flow',
+      'object-flow',
+      'include',
+      'extend',
+      'binding',
+      'import',
+    ].includes(value);
   }
 
   private peek(offset = 0): Token {
@@ -335,48 +361,12 @@ class Parser {
     this.consume();
     return t.value as ElementId;
   }
-  private parseTopLevel(): ModelElement | ModelEdge | (ModelElement | ModelEdge)[] {
+
+  private parseElement(): LooseElement {
     const t = this.peek();
     if (t.type !== 'ident') {
       throw new ParserError(`unexpected token '${t.value}'`, t.line, t.col);
     }
-    switch (t.value) {
-      case 'package':
-      case 'part':
-      case 'abstract':
-      case 'port':
-      case 'interface':
-      case 'connection':
-      case 'flow':
-      case 'requirement':
-      case 'action':
-      case 'state':
-      case 'composite':
-      case 'transition':
-      case 'use':
-      case 'actor':
-      case 'constraint':
-      case 'attribute':
-        return this.parseElement();
-      // Edge keywords at top level (inside the `// edges` section, but the
-      // header comment is already stripped). They are just identifiers here.
-      case 'composition':
-      case 'generalization':
-      case 'trace':
-      case 'control-flow':
-      case 'object-flow':
-      case 'include':
-      case 'extend':
-      case 'binding':
-      case 'import':
-        return this.parseEdge();
-      default:
-        throw new ParserError(`unknown statement '${t.value}'`, t.line, t.col);
-    }
-  }
-
-  private parseElement(): ModelElement {
-    const t = this.peek();
     switch (t.value) {
       case 'package':
         return this.parsePackage();
@@ -413,50 +403,56 @@ class Parser {
     }
   }
 
-  private parsePackage(): ModelElement {
+  /** Parse a block body, stamping each child with the given owner id + role,
+   * advancing a per-role index. Children are pushed onto the flat element
+   * list; their `LooseElement` form is returned to the caller in case it
+   * wants per-child handling (e.g. PartDefinition discriminating PortDefinition
+   * vs ValueProperty). */
+  private parseBlockChildren(
+    ownerId: ElementId,
+    roleOf: (child: LooseElement) => OwnerRole,
+  ): LooseElement[] {
+    const indices = new Map<OwnerRole, number>();
+    const collected: LooseElement[] = [];
+    while (!(this.peek().type === 'punct' && this.peek().value === '}')) {
+      const loose = this.parseElement();
+      const role = roleOf(loose);
+      const idx = indices.get(role) ?? 0;
+      indices.set(role, idx + 1);
+      this.elements.push(stamp(loose, { ownerId, role, index: idx }));
+      collected.push(loose);
+    }
+    return collected;
+  }
+
+  private parsePackage(): LooseElement {
     this.expectIdent('package');
     const nameTok = this.expectIdent();
     this.expectPunct('{');
     const id = this.consumeIdMark();
     const documentation = this.parseOptionalDoc();
-    const memberIds: ElementId[] = [];
-    const inner: ModelElement[] = [];
-    while (!(this.peek().type === 'punct' && this.peek().value === '}')) {
-      const m = this.parseElement();
-      inner.push(m);
-      memberIds.push(m.id);
-    }
+    this.parseBlockChildren(id, () => 'member');
     this.expectPunct('}');
-    const pkg: ModelElement = {
+    const pkg: LooseElement = {
       id,
       kind: 'Package',
       name: nameTok.value,
-      memberIds,
     };
-    if (documentation !== undefined) pkg.documentation = documentation;
+    if (documentation !== undefined) (pkg as { documentation?: string }).documentation = documentation;
     this.nameToId.set(nameTok.value, id);
-    // Members are siblings in the flat element list; return a marker by
-    // pushing them too. We rely on parseFile flattening top-level only —
-    // so re-emit nested elements by temporarily stashing them on a queue.
-    this.pendingFlat.push(...inner);
     return pkg;
   }
-
-  private readonly pendingFlat: ModelElement[] = [];
 
   private parseOptionalDoc(): string | undefined {
     if (this.matchIdent('doc') && this.peek(1).type === 'string') {
       this.consume();
       const s = this.consume();
-      // doc statements end without a semicolon in containing blocks
-      // (serializer emits `doc "..."` inside blocks without `;`)
       return s.value;
     }
     return undefined;
   }
 
-  private parsePartLike(): ModelElement {
-    // 'abstract'? 'part' (('def' Name '{') | (Name ':' DefName ('[' Mult ']')? '{'))
+  private parsePartLike(): LooseElement {
     let isAbstract = false;
     if (this.matchIdent('abstract')) {
       this.consume();
@@ -469,34 +465,26 @@ class Parser {
       this.expectPunct('{');
       const id = this.consumeIdMark();
       const documentation = this.parseOptionalDoc();
-      const portIds: ElementId[] = [];
-      const propertyIds: ElementId[] = [];
-      while (!(this.peek().type === 'punct' && this.peek().value === '}')) {
-        const inner = this.parseElement();
-        if (inner.kind === 'PortDefinition') portIds.push(inner.id);
-        else if (inner.kind === 'ValueProperty') propertyIds.push(inner.id);
-        else
-          throw new ParserError(
-            `unexpected '${inner.kind}' inside part def`,
-            this.peek().line,
-            this.peek().col,
-          );
-        this.pendingFlat.push(inner);
-      }
+      this.parseBlockChildren(id, (child) => {
+        if (child.kind === 'PortDefinition') return 'port';
+        if (child.kind === 'ValueProperty') return 'property';
+        throw new ParserError(
+          `unexpected '${child.kind}' inside part def`,
+          this.peek().line,
+          this.peek().col,
+        );
+      });
       this.expectPunct('}');
-      const out: ModelElement = {
+      const out: LooseElement = {
         id,
         kind: 'PartDefinition',
         name,
         isAbstract,
-        propertyIds,
-        portIds,
       };
-      if (documentation !== undefined) out.documentation = documentation;
+      if (documentation !== undefined) (out as { documentation?: string }).documentation = documentation;
       this.nameToId.set(name, id);
       return out;
     }
-    // PartUsage
     const name = this.expectIdent().value;
     this.expectPunct(':');
     const defName = this.expectIdent().value;
@@ -504,7 +492,6 @@ class Parser {
     if (this.peek().type === 'punct' && this.peek().value === '[') {
       this.consume();
       const mTok = this.peek();
-      // multiplicity may be number or identifier-ish; consume until ']'
       let m = '';
       while (!(this.peek().type === 'punct' && this.peek().value === ']')) {
         const tk = this.consume();
@@ -519,41 +506,50 @@ class Parser {
     this.expectPunct('{');
     const id = this.consumeIdMark();
     const documentation = this.parseOptionalDoc();
-    const portUsageIds: ElementId[] = [];
-    while (!(this.peek().type === 'punct' && this.peek().value === '}')) {
-      const inner = this.parseElement();
-      if (inner.kind !== 'PortUsage') {
-        throw new ParserError(
-          `expected PortUsage inside part block, got ${inner.kind}`,
-          this.peek().line,
-          this.peek().col,
-        );
-      }
-      portUsageIds.push(inner.id);
-      this.pendingFlat.push(inner);
-    }
+    this.parseBlockChildren(id, (child) => {
+      if (child.kind === 'PortUsage') return 'port';
+      throw new ParserError(
+        `expected PortUsage inside part block, got ${child.kind}`,
+        this.peek().line,
+        this.peek().col,
+      );
+    });
     this.expectPunct('}');
-    const out: Extract<ModelElement, { kind: 'PartUsage' }> = {
+    const out: Omit<
+      Extract<ModelElement, { kind: 'PartUsage' }>,
+      'ownerId' | 'ownerRole' | 'ownerIndex'
+    > = {
       id,
       kind: 'PartUsage',
       name,
       definitionId: this.resolveName(defName),
-      portUsageIds,
     };
     if (!this.nameToId.has(defName)) {
-      this.pendingRefs.push({ name: defName, apply: (rid) => { out.definitionId = rid; } });
+      this.pendingRefs.push({
+        name: defName,
+        apply: (rid) => {
+          (out as { definitionId: ElementId }).definitionId = rid;
+          // Update the stamped copy in the flat list as well.
+          const stampedIdx = this.elements.findIndex((e) => e.id === id);
+          if (stampedIdx >= 0) {
+            const cur = this.elements[stampedIdx];
+            if (cur && cur.kind === 'PartUsage') {
+              (cur as { definitionId: ElementId }).definitionId = rid;
+            }
+          }
+        },
+      });
     }
-    if (multiplicity !== undefined) out.multiplicity = multiplicity;
-    if (documentation !== undefined) out.documentation = documentation;
+    if (multiplicity !== undefined) (out as { multiplicity?: string }).multiplicity = multiplicity;
+    if (documentation !== undefined) (out as { documentation?: string }).documentation = documentation;
     this.nameToId.set(name, id);
-    return out;
+    return out as LooseElement;
   }
 
-  private parsePortLike(): ModelElement {
+  private parsePortLike(): LooseElement {
     this.expectIdent('port');
     if (this.matchIdent('def')) {
       this.consume();
-      // direction identifier next
       const dirTok = this.expectIdent();
       const direction = dirTok.value as PortDirection;
       if (direction !== 'in' && direction !== 'out' && direction !== 'inout') {
@@ -571,74 +567,98 @@ class Parser {
       }
       this.expectPunct(';');
       const id = this.consumeIdMark();
-      const out: Extract<ModelElement, { kind: 'PortDefinition' }> = {
+      const out: Omit<
+        Extract<ModelElement, { kind: 'PortDefinition' }>,
+        'ownerId' | 'ownerRole' | 'ownerIndex'
+      > = {
         id,
         kind: 'PortDefinition',
         name,
         direction,
       };
       if (interfaceName !== undefined) {
-        out.interfaceId = this.resolveName(interfaceName);
+        (out as { interfaceId?: ElementId }).interfaceId =
+          this.resolveName(interfaceName);
         if (!this.nameToId.has(interfaceName)) {
           const ifn = interfaceName;
-          this.pendingRefs.push({ name: ifn, apply: (rid) => { out.interfaceId = rid; } });
+          this.pendingRefs.push({
+            name: ifn,
+            apply: (rid) => {
+              (out as { interfaceId?: ElementId }).interfaceId = rid;
+              const idx = this.elements.findIndex((e) => e.id === id);
+              if (idx >= 0) {
+                const cur = this.elements[idx];
+                if (cur && cur.kind === 'PortDefinition') {
+                  (cur as { interfaceId?: ElementId }).interfaceId = rid;
+                }
+              }
+            },
+          });
         }
       }
       this.nameToId.set(name, id);
-      return out;
+      return out as LooseElement;
     }
-    // PortUsage: port Name : DefName ;
     const name = this.expectIdent().value;
     this.expectPunct(':');
     const defName = this.expectIdent().value;
     this.expectPunct(';');
     const id = this.consumeIdMark();
-    const out: Extract<ModelElement, { kind: 'PortUsage' }> = {
+    const out: Omit<
+      Extract<ModelElement, { kind: 'PortUsage' }>,
+      'ownerId' | 'ownerRole' | 'ownerIndex'
+    > = {
       id,
       kind: 'PortUsage',
       name,
       definitionId: this.resolveName(defName),
     };
     if (!this.nameToId.has(defName)) {
-      this.pendingRefs.push({ name: defName, apply: (rid) => { out.definitionId = rid; } });
+      this.pendingRefs.push({
+        name: defName,
+        apply: (rid) => {
+          (out as { definitionId: ElementId }).definitionId = rid;
+          const idx = this.elements.findIndex((e) => e.id === id);
+          if (idx >= 0) {
+            const cur = this.elements[idx];
+            if (cur && cur.kind === 'PortUsage') {
+              (cur as { definitionId: ElementId }).definitionId = rid;
+            }
+          }
+        },
+      });
     }
     this.nameToId.set(name, id);
-    return out;
+    return out as LooseElement;
   }
 
-  private parseInterfaceDef(): ModelElement {
+  private parseInterfaceDef(): LooseElement {
     this.expectIdent('interface');
     this.expectIdent('def');
     const name = this.expectIdent().value;
     this.expectPunct('{');
     const id = this.consumeIdMark();
     const documentation = this.parseOptionalDoc();
-    const portDefinitionIds: ElementId[] = [];
-    while (!(this.peek().type === 'punct' && this.peek().value === '}')) {
-      const inner = this.parseElement();
-      if (inner.kind !== 'PortDefinition') {
-        throw new ParserError(
-          `expected PortDefinition inside interface def, got ${inner.kind}`,
-          this.peek().line,
-          this.peek().col,
-        );
-      }
-      portDefinitionIds.push(inner.id);
-      this.pendingFlat.push(inner);
-    }
+    this.parseBlockChildren(id, (child) => {
+      if (child.kind === 'PortDefinition') return 'portDefinition';
+      throw new ParserError(
+        `expected PortDefinition inside interface def, got ${child.kind}`,
+        this.peek().line,
+        this.peek().col,
+      );
+    });
     this.expectPunct('}');
-    const out: ModelElement = {
+    const out: LooseElement = {
       id,
       kind: 'InterfaceDefinition',
       name,
-      portDefinitionIds,
     };
-    if (documentation !== undefined) out.documentation = documentation;
+    if (documentation !== undefined) (out as { documentation?: string }).documentation = documentation;
     this.nameToId.set(name, id);
     return out;
   }
 
-  private parseConnection(): ModelElement {
+  private parseConnection(): LooseElement {
     this.expectIdent('connection');
     const name = this.expectIdent().value;
     this.expectIdent('connect');
@@ -656,7 +676,7 @@ class Parser {
     };
   }
 
-  private parseItemFlow(): ModelElement {
+  private parseItemFlow(): LooseElement {
     this.expectIdent('flow');
     const name = this.expectIdent().value;
     let itemType: string | undefined;
@@ -670,20 +690,19 @@ class Parser {
     const target = this.expectIdent().value;
     this.expectPunct(';');
     const id = this.consumeIdMark();
-    const out: ModelElement = {
+    const out: LooseElement = {
       id,
       kind: 'ItemFlow',
       name,
       sourceId: source as ElementId,
       targetId: target as ElementId,
     };
-    if (itemType !== undefined) out.itemType = itemType;
+    if (itemType !== undefined) (out as { itemType?: string }).itemType = itemType;
     return out;
   }
 
-  private parseRequirement(): ModelElement {
+  private parseRequirement(): LooseElement {
     this.expectIdent('requirement');
-    // optional reqId before the name; both are identifiers
     let reqId: string | undefined;
     let name: string;
     const first = this.expectIdent().value;
@@ -739,7 +758,7 @@ class Parser {
       const t = this.peek();
       throw new ParserError(`requirement missing required fields`, t.line, t.col);
     }
-    const out: ModelElement = {
+    const out: LooseElement = {
       id,
       kind: 'Requirement',
       name,
@@ -747,14 +766,14 @@ class Parser {
       priority,
       status,
     };
-    if (reqId !== undefined) out.reqId = reqId;
-    if (rationale !== undefined) out.rationale = rationale;
-    if (documentation !== undefined) out.documentation = documentation;
+    if (reqId !== undefined) (out as { reqId?: string }).reqId = reqId;
+    if (rationale !== undefined) (out as { rationale?: string }).rationale = rationale;
+    if (documentation !== undefined) (out as { documentation?: string }).documentation = documentation;
     this.nameToId.set(name, id);
     return out;
   }
 
-  private parseActionLike(): ModelElement {
+  private parseActionLike(): LooseElement {
     this.expectIdent('action');
     if (this.matchIdent('def')) {
       this.consume();
@@ -762,24 +781,17 @@ class Parser {
       this.expectPunct('{');
       const id = this.consumeIdMark();
       const documentation = this.parseOptionalDoc();
-      const parameterIds: ElementId[] = [];
-      while (!(this.peek().type === 'punct' && this.peek().value === '}')) {
-        const inner = this.parseElement();
-        parameterIds.push(inner.id);
-        this.pendingFlat.push(inner);
-      }
+      this.parseBlockChildren(id, () => 'parameter');
       this.expectPunct('}');
-      const out: ModelElement = {
+      const out: LooseElement = {
         id,
         kind: 'ActionDefinition',
         name,
-        parameterIds,
       };
-      if (documentation !== undefined) out.documentation = documentation;
+      if (documentation !== undefined) (out as { documentation?: string }).documentation = documentation;
       this.nameToId.set(name, id);
       return out;
     }
-    // action <nodeType> <name> (':' defName)? ';'
     const nodeTypeTok = this.expectIdent();
     const nodeType = nodeTypeTok.value as ActionNodeType;
     if (!(ACTION_NODE_TYPE_VALUES as readonly string[]).includes(nodeType)) {
@@ -797,24 +809,40 @@ class Parser {
     }
     this.expectPunct(';');
     const id = this.consumeIdMark();
-    const out: Extract<ModelElement, { kind: 'ActionUsage' }> = {
+    const out: Omit<
+      Extract<ModelElement, { kind: 'ActionUsage' }>,
+      'ownerId' | 'ownerRole' | 'ownerIndex'
+    > = {
       id,
       kind: 'ActionUsage',
       name,
       nodeType,
     };
     if (defName !== undefined) {
-      out.definitionId = this.resolveName(defName);
+      (out as { definitionId?: ElementId }).definitionId =
+        this.resolveName(defName);
       if (!this.nameToId.has(defName)) {
         const dn = defName;
-        this.pendingRefs.push({ name: dn, apply: (rid) => { out.definitionId = rid; } });
+        this.pendingRefs.push({
+          name: dn,
+          apply: (rid) => {
+            (out as { definitionId?: ElementId }).definitionId = rid;
+            const idx = this.elements.findIndex((e) => e.id === id);
+            if (idx >= 0) {
+              const cur = this.elements[idx];
+              if (cur && cur.kind === 'ActionUsage') {
+                (cur as { definitionId?: ElementId }).definitionId = rid;
+              }
+            }
+          },
+        });
       }
     }
     this.nameToId.set(name, id);
-    return out;
+    return out as LooseElement;
   }
 
-  private parseStateLike(): ModelElement {
+  private parseStateLike(): LooseElement {
     let isComposite = false;
     if (this.matchIdent('composite')) {
       this.consume();
@@ -826,7 +854,7 @@ class Parser {
       const name = this.expectIdent().value;
       this.expectPunct(';');
       const id = this.consumeIdMark();
-      const out: ModelElement = {
+      const out: LooseElement = {
         id,
         kind: 'StateDefinition',
         name,
@@ -835,7 +863,6 @@ class Parser {
       this.nameToId.set(name, id);
       return out;
     }
-    // state <stateType> <name> (':' defName)? ( ';' | '{' body '}' )
     const typeTok = this.expectIdent();
     const stateType = typeTok.value as StateNodeType;
     if (!(STATE_NODE_TYPE_VALUES as readonly string[]).includes(stateType)) {
@@ -881,27 +908,43 @@ class Parser {
       this.expectPunct(';');
       id = this.consumeIdMark();
     }
-    const out: Extract<ModelElement, { kind: 'StateUsage' }> = {
+    const out: Omit<
+      Extract<ModelElement, { kind: 'StateUsage' }>,
+      'ownerId' | 'ownerRole' | 'ownerIndex'
+    > = {
       id,
       kind: 'StateUsage',
       name,
       stateType,
     };
     if (defName !== undefined) {
-      out.definitionId = this.resolveName(defName);
+      (out as { definitionId?: ElementId }).definitionId =
+        this.resolveName(defName);
       if (!this.nameToId.has(defName)) {
         const dn = defName;
-        this.pendingRefs.push({ name: dn, apply: (rid) => { out.definitionId = rid; } });
+        this.pendingRefs.push({
+          name: dn,
+          apply: (rid) => {
+            (out as { definitionId?: ElementId }).definitionId = rid;
+            const idx = this.elements.findIndex((e) => e.id === id);
+            if (idx >= 0) {
+              const cur = this.elements[idx];
+              if (cur && cur.kind === 'StateUsage') {
+                (cur as { definitionId?: ElementId }).definitionId = rid;
+              }
+            }
+          },
+        });
       }
     }
-    if (entryAction !== undefined) out.entryAction = entryAction;
-    if (doAction !== undefined) out.doAction = doAction;
-    if (exitAction !== undefined) out.exitAction = exitAction;
+    if (entryAction !== undefined) (out as { entryAction?: string }).entryAction = entryAction;
+    if (doAction !== undefined) (out as { doAction?: string }).doAction = doAction;
+    if (exitAction !== undefined) (out as { exitAction?: string }).exitAction = exitAction;
     this.nameToId.set(name, id);
-    return out;
+    return out as LooseElement;
   }
 
-  private parseTransition(): ModelElement {
+  private parseTransition(): LooseElement {
     this.expectIdent('transition');
     const name = this.expectIdent().value;
     this.expectIdent('first');
@@ -925,20 +968,20 @@ class Parser {
     }
     this.expectPunct(';');
     const id = this.consumeIdMark();
-    const out: ModelElement = {
+    const out: LooseElement = {
       id,
       kind: 'Transition',
       name,
       sourceId: source as ElementId,
       targetId: target as ElementId,
     };
-    if (trigger !== undefined) out.trigger = trigger;
-    if (guard !== undefined) out.guard = guard;
-    if (effect !== undefined) out.effect = effect;
+    if (trigger !== undefined) (out as { trigger?: string }).trigger = trigger;
+    if (guard !== undefined) (out as { guard?: string }).guard = guard;
+    if (effect !== undefined) (out as { effect?: string }).effect = effect;
     return out;
   }
 
-  private parseUseCase(): ModelElement {
+  private parseUseCase(): LooseElement {
     this.expectIdent('use');
     this.expectIdent('case');
     const name = this.expectIdent().value;
@@ -964,12 +1007,12 @@ class Parser {
     }
     this.expectPunct('}');
     this.nameToId.set(name, id);
-    const out: ModelElement = { id, kind: 'UseCase', name };
-    if (text !== undefined) out.text = text;
+    const out: LooseElement = { id, kind: 'UseCase', name };
+    if (text !== undefined) (out as { text?: string }).text = text;
     return out;
   }
 
-  private parseActor(): ModelElement {
+  private parseActor(): LooseElement {
     this.expectIdent('actor');
     const name = this.expectIdent().value;
     this.expectPunct(';');
@@ -978,7 +1021,7 @@ class Parser {
     return { id, kind: 'Actor', name };
   }
 
-  private parseConstraintLike(): ModelElement {
+  private parseConstraintLike(): LooseElement {
     this.expectIdent('constraint');
     if (this.matchIdent('def')) {
       this.consume();
@@ -986,7 +1029,8 @@ class Parser {
       this.expectPunct('{');
       const id = this.consumeIdMark();
       let expression: string | undefined;
-      const parameterIds: ElementId[] = [];
+      // Mixed body: expr "..."; followed by parameter declarations.
+      const paramIndices = new Map<OwnerRole, number>();
       while (!(this.peek().type === 'punct' && this.peek().value === '}')) {
         if (this.matchIdent('expr')) {
           this.consume();
@@ -997,9 +1041,12 @@ class Parser {
           expression = this.consume().value;
           this.expectPunct(';');
         } else {
-          const inner = this.parseElement();
-          parameterIds.push(inner.id);
-          this.pendingFlat.push(inner);
+          const loose = this.parseElement();
+          const idx = paramIndices.get('parameter') ?? 0;
+          paramIndices.set('parameter', idx + 1);
+          this.elements.push(
+            stamp(loose, { ownerId: id, role: 'parameter', index: idx }),
+          );
         }
       }
       this.expectPunct('}');
@@ -1007,36 +1054,49 @@ class Parser {
         const t = this.peek();
         throw new ParserError(`constraint def missing expr`, t.line, t.col);
       }
-      const out: ModelElement = {
+      const out: LooseElement = {
         id,
         kind: 'ConstraintDefinition',
         name,
         expression,
-        parameterIds,
       };
       this.nameToId.set(name, id);
       return out;
     }
-    // ConstraintUsage: constraint <name> : <def> ;
     const name = this.expectIdent().value;
     this.expectPunct(':');
     const defName = this.expectIdent().value;
     this.expectPunct(';');
     const id = this.consumeIdMark();
-    const out: Extract<ModelElement, { kind: 'ConstraintUsage' }> = {
+    const out: Omit<
+      Extract<ModelElement, { kind: 'ConstraintUsage' }>,
+      'ownerId' | 'ownerRole' | 'ownerIndex'
+    > = {
       id,
       kind: 'ConstraintUsage',
       name,
       definitionId: this.resolveName(defName),
     };
     if (!this.nameToId.has(defName)) {
-      this.pendingRefs.push({ name: defName, apply: (rid) => { out.definitionId = rid; } });
+      this.pendingRefs.push({
+        name: defName,
+        apply: (rid) => {
+          (out as { definitionId: ElementId }).definitionId = rid;
+          const idx = this.elements.findIndex((e) => e.id === id);
+          if (idx >= 0) {
+            const cur = this.elements[idx];
+            if (cur && cur.kind === 'ConstraintUsage') {
+              (cur as { definitionId: ElementId }).definitionId = rid;
+            }
+          }
+        },
+      });
     }
     this.nameToId.set(name, id);
-    return out;
+    return out as LooseElement;
   }
 
-  private parseValueProperty(): ModelElement {
+  private parseValueProperty(): LooseElement {
     this.expectIdent('attribute');
     const name = this.expectIdent().value;
     this.expectPunct(':');
@@ -1065,13 +1125,13 @@ class Parser {
     }
     this.expectPunct(';');
     const id = this.consumeIdMark();
-    const out: ModelElement = {
+    const out: LooseElement = {
       id,
       kind: 'ValueProperty',
       name,
       valueType,
     };
-    if (defaultValue !== undefined) out.defaultValue = defaultValue;
+    if (defaultValue !== undefined) (out as { defaultValue?: ValueLiteral }).defaultValue = defaultValue;
     this.nameToId.set(name, id);
     return out;
   }
@@ -1171,31 +1231,4 @@ class Parser {
     if (id) return id;
     return name as ElementId;
   }
-
 }
-
-function isElement(x: ModelElement | ModelEdge): x is ModelElement {
-  return !('kind' in x) ? false : ELEMENT_KIND_SET.has(x.kind as string);
-}
-
-const ELEMENT_KIND_SET: ReadonlySet<string> = new Set([
-  'Package',
-  'PartDefinition',
-  'PartUsage',
-  'PortDefinition',
-  'PortUsage',
-  'InterfaceDefinition',
-  'ConnectionUsage',
-  'ItemFlow',
-  'Requirement',
-  'ActionDefinition',
-  'ActionUsage',
-  'StateDefinition',
-  'StateUsage',
-  'Transition',
-  'UseCase',
-  'Actor',
-  'ConstraintDefinition',
-  'ConstraintUsage',
-  'ValueProperty',
-]);

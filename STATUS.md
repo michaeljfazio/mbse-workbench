@@ -6,26 +6,28 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 707
+- Iteration #: 708
 - Started: 2026-05-14
 - Branch: issue/255-explorer-foundation-ownerid-context
-- Working on: #255 — iter-707 landed the repository codemod
-  (src/repository/migrate.ts) and wired it into both
-  sessionStorage.readProject + sessionStorage.list, and replaced
-  jsonProject's ad-hoc root-synthesis with a delegating call to the
-  same migrator. The codemod reads legacy parent-side arrays
-  (memberIds/portIds/propertyIds/portUsageIds/parameterIds/
-  portDefinitionIds), assigns ownerId/ownerRole/ownerIndex to the
-  children, strips the arrays, and synthesizes an explicit root
-  Package when missing. New tests assert legacy schema migration +
-  root synthesis. Repository test fixtures (sessionStorage,
-  conversations, jsonProject) updated to the new element shape.
-  Cascade: 371 → 343 errors. Repository module is now schema-clean.
-  Next iter: serializer/parser pair (src/serializer/sysml.ts +
-  src/parser/sysml.ts — 28 + 13 errors) — they need the same
-  ownerId/role/index surface and to drop the parent-side arrays
-  from their output/input. Then LLM tools (create-element 7 +
-  consumers).
+- Working on: #255 — iter-708 migrated the SysMLv2 serializer +
+  parser pair onto the ownerId/ownerRole/ownerIndex schema.
+  Serializer now derives containment from a child-index built on
+  `ownerId` (with `ownerRole` filtering) instead of reading
+  parent-side `memberIds`/`portIds`/`propertyIds`/`portUsageIds`/
+  `parameterIds`/`portDefinitionIds`. Parser introduces a
+  `LooseElement` type (distributed `Omit<ElementOfKind<K>,
+  'ownerId'|'ownerRole'|'ownerIndex'>`) and a `parseBlockChildren`
+  helper that stamps each child with the parent's id + the slot's
+  OwnerRole, tracking a per-role index. Top-level elements get
+  `ownerId: null` and member-role. Serializer + parser test
+  fixtures rewritten with explicit `own(...)` ownership; old
+  serializer snapshot regenerated for the wrapped Root Package.
+  All 32 round-trip tests pass. Cascade: 343 → 287 errors.
+  Next iter: LLM tools (src/llm/tools/* — create-element,
+  generate-requirements, propose-decomposition, suggest-missing,
+  critique-model, query-model — all consume parent-side arrays
+  and emit elements without owner fields). Then Inspector +
+  viewpoint helpers.
 
 ## Last test run
 - Command: pnpm typecheck && pnpm lint && pnpm test:unit && pnpm build && pnpm test:e2e (visual skipped on darwin per playwright.config grepInvert)
@@ -156,22 +158,19 @@ issue/255-explorer-foundation-ownerid-context.
 Done so far in this PR (committed locally, not pushed):
 - ADR 0011 + new element/registry schema (b5ba017, c586c88)
 - Workspace store migration (4551f42)
-- Repository codemod + repository test fixtures (this iteration)
+- Repository codemod + repository test fixtures (846cf74)
+- Serializer + parser migration + tests (this iteration)
 
 Remaining (in order):
-1. src/serializer/sysml.ts + tests — drop parent-side arrays from output
-   (containment derived from registry.childrenOf at write time).
-2. src/parser/sysml.ts + tests — produce children with ownerId/role/index
-   instead of populating parent-side arrays.
-3. src/llm/tools/create-element.ts + suggest-missing-elements + tests.
-4. src/workspace/inspector/Inspector.tsx — replace memberIds/etc. lookups
+1. src/llm/tools/create-element.ts + suggest-missing-elements + tests.
+2. src/workspace/inspector/Inspector.tsx — replace memberIds/etc. lookups
    with registry.childrenOf.
-5. Viewpoint helpers (ibd/partUsageHelpers, packageActions, ibdActions,
+3. Viewpoint helpers (ibd/partUsageHelpers, packageActions, ibdActions,
    activityActions, parametric, isValidConnection variants) — every
    reader of a parent-side array gets rewritten to registry.childrenOf.
-6. Test fixtures in tests/unit/** (model/elements, viewpoints/**,
+4. Test fixtures in tests/unit/** (model/elements, viewpoints/**,
    workspace/**, llm/**) — re-author to the new schema.
-7. Re-run pnpm typecheck + pnpm test:unit; gate is zero errors + green.
+5. Re-run pnpm typecheck + pnpm test:unit; gate is zero errors + green.
 
 Commit incrementally on the branch; do NOT push until pnpm typecheck +
 pnpm test:unit pass locally. Push when ready, open PR, auto-merge.
