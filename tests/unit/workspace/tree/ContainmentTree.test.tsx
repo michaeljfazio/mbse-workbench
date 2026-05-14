@@ -249,4 +249,149 @@ describe('<ContainmentTree />', () => {
     fireEvent.keyDown(tree, { key: 'Enter' });
     expect(useWorkspaceStore.getState().selectedElementIds).toEqual([a]);
   });
+
+  describe('row menu (T-13.33)', () => {
+    it('renders a kebab trigger on every element row', async () => {
+      await bootstrap();
+      const a = useWorkspaceStore.getState().createBlock()!;
+
+      render(<ContainmentTree />);
+      expect(
+        screen.getByTestId(`containment-tree-element-menu-trigger-${rootId()}`),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId(`containment-tree-element-menu-trigger-${a}`),
+      ).toBeInTheDocument();
+    });
+
+    it('clicking the kebab opens the menu and does not activate the row', async () => {
+      await bootstrap();
+      const a = useWorkspaceStore.getState().createBlock()!;
+
+      render(<ContainmentTree />);
+      const before = useWorkspaceStore.getState().selectedElementIds;
+      fireEvent.click(
+        screen.getByTestId(`containment-tree-element-menu-trigger-${a}`),
+      );
+      expect(
+        screen.getByTestId(`containment-tree-element-menu-${a}`),
+      ).toBeInTheDocument();
+      expect(useWorkspaceStore.getState().selectedElementIds).toEqual(before);
+    });
+
+    it('Rename action puts the row into edit mode; Enter commits via the store', async () => {
+      await bootstrap();
+      const a = useWorkspaceStore.getState().createBlock()!;
+      act(() => {
+        useWorkspaceStore.getState().renameElement(a, 'Before');
+      });
+
+      render(<ContainmentTree />);
+      fireEvent.click(
+        screen.getByTestId(`containment-tree-element-menu-trigger-${a}`),
+      );
+      fireEvent.click(
+        screen.getByTestId(`containment-tree-element-menu-rename-${a}`),
+      );
+
+      const input = await screen.findByTestId(
+        `containment-tree-element-rename-${a}`,
+      );
+      fireEvent.change(input, { target: { value: 'After' } });
+      fireEvent.keyDown(input, { key: 'Enter' });
+
+      await waitFor(() => {
+        const el = useWorkspaceStore
+          .getState()
+          .elements.find((e) => e.id === a);
+        expect(el?.name).toBe('After');
+      });
+    });
+
+    it('Rename Escape cancels without mutating the element name', async () => {
+      await bootstrap();
+      const a = useWorkspaceStore.getState().createBlock()!;
+      act(() => {
+        useWorkspaceStore.getState().renameElement(a, 'Keep');
+      });
+
+      render(<ContainmentTree />);
+      fireEvent.click(
+        screen.getByTestId(`containment-tree-element-menu-trigger-${a}`),
+      );
+      fireEvent.click(
+        screen.getByTestId(`containment-tree-element-menu-rename-${a}`),
+      );
+
+      const input = await screen.findByTestId(
+        `containment-tree-element-rename-${a}`,
+      );
+      fireEvent.change(input, { target: { value: 'Discarded' } });
+      fireEvent.keyDown(input, { key: 'Escape' });
+
+      const el = useWorkspaceStore.getState().elements.find((e) => e.id === a);
+      expect(el?.name).toBe('Keep');
+      expect(
+        screen.queryByTestId(`containment-tree-element-rename-${a}`),
+      ).toBeNull();
+    });
+
+    it('Delete action removes the element via the store', async () => {
+      await bootstrap();
+      const a = useWorkspaceStore.getState().createBlock()!;
+
+      render(<ContainmentTree />);
+      fireEvent.click(
+        screen.getByTestId(`containment-tree-element-menu-trigger-${a}`),
+      );
+      fireEvent.click(
+        screen.getByTestId(`containment-tree-element-menu-delete-${a}`),
+      );
+
+      await waitFor(() => {
+        expect(
+          useWorkspaceStore.getState().elements.find((e) => e.id === a),
+        ).toBeUndefined();
+      });
+    });
+
+    it('Delete is hidden for the project root (ownerId === null)', async () => {
+      await bootstrap();
+
+      render(<ContainmentTree />);
+      fireEvent.click(
+        screen.getByTestId(
+          `containment-tree-element-menu-trigger-${rootId()}`,
+        ),
+      );
+      expect(
+        screen.getByTestId(`containment-tree-element-menu-rename-${rootId()}`),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId(
+          `containment-tree-element-menu-delete-${rootId()}`,
+        ),
+      ).toBeNull();
+    });
+
+    it('menu closes on outside pointerdown', async () => {
+      await bootstrap();
+      const a = useWorkspaceStore.getState().createBlock()!;
+
+      render(<ContainmentTree />);
+      fireEvent.click(
+        screen.getByTestId(`containment-tree-element-menu-trigger-${a}`),
+      );
+      expect(
+        screen.getByTestId(`containment-tree-element-menu-${a}`),
+      ).toBeInTheDocument();
+
+      fireEvent.pointerDown(document.body);
+      await waitFor(() => {
+        expect(
+          screen.queryByTestId(`containment-tree-element-menu-${a}`),
+        ).toBeNull();
+      });
+    });
+  });
 });

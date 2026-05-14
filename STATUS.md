@@ -6,9 +6,37 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
+- Iteration #: 725
+- Started: 2026-05-14
+- Branch: main (PR #266 CI in progress; no code work this iter)
+- Iter-725: PR #266 (T-13.33a) still has `check` in_progress. Used the
+  iteration to file the deferred T-13.33 follow-ups so the backlog is
+  explicit: #267 T-13.33b Create child, #268 T-13.33c Create
+  representation, #269 T-13.33d diagram-row Rename/Delete (folds into
+  T-13.01), #270 T-13.33e Move to package / Duplicate (P2, depends on
+  T-13.36). No code changes this iter. Next iter resumes once #266
+  merges.
+
+## Current iteration (archived 724 → 725)
+- Iteration #: 724
+- Started: 2026-05-14
+- Branch: issue/265-tree-row-menu-rename-delete (PR #266 auto-merge)
+- Iter-724: PR #264 (T-13.32 reveal-in-tree) merged dc353e7. Started
+  T-13.33a — first reviewable slice of the three-dots row menu.
+  Added ContainmentTreeRowMenu.tsx (kebab trigger + popover; close on
+  outside pointerdown/Escape) and wired Rename + Delete into element
+  rows of ContainmentTree. Rename swaps the name span for an `<input>`
+  (Enter/blur commit via renameElement, Escape cancels). Delete invokes
+  deleteElement and is hidden for the project root (ownerId === null).
+  Diagram-row actions and Create-child / Create-representation / Move /
+  Duplicate deferred to follow-ups — the diagram ops need new store
+  actions that don't exist yet. 7 new unit specs; 912/912 unit, tsc -b
+  clean, lint clean, build clean.
+
+## Current iteration (archived 723 → 724)
 - Iteration #: 723
 - Started: 2026-05-14
-- Branch: issue/263-tree-canvas-selection-sync (PR opening)
+- Branch: issue/263-tree-canvas-selection-sync (merged dc353e7)
 - Iter-723: PR #262 merged green (CI 25860078819). Started T-13.32:
   reveal-in-tree on canvas selection / diagram activation. Two
   useEffects in ContainmentTree.tsx: one watches selectedElementIds[0],
@@ -264,10 +292,14 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
-Wait for PR #263 CI to merge. Next iteration: T-13.33 (three-dots
-context menu per node: Rename / Delete / Create child / Create
-representation / Move). Then T-13.35 (filter bar) and T-13.36
-(generalized drag-drop move). The "retire flat-by-kind ProjectTree" cutover is its
+Wait for PR #266 CI to merge. T-13.33 follow-ups filed: #267 (Create
+child), #268 (Create representation), #269 (diagram-row Rename/Delete,
+adds renameDiagram/deleteDiagram store actions — folds into T-13.01),
+#270 (Move to package / Duplicate, P2 — depends on T-13.36). Next
+working iteration: pick #267 (T-13.33b Create child) since it doesn't
+depend on new store actions. Then #268, then #269 (which unlocks the
+diagram-lifecycle store seam needed by T-13.01).
+The "retire flat-by-kind ProjectTree" cutover is its
 own larger iteration because it requires migrating 13+ e2e specs off
 `project-tree-group-<Kind>` drag-sources onto explicit "+" affordances
 (T-13.04). Scheduling that cutover after the explorer is feature-rich
