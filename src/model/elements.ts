@@ -1,8 +1,40 @@
 import type { ElementId, UserId } from './id';
 
+/**
+ * Role discriminator under (ownerId), so a single parent kind can host
+ * multiple kinds of children (e.g. a PartDefinition owns both ports and
+ * properties). See ADR 0011.
+ */
+export type OwnerRole =
+  | 'member'        // Package member
+  | 'port'          // PortUsage under PartUsage; PortDefinition under PartDefinition
+  | 'property'      // ValueProperty under PartDefinition
+  | 'parameter'     // ValueProperty under ActionDefinition/ConstraintDefinition
+  | 'portDefinition'; // PortDefinition under InterfaceDefinition
+
+export const OWNER_ROLE_VALUES: readonly OwnerRole[] = [
+  'member',
+  'port',
+  'property',
+  'parameter',
+  'portDefinition',
+] as const;
+
 interface ElementBase {
   readonly id: ElementId;
-  readonly ownerId?: UserId;
+  /**
+   * Containment parent. `null` for the project's root Package; required
+   * for every other element. Single source of truth — there are no
+   * parent-side child arrays. See ADR 0011.
+   */
+  ownerId: ElementId | null;
+  ownerRole: OwnerRole;
+  ownerIndex: number;
+  /**
+   * Collab/permission ownership (the user who "owns" this element for
+   * permission purposes). Distinct from containment `ownerId`. See ADR 0011.
+   */
+  readonly ownerUserId?: UserId;
   name: string;
   documentation?: string;
 }
@@ -65,23 +97,16 @@ export type ValueLiteral = string | number | boolean;
 
 export interface PackageElement extends ElementBase {
   readonly kind: 'Package';
-  memberIds: ElementId[];
 }
 
 export interface PartDefinitionElement extends ElementBase {
   readonly kind: 'PartDefinition';
   isAbstract: boolean;
-  propertyIds: ElementId[];
-  portIds: ElementId[];
 }
 
 export interface PartUsageElement extends ElementBase {
   readonly kind: 'PartUsage';
   definitionId: ElementId;
-  // PortUsages exposed by this PartUsage. One per PortDefinition on the
-  // underlying PartDefinition. Mirrors the PartDefinition.portIds shape so
-  // IBD rendering can deterministically resolve handles to their PortUsages.
-  portUsageIds: ElementId[];
   multiplicity?: string;
 }
 
@@ -98,7 +123,6 @@ export interface PortUsageElement extends ElementBase {
 
 export interface InterfaceDefinitionElement extends ElementBase {
   readonly kind: 'InterfaceDefinition';
-  portDefinitionIds: ElementId[];
 }
 
 export interface ConnectionUsageElement extends ElementBase {
@@ -125,7 +149,6 @@ export interface RequirementElement extends ElementBase {
 
 export interface ActionDefinitionElement extends ElementBase {
   readonly kind: 'ActionDefinition';
-  parameterIds: ElementId[];
 }
 
 export interface ActionUsageElement extends ElementBase {
@@ -169,7 +192,6 @@ export interface ActorElement extends ElementBase {
 export interface ConstraintDefinitionElement extends ElementBase {
   readonly kind: 'ConstraintDefinition';
   expression: string;
-  parameterIds: ElementId[];
 }
 
 export interface ConstraintUsageElement extends ElementBase {

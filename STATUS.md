@@ -6,13 +6,13 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 703
+- Iteration #: 704
 - Started: 2026-05-14
-- Branch: issue/253-card-tokens-square-ports
-- Working on: PR #254 — CI run 25848970344 IN_PROGRESS
-  (started 08:00:13Z, ~1m40s elapsed at iter-703 check). Auto-merge
-  SQUASH stays armed; on green + required check satisfied GitHub
-  auto-merges.
+- Branch: issue/255-explorer-foundation-ownerid-context
+- Working on: #255 — T-13.29+T-13.30 bundled per AGENT.md. PR #254
+  (card+ports) merged 08:20:05Z. Opened #255, branched, wrote
+  ADR 0011 locking design. Schema migration + registry index next.
+  Multi-iteration work (~82 files impacted).
 
 ## Last test run
 - Command: pnpm typecheck && pnpm lint && pnpm test:unit && pnpm build && pnpm test:e2e (visual skipped on darwin per playwright.config grepInvert)
@@ -131,8 +131,24 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
-Wait for PR #254 CI rerun (triggered iter-641 after branch update).
-On green + auto-merge, pick next P0 task (likely T-13.29 —
-start of explorer foundation bundle: ownerId as single source of
-truth, explicit root Package, registry parentOf/childrenOf, codemod
-readers).
+Continue #255 (T-13.29+T-13.30 bundle) on branch
+issue/255-explorer-foundation-ownerid-context.
+
+Plan, in order:
+1. ElementBase: ownerId required (root excepted), add ownerRole + ownerIndex;
+   drop parent-side child arrays from elements.ts.
+2. id.ts/index.ts: OwnerRole type, helpers.
+3. Project: add rootId; legacy projects synthesize root Package at load.
+4. Registry: parentOf/childrenOf indexes; rebuild on replaceAll; maintain
+   on add/remove/setOwner; load-time invariant check.
+5. Repository.sessionStorage: codemod reader (legacy schema → new shape).
+6. DiagramContext: discriminated union, required; viewpoints declare
+   acceptedContextKinds; legacy migrate to { kind:'package', id:rootId }.
+7. Update all 82 consumers (LLM tools, serializer/parser, store, viewpoints,
+   workspace, tests) to use registry.childrenOf instead of parent arrays.
+8. Add unit tests: schema migration round-trip, registry invariants,
+   load-time invariant rejection, every viewpoint command produces valid
+   ownerId.
+
+Commit incrementally on the branch; do NOT push until pnpm typecheck +
+pnpm test:unit pass locally. Push when ready, open PR, auto-merge.
