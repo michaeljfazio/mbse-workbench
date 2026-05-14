@@ -6,13 +6,16 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 580
+- Iteration #: 581
 - Started: 2026-05-14
 - Branch: issue/253-card-tokens-square-ports
-- Working on: PR #254 — auto-merge armed, CI still IN_PROGRESS
-  (check run 25844671881 started 06:02:39Z, status in_progress;
-  mergeStateStatus BEHIND; auto-merge will update + merge on green).
-  Idle wait.
+- Working on: PR #254 — first CI run (25844671881) failed: 95 @visual
+  baseline mismatches (locally-regen'd podman/jammy fonts ≠ CI
+  ubuntu-latest fonts) + 1 chromium phase-6-gate retry-flake that
+  eventually passed on retry 2. Lifted per-test actual.png from the
+  failed run's playwright-report (per docs/CONTEXT.md 2026-05-12
+  playbook) — 96 baselines rewritten and pushed (commit cebb69e).
+  Auto-merge still armed; awaiting CI re-run.
 
 ## Last test run
 - Command: pnpm typecheck && pnpm lint && pnpm test:unit && pnpm build && pnpm test:e2e (visual skipped on darwin per playwright.config grepInvert)
@@ -131,7 +134,7 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
-Wait for PR #254 auto-merge on green CI. On merge, pick next P0 task
-(likely T-13.29 — start of explorer foundation bundle: ownerId as
-single source of truth, explicit root Package, registry parentOf/
-childrenOf, codemod readers).
+Wait for PR #254 CI re-run on the rebaselined commit. On green +
+merge, pick next P0 task (likely T-13.29 — start of explorer
+foundation bundle: ownerId as single source of truth, explicit
+root Package, registry parentOf/childrenOf, codemod readers).
