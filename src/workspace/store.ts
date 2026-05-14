@@ -11,6 +11,7 @@ import type {
   EdgeId,
   EdgePatch,
   ElementId,
+  ElementKind,
   ElementPatch,
   ElementRegistry,
   ExtendEdge,
@@ -247,6 +248,12 @@ export interface WorkspaceActions {
   setInspectorTab(tab: InspectorTab): void;
   saveProject(): Promise<void>;
   createBlock(position?: NodePosition): ElementId | null;
+  createChildElement(
+    ownerId: ElementId,
+    kind: ElementKind,
+    ownerRole: OwnerRole,
+    name: string,
+  ): ElementId | null;
   renameElement(id: ElementId, name: string): void;
   setElementDescription(id: ElementId, description: string): void;
   deleteElement(id: ElementId): void;
@@ -781,6 +788,62 @@ function nextOwnerIndex(
   ).length;
 }
 
+interface ChildElementBase {
+  readonly id: ElementId;
+  readonly ownerId: ElementId;
+  readonly ownerRole: OwnerRole;
+  readonly ownerIndex: number;
+  readonly name: string;
+}
+
+/**
+ * Build a default ModelElement for a "Create child…" tree action.
+ * Returns `null` when the kind is not supported as a free-standing tree
+ * child (e.g. usage kinds that require a definitionId or src/tgt). The
+ * acceptance table in childAcceptance.ts is the source of truth for which
+ * (parent-kind, child-kind, owner-role) triples are offered to the user;
+ * this factory just supplies sensible defaults for those triples.
+ */
+function buildDefaultChildElement(
+  kind: ElementKind,
+  base: ChildElementBase,
+  elements: readonly ModelElement[],
+): ModelElement | null {
+  switch (kind) {
+    case 'Package':
+      return { ...base, kind: 'Package' };
+    case 'PartDefinition':
+      return { ...base, kind: 'PartDefinition', isAbstract: false };
+    case 'InterfaceDefinition':
+      return { ...base, kind: 'InterfaceDefinition' };
+    case 'PortDefinition':
+      return { ...base, kind: 'PortDefinition', direction: 'inout' };
+    case 'ActionDefinition':
+      return { ...base, kind: 'ActionDefinition' };
+    case 'StateDefinition':
+      return { ...base, kind: 'StateDefinition', isComposite: false };
+    case 'ConstraintDefinition':
+      return { ...base, kind: 'ConstraintDefinition', expression: '' };
+    case 'ValueProperty':
+      return { ...base, kind: 'ValueProperty', valueType: 'string' };
+    case 'Requirement':
+      return {
+        ...base,
+        kind: 'Requirement',
+        text: '',
+        priority: REQUIREMENT_PRIORITY_DEFAULT,
+        status: REQUIREMENT_STATUS_DEFAULT,
+        reqId: nextRequirementReqId(elements),
+      };
+    case 'Actor':
+      return { ...base, kind: 'Actor' };
+    case 'UseCase':
+      return { ...base, kind: 'UseCase' };
+    default:
+      return null;
+  }
+}
+
 export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   ...INITIAL_STATE,
 
@@ -1053,6 +1116,28 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       });
     }
     bus.dispatch({ kind: 'compound', commands }, user);
+    return id;
+  },
+
+  createChildElement(ownerId, kind, ownerRole, name) {
+    const { bus, user, registry, elements } = get();
+    if (!bus || !user || !registry) return null;
+    const parent = registry.get(ownerId);
+    if (!parent) return null;
+    const id = createElementId();
+    const element = buildDefaultChildElement(
+      kind,
+      {
+        id,
+        ownerId,
+        ownerRole,
+        ownerIndex: nextOwnerIndex(elements, ownerId, ownerRole),
+        name,
+      },
+      elements,
+    );
+    if (!element) return null;
+    bus.dispatch({ kind: 'create-element', element }, user);
     return id;
   },
 
