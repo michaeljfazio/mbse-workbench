@@ -386,11 +386,17 @@ test.describe('Phase 12 gate (issue #238) — round-trip + full-viewpoint smoke'
     });
 
     // Wait for the import to settle: the active diagram surface should be
-    // back to the new project's default empty diagram. We detect this by
-    // polling persisted state — the elements+edges should match the seed
-    // (modulo positions which the serializer doesn't carry). The re-imported
-    // project includes a synthesized root Package (ownerId === null) in
-    // addition to the user elements, so we exclude it when counting.
+    // back to the project's default empty diagram. We detect this by
+    // polling persisted state — the post-import user-element + edge count
+    // should match the post-migration pre-export count. The seed's
+    // p12-pkg-root is promoted to the project root by the migrator (its
+    // ownerId becomes null), so user-element counts derived from the raw
+    // SEED_ELEMENTS array would be off by one. Compare against preExport
+    // instead, which has already been through the same migration pipeline.
+    const preExportUserCount = preExport!.elements.filter(
+      (e) => (e as { ownerId?: unknown }).ownerId !== null,
+    ).length;
+    const expectedRoundTripCount = preExportUserCount + preExport!.edges.length;
     await expect
       .poll(
         async () => {
@@ -403,7 +409,7 @@ test.describe('Phase 12 gate (issue #238) — round-trip + full-viewpoint smoke'
         },
         { timeout: 15_000 },
       )
-      .toBe(SEED_ELEMENTS.length + SEED_EDGES.length);
+      .toBe(expectedRoundTripCount);
 
     // Step 6 — structural equality assertion (modulo IDs is satisfied
     // because the serializer's `// id:` comments are the parser's

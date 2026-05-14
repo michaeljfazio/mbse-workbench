@@ -98,8 +98,14 @@ async function readProject(page: Page): Promise<{
     const raw = sessionStorage.getItem(`mbse:v1:project:${id}`);
     if (!raw) return { elements: [], edges: [] };
     const project = JSON.parse(raw);
+    // Exclude the synthesized root Package (ownerId === null) from
+    // user-element counts; the gate's assertions speak about user-authored
+    // ActionUsages, not the project root.
+    const allElements = (project.elements ?? []) as StoredElement[];
     return {
-      elements: (project.elements ?? []) as StoredElement[],
+      elements: allElements.filter(
+        (e) => (e as { ownerId?: unknown }).ownerId !== null,
+      ),
       edges: (project.edges ?? []) as StoredEdge[],
     };
   }, SEED_PROJECT_ID);
