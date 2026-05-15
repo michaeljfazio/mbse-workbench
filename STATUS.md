@@ -8,11 +8,26 @@ phase:13 — post-v1.0.0 polish + explorer rewrite
 ## Current iteration
 - Iteration #: 764
 - Started: 2026-05-16
-- Branch: issue/328-foundation-required-context (PR pending;
-  auto-merge --squash; CI queued)
+- Branch: issue/328-foundation-required-context (PR #329 pending;
+  auto-merge --squash; CI re-queued on fe23bb6)
 - Working on: #328 — T-13.29/.30 foundation closeout: required
   `Diagram.context`, `Viewpoint.acceptedContextKinds`, legacy
   migration synthesis, plus Phase-13 gate-invariant unit tests.
+
+  Iter-764 fix: CI run 25930710726 on e7a1845 failed only on
+  `json-import-export.spec.ts:136` chromium + webkit (`round-trips:
+  Export JSON → Import JSON yields identical model`). Failure was a
+  stale test assertion — line 184 compared `persisted!.diagrams`
+  against the pre-migration `[SEED_DIAGRAM]` literal, but the new
+  Pass-5 diagram-context synthesis (correctly) populates
+  `{ kind: 'package', id: rootId }` onto every context-less legacy
+  diagram, so the migrated form no longer matches the raw literal.
+  Lines 182/183 already compare elements/edges to `preExport`; the
+  diagram line was the outlier. Fix at fe23bb6 changes line 184 to
+  `canonicalize(preExport!.diagrams)`, asserting true round-trip
+  losslessness in line with the test's documented intent. 602 other
+  e2e tests passed on the failing run; no other failures to address.
+  CI run 25931403539 queued on the fix commit.
 
   Inspection (Explore subagent) revealed most of T-13.29's schema
   work already shipped piecemeal earlier in the explorer cascade
