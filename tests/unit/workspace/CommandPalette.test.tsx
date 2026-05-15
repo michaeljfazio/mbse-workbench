@@ -44,7 +44,7 @@ async function bootstrap(): Promise<void> {
   await useWorkspaceStore.getState().bootstrap({ repository, user, storage });
 }
 
-describe('<CommandPalette /> (T-13.05a)', () => {
+describe('<CommandPalette /> (T-13.05a/b)', () => {
   beforeEach(() => {
     resetWorkspaceStoreForTests();
     (
@@ -82,17 +82,27 @@ describe('<CommandPalette /> (T-13.05a)', () => {
     expect(
       screen.getByTestId('command-palette-command-workspace.save-project'),
     ).toBeVisible();
+    // Open chat / Show inspector require only a project.
+    expect(
+      screen.getByTestId('command-palette-command-workspace.open-chat'),
+    ).toBeVisible();
+    expect(
+      screen.getByTestId('command-palette-command-workspace.show-inspector'),
+    ).toBeVisible();
     // Redo is disabled (no undo has happened yet).
     expect(
       screen.queryByTestId('command-palette-command-workspace.redo'),
     ).toBeNull();
-    // Delete is disabled (no diagram selection).
+    // Delete and Rename are disabled (no diagram selection).
     expect(
       screen.queryByTestId('command-palette-command-workspace.delete-selection'),
     ).toBeNull();
+    expect(
+      screen.queryByTestId('command-palette-command-workspace.rename-selection'),
+    ).toBeNull();
   });
 
-  it('without a project, the Save and Delete commands are hidden', () => {
+  it('without a project, every command is hidden', () => {
     // No bootstrap → project is null, no bus.
     render(<CommandPalette onClose={() => {}} />);
     expect(
@@ -101,9 +111,17 @@ describe('<CommandPalette /> (T-13.05a)', () => {
     expect(
       screen.queryByTestId('command-palette-command-workspace.delete-selection'),
     ).toBeNull();
-    // Undo / Redo also hidden because the bus is null → canUndo/canRedo false.
     expect(
       screen.queryByTestId('command-palette-command-workspace.undo'),
+    ).toBeNull();
+    expect(
+      screen.queryByTestId('command-palette-command-workspace.open-chat'),
+    ).toBeNull();
+    expect(
+      screen.queryByTestId('command-palette-command-workspace.show-inspector'),
+    ).toBeNull();
+    expect(
+      screen.queryByTestId('command-palette-command-workspace.rename-selection'),
     ).toBeNull();
   });
 
@@ -168,7 +186,7 @@ describe('<CommandPalette /> (T-13.05a)', () => {
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 
-  it('typing a non-empty query hides the Actions section and shows element search', async () => {
+  it('typing a non-element / non-command query hides the Actions section and the command rows', async () => {
     await bootstrap();
     const blockId = useWorkspaceStore.getState().createBlock({ x: 0, y: 0 });
     expect(blockId).not.toBeNull();
@@ -183,6 +201,7 @@ describe('<CommandPalette /> (T-13.05a)', () => {
     expect(
       screen.queryByTestId('command-palette-commands-header'),
     ).toBeNull();
+    // None of the command labels contain "alpha".
     expect(
       screen.queryByTestId('command-palette-command-workspace.undo'),
     ).toBeNull();
@@ -223,5 +242,123 @@ describe('<CommandPalette /> (T-13.05a)', () => {
       .getAllByRole('option')
       .map((o) => o.textContent ?? '');
     expect(new Set(labels).size).toBe(labels.length);
+  });
+
+  // ---- T-13.05b ----
+
+  it('typing a query that matches both a command and an element renders both rows in one ranked list', async () => {
+    await bootstrap();
+    const blockId = useWorkspaceStore.getState().createBlock({ x: 0, y: 0 });
+    expect(blockId).not.toBeNull();
+    // Rename so the element matches the query "save".
+    useWorkspaceStore
+      .getState()
+      .renameElement(blockId!, 'SaveControlPanelBlock');
+
+    render(<CommandPalette onClose={() => {}} />);
+    fireEvent.change(screen.getByTestId('command-palette-input'), {
+      target: { value: 'save' },
+    });
+
+    const saveCmd = screen.getByTestId(
+      'command-palette-command-workspace.save-project',
+    );
+    const elementRow = screen.getByTestId(
+      `command-palette-result-${blockId}`,
+    );
+    expect(saveCmd).toBeVisible();
+    expect(elementRow).toBeVisible();
+    // Command bias means the matching command outranks the element.
+    expect(saveCmd).toHaveAttribute('data-active', 'true');
+    expect(elementRow).toHaveAttribute('data-active', 'false');
+
+    // The header is the unified "Commands and elements" label, not "Actions".
+    expect(
+      screen.queryByTestId('command-palette-commands-header'),
+    ).toBeNull();
+    // Both rows live in the same listbox.
+    const list = screen.getByTestId('command-palette-results');
+    const ids = within(list)
+      .getAllByRole('option')
+      .map((o) => o.getAttribute('data-testid'));
+    expect(ids).toEqual([
+      'command-palette-command-workspace.save-project',
+      `command-palette-result-${blockId}`,
+    ]);
+  });
+
+  it('Enter on a unified-list command runs it (e.g. "save" runs Save project)', async () => {
+    await bootstrap();
+    useWorkspaceStore.getState().createBlock({ x: 0, y: 0 });
+    const downloads: Blob[] = [];
+    (
+      URL as unknown as { createObjectURL: (b: Blob) => string }
+    ).createObjectURL = (b) => {
+      downloads.push(b);
+      return 'blob:test';
+    };
+
+    const onClose = vi.fn();
+    render(<CommandPalette onClose={onClose} />);
+    fireEvent.change(screen.getByTestId('command-palette-input'), {
+      target: { value: 'save' },
+    });
+    fireEvent.keyDown(screen.getByTestId('command-palette'), { key: 'Enter' });
+
+    expect(downloads.length).toBe(1);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('Open chat command switches the sidebar tab to chat', async () => {
+    await bootstrap();
+    expect(useWorkspaceStore.getState().inspectorTab).toBe('inspector');
+
+    const onClose = vi.fn();
+    render(<CommandPalette onClose={onClose} />);
+    fireEvent.click(
+      screen.getByTestId('command-palette-command-workspace.open-chat'),
+    );
+
+    expect(useWorkspaceStore.getState().inspectorTab).toBe('chat');
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('Show inspector command switches the sidebar tab back to inspector', async () => {
+    await bootstrap();
+    useWorkspaceStore.getState().setInspectorTab('chat');
+    expect(useWorkspaceStore.getState().inspectorTab).toBe('chat');
+
+    render(<CommandPalette onClose={() => {}} />);
+    fireEvent.click(
+      screen.getByTestId('command-palette-command-workspace.show-inspector'),
+    );
+
+    expect(useWorkspaceStore.getState().inspectorTab).toBe('inspector');
+  });
+
+  it('Rename selection requires exactly one element selected on a diagram', async () => {
+    await bootstrap();
+    const blockId = useWorkspaceStore.getState().createBlock({ x: 0, y: 0 });
+    expect(blockId).not.toBeNull();
+
+    // No selection → command not visible.
+    const { unmount } = render(<CommandPalette onClose={() => {}} />);
+    expect(
+      screen.queryByTestId('command-palette-command-workspace.rename-selection'),
+    ).toBeNull();
+    unmount();
+
+    // Switch to the diagram surface and select the block.
+    useWorkspaceStore.getState().setActiveSurface('diagram');
+    useWorkspaceStore.getState().setSelection([blockId!]);
+    render(<CommandPalette onClose={() => {}} />);
+    expect(
+      screen.getByTestId('command-palette-command-workspace.rename-selection'),
+    ).toBeVisible();
+
+    fireEvent.click(
+      screen.getByTestId('command-palette-command-workspace.rename-selection'),
+    );
+    expect(useWorkspaceStore.getState().pendingRenameElementId).toBe(blockId);
   });
 });
