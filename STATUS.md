@@ -649,6 +649,23 @@ phase:13 — post-v1.0.0 polish + explorer rewrite
   scripts/regen-chat-baselines.sh for the 8 chat specs that need the
   test-mode preview build).
 
+## Last health check
+- Iteration: 750 (every-10th periodic check per AGENT.md directive 13)
+- Date: 2026-05-15
+- Pages reachable: ✓ https://michaeljfazio.github.io/mbse-workbench/ → HTTP 200
+- Recent merged PRs (5/5): ✓ #298, #296, #295, #293, #291 — all squashed
+  to main; every feature PR closed its referenced issue (#297, #294, #292,
+  #290; #296 was a status-only chore with no linked issue)
+- `status:needs-human` issue count: 0 (threshold for design-issue
+  escalation is >3)
+- Most-recent CI runs on `main` (5/5 completed): all `success` — most
+  recent is run 25909603627 on 4873e74 (T-13.19 merge), completed
+  2026-05-15T09:14:39Z, duration 10m 37s
+- In-flight CI on PR #300 (f102640) is `in_progress`; non-blocking for
+  the health check itself (the check evaluates `main`, not feature
+  branches)
+- Verdict: all green. No `p0`/`type:bug` issue filed.
+
 ## Known issues / blockers
 - (none for this iteration)
 
