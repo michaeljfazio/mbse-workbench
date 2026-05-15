@@ -104,6 +104,12 @@ import {
   PROJECT_TREE_DRAG_TYPE,
 } from './tree/ProjectTree';
 import { resolveTreeDragTrace } from './treeDragTrace';
+import {
+  autoLayoutDisabledReason,
+  deleteDisabledReason,
+  exportDisabledReason,
+  splitDisabledReason,
+} from './toolbarDisabledReasons';
 
 interface PendingConnection {
   readonly connection: Connection;
@@ -1254,7 +1260,10 @@ function CanvasInner(): JSX.Element {
           data-testid="toolbar-auto-layout"
           onClick={handleAutoLayout}
           disabled={elementCount === 0}
-          title="Re-arrange blocks with dagre layout"
+          title={
+            autoLayoutDisabledReason(elementCount) ??
+            'Re-arrange blocks with dagre layout'
+          }
           className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-foreground shadow-sm transition hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
         >
           Auto-layout
@@ -1264,6 +1273,7 @@ function CanvasInner(): JSX.Element {
           data-testid="toolbar-delete"
           onClick={deleteSelection}
           disabled={selectedElementIds.length === 0}
+          title={deleteDisabledReason(selectedElementIds.length)}
           className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-foreground shadow-sm transition hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
         >
           Delete
@@ -1275,6 +1285,7 @@ function CanvasInner(): JSX.Element {
           />
           <ExportMenu
             disabled={elementCount === 0}
+            disabledReason={exportDisabledReason(elementCount)}
             onExportPng={handleExportPng}
             onExportSvg={handleExportSvg}
             onExportSysml={handleExportSysml}
@@ -1466,14 +1477,19 @@ export function CanvasPane(): JSX.Element {
             className="ml-1 flex items-center gap-0.5"
           >
             {diagrams.map((d) => {
-              const splitDisabled =
-                d.id === activeDiagramId || d.id === secondaryDiagramId;
+              const isActive = d.id === activeDiagramId;
+              const isSecondary = d.id === secondaryDiagramId;
+              const splitDisabled = isActive || isSecondary;
+              const splitReason = splitDisabledReason({
+                isActiveDiagram: isActive,
+                isSecondaryDiagram: isSecondary,
+              });
               return (
                 <button
                   key={d.id}
                   type="button"
                   aria-label={`Split ${d.name} into secondary pane`}
-                  title={`Split ${d.name} right`}
+                  title={splitReason ?? `Split ${d.name} right`}
                   data-testid={`split-tab-${d.id}`}
                   disabled={splitDisabled}
                   onClick={() => splitDiagram(d.id)}

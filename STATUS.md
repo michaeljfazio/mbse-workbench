@@ -6,69 +6,90 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 757
+- Iteration #: 758
 - Started: 2026-05-15
-- Branch: issue/315-cmdk-recents (PR pending; auto-merge --squash)
-- Working on: #315 — T-13.05d Recently-used commands in Cmd-K palette.
-  PR #314 (T-13.05c selection-scoped Create-representation commands)
-  merged 7fc4f3b at 12:25:07Z. Picked T-13.05d as the next slice per
-  iter-756's Next-action plan — closes the T-13.05a/b/c/d series and
-  delivers the last operator-UX deliverable promised by the unified
-  command-palette plan.
+- Branch: issue/317-toolbar-disabled-reasons (PR #318 pending;
+  auto-merge --squash; CI run 25919321469 queued)
+- Working on: #317 — T-13.06 Disabled-toolbar-button reason tooltips.
+  PR #316 (T-13.05d recents + Commands/Elements grouping) merged
+  144a189 at 12:58:21Z, closing the entire T-13.05a/b/c/d series.
+  Picked T-13.06 as the next slice per iter-757's Next-action plan —
+  the lowest-numbered P1 operator-UX item that pairs naturally with
+  the typed predicate plumbing T-13.05a put in place.
 
-  T-13.05d adds two complementary affordances:
-  1. **Recent section** at the top of the empty-query palette. The
-     workspace store gains an in-memory `recentCommandIds: readonly
-     string[]` slot capped at `MAX_RECENT_COMMAND_IDS = 5`, plus a
-     `recordCommandUse(id)` action that dedupes existing entries and
-     prepends MRU. The palette calls it from `runItem` whenever the
-     user picks a `command`-kind row. On next open, the empty palette
-     splits into two headers — **Recent** (MRU order, capped at 5,
-     disabled / unknown ids skipped silently) and **Actions** (the
-     remaining built-in + selection-scoped commands, with recents
-     filtered out so the same row never appears twice).
-  2. **Commands / Elements grouping** in the typed-query view once
-     the unified ranked list grows past
-     `UNIFIED_LIST_SECTION_THRESHOLD = 5` AND both kinds are present.
-     Below threshold (or one-kind-only) the existing flat ranked list
-     is preserved — the small-result case reads cleaner without
-     headers. Above threshold the view re-groups: all matching
-     commands first (registry/score order within), then all matching
-     elements. The `+0.05` command bias no longer just biases ties;
-     it's now load-bearing only for the sub-threshold flat ranking.
+  Every toolbar surface that goes disabled today (Save in the
+  header, Auto-layout / Delete / Export in the canvas toolbar,
+  Split-pane buttons in the tab strip) now carries a native `title`
+  tooltip explaining the gating predicate, so a greyed-out button
+  reads its reason on hover instead of leaving the operator
+  guessing. The reason strings live in a single pure helper module
+  `src/workspace/toolbarDisabledReasons.ts` — five typed functions
+  (`saveDisabledReason`, `autoLayoutDisabledReason`,
+  `deleteDisabledReason`, `exportDisabledReason`,
+  `splitDisabledReason`) each returning `string | undefined` plus
+  six exported string constants. Future Phase-13 slices (T-13.07
+  inspector CTA, T-13.10 undo/redo toolbar buttons) extend the
+  module rather than re-deriving the predicates per call site.
 
-  Headers live as `<li role="presentation">` rows inside the same
-  `<ul role="listbox">`, so screen readers still see one listbox and
-  ArrowDown/Up navigation skips them automatically (no header sits
-  in the flat `items` array). `data-testid`s:
+  Wired sites:
+  - `Header.tsx` Save → `saveDisabledReason(initialized)`.
+  - `CanvasPane.tsx` Auto-layout → keeps the enabled-state
+    "Re-arrange blocks with dagre layout" title; disabled state
+    flips to "No elements to lay out".
+  - `CanvasPane.tsx` Delete → "Select something on the diagram to
+    delete" when selection is empty; no title when enabled.
+  - `CanvasPane.tsx` ExportMenu → new optional `disabledReason` +
+    `sysmlDisabledReason` props on `ExportMenu`; CanvasPane passes
+    "No elements to export" for the trigger. `sysmlDisabled` is
+    never tripped by the current caller, but the prop exists for
+    symmetry.
+  - `CanvasPane.tsx` Split-pane → `splitDisabledReason({
+    isActiveDiagram, isSecondaryDiagram })` returns "Already the
+    main diagram" vs "Already shown in the split pane"; the
+    enabled-state "Split <name> right" action label is preserved.
+
+  Out of scope (deferred): popover buttons (TraceKindPopover,
+  EdgeKindPopover, UseCaseEdgeKindPopover), inspector controls,
+  chat composer, modal buttons. Their disabled-state context is
+  already local; T-13.06 specifically targets the persistent
+  toolbar surface. Undo/Redo toolbar buttons don't exist yet
+  (T-13.10) — when they land, T-13.10 must extend the same helper
+  module to keep the convention consistent.
+
+  Tests: 18 new across 4 files (12 helper + 2 Header + 4
+  ExportMenu) + new e2e `tests/e2e/toolbar-disabled-reasons.spec.ts`
+  (2 tests, both pass on chromium + webkit). Local check green:
+  1223/1223 unit pass (was 1205, +18 net), tsc --noEmit clean,
+  eslint clean (0 errors, 3 pre-existing warnings unchanged),
+  vite build clean. Agent visual inspection: two Chromium
+  screenshots at `artifacts/iteration-758/toolbar-{empty,
+  populated}.png` confirm the toolbar pixels are unchanged
+  between disabled and enabled states (titles are hover-revealed
+  DOM affordances; the e2e + unit tests assert the underlying
+  `title` attribute is correct). No committed visual baselines
+  should drift — only `title` DOM attributes changed.
+
+## Iter-757 archive
+- Branch: issue/315-cmdk-recents (PR #316 merged 144a189 at
+  12:58:21Z on 2026-05-15). Shipped T-13.05d — Recently-used commands
+  in Cmd-K palette + Commands/Elements grouping when the ranked
+  list crosses `UNIFIED_LIST_SECTION_THRESHOLD = 5`. Workspace
+  store gained an in-memory `recentCommandIds` slot capped at
+  `MAX_RECENT_COMMAND_IDS = 5` with `recordCommandUse(id)` MRU
+  dedupe; palette splits into Recent + Actions sections on empty
+  query. Headers live as `<li role="presentation">` rows inside
+  the same listbox so ArrowDown/Up skips them; `data-testid`s
   `command-palette-recent-header`, `command-palette-commands-header`
-  (preserved — re-used for the Recent-mode Actions header so all
-  Phase-12-vintage assertions still hold), `command-palette-section-
-  commands`, `command-palette-section-elements`.
-
-  Helper API: `paletteCommands.ts` exports `MAX_RECENT_COMMANDS`,
-  `UNIFIED_LIST_SECTION_THRESHOLD`, and a pure
-  `recentPaletteCommands(allCommands, recentIds, ctx)` that filters
-  to enabled + known and caps at MAX_RECENT_COMMANDS. The MRU-list
-  cap (store-side `MAX_RECENT_COMMAND_IDS`) is intentionally equal
-  to the render cap so the store and the renderer agree on the
-  budget. The `recentPaletteCommands` helper is the gate for both:
-  disabled recents are SKIPPED, not greyed out, so a Recent header
-  doesn't appear above a row the user can't click.
-
-  Tests: 22 new (7 + 7 + 7 + 1 e2e). Local check green: 1205/1205
-  unit pass (was 1183; +22 net), tsc -b clean, lint clean (0 errors,
-  3 pre-existing warnings unchanged), vite build clean. New e2e
-  spec passes on Chromium + WebKit (476/476 e2e in the full run).
-  Agent visual inspection: four Chromium screenshots at
-  `artifacts/iteration-757/palette-{empty-no-recents,empty-with-
-  recent-save,query-small-flat-list,query-sectioned-headers}.png`
-  confirm (a) no Recent header before any command runs, (b) Recent
-  + Actions split after one Save with no Save duplication, (c)
-  query "alpha" stays a single flat list (1 item), (d) query
-  "selection" with 8 matches groups under COMMANDS / ELEMENTS
-  headers. No committed visual baseline captures the modal palette
-  so no baseline regen anticipated.
+  (preserved + re-used for Recent-mode Actions header),
+  `command-palette-section-commands`, `command-palette-section-
+  elements`. Helper API: `paletteCommands.ts` exports
+  `MAX_RECENT_COMMANDS`, `UNIFIED_LIST_SECTION_THRESHOLD`, and a
+  pure `recentPaletteCommands(allCommands, recentIds, ctx)` that
+  filters to enabled + known and caps at MAX_RECENT_COMMANDS. The
+  `+0.05` command bias remains load-bearing only for the sub-
+  threshold flat ranking. 22 new tests (7 + 7 + 7 + 1 e2e).
+  1205/1205 unit pass (was 1183; +22 net), tsc/lint/build clean.
+  Closes the entire T-13.05a/b/c/d unified-command-palette series.
 
 ## Iter-756 archive
 - Branch: issue/313-cmdk-create-representation (PR #314 merged
@@ -1042,25 +1063,33 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
-Wait for PR (T-13.05d recents + Commands/Elements section headers,
-#315) CI. No committed visual baseline captures the modal palette so
-no baseline regen is anticipated. After this merges the entire
-T-13.05 series (a/b/c/d) closes — the operator-UX tier next-lowest
-slice is **T-13.06** (disabled-toolbar-button reason tooltips). Small,
-self-contained: each disabled toolbar button currently has no
-indication of why it's disabled; the slice wires a `title` /
-shadcn-tooltip showing the gating predicate (e.g. "Undo —
-nothing to undo", "Delete — no selection on the active diagram").
-Pairs naturally with the typed predicate plumbing T-13.05a put in
-place. Alternatives if a different direction is desired:
-- T-13.07 (inspector contextual "+ New …" panel when nothing
-  selected, P1) — bigger, but unblocks the empty-inspector state.
-- T-13.10 (undo/redo toolbar buttons, P1) — buttons already work via
-  keyboard; this surfaces the same actions in the toolbar.
-- A recents persistence pass: today's recents are in-memory only
-  (cleared on reload). A future slice could mirror them to
-  sessionStorage so the "Recent" header survives reload. Out of
-  scope for T-13.05d.
+Wait for PR #318 (T-13.06 toolbar disabled-reason tooltips) CI.
+No committed visual baselines should drift since only `title` DOM
+attributes changed; if any flake, refresh per the docs/CONTEXT.md
+2026-05-12 lift-from-trace procedure. After this merges, the
+remaining P1 operator-UX tier items are:
+- **T-13.07** (inspector contextual "+ New …" panel when nothing
+  selected) — bigger slice. Unblocks the empty-inspector state by
+  surfacing palette-accepted creation affordances directly in the
+  inspector pane.
+- **T-13.10** (undo/redo toolbar buttons) — keyboard shortcuts
+  already work; this surfaces the same actions in the toolbar.
+  Pair naturally with this PR — `toolbarDisabledReasons.ts` is
+  already in place, so the wiring will be a 3-line addition per
+  button (`undoDisabledReason(canUndo)`, etc.).
+- **T-13.08** / **T-13.09** if those exist in the Phase-13 backlog
+  — re-check STATUS.md backlog tier when picking up the next
+  slice.
+
+Recommended next slice: **T-13.10**, because the helper module
+ships in this PR is sized for incremental extension and the
+keyboard-already-wired undo/redo predicates (`canUndo`, `canRedo`)
+already exist in the store. Smaller risk surface than T-13.07's
+inspector restructure.
+
+A recents-persistence pass remains a future polish item (today's
+recents are cleared on reload). Out of scope for the P1 tier;
+revisit after T-13.07/.10 land.
 
 Backlog (P1 notation conformance) status after T-13.26:
 - T-13.18 ✓, T-13.19 ✓, T-13.20 ✓, T-13.21 ✓, T-13.22 ✓,
