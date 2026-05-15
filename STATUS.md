@@ -6,9 +6,44 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 736
+- Iteration #: 737
 - Started: 2026-05-15
-- Branch: issue/280-store-move-element (PR #281 open, auto-merge enabled)
+- Branch: issue/282-tree-drag-drop (PR #283 open, auto-merge enabled)
+- Iter-737: PR #281 (T-13.36a) merged dd9957d. Shipped T-13.36b —
+  ContainmentTree drag source + drop target wired to the store's
+  generalized moveElement. Element rows (except the project root)
+  become drag sources via `draggable=true` + onDragStart that writes
+  the element id to dataTransfer under PROJECT_TREE_DRAG_ELEMENT_ID
+  (reuses the existing MIME from ProjectTree leaves; distinct from
+  the `application/x-mbse-element-kind` palette slot). A
+  `dragStateRef` captures `{ id, kind }` synchronously at dragStart
+  because `dataTransfer.getData()` is unreadable during dragOver for
+  security reasons. dragOver runs the same `acceptedChildKinds(rowKind)`
+  pre-check the row menu uses, plus a cycle pre-check walking the
+  target's ownerId chain; accepted targets call preventDefault, set
+  `dropEffect='move'`, and toggle `data-droptarget='true'` +
+  `bg-primary/20 ring-1 ring-primary`. Drop dispatches
+  store.moveElement; the store stays authoritative (cycle / kind /
+  self / no-op / unknown rejects still happen there). Root row is
+  not draggable but IS a drop target so elements can return to top
+  level. Diagram rows are not drop targets. 11 new unit specs cover
+  draggable attribute + payload, root not-draggable, dragOver
+  accept/reject markers, drop variants (PortDefinition→PartDefinition
+  ownerRole=port, ValueProperty→ActionDefinition ownerRole=parameter,
+  child→root ownerRole=member), self/cycle/non-accepting no-ops,
+  diagram-row reject, dragEnd indicator reset, single-step undo.
+  1 new Playwright e2e (`tests/e2e/containment-tree-dnd.spec.ts`) walks
+  a real-mouse drag on chromium + webkit: creates Pump (PartDefinition)
+  and Port1 (PortDefinition) under root via the row menu, drags Port1
+  onto Pump with `dragTo`, asserts depth 1→2, reloads, asserts
+  persistence. 1004/1004 unit pass, tsc -b clean, lint clean
+  (0 errors, 4 pre-existing warnings), build clean, e2e green on
+  both projects. No static visual baseline impact (the indicator
+  only renders during an in-progress drag).
+
+## Current iteration (archived 736 → 737)
+- Iteration #: 736
+- Branch: issue/280-store-move-element (PR #281 merged dd9957d)
 - Iter-736: PR #277 (T-13.34) merged 1d2fdda; PR #279 (T-13.04 per-section
   "+" affordances) merged 67642fc. Started T-13.36 (P0 gate item: drag-drop
   move semantics for any container) — filed #280 + opened PR #281 for
@@ -19,16 +54,7 @@ phase:13 — post-v1.0.0 polish + explorer rewrite
   no-op moves, and unknown ids; dispatches a single `update-element`
   so undo is one step. Kept `moveElementBetweenPackages` distinct (ADR
   0009 § 2 Package-in-Package rejection still wanted for the Package
-  canvas drop target). 9 new unit specs cover Package↔Package move +
-  undo, PortDefinition→PartDefinition (`ownerRole`=port),
-  ValueProperty→ActionDefinition (`ownerRole`=parameter), self-target
-  reject, cycle reject (Package→descendant), kind-not-accepted reject,
-  no-op reject, unknown-id reject, end-of-slot ownerIndex.
-  992/992 unit pass; tsc -b clean; lint clean (0 errors, 4 pre-existing
-  warnings); build clean. No UI changed → no visual baseline impact.
-  Next iter: T-13.36b — ContainmentTree drag source + drop target +
-  visual feedback + e2e walking the move end-to-end via real mouse
-  events.
+  canvas drop target).
 
 ## Current iteration (archived 735 → 736)
 - Iteration #: 735
@@ -361,8 +387,8 @@ Backlog (P1 — explorer features, JOURNAL iter-530):
 - T-13.36 Generalize drag-drop move semantics (any container, not just
   Package). Promoted to P0 — gate item 4. Split into:
   - [x] T-13.36a store action `moveElement` — PR #281 (iter-736).
-  - T-13.36b ContainmentTree drag source + drop target + visual
-    feedback + e2e (next iter).
+  - [x] T-13.36b ContainmentTree drag source + drop target + visual
+    feedback + e2e — PR #283 (iter-737).
 - T-13.37 Diagrams as representations (⌬ leaves under owning element).
 - T-13.38 Per-kind stereotype icons (lucide-react).
 - T-13.39 Stable URL fragments: #/element/<id>, #/diagram/<id>.
@@ -419,20 +445,11 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
-Wait for PR #281 (T-13.36a moveElement) CI to merge. No visual baseline
-impact expected (store-only change). Next iter: T-13.36b — wire the
-ContainmentTree as a drag source / drop target for the new store
-action. Sketch:
-- Mark element rows draggable=true; set dataTransfer with element id.
-- Mark element rows as drop targets that call
-  `store.moveElement(draggedId, rowOwnerId)` on drop and reflect the
-  acceptance preview by toggling a hover class only when
-  `acceptedChildKinds(rowKind)` includes the dragged kind (cheap
-  pre-check matching the store action's reject path).
-- Playwright e2e covering: drag a PortDefinition from the project root
-  onto a PartDefinition row → verify it nests under the part with
-  ownerRole='port'; refresh page → state survives.
-- Forbid drop on diagram rows and the root self-drop.
+Wait for PR #283 (T-13.36b drag-drop UI) CI to merge. With T-13.36
+fully shipped, Phase 13 gate item 4 (drag-drop move semantics for any
+container, not just Package) is satisfied. Next iter picks the next P0
+backlog item; T-13.33e (#270, Move to package / Duplicate submenu) is
+now unblocked by T-13.36b landing.
 
 Remaining P0 work:
 - T-13.01 Diagram lifecycle UI — much shipped via T-13.33c/d; remaining
@@ -440,5 +457,5 @@ Remaining P0 work:
 - T-13.02 Right-click context menu — mostly subsumed by the explorer
   kebab menu (T-13.33a–d); revisit if a true right-click shortcut is
   still wanted.
-P2 / deferred: #270 (T-13.33e Move to package / Duplicate, depends on
-T-13.36b landing first).
+P2 / deferred: #270 (T-13.33e Move to package / Duplicate) — now
+unblocked since T-13.36b ships the underlying drag-drop affordance.
