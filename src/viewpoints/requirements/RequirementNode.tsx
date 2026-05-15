@@ -24,7 +24,7 @@ export type RequirementNodeType = Node<RequirementNodeData, 'requirements-requir
 export const REQUIREMENTS_REQUIREMENT_NODE_TYPE = 'requirements-requirement' as const;
 
 export const REQUIREMENT_NODE_WIDTH = 240;
-export const REQUIREMENT_NODE_HEIGHT = 140;
+export const REQUIREMENT_NODE_HEIGHT = 180;
 
 // Background + text shades chosen so that bold uppercase tracking-wide labels
 // clear WCAG AA contrast on the card background. Tailwind palette values:
@@ -97,24 +97,13 @@ export function RequirementNode({
         data-testid={`requirements-handle-top-${data.elementId}`}
         className="!z-10 !h-3 !w-3 !rounded-full !border-2 !border-card !bg-primary"
       />
-      <header className="flex items-center justify-between gap-2 border-b border-border bg-muted/40 px-2 py-1">
+      <header className="flex flex-col gap-0.5 px-3 pt-2 pb-1.5">
         <span
-          data-testid={`requirements-req-id-${data.elementId}`}
-          className="font-mono text-[10px] font-semibold tracking-tight text-foreground/80"
-          title={data.reqId ? `Requirement ID: ${data.reqId}` : 'Requirement ID not set'}
+          data-testid={`requirements-req-stereotype-${data.elementId}`}
+          className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground"
         >
-          {data.reqId ?? '—'}
+          &laquo;requirement&raquo;
         </span>
-        <span
-          data-testid={`requirements-priority-${data.elementId}`}
-          className={`rounded-sm border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
-            PRIORITY_BADGES[data.priority]
-          }`}
-        >
-          {data.priority}
-        </span>
-      </header>
-      <div className="flex flex-1 flex-col gap-1 px-2 py-1">
         {editing ? (
           <input
             ref={inputRef}
@@ -145,23 +134,70 @@ export function RequirementNode({
             {data.name}
           </div>
         )}
+      </header>
+      <div className="flex items-baseline justify-between gap-2 border-t border-border px-3 py-1">
+        <span
+          data-testid={`requirements-compartment-label-id-${data.elementId}`}
+          className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground"
+        >
+          id
+        </span>
+        <span
+          data-testid={`requirements-req-id-${data.elementId}`}
+          className="truncate font-mono text-[11px] font-semibold tracking-tight text-foreground/85"
+          title={data.reqId ? `Requirement ID: ${data.reqId}` : 'Requirement ID not set'}
+        >
+          {data.reqId ?? '—'}
+        </span>
+      </div>
+      <div className="flex min-h-0 flex-1 flex-col gap-0.5 border-t border-border px-3 py-1">
+        <span
+          data-testid={`requirements-compartment-label-text-${data.elementId}`}
+          className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground"
+        >
+          text
+        </span>
         <p
           data-testid={`requirements-req-text-${data.elementId}`}
-          className="line-clamp-3 text-[11px] leading-snug text-foreground/80"
+          className="line-clamp-2 text-[11px] leading-snug text-foreground/85"
           title={data.text.length > 0 ? data.text : 'No requirement text yet'}
         >
           {data.text.length > 0 ? data.text : 'No requirement text yet.'}
         </p>
       </div>
-      <footer className="flex items-center justify-end gap-1 border-t border-border bg-muted/30 px-2 py-1">
-        <span
-          data-testid={`requirements-status-${data.elementId}`}
-          className={`rounded-sm border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
-            STATUS_BADGES[data.status]
-          }`}
-        >
-          {data.status}
-        </span>
+      <footer className="flex items-center justify-between gap-2 border-t border-border bg-muted/30 px-3 py-1">
+        <div className="flex items-baseline gap-1">
+          <span
+            data-testid={`requirements-compartment-label-priority-${data.elementId}`}
+            className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground"
+          >
+            priority
+          </span>
+          <span
+            data-testid={`requirements-priority-${data.elementId}`}
+            className={`rounded-sm border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
+              PRIORITY_BADGES[data.priority]
+            }`}
+          >
+            {data.priority}
+          </span>
+        </div>
+        <div className="flex items-baseline gap-1">
+          <span
+            data-testid={`requirements-compartment-label-status-${data.elementId}`}
+            className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground"
+          >
+            status
+          </span>
+          <span
+            data-testid={`requirements-status-${data.elementId}`}
+            className={`rounded-sm border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wider ${
+              STATUS_BADGES[data.status]
+            }`}
+          >
+            {data.status}
+          </span>
+        </div>
       </footer>
       <Handle
         type="source"
