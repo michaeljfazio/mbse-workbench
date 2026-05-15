@@ -6,8 +6,62 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
+- Iteration #: 729
+- Started: 2026-05-15
+- Branch: issue/269-tree-diagram-row-rename-delete (PR open, auto-merge)
+- Iter-729: PR #272 (T-13.33c Create representation) merged 2724929.
+  Shipped T-13.33d — diagram-row three-dots menu with Rename + Delete.
+  New store actions renameDiagram(id, name) and deleteDiagram(id):
+  rename trims, no-op on empty/identical; delete removes from diagrams
+  array, falls back activeDiagramId to next diagram (or null if none),
+  clears secondaryDiagramId + secondarySelectedElementIds + persists
+  layout when the deleted diagram was the secondary. Both call
+  saveProject. New ContainmentTreeDiagramRowMenu.tsx component reuses
+  the same outside-pointerdown / Escape close semantics as the element
+  row menu. Diagram rows now host the menu + an inline rename input
+  (Enter/blur commits, Escape cancels). 10 new unit specs covering:
+  trigger render, rename round-trip, Escape cancel, delete-active
+  fallback, delete-non-active, delete-last clears, kebab opens without
+  activating diagram, renameDiagram store action, renameDiagram empty
+  no-op, deleteDiagram clears secondary. 951/951 unit, tsc -b clean,
+  lint clean (0 errors), build clean.
+
+## Current iteration (archived 728 → 729)
+- Iteration #: 728
+- Iter-728: No code work. Held for PR #272 (T-13.33c) CI to land.
+
+## Current iteration (archived 727 → 728)
+- Iteration #: 727
+- Started: 2026-05-15
+- Branch: issue/268-tree-create-representation (PR #272 auto-merge enabled)
+- Iter-727: PR #271 (T-13.33b Create-child submenu) merged fe5a62e.
+  Shipped T-13.33c — Create representation submenu. New
+  representationAcceptance.ts encodes the viewpoint × context-kind
+  table: Package → BDD/Requirements/Use Case/Package (context.kind=
+  'package'); PartDefinition → BDD/IBD/Parametric (context.kind=
+  'partDefinition'); ActionDefinition → Activity; StateDefinition →
+  State Machine. ContainmentTreeRowMenu gains a second nested submenu
+  with the same close-on-outside-pointerdown semantics as Create-child.
+  ContainmentTree wires `requestCreateRepresentation` which calls
+  `createDiagram(viewpointId, { name, context })` with default name
+  `<element.name> <ViewpointLabel>` and switches to the new diagram via
+  setActiveDiagram. The diagram nests under its owner via
+  buildContainmentTree's representations sort (no tree-builder change).
+  6 new representationAcceptance unit specs + 6 new ContainmentTree
+  integration specs. 941/941 unit, tsc -b clean, lint clean, build
+  clean. Next iter: #269 (T-13.33d diagram-row Rename/Delete — adds
+  renameDiagram/deleteDiagram store actions, folds into T-13.01).
+
+## Current iteration (archived 726 → 727)
+- Iteration #: 726
+- Branch: issue/267-tree-create-child (PR #271 merged fe5a62e)
+- Iter-726: PR #266 (T-13.33a) merged 7982c42. PR #271 (T-13.33b
+  Create-child submenu) opened with commit 34c08ec from a prior
+  iteration; CI ran green on 25862173369 and the PR auto-merged to
+  fe5a62e. No code work this iter; waited on the `check` job.
+
+## Current iteration (archived 725 → 726)
 - Iteration #: 725
-- Started: 2026-05-14
 - Branch: main (PR #266 CI in progress; no code work this iter)
 - Iter-725: PR #266 (T-13.33a) still has `check` in_progress. Used the
   iteration to file the deferred T-13.33 follow-ups so the backlog is
@@ -292,13 +346,11 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
-Wait for PR #266 CI to merge. T-13.33 follow-ups filed: #267 (Create
-child), #268 (Create representation), #269 (diagram-row Rename/Delete,
-adds renameDiagram/deleteDiagram store actions — folds into T-13.01),
-#270 (Move to package / Duplicate, P2 — depends on T-13.36). Next
-working iteration: pick #267 (T-13.33b Create child) since it doesn't
-depend on new store actions. Then #268, then #269 (which unlocks the
-diagram-lifecycle store seam needed by T-13.01).
+Wait for PR (T-13.33d diagram-row Rename/Delete) CI to merge. With
+T-13.33a..d done, T-13.33 is feature-complete except #270 (T-13.33e
+Move to package / Duplicate, P2, depends on T-13.36). Next P1 work:
+T-13.34 (empty-state CTAs through the explorer) or T-13.35 (token
+filter bar). #270 (Move to package / Duplicate, P2) depends on T-13.36.
 The "retire flat-by-kind ProjectTree" cutover is its
 own larger iteration because it requires migrating 13+ e2e specs off
 `project-tree-group-<Kind>` drag-sources onto explicit "+" affordances

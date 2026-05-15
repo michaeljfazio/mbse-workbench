@@ -23,6 +23,7 @@ import {
   type RepresentationOption,
 } from './representationAcceptance';
 import { ContainmentTreeRowMenu } from './ContainmentTreeRowMenu';
+import { ContainmentTreeDiagramRowMenu } from './ContainmentTreeDiagramRowMenu';
 
 type FocusKey = `el:${ElementId}` | `dg:${DiagramId}`;
 
@@ -84,8 +85,13 @@ export function ContainmentTree(): JSX.Element {
   const createChildElementAction = useWorkspaceStore((s) => s.createChildElement);
   const createDiagramAction = useWorkspaceStore((s) => s.createDiagram);
   const setActiveDiagramAction = useWorkspaceStore((s) => s.setActiveDiagram);
+  const renameDiagramAction = useWorkspaceStore((s) => s.renameDiagram);
+  const deleteDiagramAction = useWorkspaceStore((s) => s.deleteDiagram);
 
   const [renamingId, setRenamingId] = useState<ElementId | null>(null);
+  const [renamingDiagramId, setRenamingDiagramId] = useState<DiagramId | null>(
+    null,
+  );
 
   const beginRename = useCallback((id: ElementId) => {
     setRenamingId(id);
@@ -149,6 +155,31 @@ export function ContainmentTree(): JSX.Element {
     for (const d of diagrams) m.set(d.id, d);
     return m;
   }, [diagrams]);
+
+  const beginDiagramRename = useCallback((id: DiagramId) => {
+    setRenamingDiagramId(id);
+  }, []);
+
+  const commitDiagramRename = useCallback(
+    (id: DiagramId, name: string) => {
+      const trimmed = name.trim();
+      if (trimmed.length > 0) renameDiagramAction(id, trimmed);
+      setRenamingDiagramId(null);
+    },
+    [renameDiagramAction],
+  );
+
+  const cancelDiagramRename = useCallback(
+    () => setRenamingDiagramId(null),
+    [],
+  );
+
+  const requestDiagramDelete = useCallback(
+    (id: DiagramId) => {
+      deleteDiagramAction(id);
+    },
+    [deleteDiagramAction],
+  );
 
   const requestCreateRepresentation = useCallback(
     (ownerId: ElementId, option: RepresentationOption) => {
@@ -451,6 +482,11 @@ export function ContainmentTree(): JSX.Element {
               focusItem,
               syncFocus,
               handleActivate,
+              renamingDiagramId,
+              beginDiagramRename,
+              commitDiagramRename,
+              cancelDiagramRename,
+              requestDiagramDelete,
             }),
       )}
     </div>
@@ -619,6 +655,11 @@ interface DiagramRowContext {
   readonly focusItem: (key: FocusKey | null) => void;
   readonly syncFocus: (key: FocusKey) => void;
   readonly handleActivate: (row: FlatRow) => void;
+  readonly renamingDiagramId: DiagramId | null;
+  readonly beginDiagramRename: (id: DiagramId) => void;
+  readonly commitDiagramRename: (id: DiagramId, name: string) => void;
+  readonly cancelDiagramRename: () => void;
+  readonly requestDiagramDelete: (id: DiagramId) => void;
 }
 
 function renderDiagramRow(
@@ -628,6 +669,7 @@ function renderDiagramRow(
 ): JSX.Element {
   const isFocused = ctx.focusKey === row.key;
   const isActive = ctx.activeDiagramId === diagram.id;
+  const isRenaming = ctx.renamingDiagramId === diagram.id;
   return (
     <div
       key={row.key}
@@ -641,12 +683,13 @@ function renderDiagramRow(
       ref={(el) => ctx.setRef(row.key, el)}
       onFocus={() => ctx.syncFocus(row.key)}
       onClick={(e) => {
+        if (isRenaming) return;
         e.stopPropagation();
         ctx.focusItem(row.key);
         ctx.handleActivate(row);
       }}
       style={{ paddingLeft: `${row.depth * 12 + 4}px` }}
-      className={`flex cursor-pointer select-none items-center gap-1 rounded px-1 py-1 text-sm text-foreground/90 hover:bg-accent focus:outline-none focus:ring-1 focus:ring-primary ${
+      className={`group flex cursor-pointer select-none items-center gap-1 rounded px-1 py-1 text-sm text-foreground/90 hover:bg-accent focus:outline-none focus:ring-1 focus:ring-primary ${
         isActive ? 'bg-primary/10 font-medium' : ''
       }`}
     >
@@ -656,7 +699,73 @@ function renderDiagramRow(
       >
         ⌬
       </span>
-      <span className="truncate">{diagram.name}</span>
+      {isRenaming ? (
+        <ContainmentTreeDiagramRenameInput
+          diagramId={diagram.id}
+          initialValue={diagram.name}
+          onCommit={(name) => ctx.commitDiagramRename(diagram.id, name)}
+          onCancel={ctx.cancelDiagramRename}
+        />
+      ) : (
+        <span className="truncate">{diagram.name}</span>
+      )}
+      {!isRenaming ? (
+        <ContainmentTreeDiagramRowMenu
+          diagramId={diagram.id}
+          onRename={() => ctx.beginDiagramRename(diagram.id)}
+          onDelete={() => ctx.requestDiagramDelete(diagram.id)}
+        />
+      ) : null}
     </div>
+  );
+}
+
+interface DiagramRenameInputProps {
+  readonly diagramId: DiagramId;
+  readonly initialValue: string;
+  readonly onCommit: (name: string) => void;
+  readonly onCancel: () => void;
+}
+
+function ContainmentTreeDiagramRenameInput({
+  diagramId,
+  initialValue,
+  onCommit,
+  onCancel,
+}: DiagramRenameInputProps): JSX.Element {
+  const [value, setValue] = useState(initialValue);
+  const ref = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const input = ref.current;
+    if (!input) return;
+    input.focus();
+    input.select();
+  }, []);
+
+  return (
+    <input
+      ref={ref}
+      type="text"
+      value={value}
+      data-testid={`containment-tree-diagram-rename-${diagramId}`}
+      onChange={(e) => setValue(e.target.value)}
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          e.stopPropagation();
+          onCommit(value);
+        } else if (e.key === 'Escape') {
+          e.preventDefault();
+          e.stopPropagation();
+          onCancel();
+        } else {
+          e.stopPropagation();
+        }
+      }}
+      onBlur={() => onCommit(value)}
+      className="min-w-0 flex-1 rounded border border-border bg-card px-1 py-0 text-sm text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+    />
   );
 }
