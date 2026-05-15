@@ -6,15 +6,53 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 751
+- Iteration #: 752
 - Started: 2026-05-15
-- Branch: issue/301-activity-diamond-svg (PR opened; auto-merge --squash)
-- Working on: #301 — T-13.23 Activity decision/merge as inline SVG
-  polygon. PR #300 (T-13.25 Parametric notation) merged green at 95d1b38
-  with no visual baseline drift (the meta-line DOM change was within the
-  `maxDiffPixelRatio: 0.01` tolerance on both chromium + webkit). Picked
-  T-13.23 from the iter-750 next-actions list as the lowest-numbered open
-  P1 notation-conformance task. Reviewed all six activity pseudostates:
+- Branch: issue/303-state-pseudostate-markers (PR #304; auto-merge --squash)
+- Working on: #303 — T-13.24 State pseudostate glyph review + uniform
+  `data-pseudostate-shape` markers. PR #302 (T-13.23 Activity decision/merge
+  SVG diamond) merged green at f90e39c with the visual baselines drifting
+  exactly as iter-751 predicted on `activity-with-pseudostates-*` — but CI's
+  `maxDiffPixelRatio: 0.01` tolerance absorbed it (the SVG-vs-CSS-rotated
+  antialiasing delta on a 70px diamond is well under the threshold) so no
+  baseline refresh was needed. Issue #301 closed. Picked T-13.24 from the
+  iter-751 next-actions list. Reviewed all three state-machine shapes
+  against SysMLv2/UML: initial (28×28 `rounded-full bg-foreground` disk) ✓
+  matches "filled circle"; final (28×28 outer `border-foreground bg-card
+  rounded-full` + 14×14 inner `bg-foreground rounded-full`) ✓ matches
+  "bullseye"; state (160×72 `rounded-2xl border-2 bg-card` with horizontal
+  `border-t border-border/60` separator above entry/do/exit action rows) ✓
+  matches "rounded rectangle with action compartment". No rotated-CSS hacks
+  exist — unlike the T-13.23 diamond, the CSS circles fit exactly within
+  their 28px bounding boxes, so SVG conversion would add complexity without
+  improving geometry. Composite region is out of scope: `StateNodeType` is
+  exactly `'state' | 'initial' | 'final'` in the metamodel, with no
+  region/choice/junction/history pseudostates planned. The remaining
+  deliverable was DOM uniformity: generalize the
+  `data-pseudostate-shape="diamond"` marker T-13.23 introduced on activity
+  decision/merge into a shared convention across both pseudostate viewpoints
+  so the Phase-13 visual-fidelity gate has one query
+  (`[data-pseudostate-shape="<name>"]`) instead of per-viewpoint testid +
+  class contracts. Added markers on activity Initial (`circle-filled`),
+  Final (`bullseye`), Bar (`bar`, covers fork + join), and on state-machine
+  Initial (`circle-filled`), Final (`bullseye`). Activity Diamond keeps its
+  T-13.23 `diamond` marker unchanged. 4 new ActionUsageNode specs assert the
+  new markers; new file `tests/unit/viewpoints/stateMachine/StateUsageNode.test.tsx`
+  (9 specs) covers state render + rename + action compartment, initial /
+  final handle counts (1 each — initial has only source, final only
+  target), final concentric `rounded-full bg-foreground` disks, both new
+  pseudostate-shape markers, and the existing `data-state-node-type`
+  markers preserved on all three shapes. 1119/1119 unit pass (was 1106,
+  +13 net), tsc -b clean, lint clean (0 errors, 3 pre-existing warnings
+  unchanged), vite build clean. No visual baseline drift expected — only
+  `data-*` attributes added, zero pixels changed.
+- Iter-751 archive: Shipped T-13.23 — activity decision/merge as inline
+  SVG polygon. PR #302 (after re-numbering during open) merged f90e39c
+  with no baseline regen needed; the SVG-vs-CSS-rotated antialiasing
+  delta on a 70px diamond stayed inside the 0.01 tolerance. New
+  `data-pseudostate-shape="diamond"` marker introduced as a Phase-13
+  visual-fidelity gate hook (generalized to all pseudostates this iter).
+  Reviewed all six activity pseudostates:
   initial (filled `bg-foreground` disk), final (bullseye = outer
   `border-foreground bg-card` ring + 14px inner `bg-foreground` span),
   fork/join (solid `bg-foreground` 80×8 bar), all match SysMLv2/UML
@@ -694,10 +732,10 @@ phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Last test run
 - Command: pnpm exec tsc -b && pnpm lint && pnpm test:unit && pnpm build
-- Result: PASS — 1103 unit, tsc -b clean, lint clean (0 errors, 3 pre-existing
-  warnings), build clean
-- (e2e deferred to CI on PR #300; the change touches Parametric DOM, so
-  any visual drift surfaces on the parametric-with-* baselines)
+- Result: PASS — 1119 unit (was 1106, +13 net), tsc -b clean, lint clean
+  (0 errors, 3 pre-existing warnings unchanged), build clean
+- (e2e deferred to CI on PR #304; the change is `data-*` attribute only,
+  so no visual drift is expected on any baseline)
 - Visual baselines: regenerated in podman/playwright:v1.48.2-jammy
   container (full suite via scripts/regen-baselines.sh +
   scripts/regen-chat-baselines.sh for the 8 chat specs that need the
@@ -752,11 +790,16 @@ Backlog (P1 — SysMLv2 notation conformance, JOURNAL iter-529):
 - [x] T-13.20 IBD enclosing-block frame — shipped iter-747 (PR #294).
 - [x] T-13.21 Requirement compartments (reqId/text/priority/status rows). Shipped iter-744 (#293).
 - [x] T-13.22 Use-case true ellipse shape (SVG, not rectangle). Shipped iter-739 (#288).
-- T-13.23 Activity pseudostate glyph review (initial/final/fork/join/dec/merge).
-      Decision/merge diamond → inline SVG polygon shipped iter-751 (#301,
-      auto-merge enabled). Initial/final/fork/join confirmed conformant
-      as-is — no further change planned under this task.
-- T-13.24 State pseudostate glyph review (initial/final/composite region).
+- [x] T-13.23 Activity pseudostate glyph review (initial/final/fork/join/dec/merge).
+      Decision/merge diamond → inline SVG polygon shipped iter-751 (#302,
+      merged f90e39c). Initial/final/fork/join confirmed conformant as-is
+      — no further change planned under this task.
+- [x] T-13.24 State pseudostate glyph review (initial/final/composite region).
+      Shipped iter-752 (#304). All three shapes conformant as-is; no SVG
+      conversion needed. Composite region out of scope (not in metamodel).
+      Generalized `data-pseudostate-shape` marker convention from T-13.23
+      across both pseudostate viewpoints for the Phase-13 visual-fidelity
+      gate's uniform DOM query.
 - [x] T-13.25 Parametric: constraint-expression + value-property `: type = value`.
       In flight — PR #300 (iter-749), auto-merge enabled, awaiting CI.
 - T-13.26 Edge style audit (Gen hollow-triangle, Comp filled-diamond,
@@ -857,25 +900,25 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
-Wait for PR #301 (T-13.23 activity decision/merge SVG diamond) CI. The
-DOM change (rotated `<span>` → inline `<svg><polygon>`) WILL likely
-drift `activity-with-pseudostates-{chromium,webkit}.png` and may drift
-`inspector-action-selected-{chromium,webkit}.png` (also features a
-decision). If CI flags either, refresh per the docs/CONTEXT.md 2026-05-12
-lift-from-trace procedure. If CI fails ONLY on `Upload Playwright report`,
-that's the iter-747 GitHub artifact-storage flake — `gh run rerun
-<run-id> --failed`. After PR #301 merges, pick the next Phase-13 backlog
-item:
-- T-13.24 State pseudostate glyph review (initial / final / region) —
-  likely the next-cleanest mirror of T-13.23; review state-machine
-  initial circle / final bullseye / composite-region rendering against
-  SysMLv2 conventions and convert any rotated-CSS hacks to SVG.
-- T-13.26 Edge style audit (Gen hollow-triangle, Comp filled-diamond,
-  Trace family dashed + stereotype, ItemFlow open-arrow + item-type).
-- T-13.05 Cmd-K command palette — biggest P1 discoverability gap (a
-  larger feature; may want to slice into store-action + UI sub-tasks).
+Wait for PR #304 (T-13.24 uniform `data-pseudostate-shape` markers) CI.
+No visual drift expected — only `data-*` attributes were added; zero
+pixels changed. If CI fails ONLY on `Upload Playwright report`, that's
+the iter-747 GitHub artifact-storage flake — `gh run rerun <run-id>
+--failed`. After PR #304 merges, pick the next Phase-13 backlog item.
+With T-13.24 done, only T-13.26 remains in the P1 notation-conformance
+tier:
+- T-13.26 Edge style audit — review Generalization (hollow-triangle
+  arrowhead), Composition (filled-diamond at owner end), RequirementTrace
+  family (dashed + stereotype label «derive»/«satisfy»/«verify»/«refine»),
+  ItemFlow (open-arrow + item-type label). Likely splittable per edge
+  family if the audit reveals multiple non-conforming styles.
+After T-13.26 closes the P1 notation-conformance tier entirely. The
+biggest remaining P1 features are T-13.05 (Cmd-K true command palette),
+T-13.06 (disabled-toolbar-button reason tooltips), and T-13.10 (undo/redo
+toolbar buttons). T-13.05 is the largest single feature in P1 and may
+warrant splitting into store-action + palette-UI sub-PRs.
 
-Backlog (P1 notation conformance) status after T-13.23:
+Backlog (P1 notation conformance) status after T-13.24:
 - T-13.18 ✓, T-13.19 ✓, T-13.20 ✓, T-13.21 ✓, T-13.22 ✓,
-  T-13.23 ✓ (this iter, awaiting CI), T-13.25 ✓.
-  Remaining: T-13.24, T-13.26.
+  T-13.23 ✓, T-13.24 ✓ (this iter, awaiting CI), T-13.25 ✓.
+  Remaining: T-13.26.

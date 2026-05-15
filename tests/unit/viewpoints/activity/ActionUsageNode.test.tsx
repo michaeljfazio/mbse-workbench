@@ -213,6 +213,68 @@ describe('ActionUsageNode', () => {
     ).toBeGreaterThanOrEqual(2);
   });
 
+  it('exposes data-pseudostate-shape="circle-filled" on Initial', () => {
+    renderActionNode(
+      { elementId, name: '', nodeType: 'initial' },
+      onRename,
+    );
+    const node = screen.getByTestId(`activity-initial-${elementId}`);
+    expect(node.getAttribute('data-pseudostate-shape')).toBe('circle-filled');
+  });
+
+  it('exposes data-pseudostate-shape="bullseye" on Final', () => {
+    renderActionNode(
+      { elementId, name: '', nodeType: 'final' },
+      onRename,
+    );
+    const node = screen.getByTestId(`activity-final-${elementId}`);
+    expect(node.getAttribute('data-pseudostate-shape')).toBe('bullseye');
+  });
+
+  it('exposes data-pseudostate-shape="bar" on Fork and Join', () => {
+    const { unmount } = renderActionNode(
+      { elementId, name: '', nodeType: 'fork' },
+      onRename,
+    );
+    expect(
+      screen
+        .getByTestId(`activity-fork-${elementId}`)
+        .getAttribute('data-pseudostate-shape'),
+    ).toBe('bar');
+    unmount();
+    renderActionNode(
+      { elementId, name: '', nodeType: 'join' },
+      onRename,
+    );
+    expect(
+      screen
+        .getByTestId(`activity-join-${elementId}`)
+        .getAttribute('data-pseudostate-shape'),
+    ).toBe('bar');
+  });
+
+  it('exposes data-pseudostate-shape="diamond" on Decision and Merge (T-13.23 contract preserved)', () => {
+    const { unmount } = renderActionNode(
+      { elementId, name: 'Hot?', nodeType: 'decision' },
+      onRename,
+    );
+    expect(
+      screen
+        .getByTestId(`activity-decision-${elementId}`)
+        .getAttribute('data-pseudostate-shape'),
+    ).toBe('diamond');
+    unmount();
+    renderActionNode(
+      { elementId, name: 'Resume', nodeType: 'merge' },
+      onRename,
+    );
+    expect(
+      screen
+        .getByTestId(`activity-merge-${elementId}`)
+        .getAttribute('data-pseudostate-shape'),
+    ).toBe('diamond');
+  });
+
   it('isRenamablePseudostate flags only initial/final as non-renamable', () => {
     expect(isRenamablePseudostate('action')).toBe(true);
     expect(isRenamablePseudostate('decision')).toBe(true);
