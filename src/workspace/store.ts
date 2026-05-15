@@ -256,6 +256,7 @@ export interface WorkspaceActions {
     options?: CreateDiagramOptions,
   ): DiagramId | null;
   renameDiagram(id: DiagramId, name: string): void;
+  renameProject(name: string): void;
   deleteDiagram(id: DiagramId): void;
   setSelection(ids: readonly ElementId[]): void;
   setLeftPaneWidth(px: number): void;
@@ -1071,6 +1072,16 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
         d.id === id ? { ...d, name: trimmed } : d,
       ),
     });
+    void get().saveProject();
+  },
+
+  renameProject(name) {
+    const trimmed = name.trim();
+    if (trimmed.length === 0) return;
+    const { project } = get();
+    if (!project) return;
+    if (project.name === trimmed) return;
+    set({ project: { ...project, name: trimmed } });
     void get().saveProject();
   },
 

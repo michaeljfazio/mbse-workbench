@@ -6,51 +6,66 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 759
+- Iteration #: 760
 - Started: 2026-05-15
-- Branch: issue/319-toolbar-undo-redo (PR #320 pending;
+- Branch: issue/321-header-project-rename (PR #322 pending;
   auto-merge --squash; CI in progress)
-- Working on: #319 — T-13.10 Undo/Redo toolbar buttons.
-  PR #318 (T-13.06 toolbar disabled-reason tooltips) merged 8fd5bef at
-  13:17:10Z, closing #317. Picked T-13.10 as the next slice per iter-758's
-  Next-action plan — the helper module `toolbarDisabledReasons.ts` from
-  T-13.06 is sized for incremental extension, and the bus already exposes
-  `canUndo()` / `canRedo()` with the keyboard shortcuts already wired, so
-  this is purely toolbar wiring (smaller risk surface than T-13.07's
-  inspector restructure).
+- Working on: #321 — T-13.08 Inline project-name rename in header.
+  PR #320 (T-13.10 Undo/Redo toolbar buttons) merged at 14:25:00Z,
+  closing #319. Picked T-13.08 as the next slice per iter-759's
+  Next-action plan: header polish is a smaller risk surface than
+  T-13.07's inspector restructure, and `renameDiagram` / element-rename
+  already provide the inline-rename UX template to mirror.
 
+  `<Header />` rewritten: the project name is now a clickable
+  `<button data-testid="workspace-project-name">` that, on click,
+  swaps in a focused `<input data-testid="workspace-project-name-input">`
+  with the current name pre-selected. Enter / blur commit, Escape
+  cancels. The display affordance is disabled before bootstrap with
+  the existing SAVE_DISABLED_REASON; once initialized the title is
+  "Rename project". Same focus / select / commit / cancel pattern as
+  `ContainmentTreeRenameInput` and `ContainmentTreeDiagramRenameInput`.
+
+  New store action `renameProject(name)` lives next to `renameDiagram`
+  in `store.ts`: trims input, no-ops on empty / unchanged, writes
+  through `saveProject()`. Project metadata mutations stay outside
+  the command bus (consistent with `renameDiagram`); the bus is
+  reserved for model-element mutations.
+
+  Helper module `toolbarDisabledReasons.ts` gains
+  `PROJECT_NAME_ENABLED_TITLE = 'Rename project'`,
+  `PROJECT_NAME_DISABLED_REASON = SAVE_DISABLED_REASON`, and
+  `projectNameTitle(initialized)` — preserves the iter-758/759
+  convention that toolbar surfaces extend the helper module instead
+  of re-deriving predicates per call site.
+
+  Tests: 4 new unit on `renameProject` (trim, empty-noop, unchanged-
+  noop, pre-bootstrap noop) + 6 new unit on `<Header />` (display-
+  mode disabled / enabled, click → focused-and-pre-selected input,
+  Enter commit, blur commit, Escape cancel) + 1 new e2e
+  `tests/e2e/header-project-rename.spec.ts` (two specs: golden path
+  with real keyboard input persisting across reload, plus Escape-
+  cancel). Local check green: 1237/1237 unit pass (was 1227; +10
+  net), tsc -b clean, lint clean (0 errors, 3 pre-existing warnings
+  unchanged), vite build clean. Both new e2e specs pass on Chromium
+  locally; CI will run them on Chromium + WebKit. Agent visual
+  inspection at `artifacts/iteration-760/header-{display,editing,
+  editing-typed,after-rename}.png` confirms display-mode pixels are
+  unchanged versus the prior static-span rendering.
+
+  No committed `@visual` baseline currently captures the header,
+  so no baseline drift is expected this PR.
+
+## Iter-759 archive
+- Branch: issue/319-toolbar-undo-redo (PR #320 merged at 14:25:00Z
+  on 2026-05-15). Shipped T-13.10 — Undo/Redo toolbar buttons.
   Two new canvas-toolbar buttons `data-testid="toolbar-undo"` and
-  `toolbar-redo` rendered between the per-viewpoint `+ Add` buttons and
-  `Auto-layout`. Each subscribes to `bus` + `modelVersion` and reads
-  `canUndo` / `canRedo` reactively (same pattern as
-  `CommandPalette.tsx:76-80`). Disabled-reason titles
-  `"Nothing to undo"` / `"Nothing to redo"`, enabled-state titles
-  `"Undo last action (Cmd-Z)"` / `"Redo last undone action (Cmd-Shift-Z)"`.
-
-  New helper module exports: `undoDisabledReason(canUndo)`,
-  `redoDisabledReason(canRedo)`, plus `UNDO_DISABLED_REASON`,
-  `REDO_DISABLED_REASON`, `UNDO_ENABLED_TITLE`, `REDO_ENABLED_TITLE`
-  constants. Convention preserved: future toolbar surfaces extend
-  `toolbarDisabledReasons.ts` rather than re-deriving predicates.
-
-  Tests: 4 new unit (covering both helpers true/false branches) + 1 new
-  e2e `tests/e2e/toolbar-undo-redo.spec.ts` walking the golden path with
-  real mouse clicks on chromium + webkit. Regression specs
-  `bdd-auto-layout`, `phase-2-gate`, `toolbar-disabled-reasons` all pass.
-  Local check green: 1227/1227 unit pass (was 1223, +4 net), tsc -b
-  clean, lint clean (0 errors, 3 pre-existing warnings unchanged), vite
-  build clean. Agent visual inspection at
-  `artifacts/iteration-759/toolbar-{empty,after-add,after-undo}.png`
-  confirms Undo/Redo enable/disable states match expectations.
-
-  Visual baseline drift expected on CI: the toolbar's left cluster gains
-  ~110-120 px of new content, which will push any `@visual` baseline that
-  captures the diagram-panel viewport over the 0.01 tolerance — likely
-  `bdd-three-blocks-autolayout-*`, `bdd-two-blocks-linked-*`,
-  `inspector-*-selected-*`, the cross-diagram + impact specs that include
-  the toolbar, and every viewpoint's @visual scene. If CI flags any,
-  refresh from the failing run's actuals per the docs/CONTEXT.md
-  2026-05-12 lift-from-trace procedure.
+  `toolbar-redo` rendered between the per-viewpoint `+ Add` buttons
+  and `Auto-layout`; each subscribes to `bus` + `modelVersion` and
+  reads `canUndo` / `canRedo` reactively. Helper module extended
+  with `undoDisabledReason` / `redoDisabledReason` + UNDO/REDO
+  constants. 4 new unit + 1 new e2e. 30 visual baselines refreshed
+  (commit 03b7952) for the canvas-toolbar growth.
 
 ## Iter-758 archive
 - Branch: issue/317-toolbar-disabled-reasons (PR #318 merged 8fd5bef at
@@ -974,11 +989,14 @@ Backlog (P1 — discoverability/workflow):
     Shipped iter-756 (PR #314, 7fc4f3b).
   - T-13.05d Recently-used commands + Commands/Elements section
     headers above the threshold. In flight iter-757 (#315).
-- T-13.06 Tooltip reasons on disabled toolbar buttons
+- [x] T-13.06 Tooltip reasons on disabled toolbar buttons. Shipped iter-758
+      (#317, PR #318 → 8fd5bef).
 - T-13.07 Inspector contextual "+ New …" panel when nothing selected
-- T-13.08 Inline project-name rename in header
+- T-13.08 Inline project-name rename in header. In flight iter-760 (#321,
+  PR #322).
 - T-13.09 Dirty-state + "saved at" indicator
-- T-13.10 Undo/redo toolbar buttons
+- [x] T-13.10 Undo/redo toolbar buttons. Shipped iter-759 (#319, PR #320 →
+      d5df07f's parent on main).
 
 Backlog (P0 — visual rendering / transparency, JOURNAL iter-529):
 - [x] T-13.16 Add `card` + `card-foreground` to tailwind.config.ts + define
@@ -1103,28 +1121,31 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
-Wait for PR #320 (T-13.10 Undo/Redo toolbar buttons) CI. Visual
-baselines likely drift on @visual diagram specs (toolbar gained ~110-
-120 px of new content in the left cluster); refresh from CI run
-actuals per docs/CONTEXT.md 2026-05-12 lift-from-trace procedure if
-flagged. After this merges, the remaining P1 operator-UX tier items
-are:
-- **T-13.07** (inspector contextual "+ New …" panel when nothing
-  selected) — bigger slice. Unblocks the empty-inspector state by
-  surfacing palette-accepted creation affordances directly in the
-  inspector pane.
-- **T-13.08** / **T-13.09** — re-check Phase-13 backlog tier (inline
-  project-name rename in header, dirty-state + "saved at" indicator)
-  when picking up the next slice.
+Wait for PR #322 (T-13.08 Inline project-name rename in header) CI. No
+committed `@visual` baseline captures the header, so no baseline drift
+is expected; if any spec turns out to capture the header band, refresh
+from the CI run's actuals per docs/CONTEXT.md 2026-05-12 lift-from-
+trace procedure. After this merges, the remaining P1 operator-UX tier
+items are:
 
-Recommended next slice after T-13.10 merges: **T-13.08** or **T-13.09**
-(both small header polish items). T-13.07 is the next bigger slice —
-worth opening a design issue first if the inspector restructure surface
-turns out larger than expected.
+- **T-13.09** Dirty-state + "saved at" indicator — small header polish
+  slice. Needs a `dirty` predicate (committed dispatches since last
+  `saveProject()` succeeded) and a relative-time formatter. Could
+  bundle in the same `toolbarDisabledReasons.ts`-adjacent module or
+  live next to `<Header />`.
+- **T-13.07** Inspector contextual "+ New …" panel when nothing
+  selected — bigger slice; unblocks the empty-inspector state by
+  surfacing palette-accepted creation affordances in the inspector.
+  Worth opening a design issue first if the inspector restructure
+  surface looks larger than expected.
 
-A recents-persistence pass remains a future polish item (today's
-recents are cleared on reload). Out of scope for the P1 tier;
-revisit after T-13.07/.08/.09 land.
+Recommended next slice after T-13.08 merges: **T-13.09** (still small,
+keeps the operator-UX momentum on header polish). T-13.07 is the
+remaining big slice in the P1 tier.
+
+A recents-persistence pass for Cmd-K palette recents remains a future
+polish item (today's recents clear on reload). Out of scope for the
+P1 tier; revisit after T-13.07/.09 land.
 
 Backlog (P1 notation conformance) status after T-13.26:
 - T-13.18 ✓, T-13.19 ✓, T-13.20 ✓, T-13.21 ✓, T-13.22 ✓,
