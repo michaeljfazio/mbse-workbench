@@ -29,6 +29,8 @@ export interface CommandBus {
   dispatch(command: Command, actor: User): ModelEvent;
   undo(): ModelEvent | undefined;
   redo(): ModelEvent | undefined;
+  canUndo(): boolean;
+  canRedo(): boolean;
   subscribe(handler: (event: ModelEvent) => void): Unsubscribe;
   events(): readonly ModelEvent[];
   version(): number;
@@ -319,6 +321,14 @@ export function createCommandBus(options: CreateCommandBusOptions): CommandBus {
       applyOnly(entry.forward);
       undoStack.push(entry);
       return recordEvent(entry.actor, entry.forward, entry.inverse);
+    },
+
+    canUndo() {
+      return undoStack.length > 0;
+    },
+
+    canRedo() {
+      return redoStack.length > 0;
     },
 
     subscribe(handler) {
