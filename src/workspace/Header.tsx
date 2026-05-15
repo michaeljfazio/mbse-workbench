@@ -1,10 +1,12 @@
 import { ApiKeyChip } from './ApiKeyChip';
 import { useWorkspaceStore } from './store';
+import { saveDisabledReason } from './toolbarDisabledReasons';
 
 export function Header(): JSX.Element {
   const projectName = useWorkspaceStore((s) => s.project?.name);
   const initialized = useWorkspaceStore((s) => s.initialized);
   const saveProject = useWorkspaceStore((s) => s.saveProject);
+  const saveReason = saveDisabledReason(initialized);
 
   return (
     <header
@@ -31,6 +33,7 @@ export function Header(): JSX.Element {
             void saveProject();
           }}
           disabled={!initialized}
+          title={saveReason}
           className="inline-flex items-center rounded-md border border-border bg-card px-3 py-1.5 text-sm font-medium text-foreground shadow-sm transition hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
         >
           Save

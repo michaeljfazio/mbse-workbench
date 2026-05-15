@@ -7,6 +7,8 @@ export interface ExportMenuProps {
   readonly onExportSysml: () => void;
   readonly onExportJson: () => void;
   readonly sysmlDisabled?: boolean;
+  readonly disabledReason?: string;
+  readonly sysmlDisabledReason?: string;
 }
 
 export function ExportMenu({
@@ -16,6 +18,8 @@ export function ExportMenu({
   onExportSysml,
   onExportJson,
   sysmlDisabled = false,
+  disabledReason,
+  sysmlDisabledReason,
 }: ExportMenuProps): JSX.Element {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
@@ -50,6 +54,7 @@ export function ExportMenu({
         aria-haspopup="menu"
         aria-expanded={open}
         disabled={disabled}
+        title={disabled ? disabledReason : undefined}
         onClick={() => setOpen((v) => !v)}
         className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-foreground shadow-sm transition hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
       >
@@ -94,6 +99,7 @@ export function ExportMenu({
             role="menuitem"
             data-testid="toolbar-export-sysml"
             disabled={sysmlDisabled}
+            title={sysmlDisabled ? sysmlDisabledReason : undefined}
             onClick={() => {
               close();
               onExportSysml();
