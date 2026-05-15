@@ -4,10 +4,11 @@ import {
   useMemo,
   useRef,
   useState,
+  type DragEvent,
   type KeyboardEvent,
 } from 'react';
 
-import type { ElementId, ModelElement } from '@/model';
+import type { ElementId, ElementKind, ModelElement } from '@/model';
 
 import type { Diagram, DiagramId } from '../diagram';
 import { useWorkspaceStore } from '../store';
@@ -18,6 +19,7 @@ import {
   type ContainmentTreeNode,
 } from './buildContainmentTree';
 import { acceptedChildKinds, type ChildKindOption } from './childAcceptance';
+import { PROJECT_TREE_DRAG_ELEMENT_ID } from './ProjectTree';
 import {
   acceptedRepresentations,
   type RepresentationOption,
@@ -92,6 +94,7 @@ export function ContainmentTree(): JSX.Element {
   const setActiveDiagramAction = useWorkspaceStore((s) => s.setActiveDiagram);
   const renameDiagramAction = useWorkspaceStore((s) => s.renameDiagram);
   const deleteDiagramAction = useWorkspaceStore((s) => s.deleteDiagram);
+  const moveElementAction = useWorkspaceStore((s) => s.moveElement);
   const pendingRenameElementId = useWorkspaceStore(
     (s) => s.pendingRenameElementId,
   );
@@ -226,6 +229,77 @@ export function ContainmentTree(): JSX.Element {
       return out;
     },
     [elementsById],
+  );
+
+  const dragStateRef = useRef<{
+    id: ElementId;
+    kind: ElementKind;
+  } | null>(null);
+  const [dropTargetKey, setDropTargetKey] = useState<FocusKey | null>(null);
+
+  const isAcceptedDrop = useCallback(
+    (target: ModelElement): boolean => {
+      const drag = dragStateRef.current;
+      if (!drag) return false;
+      if (drag.id === target.id) return false;
+      // Cycle pre-check: target must not be a descendant of the dragged element.
+      let cur: ModelElement | undefined = target;
+      const seen = new Set<ElementId>();
+      while (cur && cur.ownerId && !seen.has(cur.ownerId)) {
+        if (cur.ownerId === drag.id) return false;
+        seen.add(cur.ownerId);
+        cur = elementsById.get(cur.ownerId);
+      }
+      return acceptedChildKinds(target.kind).some((o) => o.kind === drag.kind);
+    },
+    [elementsById],
+  );
+
+  const handleElementDragStart = useCallback(
+    (event: DragEvent<HTMLDivElement>, element: ModelElement) => {
+      event.dataTransfer.setData(PROJECT_TREE_DRAG_ELEMENT_ID, element.id);
+      event.dataTransfer.effectAllowed = 'move';
+      dragStateRef.current = { id: element.id, kind: element.kind };
+    },
+    [],
+  );
+
+  const handleElementDragEnd = useCallback(() => {
+    dragStateRef.current = null;
+    setDropTargetKey(null);
+  }, []);
+
+  const handleElementDragOver = useCallback(
+    (event: DragEvent<HTMLDivElement>, target: ModelElement) => {
+      if (!isAcceptedDrop(target)) return;
+      event.preventDefault();
+      event.dataTransfer.dropEffect = 'move';
+      const k = elKey(target.id);
+      setDropTargetKey((prev) => (prev === k ? prev : k));
+    },
+    [isAcceptedDrop],
+  );
+
+  const handleElementDragLeave = useCallback(
+    (_event: DragEvent<HTMLDivElement>, target: ModelElement) => {
+      const k = elKey(target.id);
+      setDropTargetKey((prev) => (prev === k ? null : prev));
+    },
+    [],
+  );
+
+  const handleElementDrop = useCallback(
+    (event: DragEvent<HTMLDivElement>, target: ModelElement) => {
+      const drag = dragStateRef.current;
+      if (!drag) return;
+      event.preventDefault();
+      if (drag.id !== target.id) {
+        moveElementAction(drag.id, target.id);
+      }
+      dragStateRef.current = null;
+      setDropTargetKey(null);
+    },
+    [moveElementAction],
   );
 
   // Default: every element node starts expanded. Collapse-state lives in the
@@ -548,6 +622,12 @@ export function ContainmentTree(): JSX.Element {
               requestDelete,
               requestCreateChild,
               requestCreateRepresentation,
+              dropTargetKey,
+              onDragStart: handleElementDragStart,
+              onDragEnd: handleElementDragEnd,
+              onDragOver: handleElementDragOver,
+              onDragLeave: handleElementDragLeave,
+              onDrop: handleElementDrop,
             })
           : renderDiagramRow(row, row.node.diagram, {
               focusKey,
@@ -587,6 +667,24 @@ interface ElementRowContext {
     ownerId: ElementId,
     option: RepresentationOption,
   ) => void;
+  readonly dropTargetKey: FocusKey | null;
+  readonly onDragStart: (
+    event: DragEvent<HTMLDivElement>,
+    element: ModelElement,
+  ) => void;
+  readonly onDragEnd: () => void;
+  readonly onDragOver: (
+    event: DragEvent<HTMLDivElement>,
+    target: ModelElement,
+  ) => void;
+  readonly onDragLeave: (
+    event: DragEvent<HTMLDivElement>,
+    target: ModelElement,
+  ) => void;
+  readonly onDrop: (
+    event: DragEvent<HTMLDivElement>,
+    target: ModelElement,
+  ) => void;
 }
 
 function renderElementRow(
@@ -602,6 +700,8 @@ function renderElementRow(
   const isRenaming = ctx.renamingId === element.id;
   const displayName = elementDisplayName(element);
   const canDelete = element.ownerId !== null;
+  const isDraggable = element.ownerId !== null && !isRenaming;
+  const isDropTarget = ctx.dropTargetKey === row.key;
   return (
     <div
       key={row.key}
@@ -613,6 +713,7 @@ function renderElementRow(
       data-element-id={element.id}
       data-kind={element.kind}
       data-depth={row.depth}
+      data-droptarget={isDropTarget ? 'true' : undefined}
       tabIndex={isFocused ? 0 : -1}
       ref={(el) => ctx.setRef(row.key, el)}
       onFocus={() => ctx.syncFocus(row.key)}
@@ -622,10 +723,18 @@ function renderElementRow(
         ctx.focusItem(row.key);
         ctx.handleActivate(row);
       }}
+      draggable={isDraggable}
+      onDragStart={
+        isDraggable ? (e) => ctx.onDragStart(e, element) : undefined
+      }
+      onDragEnd={isDraggable ? ctx.onDragEnd : undefined}
+      onDragOver={(e) => ctx.onDragOver(e, element)}
+      onDragLeave={(e) => ctx.onDragLeave(e, element)}
+      onDrop={(e) => ctx.onDrop(e, element)}
       style={{ paddingLeft: `${row.depth * 12 + 4}px` }}
       className={`group flex cursor-pointer select-none items-center gap-1 rounded px-1 py-1 text-sm text-foreground hover:bg-accent focus:outline-none focus:ring-1 focus:ring-primary ${
         isSelected ? 'bg-primary/10' : ''
-      }`}
+      } ${isDropTarget ? 'bg-primary/20 ring-1 ring-primary' : ''}`}
     >
       <span
         aria-hidden="true"

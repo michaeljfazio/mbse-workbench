@@ -1,10 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  createEvent,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 
 import type { ElementId } from '@/model';
 import { createSessionUser } from '@/collab';
 import { createInMemorySessionRepository } from '@/repository';
 import { ContainmentTree } from '@/workspace/tree/ContainmentTree';
+import { PROJECT_TREE_DRAG_ELEMENT_ID } from '@/workspace/tree/ProjectTree';
 import {
   resetWorkspaceStoreForTests,
   useWorkspaceStore,
@@ -1194,6 +1202,247 @@ describe('<ContainmentTree />', () => {
       expect(
         screen.getByTestId(`containment-tree-element-${vessel}`),
       ).toBeInTheDocument();
+    });
+  });
+
+  describe('drag-and-drop move (T-13.36b)', () => {
+    function makeDataTransfer(): DataTransfer {
+      const map = new Map<string, string>();
+      const types: string[] = [];
+      return {
+        setData: (type: string, val: string) => {
+          if (!map.has(type)) types.push(type);
+          map.set(type, val);
+        },
+        getData: (type: string) => map.get(type) ?? '',
+        setDragImage: () => {},
+        effectAllowed: 'none' as DataTransfer['effectAllowed'],
+        dropEffect: 'none' as DataTransfer['dropEffect'],
+        types: types as unknown as readonly string[],
+      } as unknown as DataTransfer;
+    }
+
+    it('element rows are draggable and emit the element id under PROJECT_TREE_DRAG_ELEMENT_ID', async () => {
+      await bootstrap();
+      const a = useWorkspaceStore.getState().createBlock()!;
+      render(<ContainmentTree />);
+      const row = screen.getByTestId(`containment-tree-element-${a}`);
+      expect(row).toHaveAttribute('draggable', 'true');
+      const dt = makeDataTransfer();
+      fireEvent.dragStart(row, { dataTransfer: dt });
+      expect(dt.getData(PROJECT_TREE_DRAG_ELEMENT_ID)).toBe(a);
+      expect(dt.effectAllowed).toBe('move');
+    });
+
+    it('the project root row is not draggable', async () => {
+      await bootstrap();
+      render(<ContainmentTree />);
+      const root = screen.getByTestId(`containment-tree-element-${rootId()}`);
+      expect(root).not.toHaveAttribute('draggable', 'true');
+    });
+
+    it('dragOver on an accepted target calls preventDefault and marks data-droptarget', async () => {
+      await bootstrap();
+      const part = useWorkspaceStore.getState().createBlock()!;
+      const port = useWorkspaceStore
+        .getState()
+        .createChildElement(rootId(), 'PortDefinition', 'member', 'P1')!;
+      render(<ContainmentTree />);
+      const source = screen.getByTestId(`containment-tree-element-${port}`);
+      const target = screen.getByTestId(`containment-tree-element-${part}`);
+      const dt = makeDataTransfer();
+      fireEvent.dragStart(source, { dataTransfer: dt });
+      const ev = createEvent.dragOver(target, { dataTransfer: dt });
+      fireEvent(target, ev);
+      expect(ev.defaultPrevented).toBe(true);
+      expect(target).toHaveAttribute('data-droptarget', 'true');
+    });
+
+    it('dragOver on a non-accepting target does not call preventDefault', async () => {
+      await bootstrap();
+      const part = useWorkspaceStore.getState().createBlock()!;
+      const req = useWorkspaceStore
+        .getState()
+        .createChildElement(rootId(), 'Requirement', 'member', 'R1')!;
+      render(<ContainmentTree />);
+      const source = screen.getByTestId(`containment-tree-element-${part}`);
+      const target = screen.getByTestId(`containment-tree-element-${req}`);
+      const dt = makeDataTransfer();
+      fireEvent.dragStart(source, { dataTransfer: dt });
+      const ev = createEvent.dragOver(target, { dataTransfer: dt });
+      fireEvent(target, ev);
+      expect(ev.defaultPrevented).toBe(false);
+      expect(target).not.toHaveAttribute('data-droptarget', 'true');
+    });
+
+    it('drop on accepted target moves the element via the store (PortDefinition → PartDefinition, ownerRole=port)', async () => {
+      await bootstrap();
+      const part = useWorkspaceStore.getState().createBlock()!;
+      const port = useWorkspaceStore
+        .getState()
+        .createChildElement(rootId(), 'PortDefinition', 'member', 'P1')!;
+      render(<ContainmentTree />);
+      const source = screen.getByTestId(`containment-tree-element-${port}`);
+      const target = screen.getByTestId(`containment-tree-element-${part}`);
+      const dt = makeDataTransfer();
+      fireEvent.dragStart(source, { dataTransfer: dt });
+      fireEvent.dragOver(target, { dataTransfer: dt });
+      fireEvent.drop(target, { dataTransfer: dt });
+      await waitFor(() => {
+        const e = useWorkspaceStore
+          .getState()
+          .elements.find((el) => el.id === port);
+        expect(e?.ownerId).toBe(part);
+        expect(e?.ownerRole).toBe('port');
+      });
+    });
+
+    it('drop on ActionDefinition with a ValueProperty source sets ownerRole=parameter', async () => {
+      await bootstrap();
+      const action = useWorkspaceStore
+        .getState()
+        .createChildElement(rootId(), 'ActionDefinition', 'member', 'Pump.run')!;
+      const value = useWorkspaceStore
+        .getState()
+        .createChildElement(rootId(), 'ValueProperty', 'member', 'speed')!;
+      render(<ContainmentTree />);
+      const source = screen.getByTestId(`containment-tree-element-${value}`);
+      const target = screen.getByTestId(`containment-tree-element-${action}`);
+      const dt = makeDataTransfer();
+      fireEvent.dragStart(source, { dataTransfer: dt });
+      fireEvent.drop(target, { dataTransfer: dt });
+      await waitFor(() => {
+        const e = useWorkspaceStore
+          .getState()
+          .elements.find((el) => el.id === value);
+        expect(e?.ownerId).toBe(action);
+        expect(e?.ownerRole).toBe('parameter');
+      });
+    });
+
+    it('drop on the project root row moves a nested element back to ownerRole=member', async () => {
+      await bootstrap();
+      const part = useWorkspaceStore.getState().createBlock()!;
+      const port = useWorkspaceStore
+        .getState()
+        .createChildElement(part, 'PortDefinition', 'port', 'P1')!;
+      render(<ContainmentTree />);
+      const source = screen.getByTestId(`containment-tree-element-${port}`);
+      const target = screen.getByTestId(`containment-tree-element-${rootId()}`);
+      const dt = makeDataTransfer();
+      fireEvent.dragStart(source, { dataTransfer: dt });
+      fireEvent.drop(target, { dataTransfer: dt });
+      await waitFor(() => {
+        const e = useWorkspaceStore
+          .getState()
+          .elements.find((el) => el.id === port);
+        expect(e?.ownerId).toBe(rootId());
+        expect(e?.ownerRole).toBe('member');
+      });
+    });
+
+    it('drop on self is a no-op (ownerId unchanged)', async () => {
+      await bootstrap();
+      const part = useWorkspaceStore.getState().createBlock()!;
+      const before = useWorkspaceStore
+        .getState()
+        .elements.find((e) => e.id === part);
+      render(<ContainmentTree />);
+      const row = screen.getByTestId(`containment-tree-element-${part}`);
+      const dt = makeDataTransfer();
+      fireEvent.dragStart(row, { dataTransfer: dt });
+      fireEvent.drop(row, { dataTransfer: dt });
+      const after = useWorkspaceStore
+        .getState()
+        .elements.find((e) => e.id === part);
+      expect(after?.ownerId).toBe(before?.ownerId);
+      expect(after?.ownerRole).toBe(before?.ownerRole);
+    });
+
+    it('drop onto a descendant (cycle) is rejected without preventDefault and ownership stays put', async () => {
+      await bootstrap();
+      const outer = useWorkspaceStore
+        .getState()
+        .createChildElement(rootId(), 'Package', 'member', 'Outer')!;
+      const inner = useWorkspaceStore
+        .getState()
+        .createChildElement(outer, 'Package', 'member', 'Inner')!;
+      render(<ContainmentTree />);
+      const source = screen.getByTestId(`containment-tree-element-${outer}`);
+      const target = screen.getByTestId(`containment-tree-element-${inner}`);
+      const dt = makeDataTransfer();
+      fireEvent.dragStart(source, { dataTransfer: dt });
+      const ev = createEvent.dragOver(target, { dataTransfer: dt });
+      fireEvent(target, ev);
+      expect(ev.defaultPrevented).toBe(false);
+      expect(target).not.toHaveAttribute('data-droptarget', 'true');
+      fireEvent.drop(target, { dataTransfer: dt });
+      const e = useWorkspaceStore
+        .getState()
+        .elements.find((el) => el.id === outer);
+      expect(e?.ownerId).toBe(rootId());
+    });
+
+    it('diagram rows do not become drop targets', async () => {
+      await bootstrap();
+      const part = useWorkspaceStore.getState().createBlock()!;
+      const diagramId = useWorkspaceStore.getState().diagrams[0]!.id;
+      render(<ContainmentTree />);
+      const source = screen.getByTestId(`containment-tree-element-${part}`);
+      const target = screen.getByTestId(`containment-tree-diagram-${diagramId}`);
+      const dt = makeDataTransfer();
+      fireEvent.dragStart(source, { dataTransfer: dt });
+      const ev = createEvent.dragOver(target, { dataTransfer: dt });
+      fireEvent(target, ev);
+      expect(ev.defaultPrevented).toBe(false);
+      expect(target).not.toHaveAttribute('data-droptarget', 'true');
+    });
+
+    it('dragEnd clears the active drop-target indicator', async () => {
+      await bootstrap();
+      const part = useWorkspaceStore.getState().createBlock()!;
+      const port = useWorkspaceStore
+        .getState()
+        .createChildElement(rootId(), 'PortDefinition', 'member', 'P1')!;
+      render(<ContainmentTree />);
+      const source = screen.getByTestId(`containment-tree-element-${port}`);
+      const target = screen.getByTestId(`containment-tree-element-${part}`);
+      const dt = makeDataTransfer();
+      fireEvent.dragStart(source, { dataTransfer: dt });
+      fireEvent.dragOver(target, { dataTransfer: dt });
+      expect(target).toHaveAttribute('data-droptarget', 'true');
+      fireEvent.dragEnd(source, { dataTransfer: dt });
+      await waitFor(() => {
+        expect(target).not.toHaveAttribute('data-droptarget', 'true');
+      });
+    });
+
+    it('drop undoes in a single step (one command-bus event)', async () => {
+      await bootstrap();
+      const part = useWorkspaceStore.getState().createBlock()!;
+      const port = useWorkspaceStore
+        .getState()
+        .createChildElement(rootId(), 'PortDefinition', 'member', 'P1')!;
+      render(<ContainmentTree />);
+      const source = screen.getByTestId(`containment-tree-element-${port}`);
+      const target = screen.getByTestId(`containment-tree-element-${part}`);
+      const dt = makeDataTransfer();
+      fireEvent.dragStart(source, { dataTransfer: dt });
+      fireEvent.drop(target, { dataTransfer: dt });
+      await waitFor(() => {
+        const e = useWorkspaceStore
+          .getState()
+          .elements.find((el) => el.id === port);
+        expect(e?.ownerId).toBe(part);
+      });
+      act(() => {
+        useWorkspaceStore.getState().undo();
+      });
+      const after = useWorkspaceStore
+        .getState()
+        .elements.find((e) => e.id === port);
+      expect(after?.ownerId).toBe(rootId());
+      expect(after?.ownerRole).toBe('member');
     });
   });
 });
