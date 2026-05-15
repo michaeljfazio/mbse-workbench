@@ -1198,11 +1198,11 @@ function CanvasInner(): JSX.Element {
       aria-labelledby={`diagram-tab-${diagram.id}`}
       data-testid="diagram-panel"
       data-viewpoint-id={viewpoint.id}
-      className="relative flex flex-1 flex-col"
+      className="relative flex min-w-0 flex-1 flex-col"
     >
       <div
         data-testid="canvas-toolbar"
-        className="flex h-10 shrink-0 items-center gap-2 border-b border-border bg-card px-3"
+        className="flex h-10 shrink-0 items-center gap-2 overflow-x-auto border-b border-border bg-card px-3"
       >
         <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
           {viewpoint.label}
