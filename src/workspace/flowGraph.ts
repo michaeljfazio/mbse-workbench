@@ -8,8 +8,13 @@ import type {
 } from '@/model';
 import {
   buildPortUsageOwnership,
+  computeEnclosingFrameBounds,
+  IBD_ENCLOSING_FRAME_NODE_TYPE,
+  IBD_VIEWPOINT_ID,
   resolveIbdEdgeEndpoints,
+  resolveIbdEnclosingFrameLabel,
   resolvePartHandles,
+  type IbdRect,
   type Viewpoint,
 } from '@/viewpoints';
 
@@ -29,7 +34,8 @@ export function toFlowNodes(
   registry: RegistryLookup | null,
   impactHighlightedIds: ReadonlySet<ElementId>,
 ): Node[] {
-  return elements
+  const partUsageRects: IbdRect[] = [];
+  const elementNodes = elements
     .filter((el) => viewpoint.acceptedElementKinds.includes(el.kind))
     .map((el) => {
       const pos = diagram.positions[el.id] ?? { x: 0, y: 0 };
@@ -124,8 +130,41 @@ export function toFlowNodes(
         data,
         className: isImpact ? 'mbse-impact-node' : undefined,
       };
+      if (
+        viewpoint.id === IBD_VIEWPOINT_ID &&
+        el.kind === 'PartUsage'
+      ) {
+        partUsageRects.push({ x: pos.x, y: pos.y, width, height });
+      }
       return node;
     });
+
+  if (viewpoint.id === IBD_VIEWPOINT_ID && registry && partUsageRects.length > 0) {
+    const label = resolveIbdEnclosingFrameLabel(diagram, registry);
+    if (label) {
+      const bounds = computeEnclosingFrameBounds(partUsageRects);
+      if (bounds) {
+        const frame: Node = {
+          id: `ibd-enclosing-frame:${label.id}`,
+          type: IBD_ENCLOSING_FRAME_NODE_TYPE,
+          position: { x: bounds.x, y: bounds.y },
+          width: bounds.width,
+          height: bounds.height,
+          selectable: false,
+          draggable: false,
+          focusable: false,
+          zIndex: -1,
+          data: {
+            partDefinitionId: label.id,
+            name: label.name,
+          },
+        };
+        return [frame, ...elementNodes];
+      }
+    }
+  }
+
+  return elementNodes;
 }
 
 export function toFlowEdges(

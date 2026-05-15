@@ -6,10 +6,52 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
+- Iteration #: 747
+- Started: 2026-05-15
+- Branch: issue/294-ibd-enclosing-frame (PR #295, auto-merge --squash
+  enabled at 07:41:53Z, CI run 25906553896 on 348a044 in_progress at
+  07:41:48Z; visuals expected to fail on first run — 7 IBD baselines
+  × 2 projects = up to 14 baselines to refresh next iter)
+- Iter-747: PR #293 (T-13.21 Requirement compartments) merged on the
+  iter-745 webkit-BDD baseline refresh — CI run 25905779167 on 5f90513
+  went green at 07:30:59Z and auto-merge --squash landed it; issue #292
+  closed. Shipped T-13.20 — IBD enclosing-block frame. New module
+  `src/viewpoints/ibd/enclosingFrame.ts` exposes two pure helpers:
+  `computeEnclosingFrameBounds(rects, { padding?, headerHeight? })`
+  returns the union bbox of all PartUsage rects + default 48px padding
+  on every side + 32px header strip above (or `null` for empty input);
+  `resolveIbdEnclosingFrameLabel(diagram, registry)` returns
+  `{ id, name }` of the PartDefinition pointed at by
+  `diagram.context.partDefinition.id`, or `null` if context is missing,
+  wrong kind, unresolved, or points at a non-PartDefinition. New
+  React-Flow node component `IbdEnclosingFrameNode` renders the frame
+  as a labeled rectangle (`«block»` stereotype + name in a top-left
+  header stripe), `pointer-events-none`, `selectable: false`,
+  `draggable: false`, `focusable: false`, `zIndex: -1` so the frame
+  sits behind the PartUsage nodes. Registered on the IBD viewpoint via
+  `src/viewpoints/ibd/index.ts` and the barrel at
+  `src/viewpoints/index.ts`. `src/workspace/flowGraph.ts` `toFlowNodes`
+  now injects exactly one frame node at the head of the returned array
+  when (a) `viewpoint.id === 'ibd'`, (b) `diagram.context` resolves to
+  a PartDefinition, AND (c) at least one PartUsage rect is in the
+  diagram. The frame node id is `ibd-enclosing-frame:<partDefinitionId>`
+  for stability. 11 enclosingFrame helper specs + 4 IbdEnclosingFrameNode
+  component specs + 6 flowGraph injection specs (1 positive, 5 negative
+  paths: no context, wrong context kind, no PartUsages, unresolved
+  definition, non-IBD viewpoint). 1065/1065 unit pass (was 1042, +21
+  net), tsc -b clean, lint clean (0 errors, 4 pre-existing warnings),
+  vite build clean. Visual baseline drift expected on all 7 IBD specs
+  (`ibd-empty`, `ibd-one-part-no-ports`, `ibd-one-part-two-ports`,
+  `ibd-two-parts`, `ibd-two-parts-one-connection`,
+  `ibd-two-parts-one-itemflow`) on both chromium + webkit — will
+  refresh from CI actuals next iteration. Out of scope: per-Part
+  drag-into-frame containment, frame resize handles, manual frame
+  repositioning.
+
+## Current iteration (archived 745 → 746 → 747)
 - Iteration #: 745
 - Started: 2026-05-15
-- Branch: issue/292-requirement-compartments (PR #293, auto-merge --squash
-  enabled, awaiting CI re-run after baseline refresh push)
+- Branch: issue/292-requirement-compartments (PR #293 merged 5f90513)
 - Working on: #292 — T-13.21 Requirement compartments. CI run 25904814805
   on 0a1619f went green (the 11 requirement/trace baselines from iter-744
   held). Auto-merge then synced main (merge commit 2d1ad21) and kicked
@@ -569,7 +611,7 @@ Backlog (P0 — visual rendering / transparency, JOURNAL iter-529):
 Backlog (P1 — SysMLv2 notation conformance, JOURNAL iter-529):
 - [x] T-13.18 Port direction glyphs (in/out/inout). Shipped iter-741 (#291).
 - T-13.19 BDD block compartments (parts/ports/values/constraints).
-- T-13.20 IBD enclosing-block frame (use diagram.context.partDefinition.id).
+- [x] T-13.20 IBD enclosing-block frame — shipped iter-747 (PR #294).
 - T-13.21 Requirement compartments (reqId/text/priority/status rows).
       In flight — PR #293 (iter-743), auto-merge enabled, awaiting CI.
 - [x] T-13.22 Use-case true ellipse shape (SVG, not rectangle). Shipped iter-739 (#288).
@@ -674,17 +716,20 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
-Wait for PR #293 (T-13.21) CI on the iter-745 baseline-refresh push.
-Only the webkit BDD baseline was refreshed; chromium and all
-requirements/trace baselines from iter-744 are unchanged, so the
-expected outcome is a clean green run that lets auto-merge land.
+Wait for PR #294 (T-13.20 IBD enclosing-block frame) CI. Visual baseline
+drift on the 7 IBD specs (chromium + webkit each, so up to 14 baselines)
+is expected; refresh from CI actuals using the docs/CONTEXT.md
+2026-05-12 procedure and push as a baseline-refresh follow-up commit on
+the same branch.
 
-Once PR #293 lands, pick the next Phase-13 backlog item:
-- T-13.20 IBD enclosing-block frame — render the
-  `diagram.context.partDefinition.id` block as a labeled rectangle
-  enclosing all PartUsage nodes. Required post-T-13.30, no schema work.
+Once PR #294 lands, pick the next Phase-13 backlog item:
+- T-13.19 BDD block compartments (parts/ports/values/constraints) —
+  complements T-13.20 / T-13.21 / T-13.22 in the SysMLv2 notation
+  conformance push.
 - T-13.05 Cmd-K command palette — biggest P1 discoverability gap.
-The BDD `bdd-two-blocks-linked-webkit.png` follow-up listed in
-iter-742's "Next action" is now done (refreshed iter-745).
-Remaining P0 (UI-unreachable): T-13.01 / T-13.02 mostly subsumed by
-the explorer rewrite.
+- T-13.25 Parametric: constraint-expression + value-property
+  `: type = value` notation.
+
+Backlog (P1 notation conformance) status after T-13.20:
+- T-13.18 ✓, T-13.21 ✓, T-13.22 ✓, T-13.20 ✓ (this iter),
+  remaining: T-13.19, T-13.23, T-13.24, T-13.25, T-13.26.
