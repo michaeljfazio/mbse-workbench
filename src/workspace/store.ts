@@ -93,6 +93,7 @@ import {
   type NodePosition,
 } from './diagram';
 import { computeImpactSet } from './impact/impact-set';
+import { cloneSubtree } from './subtreeClone';
 import { acceptedChildKinds } from './tree/childAcceptance';
 import { parseSysmlText, type ParseError } from '@/parser';
 import { parseProjectJson } from './jsonProject';
@@ -414,6 +415,25 @@ export interface WorkspaceActions {
    * The generalized form is the one used by the Containment Tree.
    */
   moveElement(elementId: ElementId, targetOwnerId: ElementId): boolean;
+  /**
+   * Deep-clone the subtree rooted at `elementId`. Allocates fresh ids for
+   * every cloned element and intra-subtree edge. The root clone is inserted
+   * as a sibling of the original (same `ownerId` + `ownerRole`, appended at
+   * the next available `ownerIndex`); its name receives a `" copy"` suffix.
+   *
+   * Field-based id references (`definitionId`, `interfaceId`, embedded
+   * `sourceId`/`targetId` on ConnectionUsage/ItemFlow/Transition) are
+   * remapped only when the target lands inside the cloned subtree; external
+   * refs are preserved verbatim. Element-edges whose embedded endpoint(s)
+   * leave the subtree are dropped from the clone. Real `ModelEdge`s are
+   * cloned only when both endpoints fall inside the subtree.
+   *
+   * Returns the new root id, or `null` for an unknown id or the project
+   * root (`ownerId === null`).
+   *
+   * Dispatched as a single compound command so undo is one step.
+   */
+  duplicateElement(elementId: ElementId): ElementId | null;
   undo(): void;
   redo(): void;
   setActiveConversation(id: string | null): void;
@@ -2464,6 +2484,41 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       user,
     );
     return true;
+  },
+
+  duplicateElement(elementId) {
+    const { bus, user, registry, elements, edges } = get();
+    if (!bus || !user || !registry) return null;
+    const original = registry.get(elementId);
+    if (!original) return null;
+    // The project root has no owner and cannot be duplicated — there must be
+    // exactly one root.
+    if (original.ownerId === null) return null;
+
+    const result = cloneSubtree(elementId, { registry, edges });
+    if (!result || result.elements.length === 0) return null;
+
+    // Assign the root clone its sibling slot under the original's owner and
+    // append " copy" to the name. Subtree order guarantees the root is at
+    // index 0.
+    const [rootClone, ...rest] = result.elements;
+    if (!rootClone) return null;
+    const placedRoot: ModelElement = {
+      ...rootClone,
+      ownerIndex: nextOwnerIndex(elements, original.ownerId, original.ownerRole),
+      name: `${original.name} copy`,
+    };
+
+    const commands: Command[] = [
+      { kind: 'create-element', element: placedRoot },
+      ...rest.map((element) => ({
+        kind: 'create-element' as const,
+        element,
+      })),
+      ...result.edges.map((edge) => ({ kind: 'link' as const, edge })),
+    ];
+    bus.dispatch({ kind: 'compound', commands }, user);
+    return result.rootCloneId;
   },
 
   undo() {

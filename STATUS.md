@@ -6,9 +6,43 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 737
+- Iteration #: 738
 - Started: 2026-05-15
-- Branch: issue/282-tree-drag-drop (PR #283 open, auto-merge enabled)
+- Branch: issue/284-duplicate-element-store (PR #285 open, auto-merge enabled)
+- Iter-738: PR #283 (T-13.36b drag-drop UI) merged 4155856 — Phase-13
+  gate item 4 (drag-drop move for any container) now fully shipped via
+  T-13.36a + T-13.36b. Filed #284 and opened PR #285 for T-13.33e-a, the
+  store-side foundation of T-13.33e. New `src/workspace/subtreeClone.ts`
+  exposes a pure `cloneSubtree(rootId, { registry, edges })` that
+  BFS-walks descendants by ownerId, allocates fresh ids, and emits
+  clones in topological order. Field-based ElementId refs
+  (`definitionId` on PartUsage / PortUsage / ActionUsage / StateUsage /
+  ConstraintUsage, `interfaceId` on PortDefinition, embedded
+  sourceId/targetId on ConnectionUsage / ItemFlow / Transition) are
+  remapped only when the target is itself in the subtree; refs that
+  point outside are preserved verbatim. Element-edges whose embedded
+  endpoint(s) leave the subtree are dropped entirely. Real ModelEdges
+  (Composition / Generalization / RequirementTrace / …) are cloned only
+  when BOTH endpoints fall in the subtree, with fresh EdgeIds. New
+  store action `duplicateElement(id): ElementId | null` rejects unknown
+  ids and the project root (`ownerId === null`), places the root clone
+  as a sibling of the original (next `nextOwnerIndex` under the
+  original's `ownerId`/`ownerRole`) with a `" copy"` name suffix, and
+  dispatches a single compound command so undo is one step. 11 new
+  unit specs cover: leaf clone with sibling slot, multi-kind
+  descendants with role-correct remap, intra-subtree edge clone,
+  cross-subtree edge drop, internal definitionId remap, external
+  definitionId preserved, project-root rejected, unknown-id rejected,
+  single-step undo + redo, unrelated edges untouched, cross-subtree
+  ItemFlow dropped. Full check green: 1015 unit + 458 e2e (chromium +
+  webkit) + tsc -b + lint + build. UI wiring (the "Duplicate" and
+  "Move to package…" menu items in `ContainmentTreeRowMenu`) is
+  deferred to T-13.33e-b — kept out of this slice so the contract is
+  test-isolated.
+
+## Current iteration (archived 737 → 738)
+- Iteration #: 737
+- Branch: issue/282-tree-drag-drop (PR #283 merged 4155856)
 - Iter-737: PR #281 (T-13.36a) merged dd9957d. Shipped T-13.36b —
   ContainmentTree drag source + drop target wired to the store's
   generalized moveElement. Element rows (except the project root)
@@ -376,7 +410,16 @@ Backlog (P0 — hierarchical Project Explorer foundations, decisions locked iter
   rooted at the project package, with representations nested under owners.
 - T-13.32 Bidirectional tree↔canvas selection sync + reveal-in-tree action.
 - T-13.33 Three-dots context menu per node (Rename / Delete / Create child /
-  Create representation / Expand-all / Move to package / Duplicate).
+  Create representation / Expand-all / Move to package / Duplicate). Split:
+  - [x] T-13.33a Rename + Delete — PR #266 (iter-724).
+  - [x] T-13.33b Create-child submenu — PR #271 (iter-727).
+  - [x] T-13.33c Create-representation submenu — PR #272 (iter-727).
+  - [x] T-13.33d Diagram-row Rename + Delete — PR #273 (iter-729).
+  - T-13.33e Move to package / Duplicate (#270). Split:
+    - PR #285 (iter-738) — `duplicateElement` store action + `cloneSubtree`
+      helper (T-13.33e-a, #284).
+    - Pending — `ContainmentTreeRowMenu` "Duplicate" + "Move to package…"
+      menu items + e2e (T-13.33e-b).
 - [x] T-13.34 Wire empty-state CTAs through the explorer (new leaf + inline rename).
       Shipped iter-735 (#276): pendingRenameElementId store slot, ContainmentTree
       useEffect picks it up; EmptyState routes New Block / New Requirement
@@ -445,17 +488,13 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
-Wait for PR #283 (T-13.36b drag-drop UI) CI to merge. With T-13.36
-fully shipped, Phase 13 gate item 4 (drag-drop move semantics for any
-container, not just Package) is satisfied. Next iter picks the next P0
-backlog item; T-13.33e (#270, Move to package / Duplicate submenu) is
-now unblocked by T-13.36b landing.
-
-Remaining P0 work:
+Wait for PR #285 (T-13.33e-a duplicateElement store) CI to merge. Next
+iter opens T-13.33e-b — wire "Duplicate" + "Move to package…" items
+into `ContainmentTreeRowMenu` against the existing `duplicateElement`
++ `moveElement` store actions, including the package picker popover
+and Playwright coverage. After that, the remaining P0 work narrows to:
 - T-13.01 Diagram lifecycle UI — much shipped via T-13.33c/d; remaining
   bits live in the diagram tabs strip, not the explorer.
 - T-13.02 Right-click context menu — mostly subsumed by the explorer
   kebab menu (T-13.33a–d); revisit if a true right-click shortcut is
   still wanted.
-P2 / deferred: #270 (T-13.33e Move to package / Duplicate) — now
-unblocked since T-13.36b ships the underlying drag-drop affordance.
