@@ -7,6 +7,13 @@ import { expect, test, type Page } from '@playwright/test';
 // (case-insensitive), caps results at 50, supports Up/Down/Enter/Esc, and on
 // selection navigates to the first diagram containing the element and
 // focuses it on the canvas.
+//
+// Phase 13 / T-13.05a layered in a typed command registry: with no query the
+// palette renders an Actions section listing the enabled built-in commands.
+//
+// Phase 13 / T-13.05b unifies the typed-query view: matching commands and
+// matching elements share a single ranked list, and the registry is
+// extended with open-chat / show-inspector / rename-selection commands.
 
 const SEED_PROJECT_ID = 'p-command-palette';
 
@@ -123,7 +130,9 @@ test.describe('Phase 12 slice D — Cmd-K command palette (issue #234)', () => {
     page,
   }) => {
     await page.keyboard.press('ControlOrMeta+k');
-    await page.getByTestId('command-palette-input').fill('a'); // matches all 3
+    // T-13.05b unified the typed-query view with commands; query by element-id
+    // prefix so only the three seeded blocks rank, in document order.
+    await page.getByTestId('command-palette-input').fill('cp-block');
     const alpha = page.getByTestId('command-palette-result-cp-block-alpha');
     const beta = page.getByTestId('command-palette-result-cp-block-beta');
     const gamma = page.getByTestId('command-palette-result-cp-block-gamma');
@@ -190,6 +199,43 @@ test.describe('Phase 12 slice D — Cmd-K command palette (issue #234)', () => {
     await expect(
       page.getByTestId('command-palette-commands-header'),
     ).toBeVisible();
+  });
+
+  test('T-13.05b — query "save" surfaces the Save command in the unified ranked list', async ({
+    page,
+  }) => {
+    await page.keyboard.press('ControlOrMeta+k');
+    await page.getByTestId('command-palette-input').fill('save');
+
+    const saveCmd = page.getByTestId(
+      'command-palette-command-workspace.save-project',
+    );
+    await expect(saveCmd).toBeVisible();
+    // No "Actions" header during a query — the listbox is unified.
+    await expect(
+      page.getByTestId('command-palette-commands-header'),
+    ).toHaveCount(0);
+    // Command outranks any element with the same substring (none here).
+    await expect(saveCmd).toHaveAttribute('data-active', 'true');
+  });
+
+  test('T-13.05b — Open chat command switches the sidebar to the chat tab', async ({
+    page,
+  }) => {
+    await page.keyboard.press('ControlOrMeta+k');
+    await page.getByTestId('command-palette-input').fill('chat');
+    const openChat = page.getByTestId(
+      'command-palette-command-workspace.open-chat',
+    );
+    await expect(openChat).toBeVisible();
+    await openChat.click();
+    await expect(page.getByTestId('command-palette')).toHaveCount(0);
+    // Sidebar tab = chat. Tabs carry HTML ids (sidebar-tab-<id>) and aria
+    // attributes; their tablist parent owns the data-testid.
+    await expect(page.locator('#sidebar-tab-chat')).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
   });
 
   test('@a11y palette has zero serious/critical axe violations', async ({

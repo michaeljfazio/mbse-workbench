@@ -6,89 +6,100 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 754
+- Iteration #: 755
 - Started: 2026-05-15
-- Branch: issue/309-cmdk-command-palette-scaffold (PR #310 pending; auto-merge --squash)
-- Working on: #309 — T-13.05a Command-palette scaffold (typed command
-  registry + Actions section). PR #308 (T-13.02 right-click context menu)
-  merged 3a5c22e at 10:53:04Z, closing the entire P0 "UI-unreachable
-  features" tier of Phase 13 (T-13.01 / .02 / .03 / .04 all done) and the
-  P1 notation-conformance tier was already closed via T-13.26 (b2b7892).
-  Picked the lowest-numbered unchecked task in the lowest-numbered open
-  tier per the Phase-13 Ralph protocol — P1 operator-UX has T-13.05
-  through T-13.10 unchecked, and T-13.05 (Cmd-K → true command palette)
-  is the lowest-numbered. STATUS iter-753 flagged T-13.05 as "the largest
-  single feature" in P1, so I'm splitting it into reviewable slices
-  following the T-13.33 / T-13.36 precedent — this PR is **T-13.05a**,
-  the scaffold + first command group; T-13.05b / .c / .d will unify the
-  ranked list + add more groups + recents.
+- Branch: issue/311-cmdk-unified-ranked-list (PR pending; auto-merge --squash)
+- Working on: #311 — T-13.05b Cmd-K unified ranked list (commands +
+  elements in one section) + open-chat / show-inspector /
+  rename-selection commands. PR #310 (T-13.05a) merged 44cd6df at
+  11:29:14Z, closing the scaffold slice. Picked T-13.05b as the next
+  slice per iter-754's Next-action plan — same lowest-numbered tier
+  (P1 operator-UX), continuing T-13.05's a/b/c/d split.
 
-  T-13.05a converts the Cmd-K palette from element-search-only (Phase 12
-  slice D, #234) into a typed command registry + element search. With no
-  query the palette renders an **Actions** section listing the enabled
-  built-in commands (Undo / Redo / Save project as JSON / Delete
-  selection — the four already-keybound workspace actions). Typing
-  switches to the existing element-search view so all Phase-12
-  navigation behaviour is preserved unchanged.
+  T-13.05b makes commands and elements first-class peers in the typed-
+  query view. Empty-query behaviour is unchanged: the Actions header +
+  enabled commands still render. With a non-empty query, both kinds
+  share one ranked list — no per-group header, no separate panes —
+  scored by a small substring scorer (exact 1.00 > prefix 0.80 >
+  word-prefix 0.60 > substring 0.40), with a +0.05 bias on commands so
+  that action keywords (e.g. typing "save", "chat", "undo") always put
+  the matching command above any element whose name happens to share
+  the same substring. The header changes from "Search elements" to
+  "Commands and elements"; the empty-state copy from "No elements
+  match …" to "No commands or elements match …".
 
-  Implementation: new module `src/workspace/paletteCommands.ts` exports
-  `PaletteCommand` + `PaletteCommandContext` types, a
-  `BUILT_IN_PALETTE_COMMANDS` registry, and a pure
-  `filterPaletteCommands(query, commands, ctx)` helper (enabled-only,
-  label / description / keyword substring match). Each command has an
-  `isEnabled(ctx)` predicate and a `run(ctx)` action — the registry is
-  free of any store import so it's trivially unit-testable without
-  bootstrapping. `CommandBus.canUndo()` / `canRedo()` added so the
-  palette can derive enablement reactively from the existing
-  `modelVersion` selector (which already ticks on every bus
-  dispatch/undo/redo via the subscribe-side `set({ modelVersion: …,
-  elements, edges })` in `store.bootstrap`). `CommandPalette.tsx`
-  refactored to build a `PaletteCommandContext` from store selectors
-  (`bus`, `modelVersion`, `project`, `selectedElementIds`,
-  `activeSurfaceKind`, plus the wired action methods), compute
-  `commands` or `elementMatches` based on whether the query is empty,
-  and dispatch the right code path on Enter / click. New testids:
-  `command-palette-commands-header`,
-  `command-palette-command-<command-id>`. Existing testids
-  (`command-palette`, `-input`, `-results`, `-result-<id>`, `-empty`,
-  `-close`) are unchanged. Active-row state, ArrowUp/Down wrap-around,
-  Enter to select, Tab focus trap, Esc close, click-on-backdrop close
-  — all unchanged from Phase 12.
+  New built-in commands extend the registry from 4 to 7:
+  - `workspace.open-chat` — `setInspectorTab('chat')` + requests the
+    API-key modal if no key is stored. Enabled when a project is
+    loaded.
+  - `workspace.show-inspector` — `setInspectorTab('inspector')`.
+    Enabled when a project is loaded.
+  - `workspace.rename-selection` — `setPendingRename(selectedId)` so
+    the project tree opens its inline rename for the single selected
+    element. Enabled when exactly one element is selected on the
+    active diagram (new context predicate
+    `hasSingleDiagramSelection`).
 
-  Tests: 16 new unit specs in
-  `tests/unit/workspace/paletteCommands.test.ts` cover registry shape,
-  enable/disable predicates, run() delegation, and filter behaviour
-  (empty / whitespace / case / label / description / keyword matching).
-  8 new component specs in
-  `tests/unit/workspace/CommandPalette.test.tsx` render the palette
-  against the real workspace store (bootstrapped via
-  `createInMemorySessionRepository` + `createSessionUser`, matching the
-  EmptyState.test.tsx pattern) and assert: Actions header + enabled
-  commands appear when query is empty + project is loaded + some
-  history exists; disabled commands are omitted (no bus → no Undo/Redo;
-  no diagram selection → no Delete); first command starts active;
-  ArrowDown moves between commands; Enter on Undo dispatches the bus
-  undo (verified via element-count + modelVersion change); click on a
-  command row dispatches and calls onClose; typing hides Actions and
-  shows element search; clearing the input restores Actions; rendered
-  command labels are unique within the listbox. Save command requires
-  jsdom polyfills (`URL.createObjectURL` / `revokeObjectURL`) — stubbed
-  in beforeEach, restored in afterEach. New e2e spec in
-  `tests/e2e/command-palette.spec.ts` asserts the Actions header +
-  Save command on empty query, switches to element search when typing,
-  restores Actions on clear. All four pre-existing palette specs
-  (filter, arrow nav, empty match, axe) untouched.
+  Implementation: `paletteCommands.ts` adds three pure scorer helpers
+  (`scoreCommandMatch`, `scoreElementMatch`, `scoreSubstring` private)
+  and the three new command entries; `PaletteCommandContext` grows
+  three action callbacks (`openChat`, `showInspector`,
+  `renameSelection`) and one new predicate
+  (`hasSingleDiagramSelection`). `CommandPalette.tsx` builds a
+  `{item, score}[]` from enabled commands and elements when the query
+  is non-empty, sorts by score desc (insertion order breaks ties so
+  commands keep registry order and elements keep document order), and
+  drops the Actions header during a query. New `data-item-kind`
+  attribute on each option row (`"command"` | `"element"`) so future
+  recents/grouping slices can target rows without re-deriving from
+  testid prefixes. All Phase-12 + T-13.05a behaviour preserved:
+  active-row, ArrowUp/Down wrap-around, Enter, Tab focus trap, Esc,
+  click-on-backdrop, all four T-13.05a commands.
 
-  Local check green: 1155/1155 unit pass (was 1131; +24 new specs),
-  tsc -b clean, lint clean (0 errors, 3 pre-existing warnings
-  unchanged), vite build clean. Agent visual inspection: captured
-  Chromium screenshots at `artifacts/iteration-754/palette-{empty,
-  query}.png` — empty-query view renders the Actions header + "Save
-  project as JSON" row with description + ⌘S kbd, active highlight on
-  first row; querying "block" with no matches shows the existing
-  empty-state copy. No committed visual baseline drift expected — the
-  new Actions DOM only renders when the palette is open AND the query
-  is empty, and no committed baseline screenshots that state.
+  Tests: 17 new unit specs across `paletteCommands.test.ts` and
+  `CommandPalette.test.tsx`. paletteCommands: registry includes the
+  three new IDs; `isEnabled` predicates for each; `run()` delegations
+  for each; filter `isEnabled` excludes rename-selection when no
+  single selection; new T-13.05b commands match by keyword (`llm` →
+  open-chat, `properties` → show-inspector); 6 scorer specs covering
+  empty-query → 0, no-match → 0, exact > prefix > substring,
+  word-prefix > substring, keyword match, element name+id match.
+  CommandPalette: Actions section now lists 4 enabled commands
+  (Undo / Save / OpenChat / ShowInspector) with no bus history + no
+  selection; "without a project" hides every command; unified ranked
+  list with query "save" puts the Save command at index 0 with the
+  matching element below; Enter on the active "save" entry runs
+  Save; Open chat click switches `inspectorTab`; Show inspector
+  click switches it back; Rename selection invisible without
+  selection but visible + sets `pendingRenameElementId` once a single
+  element is selected via `setSelection`. New e2e specs in
+  `command-palette.spec.ts` cover the unified-list "save" flow and
+  the Open chat → sidebar tab switch. The pre-existing arrow-nav
+  spec switched its query from "a" (now matches commands too) to
+  "cp-block" (id-prefix, matches only the three seeded blocks).
+
+  Local check green: 1172/1172 unit pass (was 1155; +17 net), tsc -b
+  clean, lint clean (0 errors, 3 pre-existing warnings unchanged),
+  vite build clean. New e2e specs pass on Chromium (full suite runs
+  in CI). Agent visual inspection: captured Chromium screenshots at
+  `artifacts/iteration-755/palette-{empty-actions, unified-save,
+  unified-engine, empty-state}.png`. Confirms (a) empty-query view
+  renders the new Open chat + Show inspector rows beneath Save with
+  matching descriptions; (b) querying "save" puts the Save command
+  with ⌘S kbd above SaverBlock element under the new "Commands and
+  elements" header; (c) the new "No commands or elements match …"
+  copy renders for misses. No committed visual baseline captures the
+  modal palette so no baseline regen needed.
+
+## Iter-754 archive
+- Branch: issue/309-cmdk-command-palette-scaffold (PR #310 merged
+  44cd6df at 11:29:14Z on 2026-05-15). Shipped T-13.05a — typed
+  PaletteCommand registry + Actions section with the four already-
+  keybound workspace actions (Undo / Redo / Save / Delete selection),
+  rendered when the palette query is empty. Typing switched the
+  palette back to the Phase-12 element-search view (replaced this
+  iter by the T-13.05b unified ranked list). 1155/1155 unit pass
+  (was 1131; +24 new specs), all checks clean.
 
 ## Iter-753 archive
 - Branch: issue/307-tree-right-click-context-menu (PR #308 merged 3a5c22e
@@ -886,12 +897,13 @@ Backlog (P0 — UI-unreachable features):
 Backlog (P1 — discoverability/workflow):
 - T-13.05 Cmd-K → true command palette (actions, not just search). Split
   into slices following the T-13.33 / T-13.36 precedent:
-  - T-13.05a Scaffold: typed `PaletteCommand` registry, Actions section,
-    initial four built-in commands (Undo / Redo / Save / Delete
-    selection). In flight iter-754 (#309, PR #310).
+  - [x] T-13.05a Scaffold: typed `PaletteCommand` registry, Actions
+    section, initial four built-in commands (Undo / Redo / Save /
+    Delete selection). Shipped iter-754 (PR #310, 44cd6df).
   - T-13.05b Unified ranked list (commands + elements in one section);
-    more command groups (open chat, create diagram, rename selection,
-    toggle pane, focus tab N, …).
+    more command groups (open chat, show inspector, rename selection
+    so far). In flight iter-755 (#311). Remaining ideas (create
+    diagram, focus pane, …) deferred to T-13.05c/d.
   - T-13.05c Inspector / surface-scoped actions.
   - T-13.05d Recently-used commands at the top.
 - T-13.06 Tooltip reasons on disabled toolbar buttons
@@ -1023,15 +1035,17 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
-Wait for PR (T-13.05a Cmd-K scaffold, #309 / PR #310) CI. No visual
-drift expected — the new Actions DOM only renders when the palette is
-open AND the query is empty, and no committed visual baseline captures
-that state. After PR #310 merges, pick T-13.05b (unified ranked list +
-more command groups) as the next slice — that's the highest-leverage
-follow-up to keep the palette's discoverability rising. Alternative
-candidates if more variety is desired:
-- T-13.06 (disabled-toolbar-button reason tooltips, P1) — small, self-
-  contained; good for a quick iteration.
+Wait for PR (T-13.05b Cmd-K unified ranked list, #311) CI. No
+committed visual baseline captures the modal palette so no baseline
+regen is anticipated. After this merges, the natural next slice is
+**T-13.05c** (inspector / surface-scoped actions — e.g. "Create
+representation" only on a Block when active surface is the project
+tree, "Add port" only on a PartUsage on IBD, etc.) — that's where
+the registry's typed-context approach starts paying real
+discoverability dividends. Alternatives if a quick win is desired
+instead:
+- T-13.06 (disabled-toolbar-button reason tooltips, P1) — small,
+  self-contained; good for a quick iteration.
 - T-13.10 (undo/redo toolbar buttons, P1) — buttons already work via
   keyboard; this surfaces the same actions in the toolbar.
 

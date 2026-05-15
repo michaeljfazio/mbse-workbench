@@ -1,5 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 
+import { readApiKey, requestApiKeyModal } from '@/llm/api-key';
+
 import {
   COMMAND_PALETTE_RESULT_CAP,
   searchElements,
@@ -9,6 +11,8 @@ import { downloadProjectJson } from './export';
 import {
   BUILT_IN_PALETTE_COMMANDS,
   filterPaletteCommands,
+  scoreCommandMatch,
+  scoreElementMatch,
   type PaletteCommand,
   type PaletteCommandContext,
 } from './paletteCommands';
@@ -23,11 +27,14 @@ type PaletteItem =
   | { readonly kind: 'element'; readonly match: CommandPaletteMatch };
 
 // Phase 12 slice D (#234) introduced the modal palette as element search.
-// Phase 13 / T-13.05a layers in a typed command registry: with no query the
-// palette lists actions (Undo / Redo / Save / Delete selection); once the user
-// types, the palette switches to the search view so existing element
-// navigation keeps working unchanged. Later slices unify command + element
-// matches and add more groups.
+// Phase 13 / T-13.05a layered in a typed command registry: with no query the
+// palette lists actions; once the user typed, the palette switched to the
+// search view. Phase 13 / T-13.05b unifies the typed-query view: matching
+// commands and matching elements share a single ranked list, so action
+// keywords ("save", "open chat") put the relevant command above any element
+// whose name happens to contain the same substring.
+const COMMAND_RANK_BIAS = 0.05;
+
 export function CommandPalette({ onClose }: CommandPaletteProps): JSX.Element {
   const elements = useWorkspaceStore((s) => s.elements);
   const diagrams = useWorkspaceStore((s) => s.diagrams);
@@ -41,6 +48,8 @@ export function CommandPalette({ onClose }: CommandPaletteProps): JSX.Element {
   const undo = useWorkspaceStore((s) => s.undo);
   const redo = useWorkspaceStore((s) => s.redo);
   const deleteSelection = useWorkspaceStore((s) => s.deleteSelection);
+  const setInspectorTab = useWorkspaceStore((s) => s.setInspectorTab);
+  const setPendingRename = useWorkspaceStore((s) => s.setPendingRename);
 
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
@@ -50,17 +59,22 @@ export function CommandPalette({ onClose }: CommandPaletteProps): JSX.Element {
 
   const trimmedQuery = query.trim();
   const queryIsEmpty = trimmedQuery.length === 0;
+  const trimmedLowerQuery = trimmedQuery.toLowerCase();
 
   const commandContext = useMemo<PaletteCommandContext>(() => {
     // `modelVersion` ticks on every bus dispatch/undo/redo, so canUndo/canRedo
     // re-read from the bus each render. Reading it here also brings selection
     // and surface state into the dependency list.
     void modelVersion;
+    const onDiagram =
+      activeSurfaceKind === 'diagram' && selectedElementIds.length > 0;
+    const singleSelection =
+      activeSurfaceKind === 'diagram' && selectedElementIds.length === 1;
     return {
       canUndo: bus?.canUndo() ?? false,
       canRedo: bus?.canRedo() ?? false,
-      hasDiagramSelection:
-        activeSurfaceKind === 'diagram' && selectedElementIds.length > 0,
+      hasDiagramSelection: onDiagram,
+      hasSingleDiagramSelection: singleSelection,
       hasProject: project !== null,
       undo,
       redo,
@@ -68,6 +82,17 @@ export function CommandPalette({ onClose }: CommandPaletteProps): JSX.Element {
         if (project) downloadProjectJson({ project });
       },
       deleteSelection,
+      openChat: () => {
+        setInspectorTab('chat');
+        if (readApiKey() === null) requestApiKeyModal();
+      },
+      showInspector: () => {
+        setInspectorTab('inspector');
+      },
+      renameSelection: () => {
+        const id = selectedElementIds[0];
+        if (id) setPendingRename(id);
+      },
     };
   }, [
     bus,
@@ -78,34 +103,60 @@ export function CommandPalette({ onClose }: CommandPaletteProps): JSX.Element {
     undo,
     redo,
     deleteSelection,
+    setInspectorTab,
+    setPendingRename,
   ]);
 
-  const commands = useMemo(
-    () =>
-      filterPaletteCommands(
-        queryIsEmpty ? '' : trimmedQuery,
-        BUILT_IN_PALETTE_COMMANDS,
-        commandContext,
-      ),
-    [queryIsEmpty, trimmedQuery, commandContext],
-  );
-
-  const elementMatches = useMemo(
-    () =>
-      queryIsEmpty
-        ? []
-        : searchElements(query, elements, diagrams, COMMAND_PALETTE_RESULT_CAP),
-    [queryIsEmpty, query, elements, diagrams],
+  const enabledCommands = useMemo(
+    () => BUILT_IN_PALETTE_COMMANDS.filter((c) => c.isEnabled(commandContext)),
+    [commandContext],
   );
 
   const items = useMemo<readonly PaletteItem[]>(() => {
     if (queryIsEmpty) {
-      return commands.map((c) => ({ kind: 'command', command: c }) as const);
+      return filterPaletteCommands(
+        '',
+        BUILT_IN_PALETTE_COMMANDS,
+        commandContext,
+      ).map((command) => ({ kind: 'command', command }) as const);
     }
-    return elementMatches.map(
-      (m) => ({ kind: 'element', match: m }) as const,
+    const cmdItems: { item: PaletteItem; score: number }[] = [];
+    for (const command of enabledCommands) {
+      const s = scoreCommandMatch(command, trimmedLowerQuery);
+      if (s > 0) {
+        cmdItems.push({
+          item: { kind: 'command', command },
+          score: s + COMMAND_RANK_BIAS,
+        });
+      }
+    }
+    const elemMatches = searchElements(
+      trimmedQuery,
+      elements,
+      diagrams,
+      COMMAND_PALETTE_RESULT_CAP,
     );
-  }, [queryIsEmpty, commands, elementMatches]);
+    const elemItems: { item: PaletteItem; score: number }[] = [];
+    for (const match of elemMatches) {
+      const s = scoreElementMatch(match, trimmedLowerQuery);
+      if (s > 0) {
+        elemItems.push({ item: { kind: 'element', match }, score: s });
+      }
+    }
+    const merged = [...cmdItems, ...elemItems];
+    // Stable sort by score desc; insertion order breaks ties so commands keep
+    // their registry order and elements keep document order within each tier.
+    merged.sort((a, b) => b.score - a.score);
+    return merged.map((m) => m.item);
+  }, [
+    queryIsEmpty,
+    trimmedQuery,
+    trimmedLowerQuery,
+    enabledCommands,
+    commandContext,
+    elements,
+    diagrams,
+  ]);
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -154,7 +205,7 @@ export function CommandPalette({ onClose }: CommandPaletteProps): JSX.Element {
     }
   }
 
-  const showEmpty = !queryIsEmpty && elementMatches.length === 0;
+  const showEmpty = !queryIsEmpty && items.length === 0;
   const showCommandsHeader = queryIsEmpty && items.length > 0;
   const activeItem = items[activeIndex];
   const activeOptionId = activeItem
@@ -179,7 +230,9 @@ export function CommandPalette({ onClose }: CommandPaletteProps): JSX.Element {
           htmlFor="command-palette-input"
           className="block px-4 pt-4 text-xs font-semibold text-foreground"
         >
-          {queryIsEmpty ? 'Run a command or search elements' : 'Search elements'}
+          {queryIsEmpty
+            ? 'Run a command or search elements'
+            : 'Commands and elements'}
         </label>
         <input
           id="command-palette-input"
@@ -194,7 +247,7 @@ export function CommandPalette({ onClose }: CommandPaletteProps): JSX.Element {
           placeholder={
             queryIsEmpty
               ? 'Type to search elements, or pick a command below…'
-              : 'Type a name or id…'
+              : 'Type a name, id, or command…'
           }
           value={query}
           onChange={(event) => setQuery(event.target.value)}
@@ -212,7 +265,9 @@ export function CommandPalette({ onClose }: CommandPaletteProps): JSX.Element {
           id={listboxId}
           data-testid="command-palette-results"
           role="listbox"
-          aria-label={queryIsEmpty ? 'Available commands' : 'Search results'}
+          aria-label={
+            queryIsEmpty ? 'Available commands' : 'Commands and search results'
+          }
           className={
             (showCommandsHeader ? '' : 'mt-3 border-t border-border ') +
             'max-h-72 overflow-y-auto'
@@ -237,6 +292,7 @@ export function CommandPalette({ onClose }: CommandPaletteProps): JSX.Element {
                   aria-selected={isActive}
                   data-testid={`command-palette-command-${command.id}`}
                   data-active={isActive ? 'true' : 'false'}
+                  data-item-kind="command"
                   onMouseEnter={() => setActiveIndex(index)}
                   onClick={() => runItem(item)}
                   className={`${stateClasses} ${baseClasses}`}
@@ -266,6 +322,7 @@ export function CommandPalette({ onClose }: CommandPaletteProps): JSX.Element {
                 aria-selected={isActive}
                 data-testid={`command-palette-result-${match.id}`}
                 data-active={isActive ? 'true' : 'false'}
+                data-item-kind="element"
                 onMouseEnter={() => setActiveIndex(index)}
                 onClick={() => runItem(item)}
                 className={`${stateClasses} ${baseClasses}`}
@@ -286,7 +343,7 @@ export function CommandPalette({ onClose }: CommandPaletteProps): JSX.Element {
             data-testid="command-palette-empty"
             className="px-4 py-3 text-xs text-muted-foreground"
           >
-            No elements match “{trimmedQuery}”.
+            No commands or elements match “{trimmedQuery}”.
           </p>
         ) : null}
         <div className="flex items-center justify-between border-t border-border px-4 py-2 text-xs text-foreground">
