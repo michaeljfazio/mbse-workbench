@@ -43,15 +43,20 @@ export {
 export {
   buildPortUsageOwnership,
   canonicalizeIbdConnection,
+  computeEnclosingFrameBounds,
   ConnectionUsageEdge,
   directionGlyph,
   HANDLE_TYPE_BY_DIRECTION,
   IBD_CONNECTION_USAGE_EDGE_TYPE,
+  IBD_ENCLOSING_FRAME_HEADER_HEIGHT,
+  IBD_ENCLOSING_FRAME_NODE_TYPE,
+  IBD_ENCLOSING_FRAME_PADDING,
   IBD_ITEM_FLOW_EDGE_TYPE,
   IBD_PART_USAGE_HEIGHT,
   IBD_PART_USAGE_NODE_TYPE,
   IBD_PART_USAGE_WIDTH,
   IBD_VIEWPOINT_ID,
+  IbdEnclosingFrameNode,
   ibdViewpoint,
   isPartDefinition,
   isPortDefinition,
@@ -59,19 +64,26 @@ export {
   ItemFlowEdge,
   placeHandle,
   resolveIbdEdgeEndpoints,
+  resolveIbdEnclosingFrameLabel,
   resolvePartHandles,
 } from './ibd';
 
 export type {
+  ComputeEnclosingFrameBoundsOptions,
   IbdConnectionEndpoints,
   IbdConnectionUsageEdge,
   IbdConnectionUsageEdgeData,
   IbdEdgeEndpoints,
+  IbdEnclosingFrameBounds,
+  IbdEnclosingFrameData,
+  IbdEnclosingFrameLabel,
+  IbdEnclosingFrameNodeType,
   IbdItemFlowEdge,
   IbdItemFlowEdgeData,
   IbdPartHandleSpec,
   IbdPartUsageData,
   IbdPartUsageNode,
+  IbdRect,
 } from './ibd';
 
 export {

@@ -11,6 +11,10 @@ import {
   ConnectionUsageEdge,
   IBD_CONNECTION_USAGE_EDGE_TYPE,
 } from './ConnectionUsageEdge';
+import {
+  IBD_ENCLOSING_FRAME_NODE_TYPE,
+  IbdEnclosingFrameNode,
+} from './IbdEnclosingFrameNode';
 import { IBD_ITEM_FLOW_EDGE_TYPE, ItemFlowEdge } from './ItemFlowEdge';
 import {
   IBD_PART_USAGE_HEIGHT,
@@ -60,12 +64,33 @@ export {
   isValidIbdConnection,
 } from './isValidConnection';
 export type { IbdConnectionEndpoints } from './isValidConnection';
+export {
+  IBD_ENCLOSING_FRAME_NODE_TYPE,
+  IbdEnclosingFrameNode,
+} from './IbdEnclosingFrameNode';
+export type {
+  IbdEnclosingFrameData,
+  IbdEnclosingFrameNodeType,
+} from './IbdEnclosingFrameNode';
+export {
+  IBD_ENCLOSING_FRAME_HEADER_HEIGHT,
+  IBD_ENCLOSING_FRAME_PADDING,
+  computeEnclosingFrameBounds,
+  resolveIbdEnclosingFrameLabel,
+} from './enclosingFrame';
+export type {
+  ComputeEnclosingFrameBoundsOptions,
+  IbdEnclosingFrameBounds,
+  IbdEnclosingFrameLabel,
+  IbdRect,
+} from './enclosingFrame';
 
 export const IBD_VIEWPOINT_ID: ViewpointId = 'ibd';
 
 // Module-scoped (frozen) so React Flow can rely on referential stability.
 const IBD_NODE_TYPES = Object.freeze({
   [IBD_PART_USAGE_NODE_TYPE]: PartUsageNode,
+  [IBD_ENCLOSING_FRAME_NODE_TYPE]: IbdEnclosingFrameNode,
 }) as unknown as ViewpointNodeTypes;
 const IBD_EDGE_TYPES = Object.freeze({
   [IBD_CONNECTION_USAGE_EDGE_TYPE]: ConnectionUsageEdge,
