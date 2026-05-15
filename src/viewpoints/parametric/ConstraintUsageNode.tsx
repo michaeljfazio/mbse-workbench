@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Handle, Position, type Node, type NodeProps } from '@xyflow/react';
 
-import type { ElementId } from '@/model';
+import { formatConstraintExpression, type ElementId } from '@/model';
 
 import {
   PARAMETRIC_CONSTRAINT_USAGE_HEIGHT,
@@ -122,15 +122,18 @@ export function ConstraintUsageNode({
             {data.name}
           </div>
         )}
-        <div
-          data-testid={`parametric-constraint-expression-${data.elementId}`}
-          className="line-clamp-2 break-words font-mono text-[11px] leading-snug text-foreground/80"
-          title={
-            data.expression.length > 0 ? data.expression : 'No equation yet'
-          }
-        >
-          {data.expression.length > 0 ? data.expression : '— no equation —'}
-        </div>
+        {(() => {
+          const expression = formatConstraintExpression(data.expression);
+          return (
+            <div
+              data-testid={`parametric-constraint-expression-${data.elementId}`}
+              className="line-clamp-2 break-words font-mono text-[11px] leading-snug text-foreground/80"
+              title={expression ?? 'No equation yet'}
+            >
+              {expression ?? '— no equation —'}
+            </div>
+          );
+        })()}
       </div>
       <Handle
         type="source"

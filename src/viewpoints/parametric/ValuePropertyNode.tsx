@@ -1,7 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Handle, Position, type Node, type NodeProps } from '@xyflow/react';
 
-import type { ElementId, ValueLiteral, ValueType } from '@/model';
+import {
+  formatValuePropertySignature,
+  type ElementId,
+  type ValueLiteral,
+  type ValueType,
+} from '@/model';
 
 import {
   PARAMETRIC_VALUE_PROPERTY_HEIGHT,
@@ -31,14 +36,6 @@ export const PARAMETRIC_VALUE_PROPERTY_NODE_TYPE =
 
 const HANDLE_BASE_CLASS =
   '!z-10 !h-3 !w-3 !rounded-full !border-2 !border-card !bg-primary';
-
-export function formatValueDefault(
-  defaultValue: ValueLiteral | undefined,
-): string {
-  if (defaultValue === undefined) return '—';
-  if (typeof defaultValue === 'string') return `"${defaultValue}"`;
-  return String(defaultValue);
-}
 
 export function ValuePropertyNode({
   data,
@@ -130,8 +127,7 @@ export function ValuePropertyNode({
           data-testid={`parametric-value-meta-${data.elementId}`}
           className="truncate font-mono text-[11px] leading-snug text-foreground/80"
         >
-          <span>: {data.valueType}</span>
-          <span className="ml-1">= {formatValueDefault(data.defaultValue)}</span>
+          {formatValuePropertySignature(data.valueType, data.defaultValue)}
         </div>
       </div>
       <Handle

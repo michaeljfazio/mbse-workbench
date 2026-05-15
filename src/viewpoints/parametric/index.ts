@@ -37,7 +37,6 @@ export type {
   ConstraintUsageRenameCallback,
 } from './ConstraintUsageNode';
 export {
-  formatValueDefault,
   PARAMETRIC_VALUE_PROPERTY_NODE_TYPE,
   ValuePropertyNode,
 } from './ValuePropertyNode';
