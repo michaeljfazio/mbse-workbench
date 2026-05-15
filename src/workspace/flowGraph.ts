@@ -5,9 +5,11 @@ import type {
   ElementId,
   ModelEdge,
   ModelElement,
+  OwnerRole,
 } from '@/model';
 import {
   buildPortUsageOwnership,
+  computeBddBlockCompartments,
   computeEnclosingFrameBounds,
   IBD_ENCLOSING_FRAME_NODE_TYPE,
   IBD_VIEWPOINT_ID,
@@ -22,7 +24,7 @@ import type { Diagram } from './diagram';
 
 export interface RegistryLookup {
   get(id: ElementId): ModelElement | undefined;
-  childrenOf(id: ElementId, role?: 'port'): readonly ModelElement[];
+  childrenOf(id: ElementId, role?: OwnerRole): readonly ModelElement[];
 }
 
 export function toFlowNodes(
@@ -40,7 +42,15 @@ export function toFlowNodes(
     .map((el) => {
       const pos = diagram.positions[el.id] ?? { x: 0, y: 0 };
       let data: Record<string, unknown>;
-      if (el.kind === 'PartUsage' && registry) {
+      if (el.kind === 'PartDefinition' && registry) {
+        const compartments = computeBddBlockCompartments(el.id, registry);
+        data = {
+          elementId: el.id,
+          name: el.name,
+          compartments,
+          onRename,
+        };
+      } else if (el.kind === 'PartUsage' && registry) {
         const definition = registry.get(el.definitionId);
         const definitionName =
           definition?.kind === 'PartDefinition' ? definition.name : 'unknown';

@@ -2,11 +2,15 @@ import { describe, expect, it } from 'vitest';
 
 import {
   createElementRegistry,
+  type ConstraintDefinitionElement,
+  type ConstraintUsageElement,
   type ElementId,
   type ModelElement,
   type PackageElement,
   type PartDefinitionElement,
   type PartUsageElement,
+  type PortDefinitionElement,
+  type ValuePropertyElement,
 } from '@/model';
 import {
   bddViewpoint,
@@ -219,4 +223,178 @@ describe('toFlowNodes — IBD enclosing-frame injection (T-13.20)', () => {
       true,
     );
   });
+});
+
+function mkPortDef(
+  id: string,
+  name: string,
+  ownerId: string,
+  ownerIndex: number,
+  direction: 'in' | 'out' | 'inout' = 'in',
+): PortDefinitionElement {
+  return {
+    id: mkElementId(id),
+    kind: 'PortDefinition',
+    ownerId: mkElementId(ownerId),
+    ownerRole: 'port',
+    ownerIndex,
+    name,
+    direction,
+  };
+}
+
+function mkValueProperty(
+  id: string,
+  name: string,
+  ownerId: string,
+  ownerIndex: number,
+): ValuePropertyElement {
+  return {
+    id: mkElementId(id),
+    kind: 'ValueProperty',
+    ownerId: mkElementId(ownerId),
+    ownerRole: 'property',
+    ownerIndex,
+    name,
+    valueType: 'number',
+    defaultValue: 1,
+  };
+}
+
+function mkConstraintDef(
+  id: string,
+  name: string,
+  expression: string,
+): ConstraintDefinitionElement {
+  return {
+    id: mkElementId(id),
+    kind: 'ConstraintDefinition',
+    ownerId: null,
+    ownerRole: 'member',
+    ownerIndex: 0,
+    name,
+    expression,
+  };
+}
+
+function mkConstraintUsage(
+  id: string,
+  name: string,
+  ownerId: string,
+  ownerIndex: number,
+  definitionId: string,
+): ConstraintUsageElement {
+  return {
+    id: mkElementId(id),
+    kind: 'ConstraintUsage',
+    ownerId: mkElementId(ownerId),
+    ownerRole: 'member',
+    ownerIndex,
+    name,
+    definitionId: mkElementId(definitionId),
+  };
+}
+
+function bddDiagram(positions: Diagram['positions'] = {}): Diagram {
+  return {
+    id: 'd-bdd' as DiagramId,
+    viewpointId: 'bdd',
+    name: 'Root BDD',
+    positions,
+    context: { kind: 'package', id: mkElementId('root') },
+  };
+}
+
+describe('toFlowNodes — BDD PartDefinition compartment data (T-13.19)', () => {
+  function makeFlat(parent: PartDefinitionElement, children: ModelElement[]) {
+    const reparented = children.map((c) => ({
+      ...c,
+      ownerId: parent.id,
+    })) as ModelElement[];
+    return [parent, ...reparented];
+  }
+
+  it('renders an empty compartment shape when the PartDefinition has no children', () => {
+    const def = mkPartDef('def-1', 'Tank');
+    const elements: ModelElement[] = [def];
+    const registry = buildRegistry(elements);
+    const nodes = toFlowNodes(
+      elements,
+      bddViewpoint,
+      bddDiagram({ [def.id]: { x: 0, y: 0 } }),
+      EMPTY,
+      noopRename,
+      registry,
+      EMPTY,
+    );
+    expect(nodes).toHaveLength(1);
+    const data = nodes[0]?.data as Record<string, unknown>;
+    expect(data.elementId).toBe(def.id);
+    expect(data.name).toBe('Tank');
+    expect(data.compartments).toEqual({
+      parts: { items: [], overflow: 0 },
+      ports: { items: [], overflow: 0 },
+      values: { items: [], overflow: 0 },
+      constraints: { items: [], overflow: 0 },
+    });
+    expect(typeof data.onRename).toBe('function');
+  });
+
+  it('populates parts / ports / values / constraints compartments from the registry', () => {
+    const def = mkPartDef('def-1', 'Tank');
+    const pumpDef = mkPartDef('def-pump', 'Pump');
+    const usage = { ...mkPartUsage('pu-1', 'pump', 'def-pump'), ownerId: def.id } as PartUsageElement;
+    const port = mkPortDef('po-1', 'inlet', def.id, 0, 'in');
+    const value = mkValueProperty('vp-1', 'mass', def.id, 0);
+    const constraintDef = mkConstraintDef('cd-1', 'PressureLimit', 'pressure < 100');
+    const constraintUsage = mkConstraintUsage(
+      'cu-1',
+      'limit',
+      def.id,
+      1,
+      'cd-1',
+    );
+    const elements: ModelElement[] = [
+      def,
+      pumpDef,
+      usage,
+      port,
+      value,
+      constraintDef,
+      constraintUsage,
+    ];
+    const registry = buildRegistry(elements);
+    const nodes = toFlowNodes(
+      elements,
+      bddViewpoint,
+      bddDiagram({ [def.id]: { x: 0, y: 0 } }),
+      EMPTY,
+      noopRename,
+      registry,
+      EMPTY,
+    );
+    const data = nodes[0]?.data as Record<string, unknown>;
+    expect(data.compartments).toEqual({
+      parts: {
+        items: [{ id: usage.id, label: 'pump : Pump' }],
+        overflow: 0,
+      },
+      ports: {
+        items: [{ id: port.id, label: 'inlet : in' }],
+        overflow: 0,
+      },
+      values: {
+        items: [{ id: value.id, label: 'mass : number = 1' }],
+        overflow: 0,
+      },
+      constraints: {
+        items: [{ id: constraintUsage.id, label: 'limit : pressure < 100' }],
+        overflow: 0,
+      },
+    });
+  });
+
+  // Quiet unused-helper warnings if extracted later. The function is referenced
+  // above for the second case via inline ownerId rewrite.
+  void makeFlat;
 });
