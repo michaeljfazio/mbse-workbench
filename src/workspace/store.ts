@@ -556,12 +556,15 @@ function newEmptyProject(): Project {
   };
 }
 
-function newDefaultDiagram(): Diagram {
+function newDefaultDiagram(rootId: ElementId): Diagram {
   return {
     id: createDiagramId(),
     viewpointId: bddViewpoint.id,
     name: 'Main BDD',
     positions: {},
+    // BDD accepts 'package' context (see bddViewpoint.acceptedContextKinds);
+    // default the root BDD to the project's root Package per ADR 0011.
+    context: { kind: 'package', id: rootId },
   };
 }
 
@@ -937,7 +940,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
     // projects (or freshly-minted ones) may have an empty `diagrams` array.
     let diagrams: readonly Diagram[] = project.diagrams;
     if (diagrams.length === 0) {
-      diagrams = [newDefaultDiagram()];
+      diagrams = [newDefaultDiagram(project.rootId)];
       project = { ...project, diagrams };
     }
     await repository.save(project);
@@ -1054,16 +1057,35 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   },
 
   createDiagram(viewpointId, options) {
-    const { viewpoints, diagrams } = get();
-    if (!viewpoints.has(viewpointId)) return null;
+    const { viewpoints, diagrams, project } = get();
+    const viewpoint = viewpoints.get(viewpointId);
+    if (!viewpoint) return null;
+    if (!project) return null;
+    let context: DiagramContext;
+    if (options?.context !== undefined) {
+      // Reject any context whose kind is not in this viewpoint's accepted set.
+      // ADR 0011 / JOURNAL iter-531 — every diagram's context kind must be in
+      // the active viewpoint's acceptedContextKinds.
+      if (!viewpoint.acceptedContextKinds.includes(options.context.kind)) {
+        return null;
+      }
+      context = options.context;
+    } else if (viewpoint.acceptedContextKinds.includes('package')) {
+      // Default: anchor to the project's root Package. Applies to viewpoints
+      // whose accepted set contains 'package' (BDD, Requirements, UseCase,
+      // Package). The other four (IBD, Activity, StateMachine, Parametric)
+      // require an explicit context per JOURNAL iter-531.
+      context = { kind: 'package', id: project.rootId };
+    } else {
+      return null;
+    }
     const id = createDiagramId();
-    const fallbackName = viewpoints.get(viewpointId)?.label ?? viewpointId;
     const diagram: Diagram = {
       id,
       viewpointId,
-      name: options?.name ?? fallbackName,
+      name: options?.name ?? viewpoint.label,
       positions: {},
-      ...(options?.context !== undefined ? { context: options.context } : {}),
+      context,
     };
     set({ diagrams: [...diagrams, diagram] });
     void get().saveProject();
@@ -1536,7 +1558,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
     const existing = diagrams.find(
       (d) =>
         d.viewpointId === IBD_VIEWPOINT_ID &&
-        d.context?.kind === 'partDefinition' &&
+        d.context.kind === 'partDefinition' &&
         d.context.id === partDefinitionId,
     );
     if (existing) {
@@ -2794,7 +2816,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       rootId,
       elements,
       edges: parsed.value.edges,
-      diagrams: [newDefaultDiagram()],
+      diagrams: [newDefaultDiagram(rootId)],
       history: EMPTY_COMMAND_HISTORY,
       conversations: [],
     };

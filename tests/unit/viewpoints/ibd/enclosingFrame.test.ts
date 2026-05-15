@@ -85,7 +85,7 @@ describe('computeEnclosingFrameBounds', () => {
 });
 
 describe('resolveIbdEnclosingFrameLabel', () => {
-  function makeDiagram(context?: Diagram['context']): Diagram {
+  function makeDiagram(context: Diagram['context']): Diagram {
     return {
       id: 'd1' as DiagramId,
       viewpointId: 'ibd',
@@ -112,11 +112,6 @@ describe('resolveIbdEnclosingFrameLabel', () => {
       registry,
     );
     expect(result).toEqual({ id: partDef.id, name: 'Pump' });
-  });
-
-  it('returns null when context is missing', () => {
-    const registry = createElementRegistry();
-    expect(resolveIbdEnclosingFrameLabel(makeDiagram(undefined), registry)).toBeNull();
   });
 
   it('returns null when context kind is not partDefinition', () => {

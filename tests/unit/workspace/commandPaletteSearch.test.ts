@@ -63,6 +63,8 @@ function requirement(idStr: string, name: string): RequirementElement {
   };
 }
 
+const ROOT_ID = id('root-pkg');
+
 const bdd: Diagram = {
   id: did('d-bdd'),
   viewpointId: 'bdd' as Diagram['viewpointId'],
@@ -71,6 +73,7 @@ const bdd: Diagram = {
     [id('alpha')]: { x: 0, y: 0 },
     [id('beta')]: { x: 0, y: 0 },
   },
+  context: { kind: 'package', id: ROOT_ID },
 };
 
 const ibd: Diagram = {
@@ -78,6 +81,7 @@ const ibd: Diagram = {
   viewpointId: 'ibd' as Diagram['viewpointId'],
   name: 'Alpha IBD',
   positions: { [id('alpha-usage')]: { x: 0, y: 0 } },
+  context: { kind: 'partDefinition', id: id('alpha') },
 };
 
 const elements: readonly ModelElement[] = [
@@ -134,6 +138,7 @@ describe('searchElements', () => {
       viewpointId: 'bdd' as Diagram['viewpointId'],
       name: 'Many',
       positions,
+      context: { kind: 'package', id: ROOT_ID },
     };
     const matches = searchElements('xenon', many, [d]);
     expect(matches.length).toBe(COMMAND_PALETTE_RESULT_CAP);

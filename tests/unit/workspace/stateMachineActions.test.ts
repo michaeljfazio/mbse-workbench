@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import type { ElementId, StateUsageElement } from '@/model';
+import { createElementId, type ElementId, type StateUsageElement } from '@/model';
 import { createSessionUser } from '@/collab';
 import { createInMemorySessionRepository } from '@/repository';
 import { STATE_MACHINE_VIEWPOINT_ID } from '@/viewpoints';
@@ -45,9 +45,12 @@ function findState(id: ElementId): StateUsageElement | undefined {
 }
 
 function ensureStateMachineDiagram(): DiagramId {
-  const id = useWorkspaceStore
-    .getState()
-    .createDiagram(STATE_MACHINE_VIEWPOINT_ID, { name: 'State Machine' });
+  // State Machine viewpoint requires a `stateDefinition` context per ADR 0011 /
+  // JOURNAL iter-531. Synthetic id suffices for unit tests.
+  const id = useWorkspaceStore.getState().createDiagram(STATE_MACHINE_VIEWPOINT_ID, {
+    name: 'State Machine',
+    context: { kind: 'stateDefinition', id: createElementId() },
+  });
   if (!id) throw new Error('failed to create state machine diagram');
   useWorkspaceStore.getState().setActiveDiagram(id);
   return id;

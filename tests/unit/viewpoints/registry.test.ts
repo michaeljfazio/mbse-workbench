@@ -13,6 +13,7 @@ function makeStub(id: string, label: string): Viewpoint {
     id,
     label,
     acceptedElementKinds: [],
+    acceptedContextKinds: ['package'],
     acceptedEdgeKinds: [],
     acceptedEdgeElementKinds: [],
     defaultLayout: 'manual',

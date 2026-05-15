@@ -108,6 +108,7 @@ export const stateMachineViewpoint: Viewpoint = {
   // and accepted here so it does not need an ADR revision later (parallels
   // Activity reserving `ActionDefinition` per ADR 0005).
   acceptedElementKinds: ['StateUsage', 'StateDefinition'],
+  acceptedContextKinds: ['stateDefinition'],
   // Per ADR 0006 § 3: Transition stays in `ModelElement` with `sourceId` /
   // `targetId` baked in and renders as an element-as-edge — same pattern as
   // IBD's `ConnectionUsage` / `ItemFlow` per ADR 0003 § 3.

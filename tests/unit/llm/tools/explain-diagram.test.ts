@@ -7,11 +7,14 @@ import type { Diagram } from '@/workspace/diagram';
 const mkEl = (kind: string, name: string, id: string): ModelElement =>
   ({ kind, name, id, isAbstract: false, propertyIds: [], portIds: [] }) as unknown as ModelElement;
 
+const STUB_ROOT_ID = 'root' as ElementId;
+
 const mkDiagram = (id: string, viewpointId: string, name: string): Diagram => ({
   id: id as Diagram['id'],
   viewpointId: viewpointId as Diagram['viewpointId'],
   name,
   positions: {},
+  context: { kind: 'package', id: STUB_ROOT_ID },
 });
 
 const elements: ModelElement[] = [

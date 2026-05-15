@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { ElementId } from '@/model';
+import type { ViewpointContextKind } from '@/viewpoints';
 import type {
   ActionDefinitionDiagramContext,
   DiagramContext,
@@ -59,5 +60,14 @@ describe('DiagramContext discriminated union (T-13.30 widening)', () => {
       'actionDefinition',
       'stateDefinition',
     ]);
+  });
+
+  it('ViewpointContextKind mirrors DiagramContextKind exactly (T-13.30 sync)', () => {
+    // Compile-time bidirectional assignability — guarantees the two unions
+    // stay in lockstep when one is changed.
+    const fromVp: ViewpointContextKind = 'package' as DiagramContextKind;
+    const fromDc: DiagramContextKind = 'package' as ViewpointContextKind;
+    expect(fromVp).toBe('package');
+    expect(fromDc).toBe('package');
   });
 });

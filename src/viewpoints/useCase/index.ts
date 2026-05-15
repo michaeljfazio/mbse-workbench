@@ -109,6 +109,7 @@ export const useCaseViewpoint: Viewpoint = {
   id: USE_CASE_VIEWPOINT_ID,
   label: 'Use Case Diagram',
   acceptedElementKinds: ['Actor', 'UseCase'],
+  acceptedContextKinds: ['package'],
   acceptedEdgeKinds: ['Include', 'Extend', 'Generalization'],
   acceptedEdgeElementKinds: [],
   defaultLayout: 'dagre',

@@ -139,6 +139,7 @@ export const activityViewpoint: Viewpoint = {
   // `ActionDefinition` is reserved for a future "called activity" frame
   // and accepted here so it does not need an ADR revision later.
   acceptedElementKinds: ['ActionUsage', 'ActionDefinition'],
+  acceptedContextKinds: ['actionDefinition'],
   // Per ADR 0005 § 3: ControlFlow + ObjectFlow are ModelEdge entries,
   // not element-as-edge.
   acceptedEdgeKinds: ['ControlFlow', 'ObjectFlow'],

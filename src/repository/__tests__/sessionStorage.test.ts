@@ -393,7 +393,7 @@ describe('InMemorySessionRepository', () => {
     });
   });
 
-  it('forward-compat: pre-#49 stored diagrams (no `context` field) load with context undefined', async () => {
+  it('migrates pre-T-13.30 stored diagrams (no `context` field) to the root Package context', async () => {
     storage.setItem(
       'mbse:v1:project:legacy-no-context',
       JSON.stringify({
@@ -417,7 +417,12 @@ describe('InMemorySessionRepository', () => {
     const repo = createInMemorySessionRepository({ storage });
     const loaded = await repo.load('legacy-no-context' as ProjectId);
     expect(loaded.diagrams).toHaveLength(1);
-    expect(loaded.diagrams[0]?.context).toBeUndefined();
+    // ADR 0011 / JOURNAL iter-531: legacy diagrams without a context field
+    // migrate to the synthesized root Package.
+    expect(loaded.diagrams[0]?.context).toEqual({
+      kind: 'package',
+      id: loaded.rootId,
+    });
   });
 
   it('round-trips diagrams and per-diagram positions', async () => {
@@ -439,6 +444,7 @@ describe('InMemorySessionRepository', () => {
             [mkElementId('a')]: { x: 100, y: 200 },
             [mkElementId('b')]: { x: 300, y: 400 },
           },
+          context: { kind: 'package', id: ROOT_ID },
         },
       ],
       history: EMPTY_COMMAND_HISTORY,

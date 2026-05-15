@@ -98,6 +98,7 @@ export const parametricViewpoint: Viewpoint = {
   id: PARAMETRIC_VIEWPOINT_ID,
   label: 'Parametric Diagram',
   acceptedElementKinds: ['ConstraintUsage', 'ValueProperty'],
+  acceptedContextKinds: ['partDefinition'],
   acceptedEdgeKinds: ['ParameterBinding'],
   // Per ADR 0008 § 2: ParameterBinding stays in ModelEdge — not an
   // element-as-edge — because it carries no identity beyond endpoints.

@@ -56,6 +56,7 @@ export const requirementsViewpoint: Viewpoint = {
   id: REQUIREMENTS_VIEWPOINT_ID,
   label: 'Requirements Diagram',
   acceptedElementKinds: ['Requirement'],
+  acceptedContextKinds: ['package'],
   acceptedEdgeKinds: ['RequirementTrace'],
   // Per ADR 0004 § 2: RequirementTrace stays in ModelEdge — not an
   // element-as-edge — because it carries no identity beyond its endpoints

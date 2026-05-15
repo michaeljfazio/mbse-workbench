@@ -115,25 +115,6 @@ describe('toFlowNodes — IBD enclosing-frame injection (T-13.20)', () => {
     expect(nodes[1]?.id).toBe(usage.id);
   });
 
-  it('does not inject a frame when the diagram has no context', () => {
-    const def = mkPartDef('def-pump', 'Pump');
-    const usage = mkPartUsage('use-1', 'p1', 'def-pump');
-    const registry = buildRegistry([def, usage]);
-    const diagram = ibdDiagram(undefined, { [usage.id]: { x: 0, y: 0 } });
-    const nodes = toFlowNodes(
-      [def, usage],
-      ibdViewpoint,
-      diagram,
-      EMPTY,
-      noopRename,
-      registry,
-      EMPTY,
-    );
-    expect(nodes.every((n) => n.type !== IBD_ENCLOSING_FRAME_NODE_TYPE)).toBe(
-      true,
-    );
-  });
-
   it('does not inject a frame when context kind is not partDefinition', () => {
     const pkg: PackageElement = {
       id: mkElementId('pkg-root'),

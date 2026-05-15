@@ -60,6 +60,7 @@ const defId = mkElementId('def-1');
 const def2Id = mkElementId('def-2');
 const portDefId = mkElementId('port-d-1');
 const partUsageId = mkElementId('pu-1');
+const ROOT_ID = mkElementId('root-pkg');
 
 const partDef: PartDefinitionElement = {
   id: defId,
@@ -109,6 +110,7 @@ const bddDiagram: Diagram = {
     [defId]: { x: 10, y: 10 },
     [def2Id]: { x: 100, y: 10 },
   },
+  context: { kind: 'package', id: ROOT_ID },
 };
 
 const ibdDiagram: Diagram = {
@@ -198,6 +200,7 @@ describe('deriveNavTargets', () => {
       viewpointId: BDD_VIEWPOINT_ID,
       name: 'Side BDD',
       positions: { [defId]: { x: 1, y: 2 } },
+      context: { kind: 'package', id: ROOT_ID },
     };
     const { actions, calls } = recordingActions();
     const targets = deriveNavTargets({
@@ -242,6 +245,7 @@ describe('deriveNavTargets', () => {
       viewpointId: IBD_VIEWPOINT_ID,
       name: 'Wrong viewpoint',
       positions: { [defId]: { x: 0, y: 0 } },
+      context: { kind: 'partDefinition', id: defId },
     };
     const { actions } = recordingActions();
     const targets = deriveNavTargets({
@@ -287,6 +291,7 @@ describe('deriveNavTargets', () => {
       viewpointId: BDD_VIEWPOINT_ID,
       name: 'Proto',
       positions,
+      context: { kind: 'package', id: ROOT_ID },
     };
     const { actions } = recordingActions();
     const targets = deriveNavTargets({
@@ -369,6 +374,7 @@ describe('deriveNavTargets', () => {
       viewpointId: REQUIREMENTS_VIEWPOINT_ID,
       name: 'System Requirements',
       positions: { [reqId]: { x: 0, y: 0 } },
+      context: { kind: 'package', id: ROOT_ID },
     };
 
     const satisfyEdge: RequirementTraceEdge = {

@@ -236,7 +236,17 @@ export function migrateLegacyProject(raw: unknown): Project {
       : undefined,
   );
 
-  const diagrams = Array.isArray(obj.diagrams) ? obj.diagrams : [];
+  // Migrate diagrams: every diagram must carry a non-optional `context` per
+  // ADR 0011 / JOURNAL iter-531. Context-less legacy diagrams default to
+  // `{ kind: 'package', id: rootId }`. Pre-existing valid contexts (which
+  // already carry a `kind` discriminator) round-trip unchanged.
+  const rawDiagrams = Array.isArray(obj.diagrams) ? obj.diagrams : [];
+  const diagrams = rawDiagrams.map((d) => {
+    if (d === null || typeof d !== 'object') return d;
+    const dr = d as Record<string, unknown>;
+    if (dr.context && typeof dr.context === 'object') return dr;
+    return { ...dr, context: { kind: 'package', id: rootId } };
+  });
   const edges = Array.isArray(obj.edges) ? obj.edges : [];
   const history =
     obj.history &&
