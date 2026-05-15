@@ -44,6 +44,7 @@ export {
   buildPortUsageOwnership,
   canonicalizeIbdConnection,
   ConnectionUsageEdge,
+  directionGlyph,
   HANDLE_TYPE_BY_DIRECTION,
   IBD_CONNECTION_USAGE_EDGE_TYPE,
   IBD_ITEM_FLOW_EDGE_TYPE,

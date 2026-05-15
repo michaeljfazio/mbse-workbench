@@ -6,9 +6,37 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 740
+- Iteration #: 741
 - Started: 2026-05-15
-- Branch: issue/286-tree-menu-duplicate-move (PR pending auto-merge)
+- Branch: issue/290-ibd-port-direction-glyphs (PR pending)
+- Iter-741: PR #289 (T-13.33e-b row-menu Duplicate + Move) merged aaf2ded;
+  closed umbrella issue #270 (T-13.33e fully done). Started T-13.18 — port
+  direction glyphs (SysMLv2 notation conformance). New pure helper
+  `directionGlyph(direction, position)` in `src/viewpoints/ibd/partUsageHelpers.ts`
+  resolves to one of {▶, ◀, ↔} so the arrow always points along the data-flow
+  direction across the part boundary regardless of which edge the port lands
+  on: `in` → into the part body, `out` → away from the part body, `inout` →
+  bidirectional. Exported through `src/viewpoints/ibd/index.ts` and the
+  barrel at `src/viewpoints/index.ts`. PartUsageNode.tsx renders the glyph
+  as a new `<span data-testid="ibd-port-direction-<portUsageId>"
+  aria-hidden="true">` inside the existing port label container. On the
+  LEFT side the glyph follows the name (so the glyph hugs the part body);
+  on the RIGHT side the glyph precedes the name (same effect, mirrored).
+  Glyph is `aria-hidden` because the name carries semantic meaning; the
+  existing `data-direction` attribute already exposes direction to a11y
+  consumers. 6 new pure unit specs in `partUsageHelpers.test.ts` cover the
+  full 3×2 matrix; 6 new PartUsageNode integration specs cover in-left,
+  out-left, inout, in-on-both-sides (orientation flip), DOM child ordering
+  per side, and the aria-hidden marker. 1042/1042 unit pass (was 1030,
+  +12), tsc -b clean, lint clean (0 errors, 4 pre-existing warnings),
+  vite build clean. Visual baselines NOT regenerated locally — the new
+  glyph WILL drift IBD canvases on chromium + webkit; refresh from CI
+  actuals after the first push using the docs/CONTEXT.md 2026-05-12 lift
+  procedure if CI flags drift.
+
+## Current iteration (archived 740 → 741)
+- Iteration #: 740
+- Branch: issue/286-tree-menu-duplicate-move (merged aaf2ded)
 - Iter-740: PR #288 (T-13.22 UseCase ellipse) merged 06d5d49. Shipped
   T-13.33e-b — `ContainmentTreeRowMenu` gains "Duplicate" and
   "Move to package…" entries on every element row (hidden on the project
@@ -449,7 +477,7 @@ Backlog (P0 — visual rendering / transparency, JOURNAL iter-529):
       PartUsageNode.tsx (rounded-full → rounded-none). Shipped iter-532 (#253).
 
 Backlog (P1 — SysMLv2 notation conformance, JOURNAL iter-529):
-- T-13.18 Port direction glyphs (in/out/inout) from PortDirection in model.
+- T-13.18 in-flight iter-741 (#290) — Port direction glyphs (in/out/inout) from PortDirection in model.
 - T-13.19 BDD block compartments (parts/ports/values/constraints).
 - T-13.20 IBD enclosing-block frame (use diagram.context.partDefinition.id).
 - T-13.21 Requirement compartments (reqId/text/priority/status rows).
@@ -555,11 +583,11 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
-T-13.33e-b PR open for #286 — auto-merge enabled. Once it lands,
-T-13.33e is fully done and the explorer's row menu reaches feature
-parity with the Phase-13 backlog item. Remaining candidates next:
-- T-13.18 Port direction glyphs (in/out/inout) — direct SysMLv2
-  notation conformance, no schema cost.
+T-13.18 PR open for #290 — auto-merge enabled. Once it lands, IBD ports
+will carry SysMLv2 direction glyphs (▶/◀/↔). Expect chromium + webkit
+IBD visual baselines to drift on first CI run; refresh from actuals
+via the docs/CONTEXT.md 2026-05-12 lift procedure. Remaining candidates
+after T-13.18:
 - T-13.20 IBD enclosing-block frame — depends on diagram.context.
   partDefinition.id (already required post-T-13.30).
 - T-13.21 Requirement compartments — adds reqId/text/priority/status

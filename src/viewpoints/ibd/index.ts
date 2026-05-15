@@ -43,6 +43,7 @@ export type { IbdItemFlowEdge, IbdItemFlowEdgeData } from './ItemFlowEdge';
 export {
   HANDLE_TYPE_BY_DIRECTION,
   buildPortUsageOwnership,
+  directionGlyph,
   isPartDefinition,
   isPortDefinition,
   placeHandle,

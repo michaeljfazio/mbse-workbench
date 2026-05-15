@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 import { createElementRegistry, type PartUsageElement } from '@/model';
 import {
+  directionGlyph,
   HANDLE_TYPE_BY_DIRECTION,
   placeHandle,
   resolvePartHandles,
@@ -40,6 +41,32 @@ describe('HANDLE_TYPE_BY_DIRECTION', () => {
     expect(HANDLE_TYPE_BY_DIRECTION.in).toBe('target');
     expect(HANDLE_TYPE_BY_DIRECTION.out).toBe('source');
     expect(HANDLE_TYPE_BY_DIRECTION.inout).toBe('source');
+  });
+});
+
+describe('directionGlyph (T-13.18)', () => {
+  it('points an in port toward the part body on the left edge', () => {
+    expect(directionGlyph('in', Position.Left)).toBe('▶');
+  });
+
+  it('points an in port toward the part body on the right edge', () => {
+    expect(directionGlyph('in', Position.Right)).toBe('◀');
+  });
+
+  it('points an out port away from the part body on the left edge', () => {
+    expect(directionGlyph('out', Position.Left)).toBe('◀');
+  });
+
+  it('points an out port away from the part body on the right edge', () => {
+    expect(directionGlyph('out', Position.Right)).toBe('▶');
+  });
+
+  it('renders inout as a bidirectional arrow on the left edge', () => {
+    expect(directionGlyph('inout', Position.Left)).toBe('↔');
+  });
+
+  it('renders inout as a bidirectional arrow on the right edge', () => {
+    expect(directionGlyph('inout', Position.Right)).toBe('↔');
   });
 });
 
