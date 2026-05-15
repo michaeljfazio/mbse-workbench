@@ -42,6 +42,21 @@ export const HANDLE_TYPE_BY_DIRECTION: Record<
   inout: 'source',
 };
 
+// SysMLv2-style port direction glyphs. Orientation is position-aware so the
+// arrow always points along the data-flow direction across the part boundary:
+// 'in'  → toward the part body, 'out' → away from the part body.
+// 'inout' uses a bidirectional symbol since flow is symmetric.
+export function directionGlyph(
+  direction: PortDirection,
+  position: Position,
+): string {
+  if (direction === 'inout') return '↔';
+  const isInto = direction === 'in';
+  const isLeft = position === Position.Left;
+  if (isLeft) return isInto ? '▶' : '◀';
+  return isInto ? '◀' : '▶';
+}
+
 interface MinimalRegistry {
   get(id: ElementId): ModelElement | undefined;
   childrenOf(id: ElementId, role?: 'port'): readonly ModelElement[];

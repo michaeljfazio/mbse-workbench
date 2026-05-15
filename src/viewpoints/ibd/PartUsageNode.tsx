@@ -4,6 +4,7 @@ import type { ElementId, PortDirection } from '@/model';
 
 import {
   HANDLE_TYPE_BY_DIRECTION,
+  directionGlyph,
   placeHandle,
 } from './partUsageHelpers';
 
@@ -67,6 +68,25 @@ export function PartUsageNode({
       {ports.map((port, index) => {
         const placement = placeHandle(index, total);
         const isLeft = placement.position === Position.Left;
+        const glyph = directionGlyph(port.direction, placement.position);
+        const glyphSpan = (
+          <span
+            key="glyph"
+            aria-hidden="true"
+            data-testid={`ibd-port-direction-${port.portUsageId}`}
+            className="text-foreground/80"
+          >
+            {glyph}
+          </span>
+        );
+        const labelSpan = (
+          <span
+            key="label"
+            data-testid={`ibd-port-label-${port.portUsageId}`}
+          >
+            {port.label}
+          </span>
+        );
         return (
           <div
             key={`label-${port.portUsageId}`}
@@ -77,9 +97,7 @@ export function PartUsageNode({
               isLeft ? 'left-0 -translate-x-full pr-1' : 'right-0 translate-x-full pl-1'
             }`}
           >
-            <span data-testid={`ibd-port-label-${port.portUsageId}`}>
-              {port.label}
-            </span>
+            {isLeft ? [labelSpan, glyphSpan] : [glyphSpan, labelSpan]}
           </div>
         );
       })}
