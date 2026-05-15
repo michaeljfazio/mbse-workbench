@@ -3,6 +3,10 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ElementId } from '@/model';
 
 import type { ChildKindOption } from './childAcceptance';
+import {
+  packageTargetDisabledTitle,
+  type PackageTargetOption,
+} from './packageTargets';
 import type { RepresentationOption } from './representationAcceptance';
 
 export interface ContainmentTreeRowMenuProps {
@@ -10,10 +14,13 @@ export interface ContainmentTreeRowMenuProps {
   readonly canDelete: boolean;
   readonly childKinds: readonly ChildKindOption[];
   readonly representations: readonly RepresentationOption[];
+  readonly packageTargets: readonly PackageTargetOption[];
   readonly onRename: () => void;
   readonly onDelete: () => void;
   readonly onCreateChild: (option: ChildKindOption) => void;
   readonly onCreateRepresentation: (option: RepresentationOption) => void;
+  readonly onDuplicate: () => void;
+  readonly onMoveToPackage: (packageId: ElementId) => void;
 }
 
 export function ContainmentTreeRowMenu({
@@ -21,20 +28,25 @@ export function ContainmentTreeRowMenu({
   canDelete,
   childKinds,
   representations,
+  packageTargets,
   onRename,
   onDelete,
   onCreateChild,
   onCreateRepresentation,
+  onDuplicate,
+  onMoveToPackage,
 }: ContainmentTreeRowMenuProps): JSX.Element {
   const [open, setOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
   const [repOpen, setRepOpen] = useState(false);
+  const [moveOpen, setMoveOpen] = useState(false);
   const rootRef = useRef<HTMLSpanElement>(null);
 
   const closeAll = useCallback(() => {
     setOpen(false);
     setCreateOpen(false);
     setRepOpen(false);
+    setMoveOpen(false);
   }, []);
 
   useEffect(() => {
@@ -46,6 +58,7 @@ export function ContainmentTreeRowMenu({
         setOpen(false);
         setCreateOpen(false);
         setRepOpen(false);
+        setMoveOpen(false);
       }
     }
     function onKeyDown(event: KeyboardEvent): void {
@@ -53,6 +66,7 @@ export function ContainmentTreeRowMenu({
         setOpen(false);
         setCreateOpen(false);
         setRepOpen(false);
+        setMoveOpen(false);
       }
     }
     document.addEventListener('pointerdown', onPointerDown);
@@ -65,6 +79,8 @@ export function ContainmentTreeRowMenu({
 
   const canCreateChild = childKinds.length > 0;
   const canCreateRepresentation = representations.length > 0;
+  const moveEnabled = packageTargets.some((t) => !t.disabled);
+  const canMove = canDelete && packageTargets.length > 0;
 
   return (
     <span ref={rootRef} className="relative ml-1 inline-flex shrink-0">
@@ -78,7 +94,11 @@ export function ContainmentTreeRowMenu({
         onClick={(e) => {
           e.stopPropagation();
           setOpen((v) => {
-            if (v) setCreateOpen(false);
+            if (v) {
+              setCreateOpen(false);
+              setRepOpen(false);
+              setMoveOpen(false);
+            }
             return !v;
           });
         }}
@@ -95,7 +115,7 @@ export function ContainmentTreeRowMenu({
           aria-label="Row actions"
           data-testid={`containment-tree-element-menu-${elementId}`}
           onClick={(e) => e.stopPropagation()}
-          className="absolute right-0 top-full z-20 mt-1 w-44 overflow-hidden rounded-md border border-border bg-card text-xs shadow-lg"
+          className="absolute right-0 top-full z-20 mt-1 w-48 overflow-hidden rounded-md border border-border bg-card text-xs shadow-lg"
         >
           <button
             type="button"
@@ -120,6 +140,8 @@ export function ContainmentTreeRowMenu({
               onClick={(e) => {
                 e.stopPropagation();
                 setCreateOpen((v) => !v);
+                setRepOpen(false);
+                setMoveOpen(false);
               }}
               className="flex w-full items-center justify-between px-3 py-2 text-left text-foreground transition hover:bg-accent"
             >
@@ -164,6 +186,8 @@ export function ContainmentTreeRowMenu({
               onClick={(e) => {
                 e.stopPropagation();
                 setRepOpen((v) => !v);
+                setCreateOpen(false);
+                setMoveOpen(false);
               }}
               className="flex w-full items-center justify-between px-3 py-2 text-left text-foreground transition hover:bg-accent"
             >
@@ -192,6 +216,84 @@ export function ContainmentTreeRowMenu({
                     onCreateRepresentation(option);
                   }}
                   className="block w-full px-3 py-2 text-left text-foreground transition hover:bg-accent"
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+          {canDelete ? (
+            <button
+              type="button"
+              role="menuitem"
+              data-testid={`containment-tree-element-menu-duplicate-${elementId}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                closeAll();
+                onDuplicate();
+              }}
+              className="block w-full px-3 py-2 text-left text-foreground transition hover:bg-accent"
+            >
+              Duplicate
+            </button>
+          ) : null}
+          {canMove ? (
+            <button
+              type="button"
+              role="menuitem"
+              aria-haspopup="menu"
+              aria-expanded={moveOpen}
+              aria-disabled={!moveEnabled}
+              disabled={!moveEnabled}
+              data-testid={`containment-tree-element-menu-move-to-package-${elementId}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                if (!moveEnabled) return;
+                setMoveOpen((v) => !v);
+                setCreateOpen(false);
+                setRepOpen(false);
+              }}
+              title={
+                moveEnabled
+                  ? undefined
+                  : 'No accepting Package is available as a target'
+              }
+              className="flex w-full items-center justify-between px-3 py-2 text-left text-foreground transition hover:bg-accent disabled:cursor-not-allowed disabled:text-foreground/40 disabled:hover:bg-transparent"
+            >
+              <span>Move to package…</span>
+              <span aria-hidden="true" className="text-foreground/60">
+                ▸
+              </span>
+            </button>
+          ) : null}
+          {moveOpen && canMove ? (
+            <div
+              role="menu"
+              aria-label="Move to package"
+              data-testid={`containment-tree-element-menu-move-to-package-list-${elementId}`}
+              className="max-h-56 overflow-auto border-t border-border bg-card"
+            >
+              {packageTargets.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  role="menuitem"
+                  aria-disabled={option.disabled}
+                  disabled={option.disabled}
+                  data-testid={`containment-tree-element-menu-move-to-${option.id}-${elementId}`}
+                  data-disabled-reason={option.disabledReason}
+                  title={
+                    option.disabledReason
+                      ? packageTargetDisabledTitle(option.disabledReason)
+                      : undefined
+                  }
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (option.disabled) return;
+                    closeAll();
+                    onMoveToPackage(option.id);
+                  }}
+                  className="block w-full truncate px-3 py-2 text-left text-foreground transition hover:bg-accent disabled:cursor-not-allowed disabled:text-foreground/40 disabled:hover:bg-transparent"
                 >
                   {option.label}
                 </button>

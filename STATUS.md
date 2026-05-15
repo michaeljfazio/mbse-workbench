@@ -6,9 +6,51 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 739
+- Iteration #: 740
 - Started: 2026-05-15
-- Branch: issue/287-usecase-svg-ellipse (PR #288 merged 06d5d49)
+- Branch: issue/286-tree-menu-duplicate-move (PR pending auto-merge)
+- Iter-740: PR #288 (T-13.22 UseCase ellipse) merged 06d5d49. Shipped
+  T-13.33e-b — `ContainmentTreeRowMenu` gains "Duplicate" and
+  "Move to package…" entries on every element row (hidden on the project
+  root via `canDelete = ownerId !== null`). Duplicate dispatches
+  `store.duplicateElement(id)` and, on a non-null return, calls
+  `setPendingRename(newId)` so the cloned subtree's root lands in inline
+  rename — reusing the T-13.34 `pendingRenameElementId` slot. The clone's
+  default name is `"<orig> copy"` per the store action. "Move to package…"
+  opens a nested submenu (same outside-pointerdown / Escape close as
+  Create-child / Create-representation) listing every `Package` in the
+  project EXCEPT the element's current owner; the picker entry itself is
+  shown disabled when no valid target exists (no enabled rows). Pure
+  helper `computePackageTargets({element, elements})` in new
+  `src/workspace/tree/packageTargets.ts` returns
+  `{ id, label, disabled, disabledReason? }`, with `disabledReason` set
+  to `'cycle'` for Packages that are descendants of the row element
+  (matches the store's cycle guard) and `'kind-not-accepted'` for rows
+  whose kind is not in `acceptedChildKinds('Package')` (e.g.
+  ValueProperty, PartUsage). Disabled rows render with
+  `aria-disabled`, `disabled`, `data-disabled-reason`, and a `title`
+  tooltip from `packageTargetDisabledTitle`. Self is always omitted; the
+  current owner is always omitted; results sort alphabetically (case-
+  insensitive). The successful-click path calls
+  `store.moveElement(elementId, packageId)`; the store stays
+  authoritative (cycle / kind / no-op / unknown rejects still happen
+  there). 7 new pure unit specs in `packageTargets.test.ts`; 8 new
+  integration specs in `ContainmentTree.test.tsx` covering: Duplicate
+  dispatches + pendingRename, Duplicate hidden on root, Move hidden on
+  root, picker lists every-Package-except-current-owner, trigger
+  disabled when no Package accepts the kind, descendant Packages
+  flagged with `cycle`, valid click dispatches moveElement, disabled
+  click is a no-op. 1 new Playwright e2e
+  (`tests/e2e/containment-tree-duplicate-move.spec.ts`) on chromium +
+  webkit: creates Package "Sub" + PartDefinition "Pump" under root via
+  row menu, Duplicates Pump → assert "Pump copy" rename input is
+  visible + focused, commits rename ("Vessel"), Moves Vessel → "Sub"
+  via row menu, asserts depth 1→2 reorder, reloads, asserts
+  persistence + original Pump unchanged. Full check green: 1030 unit
+  pass (was 1015, +15 new), tsc -b clean, lint clean (0 errors,
+  4 pre-existing warnings), vite build clean, 4/4 containment-tree
+  e2e specs pass on chromium + webkit. No visual baseline impact —
+  menu is closed by default; static screens unchanged.
 - Iter-739: PR #285 (T-13.33e-a duplicateElement) merged 48d8a02 — the
   store-side half of T-13.33e is in. Shipped T-13.22 — UseCase node
   body is now an inline `<svg><ellipse/>` instead of a div with
@@ -443,8 +485,8 @@ Backlog (P0 — hierarchical Project Explorer foundations, decisions locked iter
   - T-13.33e Move to package / Duplicate (#270). Split:
     - PR #285 (iter-738) — `duplicateElement` store action + `cloneSubtree`
       helper (T-13.33e-a, #284).
-    - Pending — `ContainmentTreeRowMenu` "Duplicate" + "Move to package…"
-      menu items + e2e (T-13.33e-b).
+    - PR for #286 (iter-740) — `ContainmentTreeRowMenu` "Duplicate" +
+      "Move to package…" menu items + e2e (T-13.33e-b).
 - [x] T-13.34 Wire empty-state CTAs through the explorer (new leaf + inline rename).
       Shipped iter-735 (#276): pendingRenameElementId store slot, ContainmentTree
       useEffect picks it up; EmptyState routes New Block / New Requirement
@@ -513,19 +555,15 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
-PR #288 (T-13.22 UseCase ellipse) is merged. Two Phase-13 visual
-fidelity gate invariants are now satisfied: ports are squares
-(T-13.17), use-case is an SVG ellipse (T-13.22). Next iter: pick the
-highest-priority remaining backlog item. Candidates:
-- T-13.33e-b: UI wiring for duplicateElement (and "Move to package…")
-  in `ContainmentTreeRowMenu` — store action #285 already shipped, so
-  this is a thin, well-scoped follow-up.
-- T-13.18 Port direction glyphs (in/out/inout) — direct contributor to
-  SysMLv2 notation conformance, no schema cost.
+T-13.33e-b PR open for #286 — auto-merge enabled. Once it lands,
+T-13.33e is fully done and the explorer's row menu reaches feature
+parity with the Phase-13 backlog item. Remaining candidates next:
+- T-13.18 Port direction glyphs (in/out/inout) — direct SysMLv2
+  notation conformance, no schema cost.
 - T-13.20 IBD enclosing-block frame — depends on diagram.context.
   partDefinition.id (already required post-T-13.30).
 - T-13.21 Requirement compartments — adds reqId/text/priority/status
   rows; high reader-value with no schema work.
+- T-13.05 Cmd-K command palette — biggest P1 discoverability gap.
 Remaining P0 (UI-unreachable): T-13.01 / T-13.02 mostly subsumed by
-the explorer rewrite. T-13.05 Cmd-K command palette remains the
-biggest P1 gap.
+the explorer rewrite.

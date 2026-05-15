@@ -19,6 +19,10 @@ import {
   type ContainmentTreeNode,
 } from './buildContainmentTree';
 import { acceptedChildKinds, type ChildKindOption } from './childAcceptance';
+import {
+  computePackageTargets,
+  type PackageTargetOption,
+} from './packageTargets';
 import { PROJECT_TREE_DRAG_ELEMENT_ID } from './ProjectTree';
 import {
   acceptedRepresentations,
@@ -95,6 +99,7 @@ export function ContainmentTree(): JSX.Element {
   const renameDiagramAction = useWorkspaceStore((s) => s.renameDiagram);
   const deleteDiagramAction = useWorkspaceStore((s) => s.deleteDiagram);
   const moveElementAction = useWorkspaceStore((s) => s.moveElement);
+  const duplicateElementAction = useWorkspaceStore((s) => s.duplicateElement);
   const pendingRenameElementId = useWorkspaceStore(
     (s) => s.pendingRenameElementId,
   );
@@ -191,6 +196,22 @@ export function ContainmentTree(): JSX.Element {
       deleteDiagramAction(id);
     },
     [deleteDiagramAction],
+  );
+
+  const requestDuplicate = useCallback(
+    (id: ElementId) => {
+      const newId = duplicateElementAction(id);
+      if (!newId) return;
+      setPendingRename(newId);
+    },
+    [duplicateElementAction, setPendingRename],
+  );
+
+  const requestMoveToPackage = useCallback(
+    (id: ElementId, packageId: ElementId) => {
+      moveElementAction(id, packageId);
+    },
+    [moveElementAction],
   );
 
   const requestCreateRepresentation = useCallback(
@@ -622,6 +643,9 @@ export function ContainmentTree(): JSX.Element {
               requestDelete,
               requestCreateChild,
               requestCreateRepresentation,
+              requestDuplicate,
+              requestMoveToPackage,
+              elements,
               dropTargetKey,
               onDragStart: handleElementDragStart,
               onDragEnd: handleElementDragEnd,
@@ -667,6 +691,9 @@ interface ElementRowContext {
     ownerId: ElementId,
     option: RepresentationOption,
   ) => void;
+  readonly requestDuplicate: (id: ElementId) => void;
+  readonly requestMoveToPackage: (id: ElementId, packageId: ElementId) => void;
+  readonly elements: readonly ModelElement[];
   readonly dropTargetKey: FocusKey | null;
   readonly onDragStart: (
     event: DragEvent<HTMLDivElement>,
@@ -770,11 +797,20 @@ function renderElementRow(
           canDelete={canDelete}
           childKinds={acceptedChildKinds(element.kind)}
           representations={acceptedRepresentations(element.kind)}
+          packageTargets={
+            canDelete
+              ? computePackageTargets({ element, elements: ctx.elements })
+              : ([] as readonly PackageTargetOption[])
+          }
           onRename={() => ctx.beginRename(element.id)}
           onDelete={() => ctx.requestDelete(element.id)}
           onCreateChild={(option) => ctx.requestCreateChild(element.id, option)}
           onCreateRepresentation={(option) =>
             ctx.requestCreateRepresentation(element.id, option)
+          }
+          onDuplicate={() => ctx.requestDuplicate(element.id)}
+          onMoveToPackage={(packageId) =>
+            ctx.requestMoveToPackage(element.id, packageId)
           }
         />
       ) : null}
