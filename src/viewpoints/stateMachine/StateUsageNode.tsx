@@ -143,6 +143,7 @@ function InitialShape({ data, selected }: ShapeProps): JSX.Element {
       data-testid={`state-machine-initial-${data.elementId}`}
       data-element-id={data.elementId}
       data-state-node-type="initial"
+      data-pseudostate-shape="circle-filled"
       role="img"
       aria-label="Initial pseudostate"
       className={`flex h-full w-full items-center justify-center rounded-full bg-foreground transition ${
@@ -166,6 +167,7 @@ function FinalShape({ data, selected }: ShapeProps): JSX.Element {
       data-testid={`state-machine-final-${data.elementId}`}
       data-element-id={data.elementId}
       data-state-node-type="final"
+      data-pseudostate-shape="bullseye"
       role="img"
       aria-label="Final pseudostate"
       className={`relative flex h-full w-full items-center justify-center rounded-full border-2 border-foreground bg-card transition ${

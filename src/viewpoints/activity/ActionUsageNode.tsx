@@ -146,6 +146,7 @@ function InitialShape({ data, selected }: ShapeProps): JSX.Element {
       data-testid={`activity-initial-${data.elementId}`}
       data-element-id={data.elementId}
       data-action-node-type="initial"
+      data-pseudostate-shape="circle-filled"
       role="img"
       aria-label="Initial node"
       className={`flex h-full w-full items-center justify-center rounded-full bg-foreground transition ${
@@ -172,6 +173,7 @@ function FinalShape({ data, selected }: ShapeProps): JSX.Element {
       data-testid={`activity-final-${data.elementId}`}
       data-element-id={data.elementId}
       data-action-node-type="final"
+      data-pseudostate-shape="bullseye"
       role="img"
       aria-label="Final node"
       className={`relative flex h-full w-full items-center justify-center rounded-full border-2 border-foreground bg-card transition ${
@@ -204,6 +206,7 @@ function BarShape({ data, selected }: ShapeProps): JSX.Element {
       data-testid={`activity-${data.nodeType}-${data.elementId}`}
       data-element-id={data.elementId}
       data-action-node-type={data.nodeType}
+      data-pseudostate-shape="bar"
       role="img"
       aria-label={isFork ? 'Fork node' : 'Join node'}
       className={`flex h-full w-full items-center justify-center bg-foreground transition ${
