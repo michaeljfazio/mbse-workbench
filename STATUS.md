@@ -6,90 +6,115 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 755
+- Iteration #: 756
 - Started: 2026-05-15
-- Branch: issue/311-cmdk-unified-ranked-list (PR pending; auto-merge --squash)
-- Working on: #311 — T-13.05b Cmd-K unified ranked list (commands +
-  elements in one section) + open-chat / show-inspector /
-  rename-selection commands. PR #310 (T-13.05a) merged 44cd6df at
-  11:29:14Z, closing the scaffold slice. Picked T-13.05b as the next
-  slice per iter-754's Next-action plan — same lowest-numbered tier
-  (P1 operator-UX), continuing T-13.05's a/b/c/d split.
+- Branch: issue/313-cmdk-create-representation (PR pending; auto-merge --squash)
+- Working on: #313 — T-13.05c Selection-scoped **Create representation**
+  palette commands. PR #312 (T-13.05b unified ranked list) merged d19b5f0
+  at 11:58:16Z. Picked T-13.05c as the next slice per iter-755's Next-
+  action plan — same lowest-numbered P1 operator-UX tier, continuing
+  T-13.05's a/b/c/d split. This is where the typed-context approach
+  introduced in T-13.05a starts paying real discoverability dividends:
+  commands appear in the palette only when a specific selection-shape
+  is satisfied.
 
-  T-13.05b makes commands and elements first-class peers in the typed-
-  query view. Empty-query behaviour is unchanged: the Actions header +
-  enabled commands still render. With a non-empty query, both kinds
-  share one ranked list — no per-group header, no separate panes —
-  scored by a small substring scorer (exact 1.00 > prefix 0.80 >
-  word-prefix 0.60 > substring 0.40), with a +0.05 bias on commands so
-  that action keywords (e.g. typing "save", "chat", "undo") always put
-  the matching command above any element whose name happens to share
-  the same substring. The header changes from "Search elements" to
-  "Commands and elements"; the empty-state copy from "No elements
-  match …" to "No commands or elements match …".
+  T-13.05c emits one **Create <Viewpoint> representation** palette
+  command per option returned by `acceptedRepresentations(kind)` for
+  the single selected element on the active diagram. The pattern mirrors
+  the project-tree row submenu shipped in T-13.33c, but surfaces the
+  same action through Cmd-K:
+  - Single PartDefinition selected → BDD, IBD, Parametric commands.
+  - Single Package selected → BDD, Requirements, Use Case, Package.
+  - Single ActionDefinition selected → Activity.
+  - Single StateDefinition selected → State Machine.
+  - Anything else (PortUsage, PartUsage, ConnectionUsage, …) → no
+    extra commands (acceptedRepresentations returns []).
+  - No selection / multi-selection → no extra commands.
 
-  New built-in commands extend the registry from 4 to 7:
-  - `workspace.open-chat` — `setInspectorTab('chat')` + requests the
-    API-key modal if no key is stored. Enabled when a project is
-    loaded.
-  - `workspace.show-inspector` — `setInspectorTab('inspector')`.
-    Enabled when a project is loaded.
-  - `workspace.rename-selection` — `setPendingRename(selectedId)` so
-    the project tree opens its inline rename for the single selected
-    element. Enabled when exactly one element is selected on the
-    active diagram (new context predicate
-    `hasSingleDiagramSelection`).
+  Command shape: `id = selection.create-representation.<viewpointId>`
+  (so the existing testid prefix convention generalises), `label =
+  "Create <Label> representation"`, `description = "New diagram anchored
+  to the selected element"`, keywords include `[diagram, new, create,
+  <viewpointId>, <label>]`. `isEnabled` is intentionally a constant
+  `true`: the generator already only emits commands for the active
+  selection, so the palette doesn't have to re-filter them by context.
 
-  Implementation: `paletteCommands.ts` adds three pure scorer helpers
-  (`scoreCommandMatch`, `scoreElementMatch`, `scoreSubstring` private)
-  and the three new command entries; `PaletteCommandContext` grows
-  three action callbacks (`openChat`, `showInspector`,
-  `renameSelection`) and one new predicate
-  (`hasSingleDiagramSelection`). `CommandPalette.tsx` builds a
-  `{item, score}[]` from enabled commands and elements when the query
-  is non-empty, sorts by score desc (insertion order breaks ties so
-  commands keep registry order and elements keep document order), and
-  drops the Actions header during a query. New `data-item-kind`
-  attribute on each option row (`"command"` | `"element"`) so future
-  recents/grouping slices can target rows without re-deriving from
-  testid prefixes. All Phase-12 + T-13.05a behaviour preserved:
-  active-row, ArrowUp/Down wrap-around, Enter, Tab focus trap, Esc,
-  click-on-backdrop, all four T-13.05a commands.
+  `run` calls a new `createRepresentation(option)` action on
+  `PaletteCommandContext` that:
+  1. Looks up the selected element's display name (`element.name` or
+     `element.kind` when blank, matching the tree menu's behaviour).
+  2. Composes `name = "<owner> <label>"` — e.g. "AlphaSystem IBD" —
+     and dispatches `createDiagram(viewpointId, { name, context: {
+     kind: contextKind, id: ownerId } })`.
+  3. Calls `setActiveDiagram(newId)` so the freshly authored
+     representation is what the user lands on after closing the
+     palette.
 
-  Tests: 17 new unit specs across `paletteCommands.test.ts` and
-  `CommandPalette.test.tsx`. paletteCommands: registry includes the
-  three new IDs; `isEnabled` predicates for each; `run()` delegations
-  for each; filter `isEnabled` excludes rename-selection when no
-  single selection; new T-13.05b commands match by keyword (`llm` →
-  open-chat, `properties` → show-inspector); 6 scorer specs covering
-  empty-query → 0, no-match → 0, exact > prefix > substring,
-  word-prefix > substring, keyword match, element name+id match.
-  CommandPalette: Actions section now lists 4 enabled commands
-  (Undo / Save / OpenChat / ShowInspector) with no bus history + no
-  selection; "without a project" hides every command; unified ranked
-  list with query "save" puts the Save command at index 0 with the
-  matching element below; Enter on the active "save" entry runs
-  Save; Open chat click switches `inspectorTab`; Show inspector
-  click switches it back; Rename selection invisible without
-  selection but visible + sets `pendingRenameElementId` once a single
-  element is selected via `setSelection`. New e2e specs in
-  `command-palette.spec.ts` cover the unified-list "save" flow and
-  the Open chat → sidebar tab switch. The pre-existing arrow-nav
-  spec switched its query from "a" (now matches commands too) to
-  "cp-block" (id-prefix, matches only the three seeded blocks).
+  Implementation: `paletteCommands.ts` exports `selectionScopedCommands(
+  context)` returning `readonly PaletteCommand[]`. Two new fields on
+  `PaletteCommandContext`: `selectionTargetElement: ModelElement | null`
+  and `createRepresentation: (option: RepresentationOption) => void`.
+  `CommandPalette.tsx` resolves `selectionTargetElement` from
+  `selectedElementIds[0]` against the `elements` array when
+  `activeSurfaceKind === 'diagram'` and exactly one element is
+  selected; computes `allCommands = [...BUILT_IN, ...selectionScoped]`
+  per render; uses `allCommands` everywhere the previous code used
+  `BUILT_IN_PALETTE_COMMANDS`. Both empty-query Actions section and
+  query-ranked list pick up the scoped commands. They inherit the
+  `+0.05` command bias, so typing "IBD" with a part selected puts the
+  scoped command at index 0 above any element whose name contains
+  "IBD". Existing built-ins keep registry order; scoped commands
+  appear after them in empty mode.
 
-  Local check green: 1172/1172 unit pass (was 1155; +17 net), tsc -b
+  Tests: 11 new unit + 1 new e2e spec.
+  - `paletteCommands.test.ts` (+7): no selection → []; PartDefinition
+    → bdd / ibd / parametric (id + label assertions); Package → four
+    package representations; PortUsage → []; every scoped command is
+    enabled regardless of context flags; `run` delegates to
+    `createRepresentation` with the matching `{viewpointId, contextKind,
+    label}` option; `filterPaletteCommands("ibd", …)` matches by
+    viewpoint id keyword.
+  - `CommandPalette.test.tsx` (+4): with a PartDefinition selected on
+    a diagram, empty palette shows all three scoped commands; clearing
+    the selection removes them; clicking "Create IBD representation"
+    creates a diagram with `viewpointId: 'ibd'` + `name: "<owner>
+    IBD"` + `context: {kind: 'partDefinition', id: ownerId}` and sets
+    it active; querying "IBD" surfaces the scoped command as the
+    active row.
+  - `command-palette.spec.ts` (+1 e2e): seeds a BDD with three
+    PartDefinitions, confirms the scoped commands are absent without
+    selection, selects AlphaSystem via the palette's own search-and-
+    Enter flow, re-opens the palette, confirms all three scoped
+    commands appear, clicks "Create IBD representation", asserts the
+    new "AlphaSystem IBD" tab is active.
+
+  Local check green: 1183/1183 unit pass (was 1172; +11 net), tsc -b
   clean, lint clean (0 errors, 3 pre-existing warnings unchanged),
-  vite build clean. New e2e specs pass on Chromium (full suite runs
-  in CI). Agent visual inspection: captured Chromium screenshots at
-  `artifacts/iteration-755/palette-{empty-actions, unified-save,
-  unified-engine, empty-state}.png`. Confirms (a) empty-query view
-  renders the new Open chat + Show inspector rows beneath Save with
-  matching descriptions; (b) querying "save" puts the Save command
-  with ⌘S kbd above SaverBlock element under the new "Commands and
-  elements" header; (c) the new "No commands or elements match …"
-  copy renders for misses. No committed visual baseline captures the
-  modal palette so no baseline regen needed.
+  vite build clean. New e2e spec passes on Chromium (full
+  command-palette.spec.ts: 8/8). Agent visual inspection: captured
+  Chromium screenshots at `artifacts/iteration-756/palette-{no-selection,
+  with-selection-empty-query, with-selection-query-ibd}.png` and
+  `after-create-ibd.png`. Confirms (a) scoped commands only render
+  when a single PartDefinition is selected; (b) empty-query Actions
+  section now shows Save / Delete / Open chat / Show inspector /
+  Rename selection / Create BDD/IBD/Parametric representation rows
+  with matching descriptions; (c) typing "IBD" filters to just
+  "Create IBD representation"; (d) clicking it switches to the new
+  "AlphaSystem IBD" tab with the empty IBD canvas. No committed visual
+  baseline captures the modal palette so no baseline regen anticipated.
+
+## Iter-755 archive
+- Branch: issue/311-cmdk-unified-ranked-list (PR #312 merged d19b5f0
+  at 11:58:16Z on 2026-05-15). Shipped T-13.05b — unified ranked list +
+  three new built-in commands (open-chat / show-inspector / rename-
+  selection). 1172/1172 unit pass (was 1155; +17 net), tsc/lint/build
+  clean. Header changed from "Search elements" to "Commands and
+  elements" during a query; +0.05 command bias keeps action keywords
+  ranked above elements with matching substrings. `data-item-kind`
+  attribute added on each option row for future recents/grouping
+  slices. Agent visual inspection at
+  `artifacts/iteration-755/palette-{empty-actions,unified-save,
+  unified-engine,empty-state}.png`.
 
 ## Iter-754 archive
 - Branch: issue/309-cmdk-command-palette-scaffold (PR #310 merged
@@ -1035,15 +1060,19 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
-Wait for PR (T-13.05b Cmd-K unified ranked list, #311) CI. No
-committed visual baseline captures the modal palette so no baseline
-regen is anticipated. After this merges, the natural next slice is
-**T-13.05c** (inspector / surface-scoped actions — e.g. "Create
-representation" only on a Block when active surface is the project
-tree, "Add port" only on a PartUsage on IBD, etc.) — that's where
-the registry's typed-context approach starts paying real
-discoverability dividends. Alternatives if a quick win is desired
-instead:
+Wait for PR (T-13.05c selection-scoped Create-representation commands,
+#313) CI. No committed visual baseline captures the modal palette so
+no baseline regen is anticipated. After this merges, the natural next
+slice is **T-13.05d** (recents / pinned / grouped sections — surface
+the `data-item-kind` attribute T-13.05b added to drive a
+most-recently-used row above ranked results, plus visible section
+headers when the unified list grows past ~5 entries). The scoped
+commands shipped this iter make a recents bucket worthwhile: a user
+who repeatedly creates IBD representations for various parts will
+benefit from the most-recent scoped command surfacing first.
+Alternatives if a quick win is desired instead:
+- T-13.05e (Add port / inspector-scoped actions, P1) — pairs naturally
+  with T-13.05c; only difference is which store action wires up.
 - T-13.06 (disabled-toolbar-button reason tooltips, P1) — small,
   self-contained; good for a quick iteration.
 - T-13.10 (undo/redo toolbar buttons, P1) — buttons already work via

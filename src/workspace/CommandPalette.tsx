@@ -13,6 +13,7 @@ import {
   filterPaletteCommands,
   scoreCommandMatch,
   scoreElementMatch,
+  selectionScopedCommands,
   type PaletteCommand,
   type PaletteCommandContext,
 } from './paletteCommands';
@@ -50,6 +51,8 @@ export function CommandPalette({ onClose }: CommandPaletteProps): JSX.Element {
   const deleteSelection = useWorkspaceStore((s) => s.deleteSelection);
   const setInspectorTab = useWorkspaceStore((s) => s.setInspectorTab);
   const setPendingRename = useWorkspaceStore((s) => s.setPendingRename);
+  const createDiagram = useWorkspaceStore((s) => s.createDiagram);
+  const setActiveDiagram = useWorkspaceStore((s) => s.setActiveDiagram);
 
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
@@ -70,12 +73,17 @@ export function CommandPalette({ onClose }: CommandPaletteProps): JSX.Element {
       activeSurfaceKind === 'diagram' && selectedElementIds.length > 0;
     const singleSelection =
       activeSurfaceKind === 'diagram' && selectedElementIds.length === 1;
+    const singleId = singleSelection ? selectedElementIds[0] : undefined;
+    const selectionTarget = singleId
+      ? (elements.find((e) => e.id === singleId) ?? null)
+      : null;
     return {
       canUndo: bus?.canUndo() ?? false,
       canRedo: bus?.canRedo() ?? false,
       hasDiagramSelection: onDiagram,
       hasSingleDiagramSelection: singleSelection,
       hasProject: project !== null,
+      selectionTargetElement: selectionTarget,
       undo,
       redo,
       save: () => {
@@ -93,11 +101,23 @@ export function CommandPalette({ onClose }: CommandPaletteProps): JSX.Element {
         const id = selectedElementIds[0];
         if (id) setPendingRename(id);
       },
+      createRepresentation: (option) => {
+        const owner = selectionTarget;
+        if (!owner) return;
+        const ownerName = owner.name.length > 0 ? owner.name : owner.kind;
+        const name = `${ownerName} ${option.label}`;
+        const newId = createDiagram(option.viewpointId, {
+          name,
+          context: { kind: option.contextKind, id: owner.id },
+        });
+        if (newId) setActiveDiagram(newId);
+      },
     };
   }, [
     bus,
     modelVersion,
     project,
+    elements,
     selectedElementIds,
     activeSurfaceKind,
     undo,
@@ -105,20 +125,28 @@ export function CommandPalette({ onClose }: CommandPaletteProps): JSX.Element {
     deleteSelection,
     setInspectorTab,
     setPendingRename,
+    createDiagram,
+    setActiveDiagram,
   ]);
 
-  const enabledCommands = useMemo(
-    () => BUILT_IN_PALETTE_COMMANDS.filter((c) => c.isEnabled(commandContext)),
+  const allCommands = useMemo<readonly PaletteCommand[]>(
+    () => [
+      ...BUILT_IN_PALETTE_COMMANDS,
+      ...selectionScopedCommands(commandContext),
+    ],
     [commandContext],
+  );
+
+  const enabledCommands = useMemo(
+    () => allCommands.filter((c) => c.isEnabled(commandContext)),
+    [allCommands, commandContext],
   );
 
   const items = useMemo<readonly PaletteItem[]>(() => {
     if (queryIsEmpty) {
-      return filterPaletteCommands(
-        '',
-        BUILT_IN_PALETTE_COMMANDS,
-        commandContext,
-      ).map((command) => ({ kind: 'command', command }) as const);
+      return filterPaletteCommands('', allCommands, commandContext).map(
+        (command) => ({ kind: 'command', command }) as const,
+      );
     }
     const cmdItems: { item: PaletteItem; score: number }[] = [];
     for (const command of enabledCommands) {
@@ -152,6 +180,7 @@ export function CommandPalette({ onClose }: CommandPaletteProps): JSX.Element {
     queryIsEmpty,
     trimmedQuery,
     trimmedLowerQuery,
+    allCommands,
     enabledCommands,
     commandContext,
     elements,

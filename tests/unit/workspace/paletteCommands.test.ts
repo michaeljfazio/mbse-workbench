@@ -1,10 +1,12 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import type { ElementId, ModelElement, PartDefinitionElement } from '@/model';
 import {
   BUILT_IN_PALETTE_COMMANDS,
   filterPaletteCommands,
   scoreCommandMatch,
   scoreElementMatch,
+  selectionScopedCommands,
   type PaletteCommandContext,
 } from '@/workspace/paletteCommands';
 
@@ -17,6 +19,7 @@ function ctx(
     hasDiagramSelection: true,
     hasSingleDiagramSelection: true,
     hasProject: true,
+    selectionTargetElement: null,
     undo: vi.fn(),
     redo: vi.fn(),
     save: vi.fn(),
@@ -24,9 +27,39 @@ function ctx(
     openChat: vi.fn(),
     showInspector: vi.fn(),
     renameSelection: vi.fn(),
+    createRepresentation: vi.fn(),
     ...overrides,
   };
 }
+
+const PART_DEFINITION_FIXTURE: PartDefinitionElement = {
+  id: 'pd-1' as ElementId,
+  name: 'Engine',
+  ownerId: null,
+  ownerRole: 'member',
+  ownerIndex: 0,
+  kind: 'PartDefinition',
+  isAbstract: false,
+};
+
+const PACKAGE_FIXTURE: ModelElement = {
+  id: 'pkg-1' as ElementId,
+  name: 'Vehicles',
+  ownerId: null,
+  ownerRole: 'member',
+  ownerIndex: 0,
+  kind: 'Package',
+} as ModelElement;
+
+const PORT_USAGE_FIXTURE: ModelElement = {
+  id: 'pu-1' as ElementId,
+  name: 'Inlet',
+  ownerId: null,
+  ownerRole: 'port',
+  ownerIndex: 0,
+  kind: 'PortUsage',
+  definitionId: 'port-def' as ElementId,
+} as ModelElement;
 
 describe('BUILT_IN_PALETTE_COMMANDS (T-13.05a/b)', () => {
   it('contains the four T-13.05a actions plus the three T-13.05b actions', () => {
@@ -283,5 +316,87 @@ describe('scoreElementMatch (T-13.05b)', () => {
     );
     expect(prefix).toBeGreaterThan(substring);
     expect(substring).toBeGreaterThan(0);
+  });
+});
+
+describe('selectionScopedCommands (T-13.05c)', () => {
+  it('returns no commands when no element is selected', () => {
+    expect(selectionScopedCommands(ctx())).toEqual([]);
+  });
+
+  it('returns BDD / IBD / Parametric create commands for a PartDefinition', () => {
+    const cmds = selectionScopedCommands(
+      ctx({ selectionTargetElement: PART_DEFINITION_FIXTURE }),
+    );
+    expect(cmds.map((c) => c.id)).toEqual([
+      'selection.create-representation.bdd',
+      'selection.create-representation.ibd',
+      'selection.create-representation.parametric',
+    ]);
+    expect(cmds.map((c) => c.label)).toEqual([
+      'Create BDD representation',
+      'Create IBD representation',
+      'Create Parametric representation',
+    ]);
+  });
+
+  it('returns the four package representations for a Package', () => {
+    const cmds = selectionScopedCommands(
+      ctx({ selectionTargetElement: PACKAGE_FIXTURE }),
+    );
+    expect(cmds.map((c) => c.id)).toEqual([
+      'selection.create-representation.bdd',
+      'selection.create-representation.requirements',
+      'selection.create-representation.use-case',
+      'selection.create-representation.package',
+    ]);
+  });
+
+  it('returns no commands for an element kind without accepted representations', () => {
+    expect(
+      selectionScopedCommands(
+        ctx({ selectionTargetElement: PORT_USAGE_FIXTURE }),
+      ),
+    ).toEqual([]);
+  });
+
+  it('each command is always enabled (selection acts as the gate)', () => {
+    const cmds = selectionScopedCommands(
+      ctx({ selectionTargetElement: PART_DEFINITION_FIXTURE }),
+    );
+    for (const c of cmds) expect(c.isEnabled(ctx())).toBe(true);
+  });
+
+  it('run() delegates to context.createRepresentation with the matching option', () => {
+    const createRepresentation = vi.fn();
+    const context = ctx({
+      selectionTargetElement: PART_DEFINITION_FIXTURE,
+      createRepresentation,
+    });
+    const cmds = selectionScopedCommands(context);
+    cmds.find((c) => c.id === 'selection.create-representation.ibd')!.run(
+      context,
+    );
+    expect(createRepresentation).toHaveBeenCalledTimes(1);
+    const arg = createRepresentation.mock.calls[0]![0];
+    expect(arg).toEqual({
+      viewpointId: 'ibd',
+      contextKind: 'partDefinition',
+      label: 'IBD',
+    });
+  });
+
+  it('matches by viewpoint id keyword when filtered', () => {
+    const cmds = selectionScopedCommands(
+      ctx({ selectionTargetElement: PART_DEFINITION_FIXTURE }),
+    );
+    const filtered = filterPaletteCommands(
+      'ibd',
+      cmds,
+      ctx({ selectionTargetElement: PART_DEFINITION_FIXTURE }),
+    );
+    expect(filtered.map((c) => c.id)).toEqual([
+      'selection.create-representation.ibd',
+    ]);
   });
 });
