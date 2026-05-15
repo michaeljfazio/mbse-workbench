@@ -181,7 +181,7 @@ test.describe('Phase 12 slice A — JSON import/export', () => {
     // fields; the codemod is idempotent).
     expect(canonicalize(persisted!.elements)).toEqual(canonicalize(preExport!.elements));
     expect(canonicalize(persisted!.edges)).toEqual(canonicalize(preExport!.edges));
-    expect(canonicalize(persisted!.diagrams)).toEqual(canonicalize([SEED_DIAGRAM]));
+    expect(canonicalize(persisted!.diagrams)).toEqual(canonicalize(preExport!.diagrams));
 
     // No import error banner.
     await expect(page.getByTestId('import-error-banner')).toBeHidden();
