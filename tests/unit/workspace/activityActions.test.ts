@@ -54,9 +54,13 @@ function findAction(id: ElementId): ActionUsageElement | undefined {
 }
 
 function ensureActivityDiagram(): DiagramId {
-  const id = useWorkspaceStore
-    .getState()
-    .createDiagram(ACTIVITY_VIEWPOINT_ID, { name: 'Activity' });
+  // Activity viewpoint requires an `actionDefinition` context per ADR 0011 /
+  // JOURNAL iter-531. These unit tests don't exercise the context-vs-element
+  // resolution; a synthetic ActionDefinition id is sufficient.
+  const id = useWorkspaceStore.getState().createDiagram(ACTIVITY_VIEWPOINT_ID, {
+    name: 'Activity',
+    context: { kind: 'actionDefinition', id: createElementId() },
+  });
   if (!id) throw new Error('failed to create activity diagram');
   useWorkspaceStore.getState().setActiveDiagram(id);
   return id;

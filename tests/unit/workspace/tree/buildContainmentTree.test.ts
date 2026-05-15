@@ -40,13 +40,13 @@ function partDef(
   };
 }
 
-function diagram(name: string, ctx?: Diagram['context'], idStr = name): Diagram {
+function diagram(name: string, ctx: Diagram['context'], idStr = name): Diagram {
   return {
     id: did(idStr),
     viewpointId: vp,
     name,
     positions: {},
-    ...(ctx ? { context: ctx } : {}),
+    context: ctx,
   };
 }
 
@@ -157,18 +157,6 @@ describe('buildContainmentTree', () => {
     const rep = partNode.children[0] as ContainmentRepresentationNode;
     expect(rep.kind).toBe('representation');
     expect(rep.diagram.id).toBe('d-ibd');
-  });
-
-  it('attaches representations with no context to the root', () => {
-    const root = pkg('root', null);
-    const orphanDiagram = diagram('Stray', undefined, 'd-stray');
-    const tree = buildContainmentTree({
-      elements: [root],
-      diagrams: [orphanDiagram],
-      rootId: root.id,
-    });
-    expect(tree?.children).toHaveLength(1);
-    expect(tree?.children[0]?.kind).toBe('representation');
   });
 
   it('attaches representations whose context.id targets a missing element to the root', () => {

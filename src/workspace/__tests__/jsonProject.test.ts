@@ -36,6 +36,7 @@ function makeProject(): Project {
     viewpointId: bddViewpoint.id,
     name: 'Main BDD',
     positions: { [blockId]: { x: 120, y: 240 } },
+    context: { kind: 'package', id: rootId },
   };
   return {
     id: createProjectId(),

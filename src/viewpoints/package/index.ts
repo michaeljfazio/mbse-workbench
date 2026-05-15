@@ -45,9 +45,10 @@ export const PACKAGE_DEFAULT_NODE_HEIGHT = PACKAGE_NODE_HEIGHT;
 
 // Per ADR 0009 § 1: a Package diagram accepts the Package element plus every
 // kind that can be a Package member, so the project-tree palette can drop
-// any of them into a Package diagram (the drop semantics — assign to a
-// Package's memberIds — land in #156). Keep this list in sync with
-// `PackageElement.memberIds` admissible kinds and ADR 0009.
+// any of them into a Package diagram (the drop semantics — set the dropped
+// element's `ownerId` to the active Package per ADR 0011 § 2 — land in
+// `moveElement` T-13.36). Keep this list in sync with the Package container
+// admissible kinds and ADR 0009.
 export const PACKAGE_MEMBER_ELEMENT_KINDS: readonly ElementKind[] = [
   'PartDefinition',
   'PartUsage',
@@ -97,6 +98,7 @@ export const packageViewpoint: Viewpoint = {
   // element kind: PartDefinition". #156 will introduce a separate drop
   // affordance for member kinds without expanding the render set.
   acceptedElementKinds: ['Package'],
+  acceptedContextKinds: ['package'],
   acceptedEdgeKinds: ['PackageImport'],
   // Per ADR 0009 § 2: Package containment is a `memberIds` list, NOT an
   // element-as-edge. PackageImport stays in ModelEdge — it carries no

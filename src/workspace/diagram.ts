@@ -15,8 +15,9 @@ export interface NodePosition {
 // A diagram's context anchors it to the owning element whose internal
 // structure it depicts. ADR 0011 widens this to a four-kind discriminated
 // union so diagrams can hang off any container in the containment tree.
-// Until T-13.31 wires the explorer to use it, `context` remains optional;
-// only `partDefinition` currently has consumers (IBD / Parametric).
+// Per JOURNAL iter-531 / T-13.30 every Diagram now has a context; the field
+// is non-optional. Legacy diagrams that pre-date this rule are migrated to
+// `{ kind: 'package', id: rootId }` by `migrateLegacyProject`.
 export interface PackageDiagramContext {
   readonly kind: 'package';
   readonly id: ElementId;
@@ -50,5 +51,5 @@ export interface Diagram {
   readonly viewpointId: ViewpointId;
   name: string;
   positions: Record<ElementId, NodePosition>;
-  context?: DiagramContext;
+  context: DiagramContext;
 }

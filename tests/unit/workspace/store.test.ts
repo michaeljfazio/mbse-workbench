@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createSessionUser } from '@/collab';
 import { createInMemorySessionRepository } from '@/repository';
 import {
+  ACTIVITY_VIEWPOINT_ID,
   BDD_VIEWPOINT_ID,
   bddViewpoint,
   IBD_VIEWPOINT_ID,
@@ -357,27 +358,27 @@ describe('workspace store', () => {
     });
   });
 
-  it('createDiagram defaults the name to the viewpoint label and omits context when not provided (#49)', async () => {
+  it('createDiagram(IBD) without context returns null — IBD requires partDefinition context (T-13.30)', async () => {
     const storage = makeMemoryStorage();
     const repository = createInMemorySessionRepository({ storage });
     const user = createSessionUser();
     await useWorkspaceStore.getState().bootstrap({ repository, user, storage });
 
+    // IBD's acceptedContextKinds = ['partDefinition']; no synthesized default
+    // because 'package' is not in the accepted set.
+    const before = useWorkspaceStore.getState().diagrams.length;
     const id = useWorkspaceStore.getState().createDiagram(IBD_VIEWPOINT_ID);
-    expect(id).not.toBeNull();
-    const ibd = useWorkspaceStore
-      .getState()
-      .diagrams.find((d) => d.id === id);
-    expect(ibd?.name).toBe('Internal Block Diagram');
-    expect(ibd?.context).toBeUndefined();
+    expect(id).toBeNull();
+    expect(useWorkspaceStore.getState().diagrams).toHaveLength(before);
   });
 
-  it('createDiagram appends a Requirements diagram with no context and persists it (#70)', async () => {
+  it('createDiagram appends a Requirements diagram defaulted to root-Package context and persists it (#70 / T-13.30)', async () => {
     const storage = makeMemoryStorage();
     const repository = createInMemorySessionRepository({ storage });
     const user = createSessionUser();
     await useWorkspaceStore.getState().bootstrap({ repository, user, storage });
 
+    const rootId = useWorkspaceStore.getState().project!.rootId;
     const id = useWorkspaceStore
       .getState()
       .createDiagram(REQUIREMENTS_VIEWPOINT_ID);
@@ -387,8 +388,9 @@ describe('workspace store', () => {
     const reqs = s.diagrams.find((d) => d.id === id);
     expect(reqs).toBeDefined();
     expect(reqs!.viewpointId).toBe(REQUIREMENTS_VIEWPOINT_ID);
-    // ADR 0004 § 1: no Diagram.context link for Requirements diagrams.
-    expect(reqs!.context).toBeUndefined();
+    // ADR 0011 / JOURNAL iter-531: Requirements accepts 'package'; the
+    // default context anchors the diagram to the project's root Package.
+    expect(reqs!.context).toEqual({ kind: 'package', id: rootId });
     expect(reqs!.name).toBe('Requirements Diagram');
     expect(reqs!.positions).toEqual({});
 
@@ -400,46 +402,42 @@ describe('workspace store', () => {
       .diagrams.find((d) => d.viewpointId === REQUIREMENTS_VIEWPOINT_ID);
     expect(reloaded).toBeDefined();
     expect(reloaded!.name).toBe('Requirements Diagram');
-    expect(reloaded!.context).toBeUndefined();
+    expect(reloaded!.context).toEqual({ kind: 'package', id: rootId });
   });
 
-  it('createDiagram appends a Parametric diagram with no context and persists it (#135)', async () => {
+  it('createDiagram(Parametric) requires explicit partDefinition context (T-13.30)', async () => {
     const storage = makeMemoryStorage();
     const repository = createInMemorySessionRepository({ storage });
     const user = createSessionUser();
     await useWorkspaceStore.getState().bootstrap({ repository, user, storage });
 
-    const id = useWorkspaceStore
+    // Without context — rejected. Parametric.acceptedContextKinds = ['partDefinition'].
+    const noCtxId = useWorkspaceStore
       .getState()
       .createDiagram(PARAMETRIC_VIEWPOINT_ID);
+    expect(noCtxId).toBeNull();
+
+    // With explicit partDefinition context — accepted.
+    const partDefId = mkElementId('engine-def');
+    const id = useWorkspaceStore.getState().createDiagram(PARAMETRIC_VIEWPOINT_ID, {
+      context: { kind: 'partDefinition', id: partDefId },
+    });
     expect(id).not.toBeNull();
 
     const s = useWorkspaceStore.getState();
     const param = s.diagrams.find((d) => d.id === id);
     expect(param).toBeDefined();
-    expect(param!.viewpointId).toBe(PARAMETRIC_VIEWPOINT_ID);
-    // ADR 0008 § 1: no Diagram.context link for Parametric diagrams.
-    expect(param!.context).toBeUndefined();
+    expect(param!.context).toEqual({ kind: 'partDefinition', id: partDefId });
     expect(param!.name).toBe('Parametric Diagram');
-    expect(param!.positions).toEqual({});
-
-    // Persistence: simulate a reload and confirm the diagram is back.
-    resetWorkspaceStoreForTests();
-    await useWorkspaceStore.getState().bootstrap({ repository, user, storage });
-    const reloaded = useWorkspaceStore
-      .getState()
-      .diagrams.find((d) => d.viewpointId === PARAMETRIC_VIEWPOINT_ID);
-    expect(reloaded).toBeDefined();
-    expect(reloaded!.name).toBe('Parametric Diagram');
-    expect(reloaded!.context).toBeUndefined();
   });
 
-  it('createDiagram appends a Package diagram with no context and persists it (#154)', async () => {
+  it('createDiagram appends a Package diagram defaulted to root-Package context and persists it (#154 / T-13.30)', async () => {
     const storage = makeMemoryStorage();
     const repository = createInMemorySessionRepository({ storage });
     const user = createSessionUser();
     await useWorkspaceStore.getState().bootstrap({ repository, user, storage });
 
+    const rootId = useWorkspaceStore.getState().project!.rootId;
     const id = useWorkspaceStore
       .getState()
       .createDiagram(PACKAGE_VIEWPOINT_ID);
@@ -449,8 +447,9 @@ describe('workspace store', () => {
     const pkg = s.diagrams.find((d) => d.id === id);
     expect(pkg).toBeDefined();
     expect(pkg!.viewpointId).toBe(PACKAGE_VIEWPOINT_ID);
-    // ADR 0009 § 1: no Diagram.context link for Package diagrams.
-    expect(pkg!.context).toBeUndefined();
+    // ADR 0011 / JOURNAL iter-531: Package viewpoint accepts 'package'; the
+    // default context anchors the diagram to the project's root Package.
+    expect(pkg!.context).toEqual({ kind: 'package', id: rootId });
     expect(pkg!.name).toBe('Package Diagram');
     expect(pkg!.positions).toEqual({});
 
@@ -462,7 +461,7 @@ describe('workspace store', () => {
       .diagrams.find((d) => d.viewpointId === PACKAGE_VIEWPOINT_ID);
     expect(reloaded).toBeDefined();
     expect(reloaded!.name).toBe('Package Diagram');
-    expect(reloaded!.context).toBeUndefined();
+    expect(reloaded!.context).toEqual({ kind: 'package', id: rootId });
   });
 
   it('createDiagram returns null for an unknown viewpoint id', async () => {
@@ -477,13 +476,46 @@ describe('workspace store', () => {
     expect(useWorkspaceStore.getState().diagrams).toHaveLength(before);
   });
 
+  it('createDiagram rejects a context whose kind is not in viewpoint.acceptedContextKinds (T-13.30)', async () => {
+    const storage = makeMemoryStorage();
+    const repository = createInMemorySessionRepository({ storage });
+    const user = createSessionUser();
+    await useWorkspaceStore.getState().bootstrap({ repository, user, storage });
+
+    // Activity.acceptedContextKinds = ['actionDefinition'] — a package context
+    // is not accepted and must be rejected.
+    const rootId = useWorkspaceStore.getState().project!.rootId;
+    const before = useWorkspaceStore.getState().diagrams.length;
+    const id = useWorkspaceStore.getState().createDiagram(ACTIVITY_VIEWPOINT_ID, {
+      context: { kind: 'package', id: rootId },
+    });
+    expect(id).toBeNull();
+    expect(useWorkspaceStore.getState().diagrams).toHaveLength(before);
+  });
+
+  it('createDiagram synthesizes a root-Package default context when the viewpoint accepts "package" (T-13.30)', async () => {
+    const storage = makeMemoryStorage();
+    const repository = createInMemorySessionRepository({ storage });
+    const user = createSessionUser();
+    await useWorkspaceStore.getState().bootstrap({ repository, user, storage });
+
+    const rootId = useWorkspaceStore.getState().project!.rootId;
+    // BDD.acceptedContextKinds = ['package','partDefinition']; defaults to root.
+    const id = useWorkspaceStore.getState().createDiagram(BDD_VIEWPOINT_ID);
+    expect(id).not.toBeNull();
+    const bdd = useWorkspaceStore.getState().diagrams.find((d) => d.id === id);
+    expect(bdd?.context).toEqual({ kind: 'package', id: rootId });
+  });
+
   it('createDiagram makes the new diagram switchable via setActiveDiagram (#49)', async () => {
     const storage = makeMemoryStorage();
     const repository = createInMemorySessionRepository({ storage });
     const user = createSessionUser();
     await useWorkspaceStore.getState().bootstrap({ repository, user, storage });
 
-    const id = useWorkspaceStore.getState().createDiagram(IBD_VIEWPOINT_ID);
+    const id = useWorkspaceStore.getState().createDiagram(IBD_VIEWPOINT_ID, {
+      context: { kind: 'partDefinition', id: mkElementId('engine-def') },
+    });
     expect(id).not.toBeNull();
     useWorkspaceStore.getState().setActiveDiagram(id!);
     expect(useWorkspaceStore.getState().activeDiagramId).toBe(id);

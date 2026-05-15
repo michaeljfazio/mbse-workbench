@@ -2,6 +2,7 @@ export type {
   LayoutEngine,
   PaletteItem,
   Viewpoint,
+  ViewpointContextKind,
   ViewpointEdgeTypes,
   ViewpointId,
   ViewpointNodeTypes,

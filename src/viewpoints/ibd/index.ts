@@ -103,6 +103,7 @@ export const ibdViewpoint: Viewpoint = {
   // Per ADR 0003: PartUsage renders as a node; PortUsage is rendered as a
   // labelled Handle on its parent PartUsage, so it does not appear here.
   acceptedElementKinds: ['PartUsage'],
+  acceptedContextKinds: ['partDefinition'],
   acceptedEdgeKinds: [],
   acceptedEdgeElementKinds: ['ConnectionUsage', 'ItemFlow'],
   defaultLayout: 'dagre',

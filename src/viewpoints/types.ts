@@ -2,6 +2,17 @@ import type { EdgeTypes, NodeTypes } from '@xyflow/react';
 
 import type { EdgeKind, ElementKind, ModelEdge, ModelElement } from '@/model';
 
+// Mirrors `DiagramContextKind` in `src/workspace/diagram.ts`. Duplicated to
+// avoid a circular module dependency (diagram.ts already imports ViewpointId
+// from this file). The two literal unions are kept in sync by the
+// "DiagramContext discriminator" unit test in
+// `tests/unit/workspace/diagramContext.test.ts`.
+export type ViewpointContextKind =
+  | 'package'
+  | 'partDefinition'
+  | 'actionDefinition'
+  | 'stateDefinition';
+
 export type LayoutEngine = 'dagre' | 'elk' | 'manual';
 
 export type ViewpointId = string;
@@ -26,6 +37,10 @@ export interface Viewpoint {
   readonly id: ViewpointId;
   readonly label: string;
   readonly acceptedElementKinds: readonly ElementKind[];
+  // Container kinds (elements that can OWN this viewpoint's diagrams) per
+  // ADR 0011 / JOURNAL iter-531. Drives the "Create representation…" menu in
+  // the containment tree and the createDiagram default/validate logic.
+  readonly acceptedContextKinds: readonly ViewpointContextKind[];
   readonly acceptedEdgeKinds: readonly EdgeKind[];
   // SysMLv2 element kinds that render as ReactFlow edges (not nodes) in this
   // viewpoint. Examples: ConnectionUsage / ItemFlow in IBD, Transition in a

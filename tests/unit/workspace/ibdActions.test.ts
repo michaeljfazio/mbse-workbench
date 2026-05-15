@@ -1,13 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { createSessionUser } from '@/collab';
-import type {
-  ConnectionUsageElement,
-  ElementId,
-  ItemFlowElement,
-  PartUsageElement,
-  PortDefinitionElement,
-  PortUsageElement,
+import {
+  createElementId,
+  type ConnectionUsageElement,
+  type ElementId,
+  type ItemFlowElement,
+  type PartUsageElement,
+  type PortDefinitionElement,
+  type PortUsageElement,
 } from '@/model';
 import { createInMemorySessionRepository } from '@/repository';
 import {
@@ -298,9 +299,10 @@ describe('workspace store — IBD actions (issue #50)', () => {
 
     it('is a no-op when the definitionId is not a PartDefinition', async () => {
       await bootstrap();
-      const ibdId = useWorkspaceStore
-        .getState()
-        .createDiagram('ibd' as never, { name: 'Loose IBD' })!;
+      const ibdId = useWorkspaceStore.getState().createDiagram('ibd' as never, {
+        name: 'Loose IBD',
+        context: { kind: 'partDefinition', id: createElementId() },
+      })!;
       const before = useWorkspaceStore.getState().modelVersion;
       const id = useWorkspaceStore
         .getState()

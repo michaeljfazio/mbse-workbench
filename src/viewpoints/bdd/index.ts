@@ -66,6 +66,7 @@ export const bddViewpoint: Viewpoint = {
   id: BDD_VIEWPOINT_ID,
   label: 'Block Definition Diagram',
   acceptedElementKinds: ['PartDefinition'],
+  acceptedContextKinds: ['package', 'partDefinition'],
   acceptedEdgeKinds: ['Composition', 'Generalization'],
   acceptedEdgeElementKinds: [],
   defaultLayout: 'dagre',

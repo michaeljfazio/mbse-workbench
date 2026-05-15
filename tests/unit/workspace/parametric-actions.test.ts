@@ -5,10 +5,11 @@ import { createInMemorySessionRepository } from '@/repository';
 import {
   PARAMETRIC_VIEWPOINT_ID,
 } from '@/viewpoints';
-import type {
-  ConstraintDefinitionElement,
-  ConstraintUsageElement,
-  ValuePropertyElement,
+import {
+  createElementId,
+  type ConstraintDefinitionElement,
+  type ConstraintUsageElement,
+  type ValuePropertyElement,
 } from '@/model';
 import {
   resetWorkspaceStoreForTests,
@@ -39,9 +40,11 @@ async function bootstrapParametric(): Promise<DiagramId> {
   const repository = createInMemorySessionRepository({ storage });
   const user = createSessionUser();
   await useWorkspaceStore.getState().bootstrap({ repository, user, storage });
-  const id = useWorkspaceStore
-    .getState()
-    .createDiagram(PARAMETRIC_VIEWPOINT_ID);
+  // Parametric viewpoint requires a `partDefinition` context per ADR 0011 /
+  // JOURNAL iter-531. Synthetic id suffices for unit tests.
+  const id = useWorkspaceStore.getState().createDiagram(PARAMETRIC_VIEWPOINT_ID, {
+    context: { kind: 'partDefinition', id: createElementId() },
+  });
   if (!id) throw new Error('failed to create parametric diagram');
   useWorkspaceStore.getState().setActiveDiagram(id);
   return id;

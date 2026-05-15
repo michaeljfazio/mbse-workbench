@@ -6,14 +6,141 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 763
+- Iteration #: 764
 - Started: 2026-05-16
-- Branch: issue/326-inspector-empty-state-cta (PR pending;
-  auto-merge --squash; CI queued)
-- Working on: #326 — T-13.07 Inspector contextual "+ New …" panel
-  when nothing selected. T-13.07 closes the P1 operator-UX tier
-  (T-13.05 / .06 / .07 / .08 / .09 / .10 all shipped); next live
-  tier is the explorer cascade (T-13.29–.39).
+- Branch: issue/328-foundation-required-context (PR #329 pending;
+  auto-merge --squash; CI re-queued on fe23bb6)
+- Working on: #328 — T-13.29/.30 foundation closeout: required
+  `Diagram.context`, `Viewpoint.acceptedContextKinds`, legacy
+  migration synthesis, plus Phase-13 gate-invariant unit tests.
+
+  Iter-764 fix: CI run 25930710726 on e7a1845 failed only on
+  `json-import-export.spec.ts:136` chromium + webkit (`round-trips:
+  Export JSON → Import JSON yields identical model`). Failure was a
+  stale test assertion — line 184 compared `persisted!.diagrams`
+  against the pre-migration `[SEED_DIAGRAM]` literal, but the new
+  Pass-5 diagram-context synthesis (correctly) populates
+  `{ kind: 'package', id: rootId }` onto every context-less legacy
+  diagram, so the migrated form no longer matches the raw literal.
+  Lines 182/183 already compare elements/edges to `preExport`; the
+  diagram line was the outlier. Fix at fe23bb6 changes line 184 to
+  `canonicalize(preExport!.diagrams)`, asserting true round-trip
+  losslessness in line with the test's documented intent. 602 other
+  e2e tests passed on the failing run; no other failures to address.
+  CI run 25931403539 queued on the fix commit.
+
+  Inspection (Explore subagent) revealed most of T-13.29's schema
+  work already shipped piecemeal earlier in the explorer cascade
+  (`ownerId`/`ownerRole`/`ownerIndex` on ElementBase, parent-side
+  child arrays already dropped, `Project.rootId` already explicit,
+  registry already exposes `parentOf`/`childrenOf`, DiagramContext
+  already a four-kind discriminated union). Remaining work for the
+  bundled T-13.29/.30 foundation:
+
+  1. `Viewpoint.acceptedContextKinds: readonly ViewpointContextKind[]`
+     added to `src/viewpoints/types.ts`. Configured per JOURNAL
+     iter-531 table:
+     - BDD → `['package','partDefinition']`
+     - IBD → `['partDefinition']`
+     - Requirements → `['package']`
+     - Activity → `['actionDefinition']`
+     - State Machine → `['stateDefinition']`
+     - Use Case → `['package']`
+     - Parametric → `['partDefinition']`
+     - Package → `['package']`
+     `ViewpointContextKind` is duplicated locally in
+     `src/viewpoints/types.ts` (not re-imported from
+     `src/workspace/diagram.ts`) to avoid a circular type-only import
+     cycle. A new test in `diagramContext.test.ts` keeps the two
+     unions in lockstep with bidirectional assignability assertions.
+
+  2. `Diagram.context` is now non-optional. Pre-existing `?` removed
+     from the type and from `src/workspace/diagram.ts` field
+     declaration.
+
+  3. Store's `createDiagram(viewpointId, options?)` now:
+     - Validates `options.context.kind` against
+       `viewpoint.acceptedContextKinds` — rejects on mismatch.
+     - Synthesizes `{ kind: 'package', id: project.rootId }` when no
+       context is supplied AND the viewpoint accepts `'package'`.
+     - Rejects (returns null) when no context is supplied AND the
+       viewpoint does not accept `'package'` (Activity, IBD,
+       Parametric, State Machine require explicit context).
+
+  4. `newDefaultDiagram(rootId)` (the seed BDD on a fresh workspace)
+     now carries `{ kind: 'package', id: rootId }`. Two call sites
+     in `store.ts` (bootstrap empty-projects branch + import-from-text
+     branch) updated.
+
+  5. `migrateLegacyProject` (`src/repository/migrate.ts`) synthesizes
+     `{ kind: 'package', id: rootId }` on any legacy diagram that
+     lacks a `context` field — Pass 5 added after the existing
+     element-migration passes. Already-context-bearing diagrams
+     round-trip unchanged.
+
+  6. Stale comment in `src/viewpoints/package/index.ts` referencing
+     `PackageElement.memberIds` updated to cite ADR-0011 containment.
+
+  7. New tests:
+     - `tests/unit/viewpoints/acceptedContextKinds.test.ts` —
+       per-viewpoint table + non-empty invariant (9 specs).
+     - `tests/unit/repository/migrateDiagramContext.test.ts` —
+       synthesizes-default / preserves-existing / synthesizes-with-
+       synthesized-root (3 specs).
+     - `tests/unit/workspace/phase13GateInvariants.test.ts` — the
+       three live gate invariants from JOURNAL iter-531 (root-is-
+       unique, owner-refs-resolve, diagram-context-valid) on a
+       freshly-bootstrapped workspace; viewpoint-by-viewpoint
+       create-default vs require-explicit assertion; registry-has-
+       all-eight invariant (3 specs).
+     - `diagramContext.test.ts` extended with ViewpointContextKind
+       ↔ DiagramContextKind bidirectional-assignability assertion
+       (1 spec).
+
+  8. Existing tests updated:
+     - 5 store.test.ts createDiagram specs updated to reflect new
+       contract (default-context for Reqs/Pkg/BDD, reject for
+       Activity, require-explicit for Parametric/IBD).
+     - 3 obsolete unit specs removed (their scenarios are now
+       unreachable through the type system): "diagram with no
+       context" path in `flowGraph.test.ts`, `buildContainmentTree.test.ts`,
+       `enclosingFrame.test.ts`.
+     - `activityActions.test.ts`, `stateMachineActions.test.ts`,
+       `parametric-actions.test.ts`, `ibdActions.test.ts` helpers
+       (ensureXDiagram / bootstrapParametric) now pass synthetic
+       `createElementId()` contexts.
+     - `commandPaletteSearch.test.ts`, `navTargets.test.ts`,
+       `sessionStorage.test.ts`, `jsonProject.test.ts`,
+       `explain-diagram.test.ts` literal Diagram constructions now
+       carry contexts.
+     - `sessionStorage.test.ts` forward-compat spec renamed +
+       re-asserts that legacy `no-context` diagrams migrate to
+       `{ kind: 'package', id: rootId }`.
+
+  Locked-decision boundary: legacy diagrams whose viewpoint does
+  NOT accept `'package'` (IBD/Activity/State/Parametric) end up with
+  a type-mismatched context after migration. This is an accepted
+  Phase-13 edge case (JOURNAL iter-531 explicitly chose this
+  trade-off); the strict invariant applies only to NEW diagrams
+  created via `createDiagram`. Future polish iterations can re-anchor
+  mismatched legacy diagrams via the upcoming "Move to container"
+  affordance (T-13.33e-b).
+
+  Local check green:
+  - `tsc -b` clean.
+  - `eslint .` clean (0 errors, 3 pre-existing react-refresh
+    warnings unchanged).
+  - `vitest run` 1293/1293 unit pass (was 1278; +18 net new − 3
+    obsolete removed).
+  - `vite build` clean (874.84 kB JS / 42.04 kB CSS, gzip 242.95 +
+    8.15 — within pre-PR range).
+  - e2e suite deferred to CI; no UI behavior changed.
+
+  T-13.07 closes P1 operator-UX tier (T-13.05 / .06 / .07 / .08 /
+  .09 / .10 all shipped); next live tier after this PR is the
+  remaining explorer-cascade items (T-13.31 already shipped as
+  ContainmentTree; T-13.32–.36 mostly done per Backlog (P0) —
+  T-13.37/.38/.39 remain).
 
   The empty inspector previously read "Select an element to edit
   its properties." with no creation affordance. This slice rewires
@@ -99,6 +226,14 @@ phase:13 — post-v1.0.0 polish + explorer rewrite
   `package-empty`, each on chromium + webkit. `bdd-one-block.png`
   and other populated-canvas baselines should hold (their
   inspector is the single-element editor, unchanged).
+
+## Iter-763 archive
+- Branch: issue/326-inspector-empty-state-cta (PR #327 merged
+  0bfd3af on 2026-05-16). Shipped T-13.07 — Inspector contextual
+  "+ New …" panel when nothing selected. 21 new unit specs +
+  1 new e2e + 20 visual-baseline refreshes (chromium + webkit
+  empty inspector compositions). T-13.07 closed the P1 operator-UX
+  tier (T-13.05 / .06 / .07 / .08 / .09 / .10 all shipped).
 
 ## Iter-762 archive
 - Branch: chore/status-iter-762 (prepared but not merged — operator
@@ -1251,6 +1386,33 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
+After **#328** (T-13.29/.30 foundation) merges, pick the next P0
+explorer-cascade item that's still open. Per the Backlog (P0)
+section, T-13.29/.30 closes the foundation; T-13.31 (ContainmentTree
+renderer) already shipped iter-723, T-13.32 (reveal-in-tree)
+iter-724, T-13.33a–d shipped iter-724/727/729, T-13.34 iter-735,
+T-13.35 iter-731, T-13.36a/b iter-736/737. Remaining open P0/P1:
+- T-13.33e-b — Move-to-package / Duplicate menu wiring (#286). The
+  store action and `cloneSubtree` helper (T-13.33e-a) shipped
+  iter-738 (PR #285); the menu surface remains.
+- T-13.37 Diagrams as representations (⌬ leaves under owning
+  element) — naturally hooks into the now-required `Diagram.context`.
+- T-13.38 Per-kind stereotype icons (lucide-react).
+- T-13.39 Stable URL fragments: `#/element/<id>`, `#/diagram/<id>`.
+
+Recommended next pick: **T-13.37** — it directly benefits from the
+T-13.29/.30 foundation (every diagram now has a context, so
+attaching it as a child of its context element in the explorer is
+a pure tree-render change with no schema surprises).
+
+A recents-persistence pass for Cmd-K palette recents remains a
+future polish item (today's recents clear on reload). Out of scope
+for the P1 tier; revisit after the P0 explorer-cascade is fully
+done.
+
+---
+
+## Prior next-action (archived)
 Pick **T-13.07** — Inspector contextual "+ New …" panel when
 nothing selected. Bigger slice than the T-13.05–.10 cluster: the
 empty inspector currently shows just "Select something on the
