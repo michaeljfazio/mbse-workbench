@@ -6,12 +6,46 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 748
+- Iteration #: 749
 - Started: 2026-05-15
-- Branch: issue/297-bdd-block-compartments (PR #298, auto-merge --squash
-  enabled 08:37:46Z; rebased onto main this iter to clear STATUS.md
-  conflict with iter-747's status commit 80107a2)
-- Iter-748: PR #298 (T-13.19 BDD block compartments) first CI run
+- Branch: issue/299-parametric-notation (PR #300, auto-merge --squash
+  enabled; awaiting CI)
+- Iter-749: Watched PR #298 (T-13.19 BDD block compartments) re-run CI
+  25909168804 on the rebased branch to completion — `success`; auto-merge
+  squashed at 09:03:55Z (merge commit 4873e74). Issue #297 closed.
+  Started T-13.25 — parametric value/constraint SysMLv2 notation
+  conformance. New module `src/model/notation.ts` exports three pure
+  helpers: `formatValueLiteral(value)` quotes string literals + stringifies
+  numbers/booleans; `formatValuePropertySignature(valueType, defaultValue)`
+  returns `: <type>` when default is undefined and `: <type> = <literal>`
+  otherwise; `formatConstraintExpression(expression)` trims whitespace and
+  returns null when blank. `ValuePropertyNode.tsx` meta line now renders
+  via `formatValuePropertySignature` — previously always rendered
+  `: Real = formatValueDefault(...)` where `formatValueDefault(undefined)`
+  emitted `—`, so a no-default property read `: Real = —`. Now it reads
+  `: Real`, matching SysMLv2 textual notation. Removed the local
+  `formatValueDefault` helper (no external callers; was contributing to a
+  react-refresh lint warning). `ConstraintUsageNode.tsx` uses
+  `formatConstraintExpression` for both the rendered text and the title
+  tooltip; the `— no equation —` placeholder is preserved for empty /
+  whitespace-only expressions. `src/viewpoints/bdd/blockCompartments.ts`
+  `formatValuePropertyLabel` + `formatConstraintUsageLabel` now delegate
+  to the shared helpers — output text is identical, so the existing
+  blockCompartments unit specs (T-13.19) and the BDD compartment visual
+  baselines should hold. 13 new unit specs in `tests/unit/model/notation.test.ts`
+  cover the three pure helpers: string / numeric / boolean / zero /
+  negative / empty-string literals, with-default vs. without-default
+  signatures, trimmed / empty / whitespace-only expressions. 1103/1103
+  unit pass (was 1090, +13 net), tsc -b clean, lint clean (0 errors, 3
+  pre-existing warnings — down from 4 after the `formatValueDefault`
+  removal), vite build clean. Visual baseline drift possible on the 4
+  parametric-with-* specs (chromium + webkit) since the meta-line DOM
+  changed from two `<span>` with `ml-1` to one text node — if CI flags
+  these, refresh per the docs/CONTEXT.md 2026-05-12 lift-from-trace
+  procedure (phase-8 gate uses a `9.8` default, so the rendered string
+  is `: number = 9.8` in both old and new code — drift would be small
+  whitespace-positioning only).
+- Iter-748 archive: PR #298 (T-13.19 BDD block compartments) first CI run
   25908534051 on aaff339 came back red at 08:48:08Z with exactly the
   drift profile iter-747 anticipated — 9 @visual baselines crossed
   the `maxDiffPixelRatio: 0.01` threshold from BlockNode's new
@@ -605,9 +639,11 @@ phase:13 — post-v1.0.0 polish + explorer rewrite
       T-13.31 — likely re-author against the new containment tree.
 
 ## Last test run
-- Command: pnpm typecheck && pnpm lint && pnpm test:unit && pnpm build
-- Result: PASS — 992 unit, tsc -b clean, lint clean, build clean
-- (e2e skipped this iter — store-only change, no UI surface affected)
+- Command: pnpm exec tsc -b && pnpm lint && pnpm test:unit && pnpm build
+- Result: PASS — 1103 unit, tsc -b clean, lint clean (0 errors, 3 pre-existing
+  warnings), build clean
+- (e2e deferred to CI on PR #300; the change touches Parametric DOM, so
+  any visual drift surfaces on the parametric-with-* baselines)
 - Visual baselines: regenerated in podman/playwright:v1.48.2-jammy
   container (full suite via scripts/regen-baselines.sh +
   scripts/regen-chat-baselines.sh for the 8 chat specs that need the
@@ -643,12 +679,12 @@ Backlog (P1 — SysMLv2 notation conformance, JOURNAL iter-529):
 - [x] T-13.18 Port direction glyphs (in/out/inout). Shipped iter-741 (#291).
 - T-13.19 BDD block compartments (parts/ports/values/constraints).
 - [x] T-13.20 IBD enclosing-block frame — shipped iter-747 (PR #294).
-- T-13.21 Requirement compartments (reqId/text/priority/status rows).
-      In flight — PR #293 (iter-743), auto-merge enabled, awaiting CI.
+- [x] T-13.21 Requirement compartments (reqId/text/priority/status rows). Shipped iter-744 (#293).
 - [x] T-13.22 Use-case true ellipse shape (SVG, not rectangle). Shipped iter-739 (#288).
 - T-13.23 Activity pseudostate glyph review (initial/final/fork/join/dec/merge).
 - T-13.24 State pseudostate glyph review (initial/final/composite region).
-- T-13.25 Parametric: constraint-expression + value-property `: type = value`.
+- [x] T-13.25 Parametric: constraint-expression + value-property `: type = value`.
+      In flight — PR #300 (iter-749), auto-merge enabled, awaiting CI.
 - T-13.26 Edge style audit (Gen hollow-triangle, Comp filled-diamond,
   Trace family dashed + stereotype, ItemFlow open-arrow + item-type label).
 
@@ -747,21 +783,20 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
-Wait for PR #298 (T-13.19 BDD block compartments) CI re-run on the
-rebased branch (force-pushed onto main this iter). The 9 refreshed
-baselines are bit-exact CI actuals from run 25908534051 so should land
-within tolerance. If CI fails ONLY on the `Upload Playwright report`
-step ("Unexpected token '<', ..." JSON parse), that's the iter-747
-GitHub artifact-storage flake — `gh run rerun <run-id> --failed`
-rather than refreshing baselines. After PR #298 merges, pick the next
-Phase-13 backlog item:
+Wait for PR #300 (T-13.25 Parametric notation) CI. If a parametric-with-*
+visual baseline drifts (chromium + webkit), refresh per the docs/CONTEXT.md
+2026-05-12 lift-from-trace procedure — the DOM change (two `<span>` →
+one text node) is small but may cross the 0.01 ratio threshold on text
+anti-aliasing. If CI fails ONLY on the `Upload Playwright report` step,
+that's the iter-747 GitHub artifact-storage flake — `gh run rerun
+<run-id> --failed`. After PR #300 merges, pick the next Phase-13 backlog
+item:
 - T-13.05 Cmd-K command palette — biggest P1 discoverability gap.
-- T-13.25 Parametric: constraint-expression + value-property
-  `: type = value` notation.
 - T-13.23 Activity pseudostate glyph review.
 - T-13.24 State pseudostate glyph review.
-- T-13.26 Edge style audit.
+- T-13.26 Edge style audit (Gen hollow-triangle, Comp filled-diamond,
+  Trace family dashed + stereotype, ItemFlow open-arrow + item-type label).
 
-Backlog (P1 notation conformance) status after T-13.19:
-- T-13.18 ✓, T-13.19 ✓ (this iter, awaiting CI), T-13.20 ✓,
-  T-13.21 ✓, T-13.22 ✓, remaining: T-13.23, T-13.24, T-13.25, T-13.26.
+Backlog (P1 notation conformance) status after T-13.25:
+- T-13.18 ✓, T-13.19 ✓, T-13.20 ✓, T-13.21 ✓, T-13.22 ✓,
+  T-13.25 ✓ (this iter, awaiting CI), remaining: T-13.23, T-13.24, T-13.26.
