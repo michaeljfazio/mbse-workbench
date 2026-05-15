@@ -18,6 +18,17 @@ export type UseCaseFlowNode = Node<UseCaseNodeData, string>;
 const HANDLE_BASE_CLASS =
   '!z-10 !h-3 !w-3 !rounded-full !border-2 !border-card !bg-primary';
 
+// SVG ellipse stroke is centred on the geometric edge; inset by half the
+// (selected) stroke width so the shape stays inside the React Flow node box
+// in either selected or unselected state without the bounding rectangle
+// shifting.
+const STROKE_WIDTH = 2;
+const SELECTED_STROKE_WIDTH = 3;
+const ELLIPSE_CX = USE_CASE_USE_CASE_WIDTH / 2;
+const ELLIPSE_CY = USE_CASE_USE_CASE_HEIGHT / 2;
+const ELLIPSE_RX = ELLIPSE_CX - SELECTED_STROKE_WIDTH / 2;
+const ELLIPSE_RY = ELLIPSE_CY - SELECTED_STROKE_WIDTH / 2;
+
 export function UseCaseNode({
   data,
   selected,
@@ -30,17 +41,31 @@ export function UseCaseNode({
       data-testid={`use-case-usecase-${data.elementId}`}
       data-element-id={data.elementId}
       data-use-case-node-kind="usecase"
-      className={`relative flex h-full w-full items-center justify-center bg-card text-card-foreground shadow-sm transition ${
-        selected
-          ? 'border-2 border-primary ring-2 ring-primary/30'
-          : 'border-2 border-border'
+      className={`relative transition ${
+        selected ? 'rounded-full ring-2 ring-primary/30' : ''
       }`}
       style={{
         width: USE_CASE_USE_CASE_WIDTH,
         height: USE_CASE_USE_CASE_HEIGHT,
-        borderRadius: '50%',
       }}
     >
+      <svg
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 block drop-shadow-sm"
+        width={USE_CASE_USE_CASE_WIDTH}
+        height={USE_CASE_USE_CASE_HEIGHT}
+        viewBox={`0 0 ${USE_CASE_USE_CASE_WIDTH} ${USE_CASE_USE_CASE_HEIGHT}`}
+      >
+        <ellipse
+          cx={ELLIPSE_CX}
+          cy={ELLIPSE_CY}
+          rx={ELLIPSE_RX}
+          ry={ELLIPSE_RY}
+          fill="hsl(var(--card))"
+          stroke={selected ? 'hsl(var(--primary))' : 'hsl(var(--border))'}
+          strokeWidth={selected ? SELECTED_STROKE_WIDTH : STROKE_WIDTH}
+        />
+      </svg>
       <Handle
         type="target"
         position={Position.Top}
@@ -53,36 +78,38 @@ export function UseCaseNode({
         id="left"
         className={HANDLE_BASE_CLASS}
       />
-      {editing ? (
-        <input
-          ref={inputRef}
-          type="text"
-          value={draft}
-          data-testid={`use-case-usecase-input-${data.elementId}`}
-          aria-label="Use case name"
-          onChange={(e) => setDraft(e.target.value)}
-          onBlur={commit}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              e.preventDefault();
-              commit();
-            } else if (e.key === 'Escape') {
-              e.preventDefault();
-              cancel();
-            }
-          }}
-          className="nodrag mx-6 w-[70%] rounded-sm border border-border bg-background px-2 py-1 text-center text-sm font-semibold text-foreground focus:border-primary focus:outline-none"
-        />
-      ) : (
-        <div
-          data-testid={`use-case-usecase-label-${data.elementId}`}
-          onDoubleClick={beginEdit}
-          className="mx-6 max-w-[80%] truncate rounded-sm bg-transparent px-1 text-center text-sm font-semibold text-foreground"
-          title="Double-click to rename"
-        >
-          {data.name}
-        </div>
-      )}
+      <div className="relative flex h-full w-full items-center justify-center">
+        {editing ? (
+          <input
+            ref={inputRef}
+            type="text"
+            value={draft}
+            data-testid={`use-case-usecase-input-${data.elementId}`}
+            aria-label="Use case name"
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={commit}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                commit();
+              } else if (e.key === 'Escape') {
+                e.preventDefault();
+                cancel();
+              }
+            }}
+            className="nodrag mx-6 w-[70%] rounded-sm border border-border bg-background px-2 py-1 text-center text-sm font-semibold text-foreground focus:border-primary focus:outline-none"
+          />
+        ) : (
+          <div
+            data-testid={`use-case-usecase-label-${data.elementId}`}
+            onDoubleClick={beginEdit}
+            className="mx-6 max-w-[80%] truncate rounded-sm bg-transparent px-1 text-center text-sm font-semibold text-foreground"
+            title="Double-click to rename"
+          >
+            {data.name}
+          </div>
+        )}
+      </div>
       <Handle
         type="source"
         position={Position.Right}
