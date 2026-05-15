@@ -10,7 +10,8 @@ import {
 import { downloadProjectJson } from './export';
 import {
   BUILT_IN_PALETTE_COMMANDS,
-  filterPaletteCommands,
+  UNIFIED_LIST_SECTION_THRESHOLD,
+  recentPaletteCommands,
   scoreCommandMatch,
   scoreElementMatch,
   selectionScopedCommands,
@@ -26,6 +27,12 @@ export interface CommandPaletteProps {
 type PaletteItem =
   | { readonly kind: 'command'; readonly command: PaletteCommand }
   | { readonly kind: 'element'; readonly match: CommandPaletteMatch };
+
+type PaletteSection = {
+  readonly header: string | null;
+  readonly headerTestId?: string;
+  readonly items: readonly PaletteItem[];
+};
 
 // Phase 12 slice D (#234) introduced the modal palette as element search.
 // Phase 13 / T-13.05a layered in a typed command registry: with no query the
@@ -53,6 +60,8 @@ export function CommandPalette({ onClose }: CommandPaletteProps): JSX.Element {
   const setPendingRename = useWorkspaceStore((s) => s.setPendingRename);
   const createDiagram = useWorkspaceStore((s) => s.createDiagram);
   const setActiveDiagram = useWorkspaceStore((s) => s.setActiveDiagram);
+  const recentCommandIds = useWorkspaceStore((s) => s.recentCommandIds);
+  const recordCommandUse = useWorkspaceStore((s) => s.recordCommandUse);
 
   const [query, setQuery] = useState('');
   const [activeIndex, setActiveIndex] = useState(0);
@@ -142,11 +151,44 @@ export function CommandPalette({ onClose }: CommandPaletteProps): JSX.Element {
     [allCommands, commandContext],
   );
 
-  const items = useMemo<readonly PaletteItem[]>(() => {
+  const sections = useMemo<readonly PaletteSection[]>(() => {
     if (queryIsEmpty) {
-      return filterPaletteCommands('', allCommands, commandContext).map(
+      const recents = recentPaletteCommands(
+        allCommands,
+        recentCommandIds,
+        commandContext,
+      );
+      const recentIdSet = new Set(recents.map((c) => c.id));
+      const remaining = enabledCommands.filter(
+        (command) => !recentIdSet.has(command.id),
+      );
+      const actionItems: readonly PaletteItem[] = remaining.map(
         (command) => ({ kind: 'command', command }) as const,
       );
+      if (recents.length === 0) {
+        return [
+          {
+            header: 'Actions',
+            headerTestId: 'command-palette-commands-header',
+            items: actionItems,
+          },
+        ];
+      }
+      const recentItems: readonly PaletteItem[] = recents.map(
+        (command) => ({ kind: 'command', command }) as const,
+      );
+      return [
+        {
+          header: 'Recent',
+          headerTestId: 'command-palette-recent-header',
+          items: recentItems,
+        },
+        {
+          header: 'Actions',
+          headerTestId: 'command-palette-commands-header',
+          items: actionItems,
+        },
+      ];
     }
     const cmdItems: { item: PaletteItem; score: number }[] = [];
     for (const command of enabledCommands) {
@@ -175,7 +217,34 @@ export function CommandPalette({ onClose }: CommandPaletteProps): JSX.Element {
     // Stable sort by score desc; insertion order breaks ties so commands keep
     // their registry order and elements keep document order within each tier.
     merged.sort((a, b) => b.score - a.score);
-    return merged.map((m) => m.item);
+    const flat = merged.map((m) => m.item);
+    // Below the threshold the flat ranked list reads cleaner than sectioned
+    // headers; the header pair only earns its space once the user actually
+    // sees enough mixed rows for the type distinction to help.
+    const bothKinds = cmdItems.length > 0 && elemItems.length > 0;
+    if (flat.length <= UNIFIED_LIST_SECTION_THRESHOLD || !bothKinds) {
+      return [{ header: null, items: flat }];
+    }
+    const cmdsInOrder = flat.filter(
+      (item): item is PaletteItem & { kind: 'command' } =>
+        item.kind === 'command',
+    );
+    const elemsInOrder = flat.filter(
+      (item): item is PaletteItem & { kind: 'element' } =>
+        item.kind === 'element',
+    );
+    return [
+      {
+        header: 'Commands',
+        headerTestId: 'command-palette-section-commands',
+        items: cmdsInOrder,
+      },
+      {
+        header: 'Elements',
+        headerTestId: 'command-palette-section-elements',
+        items: elemsInOrder,
+      },
+    ];
   }, [
     queryIsEmpty,
     trimmedQuery,
@@ -185,7 +254,13 @@ export function CommandPalette({ onClose }: CommandPaletteProps): JSX.Element {
     commandContext,
     elements,
     diagrams,
+    recentCommandIds,
   ]);
+
+  const items = useMemo<readonly PaletteItem[]>(
+    () => sections.flatMap((s) => s.items),
+    [sections],
+  );
 
   useEffect(() => {
     inputRef.current?.focus();
@@ -197,6 +272,10 @@ export function CommandPalette({ onClose }: CommandPaletteProps): JSX.Element {
 
   function runItem(item: PaletteItem): void {
     if (item.kind === 'command') {
+      // Record the use BEFORE running. If `run` triggers a re-render (it
+      // usually does, e.g. via `setInspectorTab`) the new recents order is
+      // already in the store by the time the palette closes.
+      recordCommandUse(item.command.id);
       item.command.run(commandContext);
       onClose();
       return;
@@ -235,11 +314,12 @@ export function CommandPalette({ onClose }: CommandPaletteProps): JSX.Element {
   }
 
   const showEmpty = !queryIsEmpty && items.length === 0;
-  const showCommandsHeader = queryIsEmpty && items.length > 0;
+  const hasAnyHeader = sections.some((s) => s.header !== null);
   const activeItem = items[activeIndex];
   const activeOptionId = activeItem
     ? `${listboxId}-opt-${itemKey(activeItem)}`
     : undefined;
+  const rows = buildRows(sections);
 
   return (
     <div
@@ -282,14 +362,6 @@ export function CommandPalette({ onClose }: CommandPaletteProps): JSX.Element {
           onChange={(event) => setQuery(event.target.value)}
           className="mx-4 mt-2 block w-[calc(100%-2rem)] rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground"
         />
-        {showCommandsHeader ? (
-          <div
-            data-testid="command-palette-commands-header"
-            className="mt-3 border-t border-border px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
-          >
-            Actions
-          </div>
-        ) : null}
         <ul
           id={listboxId}
           data-testid="command-palette-results"
@@ -298,11 +370,24 @@ export function CommandPalette({ onClose }: CommandPaletteProps): JSX.Element {
             queryIsEmpty ? 'Available commands' : 'Commands and search results'
           }
           className={
-            (showCommandsHeader ? '' : 'mt-3 border-t border-border ') +
+            (hasAnyHeader ? 'mt-3 ' : 'mt-3 border-t border-border ') +
             'max-h-72 overflow-y-auto'
           }
         >
-          {items.map((item, index) => {
+          {rows.map((row) => {
+            if (row.kind === 'header') {
+              return (
+                <li
+                  key={`header-${row.headerTestId ?? row.label}`}
+                  role="presentation"
+                  data-testid={row.headerTestId}
+                  className="border-t border-border px-4 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+                >
+                  {row.label}
+                </li>
+              );
+            }
+            const { item, index } = row;
             const key = itemKey(item);
             const optionId = `${listboxId}-opt-${key}`;
             const isActive = index === activeIndex;
@@ -399,4 +484,27 @@ function itemKey(item: PaletteItem): string {
   return item.kind === 'command'
     ? `command-${item.command.id}`
     : `element-${item.match.id}`;
+}
+
+type PaletteRow =
+  | { readonly kind: 'header'; readonly label: string; readonly headerTestId: string | undefined }
+  | { readonly kind: 'item'; readonly item: PaletteItem; readonly index: number };
+
+function buildRows(sections: readonly PaletteSection[]): readonly PaletteRow[] {
+  const rows: PaletteRow[] = [];
+  let flatIndex = 0;
+  for (const section of sections) {
+    if (section.header !== null) {
+      rows.push({
+        kind: 'header',
+        label: section.header,
+        headerTestId: section.headerTestId,
+      });
+    }
+    for (const item of section.items) {
+      rows.push({ kind: 'item', item, index: flatIndex });
+      flatIndex++;
+    }
+  }
+  return rows;
 }

@@ -289,6 +289,45 @@ test.describe('Phase 12 slice D — Cmd-K command palette (issue #234)', () => {
     await expect(newTab).toHaveAttribute('aria-selected', 'true');
   });
 
+  test('T-13.05d — running Save via the palette surfaces it under a Recent header on next open', async ({
+    page,
+  }) => {
+    // First open: no recents yet — only the Actions section is rendered.
+    await page.keyboard.press('ControlOrMeta+k');
+    await expect(
+      page.getByTestId('command-palette-recent-header'),
+    ).toHaveCount(0);
+    await expect(
+      page.getByTestId('command-palette-commands-header'),
+    ).toBeVisible();
+
+    // Run Save project. The browser triggers a download; we don't need to
+    // capture it — just close the palette.
+    const downloadPromise = page.waitForEvent('download');
+    await page
+      .getByTestId('command-palette-command-workspace.save-project')
+      .click();
+    await downloadPromise;
+    await expect(page.getByTestId('command-palette')).toHaveCount(0);
+
+    // Reopen — Save now lives under a Recent header at the top of the list.
+    await page.keyboard.press('ControlOrMeta+k');
+    const recentHeader = page.getByTestId('command-palette-recent-header');
+    await expect(recentHeader).toHaveText(/Recent/i);
+
+    const list = page.getByTestId('command-palette-results');
+    const firstOption = list.getByRole('option').first();
+    await expect(firstOption).toHaveAttribute(
+      'data-testid',
+      'command-palette-command-workspace.save-project',
+    );
+    // Save is only listed once — the Actions section omits commands already
+    // surfaced as recents.
+    await expect(
+      page.getByTestId('command-palette-command-workspace.save-project'),
+    ).toHaveCount(1);
+  });
+
   test('@a11y palette has zero serious/critical axe violations', async ({
     page,
   }) => {

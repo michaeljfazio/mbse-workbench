@@ -3,7 +3,10 @@ import { describe, expect, it, vi } from 'vitest';
 import type { ElementId, ModelElement, PartDefinitionElement } from '@/model';
 import {
   BUILT_IN_PALETTE_COMMANDS,
+  MAX_RECENT_COMMANDS,
+  UNIFIED_LIST_SECTION_THRESHOLD,
   filterPaletteCommands,
+  recentPaletteCommands,
   scoreCommandMatch,
   scoreElementMatch,
   selectionScopedCommands,
@@ -398,5 +401,86 @@ describe('selectionScopedCommands (T-13.05c)', () => {
     expect(filtered.map((c) => c.id)).toEqual([
       'selection.create-representation.ibd',
     ]);
+  });
+});
+
+describe('recentPaletteCommands (T-13.05d)', () => {
+  it('returns [] when no recent ids are recorded', () => {
+    expect(
+      recentPaletteCommands(BUILT_IN_PALETTE_COMMANDS, [], ctx()),
+    ).toEqual([]);
+  });
+
+  it('returns commands in recents (MRU) order, not registry order', () => {
+    const result = recentPaletteCommands(
+      BUILT_IN_PALETTE_COMMANDS,
+      ['workspace.save-project', 'workspace.undo'],
+      ctx(),
+    );
+    expect(result.map((c) => c.id)).toEqual([
+      'workspace.save-project',
+      'workspace.undo',
+    ]);
+  });
+
+  it('skips ids that do not exist in the supplied command set', () => {
+    const result = recentPaletteCommands(
+      BUILT_IN_PALETTE_COMMANDS,
+      ['workspace.no-such-command', 'workspace.undo'],
+      ctx(),
+    );
+    expect(result.map((c) => c.id)).toEqual(['workspace.undo']);
+  });
+
+  it('skips commands whose isEnabled returns false in the current context', () => {
+    // hasDiagramSelection=false disables delete; canUndo=false disables undo.
+    const result = recentPaletteCommands(
+      BUILT_IN_PALETTE_COMMANDS,
+      ['workspace.delete-selection', 'workspace.save-project', 'workspace.undo'],
+      ctx({ hasDiagramSelection: false, canUndo: false }),
+    );
+    expect(result.map((c) => c.id)).toEqual(['workspace.save-project']);
+  });
+
+  it('caps the returned list at MAX_RECENT_COMMANDS', () => {
+    const allIds = BUILT_IN_PALETTE_COMMANDS.map((c) => c.id);
+    // Seven built-ins exist; recents request all of them.
+    expect(allIds.length).toBeGreaterThan(MAX_RECENT_COMMANDS);
+    const result = recentPaletteCommands(
+      BUILT_IN_PALETTE_COMMANDS,
+      allIds,
+      ctx(),
+    );
+    expect(result.length).toBe(MAX_RECENT_COMMANDS);
+    // The cap honours MRU order — earliest ids fill the slots.
+    expect(result.map((c) => c.id)).toEqual(
+      allIds.slice(0, MAX_RECENT_COMMANDS),
+    );
+  });
+
+  it('caps after filtering out disabled or unknown ids, not before', () => {
+    // The first two ids are pruned (unknown + disabled). Without the
+    // "filter-then-cap" ordering, only three commands would be returned;
+    // with it, five enabled commands populate the cap.
+    const allEnabledIds = BUILT_IN_PALETTE_COMMANDS.map((c) => c.id);
+    const result = recentPaletteCommands(
+      BUILT_IN_PALETTE_COMMANDS,
+      ['workspace.no-such', 'workspace.delete-selection', ...allEnabledIds],
+      ctx({ hasDiagramSelection: false }),
+    );
+    expect(result.length).toBe(MAX_RECENT_COMMANDS);
+    for (const c of result) {
+      expect(c.id).not.toBe('workspace.no-such');
+      expect(c.id).not.toBe('workspace.delete-selection');
+    }
+  });
+
+  it('UNIFIED_LIST_SECTION_THRESHOLD is the small constant the palette splits at', () => {
+    // Documenting the constant so a future change here trips the test.
+    expect(UNIFIED_LIST_SECTION_THRESHOLD).toBe(5);
+  });
+
+  it('MAX_RECENT_COMMANDS matches the workspace store cap', () => {
+    expect(MAX_RECENT_COMMANDS).toBe(5);
   });
 });
