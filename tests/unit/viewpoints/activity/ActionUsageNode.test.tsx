@@ -95,6 +95,20 @@ describe('ActionUsageNode', () => {
     expect(onRename).toHaveBeenCalledWith(elementId, 'Bubbling?');
   });
 
+  it('Decision node: renders an SVG polygon inscribed in the bounding box', () => {
+    renderActionNode(
+      { elementId, name: 'Hot enough?', nodeType: 'decision' },
+      onRename,
+    );
+    const node = screen.getByTestId(`activity-decision-${elementId}`);
+    const polygon = node.querySelector('svg > polygon');
+    expect(polygon).not.toBeNull();
+    const points = polygon?.getAttribute('points') ?? '';
+    expect(points.trim().length).toBeGreaterThan(0);
+    // 4 points, each "x,y"
+    expect(points.trim().split(/\s+/)).toHaveLength(4);
+  });
+
   it('Merge node: visually identical to decision, also renamable', () => {
     renderActionNode(
       { elementId, name: 'Resume flow', nodeType: 'merge' },
@@ -106,6 +120,56 @@ describe('ActionUsageNode', () => {
     expect(
       screen.getByTestId(`activity-merge-label-${elementId}`),
     ).toHaveTextContent('Resume flow');
+  });
+
+  it('Merge node: also renders an SVG polygon (same diamond shape)', () => {
+    renderActionNode(
+      { elementId, name: 'Resume flow', nodeType: 'merge' },
+      onRename,
+    );
+    const node = screen.getByTestId(`activity-merge-${elementId}`);
+    const polygon = node.querySelector('svg > polygon');
+    expect(polygon).not.toBeNull();
+    expect((polygon?.getAttribute('points') ?? '').trim().split(/\s+/)).toHaveLength(4);
+  });
+
+  it('Decision diamond: selected state thickens stroke and switches colour', () => {
+    const { rerender } = renderActionNode(
+      { elementId, name: 'Hot?', nodeType: 'decision' },
+      onRename,
+    );
+    const unselected = screen
+      .getByTestId(`activity-decision-${elementId}`)
+      .querySelector('svg > polygon');
+    const unselectedWidth = Number(unselected?.getAttribute('stroke-width') ?? '0');
+
+    rerender(
+      <ReactFlowProvider>
+        <ActionUsageNode
+          {...({
+            id: elementId,
+            type: 'activity-decision',
+            data: { elementId, name: 'Hot?', nodeType: 'decision', onRename },
+            selected: true,
+            dragging: false,
+            draggable: true,
+            selectable: true,
+            deletable: true,
+            isConnectable: true,
+            positionAbsoluteX: 0,
+            positionAbsoluteY: 0,
+            zIndex: 0,
+          } as unknown as NodeProps<ActionUsageFlowNode>)}
+        />
+      </ReactFlowProvider>,
+    );
+
+    const selected = screen
+      .getByTestId(`activity-decision-${elementId}`)
+      .querySelector('svg > polygon');
+    const selectedWidth = Number(selected?.getAttribute('stroke-width') ?? '0');
+
+    expect(selectedWidth).toBeGreaterThan(unselectedWidth);
   });
 
   it('Initial node: renders a filled circle with no name and only a source handle', () => {

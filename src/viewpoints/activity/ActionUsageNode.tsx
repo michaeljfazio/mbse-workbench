@@ -231,27 +231,42 @@ function DiamondShape({ data, selected }: ShapeProps): JSX.Element {
   const { editing, draft, setDraft, beginEdit, commit, cancel, inputRef } =
     useInlineRename(data);
   const isDecision = data.nodeType === 'decision';
+  // Inscribe the polygon inside the bounding box, with vertices inset by
+  // half the stroke width so the stroke stays inside and the visible shape
+  // matches the React Flow node frame exactly. Without this, a rotated 78%
+  // square's bounding box is ~77px in a 70px slot and clips the selection
+  // ring and handle positions.
+  const strokeWidth = selected ? 3 : 2;
+  const inset = strokeWidth / 2;
+  const half = ACTIVITY_DIAMOND_SIZE / 2;
+  const max = ACTIVITY_DIAMOND_SIZE - inset;
+  const polygonPoints = `${half},${inset} ${max},${half} ${half},${max} ${inset},${half}`;
   return (
     <div
       data-testid={`activity-${data.nodeType}-${data.elementId}`}
       data-element-id={data.elementId}
       data-action-node-type={data.nodeType}
+      data-pseudostate-shape="diamond"
       className={`relative flex h-full w-full items-center justify-center transition ${
         selected ? 'ring-2 ring-primary/40 ring-offset-2 ring-offset-muted' : ''
       }`}
       style={{ width: ACTIVITY_DIAMOND_SIZE, height: ACTIVITY_DIAMOND_SIZE }}
     >
-      <span
+      <svg
         aria-hidden="true"
-        className={`absolute inset-0 m-auto block border-2 bg-card ${
-          selected ? 'border-primary' : 'border-border'
-        }`}
-        style={{
-          width: ACTIVITY_DIAMOND_SIZE * 0.78,
-          height: ACTIVITY_DIAMOND_SIZE * 0.78,
-          transform: 'rotate(45deg)',
-        }}
-      />
+        className="pointer-events-none absolute inset-0"
+        width={ACTIVITY_DIAMOND_SIZE}
+        height={ACTIVITY_DIAMOND_SIZE}
+        viewBox={`0 0 ${ACTIVITY_DIAMOND_SIZE} ${ACTIVITY_DIAMOND_SIZE}`}
+      >
+        <polygon
+          points={polygonPoints}
+          fill="hsl(var(--card))"
+          stroke={selected ? 'hsl(var(--primary))' : 'hsl(var(--border))'}
+          strokeWidth={strokeWidth}
+          strokeLinejoin="miter"
+        />
+      </svg>
       <Handle
         type="target"
         position={Position.Top}

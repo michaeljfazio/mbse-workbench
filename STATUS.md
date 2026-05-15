@@ -6,11 +6,65 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 749
+- Iteration #: 751
 - Started: 2026-05-15
-- Branch: issue/299-parametric-notation (PR #300, auto-merge --squash
-  enabled; awaiting CI)
-- Iter-749: Watched PR #298 (T-13.19 BDD block compartments) re-run CI
+- Branch: issue/301-activity-diamond-svg (PR opened; auto-merge --squash)
+- Working on: #301 — T-13.23 Activity decision/merge as inline SVG
+  polygon. PR #300 (T-13.25 Parametric notation) merged green at 95d1b38
+  with no visual baseline drift (the meta-line DOM change was within the
+  `maxDiffPixelRatio: 0.01` tolerance on both chromium + webkit). Picked
+  T-13.23 from the iter-750 next-actions list as the lowest-numbered open
+  P1 notation-conformance task. Reviewed all six activity pseudostates:
+  initial (filled `bg-foreground` disk), final (bullseye = outer
+  `border-foreground bg-card` ring + 14px inner `bg-foreground` span),
+  fork/join (solid `bg-foreground` 80×8 bar), all match SysMLv2/UML
+  convention as-is — no change. The exception is decision/merge: a 78%-
+  sized `<span>` was rotated 45° via CSS transform inside a 70px React
+  Flow box. The rotated span's bounding rectangle is
+  `0.78 × 70 × √2 ≈ 77.2px`, i.e. the visible diamond extended ~3-4px
+  outside the node frame on every side. The selection ring drew around
+  the 70×70 container instead of the visible diamond, the handles at
+  Position.Top/Bottom sat at the box-edge midpoints (which happen to
+  coincide with the inscribed diamond's vertices, so functional, but
+  not geometrically tight to the rotated-78% shape), and dagre fed the
+  70×70 dimensions to layout while neighbouring nodes saw the diamond
+  bleed beyond that. Fix: replaced the rotated-div with an inline
+  `<svg viewBox="0 0 70 70"><polygon points="35,inset MAX,35 35,MAX inset,35">`
+  where `inset = strokeWidth/2`, fill `hsl(var(--card))`, stroke
+  `hsl(var(--border))` or `hsl(var(--primary))` (selected). Stroke width
+  thickens 2→3 px on select, matching the T-13.22 ellipse pattern.
+  Polygon is `pointer-events-none` so click-to-select still hits the
+  outer container div. Selection ring (`ring-2 ring-primary/40
+  ring-offset-2 ring-offset-muted`) kept on the container — same as the
+  other pseudostates. New `data-pseudostate-shape="diamond"` attribute
+  surfaces the shape for the Phase-13 visual fidelity gate. All
+  testids preserved (`activity-{decision,merge}-{id}`,
+  `-label-{id}`, `-input-{id}`, `data-action-node-type`); inline-rename
+  input still sits absolutely positioned above the SVG. 3 new unit
+  specs: decision polygon-with-4-points, merge polygon-with-4-points,
+  selected-stroke-thicker-than-unselected. 1 new e2e
+  (activity-create-and-edit.spec.ts) drags decision+merge from the
+  palette and asserts each contains exactly one `<svg><polygon>` with
+  a 4-point `points` attribute. 1106/1106 unit pass (was 1103, +3 net),
+  tsc -b clean, lint clean (0 errors, 3 pre-existing warnings unchanged),
+  vite build clean. Visual baseline drift expected on
+  `activity-with-pseudostates-{chromium,webkit}.png` (diamond pixel
+  rendering changes from CSS-rotated antialiasing to native SVG
+  polygon antialiasing) and possibly `inspector-action-selected-*.png`
+  (also features a decision diamond). If CI flags either, refresh per
+  the docs/CONTEXT.md 2026-05-12 lift-from-trace procedure.
+- Iter-749 archive: Shipped T-13.25 — parametric value/constraint
+  SysMLv2 notation conformance. PR #300 merged 95d1b38. New module
+  `src/model/notation.ts` exports three pure helpers:
+  `formatValueLiteral`, `formatValuePropertySignature`,
+  `formatConstraintExpression`. ValuePropertyNode meta line now
+  reads `: Real` (no default) or `: Real = 9.8` (with default), no
+  longer `: Real = —`. ConstraintUsageNode preserves the
+  `— no equation —` placeholder for blank expressions. 13 new unit
+  specs covered string/numeric/boolean/zero/negative/empty literals,
+  with-default vs without-default signatures, trimmed/empty/whitespace
+  expressions. CI green with no visual drift.
+- Iter-748 archive: PR #298 (T-13.19 BDD block compartments) first CI run
   25909168804 on the rebased branch to completion — `success`; auto-merge
   squashed at 09:03:55Z (merge commit 4873e74). Issue #297 closed.
   Started T-13.25 — parametric value/constraint SysMLv2 notation
@@ -699,6 +753,9 @@ Backlog (P1 — SysMLv2 notation conformance, JOURNAL iter-529):
 - [x] T-13.21 Requirement compartments (reqId/text/priority/status rows). Shipped iter-744 (#293).
 - [x] T-13.22 Use-case true ellipse shape (SVG, not rectangle). Shipped iter-739 (#288).
 - T-13.23 Activity pseudostate glyph review (initial/final/fork/join/dec/merge).
+      Decision/merge diamond → inline SVG polygon shipped iter-751 (#301,
+      auto-merge enabled). Initial/final/fork/join confirmed conformant
+      as-is — no further change planned under this task.
 - T-13.24 State pseudostate glyph review (initial/final/composite region).
 - [x] T-13.25 Parametric: constraint-expression + value-property `: type = value`.
       In flight — PR #300 (iter-749), auto-merge enabled, awaiting CI.
@@ -800,20 +857,25 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
-Wait for PR #300 (T-13.25 Parametric notation) CI. If a parametric-with-*
-visual baseline drifts (chromium + webkit), refresh per the docs/CONTEXT.md
-2026-05-12 lift-from-trace procedure — the DOM change (two `<span>` →
-one text node) is small but may cross the 0.01 ratio threshold on text
-anti-aliasing. If CI fails ONLY on the `Upload Playwright report` step,
+Wait for PR #301 (T-13.23 activity decision/merge SVG diamond) CI. The
+DOM change (rotated `<span>` → inline `<svg><polygon>`) WILL likely
+drift `activity-with-pseudostates-{chromium,webkit}.png` and may drift
+`inspector-action-selected-{chromium,webkit}.png` (also features a
+decision). If CI flags either, refresh per the docs/CONTEXT.md 2026-05-12
+lift-from-trace procedure. If CI fails ONLY on `Upload Playwright report`,
 that's the iter-747 GitHub artifact-storage flake — `gh run rerun
-<run-id> --failed`. After PR #300 merges, pick the next Phase-13 backlog
+<run-id> --failed`. After PR #301 merges, pick the next Phase-13 backlog
 item:
-- T-13.05 Cmd-K command palette — biggest P1 discoverability gap.
-- T-13.23 Activity pseudostate glyph review.
-- T-13.24 State pseudostate glyph review.
+- T-13.24 State pseudostate glyph review (initial / final / region) —
+  likely the next-cleanest mirror of T-13.23; review state-machine
+  initial circle / final bullseye / composite-region rendering against
+  SysMLv2 conventions and convert any rotated-CSS hacks to SVG.
 - T-13.26 Edge style audit (Gen hollow-triangle, Comp filled-diamond,
-  Trace family dashed + stereotype, ItemFlow open-arrow + item-type label).
+  Trace family dashed + stereotype, ItemFlow open-arrow + item-type).
+- T-13.05 Cmd-K command palette — biggest P1 discoverability gap (a
+  larger feature; may want to slice into store-action + UI sub-tasks).
 
-Backlog (P1 notation conformance) status after T-13.25:
+Backlog (P1 notation conformance) status after T-13.23:
 - T-13.18 ✓, T-13.19 ✓, T-13.20 ✓, T-13.21 ✓, T-13.22 ✓,
-  T-13.25 ✓ (this iter, awaiting CI), remaining: T-13.23, T-13.24, T-13.26.
+  T-13.23 ✓ (this iter, awaiting CI), T-13.25 ✓.
+  Remaining: T-13.24, T-13.26.

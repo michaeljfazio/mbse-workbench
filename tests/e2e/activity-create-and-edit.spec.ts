@@ -168,6 +168,28 @@ test.describe('Activity drop + inspector (issue #88)', () => {
     await expect(page.getByTestId('inspector-action-definition')).toHaveCount(0);
   });
 
+  test('decision and merge render as SVG polygons inscribed in the bounding box', async ({
+    page,
+  }) => {
+    await gotoActivity(page);
+    await dragChipOntoCanvas(page, 'decision', { x: 200, y: 200 });
+    await dragChipOntoCanvas(page, 'merge', { x: 400, y: 200 });
+
+    const decision = page.locator('[data-testid^="activity-decision-"][data-element-id]');
+    const merge = page.locator('[data-testid^="activity-merge-"][data-element-id]');
+    await expect(decision).toHaveCount(1);
+    await expect(merge).toHaveCount(1);
+
+    // Each diamond contains exactly one <svg><polygon> with a non-empty
+    // points attribute, fixing the prior rotated-div bounding-box overflow.
+    for (const shape of [decision, merge]) {
+      const polygon = shape.locator('svg > polygon');
+      await expect(polygon).toHaveCount(1);
+      const points = await polygon.getAttribute('points');
+      expect(points?.trim().split(/\s+/) ?? []).toHaveLength(4);
+    }
+  });
+
   test('@a11y Activity canvas with one Action and selection has no serious/critical violations', async ({
     page,
   }) => {
