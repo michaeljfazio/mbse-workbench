@@ -9,7 +9,17 @@ import {
 import type { Viewpoint } from '@/viewpoints';
 import { getActiveViewpoint, useWorkspaceStore } from '../store';
 
+import { acceptedChildKinds, type ChildKindOption } from './childAcceptance';
 import { kindLabel } from './kindLabels';
+
+// Kinds creatable as direct members of the project root Package, indexed by
+// kind for O(1) lookup when deciding whether a group header should render a
+// "+" create affordance. Derived from the same childAcceptance table the
+// Containment-Tree Create-child submenu uses, so the two affordances stay
+// in sync.
+const ROOT_CREATE_BY_KIND: ReadonlyMap<ElementKind, ChildKindOption> = new Map(
+  acceptedChildKinds('Package').map((opt) => [opt.kind, opt] as const),
+);
 
 export const PROJECT_TREE_DRAG_TYPE = 'application/x-mbse-element-kind';
 // Optional second MIME slot carried by viewpoint-specific palettes (Activity
@@ -100,6 +110,8 @@ export function ProjectTree(): JSX.Element {
   const activeViewpoint = useWorkspaceStore(getActiveViewpoint);
   const selectedElementIds = useWorkspaceStore((s) => s.selectedElementIds);
   const setSelection = useWorkspaceStore((s) => s.setSelection);
+  const createChildElement = useWorkspaceStore((s) => s.createChildElement);
+  const setPendingRename = useWorkspaceStore((s) => s.setPendingRename);
 
   // The implicit project-root Package is hidden from the flat-by-kind tree:
   // it represents the project itself, not a user-modelled package. T-13.31
@@ -190,6 +202,22 @@ export function ProjectTree(): JSX.Element {
       event.dataTransfer.effectAllowed = 'copy';
     },
     [],
+  );
+
+  const handleCreateUnderRoot = useCallback(
+    (option: ChildKindOption) => {
+      if (!projectRootId) return;
+      const id = createChildElement(
+        projectRootId,
+        option.kind,
+        option.ownerRole,
+        `New ${option.label}`,
+      );
+      if (!id) return;
+      setSelection([id]);
+      setPendingRename(id);
+    },
+    [projectRootId, createChildElement, setSelection, setPendingRename],
   );
 
   const handleLeafDragStart = useCallback(
@@ -307,6 +335,8 @@ export function ProjectTree(): JSX.Element {
         const gKey = groupKey(group.kind);
         const isCollapsed = collapsed.has(group.kind);
         const isFocused = focusKey === gKey;
+        const createOption =
+          projectRootId !== null ? ROOT_CREATE_BY_KIND.get(group.kind) : undefined;
         return (
           <div key={group.kind} className="flex flex-col gap-0.5">
             <div
@@ -337,9 +367,27 @@ export function ProjectTree(): JSX.Element {
                 {isCollapsed ? '▸' : '▾'}
               </span>
               <span>{group.label}</span>
-              <span className="ml-auto text-[10px] font-normal text-muted-foreground/80">
-                {group.elements.length}
-              </span>
+              <div className="ml-auto flex items-center gap-1">
+                {createOption ? (
+                  <button
+                    type="button"
+                    data-testid={`project-tree-group-create-${group.kind}`}
+                    aria-label={`New ${createOption.label}`}
+                    tabIndex={-1}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleCreateUnderRoot(createOption);
+                    }}
+                    onPointerDown={(e) => e.stopPropagation()}
+                    className="rounded px-1 text-[11px] font-normal leading-none text-muted-foreground hover:bg-accent hover:text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  >
+                    +
+                  </button>
+                ) : null}
+                <span className="text-[10px] font-normal text-muted-foreground/80">
+                  {group.elements.length}
+                </span>
+              </div>
             </div>
             {isCollapsed ? null : (
               <div
