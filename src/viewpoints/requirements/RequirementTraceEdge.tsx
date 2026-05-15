@@ -21,10 +21,10 @@ export type RequirementTraceFlowEdge = Edge<
 
 export const REQUIREMENTS_TRACE_EDGE_TYPE = 'requirements-trace' as const;
 
-// UML/SysML convention: derive and refine are dashed; satisfy and verify are
-// solid. The same arrowhead (open triangle) is used on the target end for
-// every kind — the line style and stereotype label carry the discriminator.
-const DASHED: ReadonlySet<RequirementTraceKind> = new Set(['derive', 'refine']);
+// SysML 1.6 §9.1.4.5: every trace dependency (derive, satisfy, verify,
+// refine) is a UML dependency — dashed line with an open arrowhead at the
+// target end. The stereotype keyword carries the discriminator.
+const TRACE_DASH_PATTERN = '6 4';
 
 export function RequirementTraceEdge({
   id,
@@ -50,7 +50,7 @@ export function RequirementTraceEdge({
   const traceKind = data?.traceKind ?? 'satisfy';
   const userLabel = data?.label;
   const markerId = `req-trace-${id}`;
-  const dashArray = DASHED.has(traceKind) ? '6 4' : undefined;
+  const dashArray = TRACE_DASH_PATTERN;
   const stroke = selected ? 'hsl(var(--primary))' : 'currentColor';
   const strokeWidth = selected ? 2 : 1.5;
 

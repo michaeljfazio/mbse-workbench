@@ -61,21 +61,20 @@ describe('RequirementTraceEdge', () => {
     }
   });
 
-  it('uses dashed strokes for derive and refine, solid for satisfy and verify', () => {
+  it('uses dashed strokes for every trace kind (SysML 1.6 §9.1.4.5)', () => {
     function dashOf(kind: RequirementTraceKind): string {
       const { container, unmount } = renderEdge(kind);
       const path = pathFor(container);
-      const styleAttr = path.getAttribute('style') ?? '';
       const inlineDash = path.style.strokeDasharray ?? '';
       const dashAttr = path.getAttribute('stroke-dasharray') ?? '';
-      const result = inlineDash || dashAttr || styleAttr;
+      const result = inlineDash || dashAttr;
       unmount();
       return result;
     }
     expect(dashOf('derive')).toMatch(/6/);
     expect(dashOf('refine')).toMatch(/6/);
-    expect(dashOf('satisfy')).not.toMatch(/dash/i);
-    expect(dashOf('verify')).not.toMatch(/dash/i);
+    expect(dashOf('satisfy')).toMatch(/6/);
+    expect(dashOf('verify')).toMatch(/6/);
   });
 
   it('points the markerEnd at a per-edge SVG marker', () => {

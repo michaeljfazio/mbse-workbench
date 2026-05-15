@@ -68,7 +68,6 @@ export function ItemFlowEdge({
         style={{
           stroke,
           strokeWidth: selected ? 2.5 : 1.5,
-          strokeDasharray: '6 4',
           fill: 'none',
         }}
       />
