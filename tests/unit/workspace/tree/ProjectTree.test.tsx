@@ -281,4 +281,82 @@ describe('<ProjectTree />', () => {
     const group = screen.getByTestId('project-tree-group-PartDefinition');
     expect(within(group).getByText('2')).toBeInTheDocument();
   });
+
+  it('renders a "+" create affordance on Package-member kind groups (PartDefinition)', async () => {
+    await bootstrap();
+    render(<ProjectTree />);
+
+    const button = screen.getByTestId('project-tree-group-create-PartDefinition');
+    expect(button).toBeInTheDocument();
+    expect(button).toHaveAttribute('aria-label', 'New Part Definition');
+  });
+
+  it('does not render a "+" affordance on Usage kinds (PartUsage) — those originate from diagram palettes', async () => {
+    await bootstrap();
+    // PartUsage is in the IBD viewpoint palette, so the group exists.
+    render(<ProjectTree />);
+    expect(screen.getByTestId('project-tree-group-PartUsage')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('project-tree-group-create-PartUsage'),
+    ).toBeNull();
+  });
+
+  it('clicking "+" creates an element under the project root, selects it, and sets pendingRename', async () => {
+    await bootstrap();
+    const rootId = useWorkspaceStore.getState().project!.rootId;
+
+    render(<ProjectTree />);
+    act(() => {
+      fireEvent.click(
+        screen.getByTestId('project-tree-group-create-PartDefinition'),
+      );
+    });
+
+    const state = useWorkspaceStore.getState();
+    const created = state.elements.find(
+      (e) => e.ownerId === rootId && e.kind === 'PartDefinition',
+    );
+    expect(created).toBeDefined();
+    expect(created!.name).toBe('New Part Definition');
+    expect(created!.ownerRole).toBe('member');
+    expect(state.selectedElementIds).toEqual([created!.id]);
+    expect(state.pendingRenameElementId).toBe(created!.id);
+  });
+
+  it('clicking "+" does not toggle the group expand/collapse state', async () => {
+    await bootstrap();
+    render(<ProjectTree />);
+
+    const group = screen.getByTestId('project-tree-group-PartDefinition');
+    expect(group).toHaveAttribute('aria-expanded', 'true');
+
+    fireEvent.click(screen.getByTestId('project-tree-group-create-PartDefinition'));
+    expect(group).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('"+" affordance is omitted when there is no project loaded', () => {
+    // No bootstrap: store has no project, no viewpoints, no elements.
+    render(<ProjectTree />);
+    expect(
+      screen.queryByTestId('project-tree-group-create-PartDefinition'),
+    ).toBeNull();
+  });
+
+  it('"+" affordance for Requirement uses the correct singular label', async () => {
+    await bootstrap();
+    const rootId = useWorkspaceStore.getState().project!.rootId;
+
+    render(<ProjectTree />);
+    act(() => {
+      fireEvent.click(
+        screen.getByTestId('project-tree-group-create-Requirement'),
+      );
+    });
+
+    const created = useWorkspaceStore
+      .getState()
+      .elements.find((e) => e.ownerId === rootId && e.kind === 'Requirement');
+    expect(created).toBeDefined();
+    expect(created!.name).toBe('New Requirement');
+  });
 });
