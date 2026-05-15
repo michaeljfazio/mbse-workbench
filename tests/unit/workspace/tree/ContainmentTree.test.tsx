@@ -1013,4 +1013,147 @@ describe('<ContainmentTree />', () => {
       });
     });
   });
+
+  describe('filter bar (T-13.35)', () => {
+    it('renders the filter input above the tree', async () => {
+      await bootstrap();
+      render(<ContainmentTree />);
+      expect(screen.getByTestId('containment-tree-filter')).toBeInTheDocument();
+    });
+
+    it('hides non-matching rows and keeps matches + ancestors', async () => {
+      await bootstrap();
+      const pump = useWorkspaceStore.getState().createBlock()!;
+      const vessel = useWorkspaceStore.getState().createBlock()!;
+      act(() => {
+        useWorkspaceStore.getState().renameElement(pump, 'Pump');
+        useWorkspaceStore.getState().renameElement(vessel, 'Vessel');
+      });
+
+      render(<ContainmentTree />);
+      const input = screen.getByTestId('containment-tree-filter');
+      fireEvent.change(input, { target: { value: 'pump' } });
+
+      expect(
+        screen.getByTestId(`containment-tree-element-${pump}`),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId(`containment-tree-element-${vessel}`),
+      ).toBeNull();
+      // Root must still be visible as the ancestor of the match.
+      expect(
+        screen.getByTestId(`containment-tree-element-${rootId()}`),
+      ).toBeInTheDocument();
+    });
+
+    it('matches against element kind', async () => {
+      await bootstrap();
+      const pump = useWorkspaceStore.getState().createBlock()!;
+      act(() => {
+        useWorkspaceStore.getState().renameElement(pump, 'Zeta');
+      });
+
+      render(<ContainmentTree />);
+      fireEvent.change(screen.getByTestId('containment-tree-filter'), {
+        target: { value: 'partdefinition' },
+      });
+      expect(
+        screen.getByTestId(`containment-tree-element-${pump}`),
+      ).toBeInTheDocument();
+    });
+
+    it('matches against diagram name', async () => {
+      await bootstrap();
+      const diagramId = useWorkspaceStore.getState().diagrams[0]!.id;
+      act(() => {
+        useWorkspaceStore.getState().renameDiagram(diagramId, 'Engine Behaviour');
+      });
+
+      render(<ContainmentTree />);
+      fireEvent.change(screen.getByTestId('containment-tree-filter'), {
+        target: { value: 'engine' },
+      });
+      expect(
+        screen.getByTestId(`containment-tree-diagram-${diagramId}`),
+      ).toBeInTheDocument();
+    });
+
+    it('uses AND semantics across tokens', async () => {
+      await bootstrap();
+      const pump = useWorkspaceStore.getState().createBlock()!;
+      const enginePump = useWorkspaceStore.getState().createBlock()!;
+      act(() => {
+        useWorkspaceStore.getState().renameElement(pump, 'Pump');
+        useWorkspaceStore.getState().renameElement(enginePump, 'Engine Pump');
+      });
+
+      render(<ContainmentTree />);
+      fireEvent.change(screen.getByTestId('containment-tree-filter'), {
+        target: { value: 'engine pump' },
+      });
+      expect(
+        screen.getByTestId(`containment-tree-element-${enginePump}`),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId(`containment-tree-element-${pump}`),
+      ).toBeNull();
+    });
+
+    it('force-expands ancestors even if the user had collapsed them', async () => {
+      await bootstrap();
+      const pump = useWorkspaceStore.getState().createBlock()!;
+      act(() => {
+        useWorkspaceStore.getState().renameElement(pump, 'Pump');
+      });
+
+      render(<ContainmentTree />);
+      // Collapse the root before applying the filter.
+      fireEvent.click(
+        screen.getByTestId(`containment-tree-element-disclosure-${rootId()}`),
+      );
+      expect(
+        screen.queryByTestId(`containment-tree-element-${pump}`),
+      ).toBeNull();
+
+      fireEvent.change(screen.getByTestId('containment-tree-filter'), {
+        target: { value: 'pump' },
+      });
+      // Filter overrides the collapse and surfaces Pump.
+      expect(
+        screen.getByTestId(`containment-tree-element-${pump}`),
+      ).toBeInTheDocument();
+    });
+
+    it('shows a no-matches message when nothing matches', async () => {
+      await bootstrap();
+      render(<ContainmentTree />);
+      fireEvent.change(screen.getByTestId('containment-tree-filter'), {
+        target: { value: 'zzzzz-not-in-tree' },
+      });
+      expect(
+        screen.getByTestId('containment-tree-no-matches'),
+      ).toBeInTheDocument();
+    });
+
+    it('empty filter restores the unfiltered tree', async () => {
+      await bootstrap();
+      const pump = useWorkspaceStore.getState().createBlock()!;
+      const vessel = useWorkspaceStore.getState().createBlock()!;
+      act(() => {
+        useWorkspaceStore.getState().renameElement(pump, 'Pump');
+        useWorkspaceStore.getState().renameElement(vessel, 'Vessel');
+      });
+
+      render(<ContainmentTree />);
+      const input = screen.getByTestId('containment-tree-filter');
+      fireEvent.change(input, { target: { value: 'pump' } });
+      expect(
+        screen.queryByTestId(`containment-tree-element-${vessel}`),
+      ).toBeNull();
+      fireEvent.change(input, { target: { value: '' } });
+      expect(
+        screen.getByTestId(`containment-tree-element-${vessel}`),
+      ).toBeInTheDocument();
+    });
+  });
 });

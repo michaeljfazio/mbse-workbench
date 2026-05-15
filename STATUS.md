@@ -6,6 +6,30 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
+- Iteration #: 731
+- Started: 2026-05-15
+- Branch: issue/274-tree-filter-bar (PR open, auto-merge enabled)
+- Iter-731: PR #273 (T-13.33d) merged 6a04fe8. Shipped T-13.35 — token
+  filter bar for ContainmentTree. New treeFilter.ts: `tokenizeFilter`
+  (whitespace split + lowercase) and `computeFilteredKeys(root, tokens)`
+  which returns the set of FocusKeys to keep (matches + ancestors).
+  Element haystack = `"<name> <kind>".toLowerCase()`; diagram haystack =
+  `name.toLowerCase()`. AND semantics across tokens. ContainmentTree
+  gains an `<input type="search" testid="containment-tree-filter">`
+  above the tree; when active, every element key is force-expanded so
+  flatten descends to matches regardless of user-toggled collapse
+  state. Rows are post-filtered against the visible-key set. Empty
+  filter restores the unfiltered tree. New
+  `containment-tree-no-matches` empty-state when nothing matches.
+  9 new treeFilter unit specs + 8 new ContainmentTree integration
+  specs. 969/969 unit, tsc -b clean, lint clean (0 errors,
+  4 pre-existing warnings), build clean.
+
+## Current iteration (archived 730 → 731)
+- Iteration #: 730
+- Iter-730: No code work. Waited for PR #273 (T-13.33d) CI to land.
+
+## Current iteration (archived 729 → 730)
 - Iteration #: 729
 - Started: 2026-05-15
 - Branch: issue/269-tree-diagram-row-rename-delete (PR open, auto-merge)
@@ -346,13 +370,12 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
-Wait for PR (T-13.33d diagram-row Rename/Delete) CI to merge. With
-T-13.33a..d done, T-13.33 is feature-complete except #270 (T-13.33e
-Move to package / Duplicate, P2, depends on T-13.36). Next P1 work:
-T-13.34 (empty-state CTAs through the explorer) or T-13.35 (token
-filter bar). #270 (Move to package / Duplicate, P2) depends on T-13.36.
-The "retire flat-by-kind ProjectTree" cutover is its
-own larger iteration because it requires migrating 13+ e2e specs off
-`project-tree-group-<Kind>` drag-sources onto explicit "+" affordances
-(T-13.04). Scheduling that cutover after the explorer is feature-rich
-keeps each PR reviewable.
+Wait for PR #274 (T-13.35 filter bar) CI to merge. Next P0 work:
+T-13.34 (empty-state CTAs through the explorer) — wire the four
+"Start your model" CTAs through Containment Tree create-child /
+create-representation flows so users learn the explorer affordances
+on first encounter. P2 / deferred: #270 (T-13.33e Move to package /
+Duplicate, depends on T-13.36). The "retire flat-by-kind ProjectTree"
+cutover is its own larger iteration because it requires migrating 13+
+e2e specs off `project-tree-group-<Kind>` drag-sources onto explicit
+"+" affordances (T-13.04).
