@@ -15,12 +15,17 @@ async function addAndSelectBlock(page: Page): Promise<Locator> {
 }
 
 test.describe('Inspector panel (issue #32)', () => {
-  test('empty selection shows the placeholder', async ({ page }) => {
+  test('empty selection shows the create panel for the active viewpoint', async ({
+    page,
+  }) => {
     await page.goto('/');
-    await expect(page.getByTestId('inspector-empty')).toBeVisible();
-    await expect(page.getByTestId('inspector-empty')).toContainText(
-      /Select an element/i,
-    );
+    const empty = page.getByTestId('inspector-empty');
+    await expect(empty).toBeVisible();
+    await expect(empty).toHaveAttribute('data-viewpoint-id', 'bdd');
+    await expect(empty).toContainText(/Add to this diagram/i);
+    await expect(
+      page.getByTestId('inspector-empty-action-PartDefinition'),
+    ).toHaveText('+ New Block');
   });
 
   test('single selection shows kind label and editable name/description fields', async ({

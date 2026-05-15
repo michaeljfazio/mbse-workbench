@@ -34,7 +34,12 @@ import type {
   ValueType,
 } from '@/model';
 import { isTraceTargetKind } from '@/viewpoints';
-import { useWorkspaceStore } from '../store';
+import { getActiveDiagram, getActiveViewpoint, useWorkspaceStore } from '../store';
+import {
+  dispatchInspectorCreate,
+  inspectorCreatePanel,
+  type InspectorCreateAction,
+} from './inspectorCreatePanel';
 import { LinkRequirementPopover } from './LinkRequirementPopover';
 
 function findElement(
@@ -86,11 +91,7 @@ export function Inspector(): JSX.Element {
   const edges = useWorkspaceStore((s) => s.edges);
 
   if (selectedIds.length === 0) {
-    return (
-      <p data-testid="inspector-empty" className="text-muted-foreground">
-        Select an element to edit its properties.
-      </p>
-    );
+    return <InspectorEmptyState />;
   }
 
   if (selectedIds.length > 1) {
@@ -132,6 +133,104 @@ export function Inspector(): JSX.Element {
     <p data-testid="inspector-missing" className="text-muted-foreground">
       Selected element no longer exists.
     </p>
+  );
+}
+
+function InspectorEmptyState(): JSX.Element {
+  const viewpoint = useWorkspaceStore((s) => getActiveViewpoint(s));
+  const diagram = useWorkspaceStore((s) => getActiveDiagram(s));
+
+  if (!viewpoint || !diagram) {
+    return (
+      <p data-testid="inspector-empty" className="text-muted-foreground">
+        Select an element to edit its properties.
+      </p>
+    );
+  }
+
+  const panel = inspectorCreatePanel(viewpoint);
+
+  const handleCreate = (action: InspectorCreateAction): void => {
+    // Pull store actions imperatively so the empty-state subscription stays
+    // limited to viewpoint + diagram. Capturing them through a useWorkspaceStore
+    // selector that returns a fresh object every render would re-fire the
+    // subscription and loop the component.
+    const state = useWorkspaceStore.getState();
+    const id = dispatchInspectorCreate(
+      { action, diagram },
+      {
+        createBlock: state.createBlock,
+        createRequirement: state.createRequirement,
+        createActionUsage: state.createActionUsage,
+        createStateUsage: state.createStateUsage,
+        createActor: state.createActor,
+        createUseCase: state.createUseCase,
+        createConstraintUsage: state.createConstraintUsage,
+        createValueProperty: state.createValueProperty,
+        createPackage: state.createPackage,
+      },
+    );
+    if (id) state.setSelection([id]);
+  };
+
+  return (
+    <div
+      data-testid="inspector-empty"
+      data-viewpoint-id={viewpoint.id}
+      className="flex flex-col gap-4"
+    >
+      <header className="flex flex-col gap-0.5">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+          {viewpoint.label}
+        </span>
+        <span className="text-sm font-medium text-foreground">
+          Add to this diagram
+        </span>
+        <span className="text-xs text-muted-foreground">
+          Nothing is selected. Create a new element here, or click one on the
+          canvas to edit it.
+        </span>
+      </header>
+      {panel.actions.length > 0 ? (
+        <div
+          data-testid="inspector-empty-actions"
+          className="flex flex-col gap-1.5"
+        >
+          {panel.actions.map((action) => (
+            <button
+              key={action.key}
+              type="button"
+              data-testid={`inspector-empty-action-${action.key}`}
+              data-element-kind={action.elementKind}
+              onClick={() => handleCreate(action)}
+              title={action.description}
+              className="inline-flex items-center justify-start gap-2 rounded-md border border-border bg-card px-3 py-2 text-left text-sm font-medium text-foreground shadow-sm transition hover:bg-accent"
+            >
+              {action.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
+      {panel.notices.length > 0 ? (
+        <ul
+          data-testid="inspector-empty-notices"
+          className="flex flex-col gap-1.5"
+        >
+          {panel.notices.map((notice) => (
+            <li
+              key={notice.key}
+              data-testid={`inspector-empty-notice-${notice.key}`}
+              className="rounded-md border border-dashed border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground"
+            >
+              <span className="block font-medium text-foreground">
+                {notice.label}
+              </span>
+              <span>{notice.description}</span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
+    </div>
   );
 }
 

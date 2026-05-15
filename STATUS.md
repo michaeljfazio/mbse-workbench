@@ -6,14 +6,108 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 762
-- Started: 2026-05-15
-- Branch: (none — idle, awaiting next pick)
-- Working on: (idle) PR #324 merged 949e707 at 15:37:11Z, closing
-  #323. T-13.09 ships. With T-13.05a–d, T-13.06, T-13.08, T-13.09,
-  and T-13.10 all in main, the only remaining P1 operator-UX item
-  is T-13.07 (Inspector contextual "+ New …" panel when nothing
-  selected). Next iteration picks T-13.07.
+- Iteration #: 763
+- Started: 2026-05-16
+- Branch: issue/326-inspector-empty-state-cta (PR pending;
+  auto-merge --squash; CI queued)
+- Working on: #326 — T-13.07 Inspector contextual "+ New …" panel
+  when nothing selected. T-13.07 closes the P1 operator-UX tier
+  (T-13.05 / .06 / .07 / .08 / .09 / .10 all shipped); next live
+  tier is the explorer cascade (T-13.29–.39).
+
+  The empty inspector previously read "Select an element to edit
+  its properties." with no creation affordance. This slice rewires
+  the empty state to a contextual launchpad: one `+ New {label}`
+  button per `viewpoint.paletteItems` of the active viewpoint, with
+  a `header` reading "<viewpoint label> / Add to this diagram /
+  Nothing is selected. Create a new element here, or click one on
+  the canvas to edit it." Clicking a button dispatches the same
+  store action the canvas toolbar "+ Add" / drop handler uses
+  today, with a cascade position computed from the active diagram's
+  existing positions count, and selects the new element so the
+  inspector flips immediately to the single-element editor.
+
+  New module `src/workspace/inspector/inspectorCreatePanel.ts`
+  exports four pure things:
+  - `inspectorCreatePanel(viewpoint)` walks `viewpoint.paletteItems`
+    and returns `{ actions, notices }`. Each accepted kind maps to
+    one `{ key, label, elementKind, defaultData }` action. The lone
+    notice path is IBD's PartUsage — creating one requires a
+    PartDefinition picker (PartUsageTypePopover) that only the
+    canvas surface owns, so the inspector surfaces a drag-hint
+    notice ("Drag from the palette onto the canvas to choose a
+    Part Definition.") instead of a button. The action `key`
+    discriminator includes `defaultData.nodeType` / `.stateType`
+    so the 7 Activity pseudostates + 3 State pseudostates each get
+    their own button.
+  - `cascadePosition(cascadeIndex, box, opts?)` returns a
+    NodePosition in a 2-column grid offset 60px from the top-left,
+    `box.{width,height}+40px` gap. Mirrors the existing
+    `handleAddBlock` / `handleAddAction` / ... math in CanvasPane.
+  - `cascadeBoxForAction(action)` returns the per-kind cascade box
+    from the viewpoint constants (BDD_BLOCK_WIDTH/HEIGHT,
+    REQUIREMENT_NODE_WIDTH/HEIGHT, actionNodeSize(...),
+    stateNodeSize(...), USE_CASE_*, PARAMETRIC_*, PACKAGE_*, ...).
+  - `dispatchInspectorCreate({ action, diagram }, storeActions)`
+    switches on `action.elementKind` and forwards to the matching
+    store action (createBlock / createRequirement /
+    createActionUsage / createStateUsage / createActor /
+    createUseCase / createConstraintUsage / createValueProperty /
+    createPackage). Returns the new ElementId or null. Takes store
+    actions via parameter so the helper unit-tests cleanly with a
+    mock store; the React caller pulls actions imperatively via
+    `useWorkspaceStore.getState()` at click time (avoids the
+    Zustand "fresh object every render → infinite loop" trap that
+    the first iteration of the wiring hit).
+
+  Inspector.tsx: new `<InspectorEmptyState />` subcomponent
+  rendered in place of the prior `<p data-testid="inspector-empty">`
+  placeholder. Subscribes to `getActiveViewpoint(s)` +
+  `getActiveDiagram(s)`. Falls back to the old "Select an element
+  to edit its properties." placeholder when viewpoint/diagram are
+  unresolved (pre-bootstrap or no-active-diagram cases). Buttons
+  carry stable testids `inspector-empty-action-<kind>` (with
+  `.<variant>` suffix for ActionUsage / StateUsage); notices carry
+  `inspector-empty-notice-<key>`. The container retains the prior
+  `data-testid="inspector-empty"` plus a new
+  `data-viewpoint-id="<id>"` attribute for e2e + visual-fidelity
+  assertions.
+
+  Tests: 19 new unit specs in
+  `tests/unit/workspace/inspector/inspectorCreatePanel.test.ts`
+  (6 panel-shape × 4 viewpoint variants + 3 cascadePosition +
+  2 cascadeBoxForAction + 8 dispatch routing/cascade-index specs).
+  2 modified + 1 new unit spec in `Inspector.test.tsx` (renamed
+  "empty placeholder" assertion → "create panel" assertion,
+  click-creates-and-selects spec, IBD notice-path spec).
+  1 new e2e `tests/e2e/inspector-empty-state-cta.spec.ts`:
+  cold-load → click + New Block → assert new block visible on the
+  canvas + inspector-single shows Block 1. 2 e2e tweaks: existing
+  `inspector.spec.ts` empty-selection assertion updated to assert
+  the create-panel header text; `workspace-shell.spec.ts` sidebar
+  placeholder regex updated similarly. Local check green:
+  1278/1278 unit pass (was 1257, +21 net), tsc -b clean, eslint
+  clean (0 errors, 3 pre-existing warnings unchanged), vite build
+  clean. Inspector chromium e2e suite (9 tests) green.
+
+  Predicted visual baseline drift on CI (left to the lift-from-
+  trace procedure if flagged): every `*-empty.png` baseline that
+  captures the viewport-wide sidebar will see the inspector DOM
+  change from a one-line placeholder to a header + button list —
+  `bdd-empty`, `activity-empty`, `requirements-empty`,
+  `state-machine-empty`, `use-case-empty`, `parametric-empty`,
+  `package-empty`, each on chromium + webkit. `bdd-one-block.png`
+  and other populated-canvas baselines should hold (their
+  inspector is the single-element editor, unchanged).
+
+## Iter-762 archive
+- Branch: chore/status-iter-762 (prepared but not merged — operator
+  idle tick; the per-iteration STATUS commit policy
+  ([[feedback_loop_no_status_commits]]) said no per-tick commits on
+  idle ticks). PR #324 merged 949e707 at 15:37:11Z on 2026-05-15,
+  closing #323 (T-13.09). With T-13.05a–d, T-13.06, T-13.08,
+  T-13.09, and T-13.10 all in main, the only remaining P1 operator-
+  UX item was T-13.07. Iter-763 (this one) picks T-13.07.
 
 ## Iter-761 archive
 - Branch: issue/323-header-saved-indicator (PR #324 merged 949e707

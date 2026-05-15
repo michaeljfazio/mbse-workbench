@@ -38,12 +38,54 @@ describe('<Inspector />', () => {
   beforeEach(() => resetWorkspaceStoreForTests());
   afterEach(() => resetWorkspaceStoreForTests());
 
-  it('renders an empty placeholder when no element is selected', async () => {
+  it('renders the create panel when no element is selected on a BDD', async () => {
     await bootstrap();
     render(<Inspector />);
-    expect(screen.getByTestId('inspector-empty')).toHaveTextContent(
-      /select an element/i,
-    );
+    const empty = screen.getByTestId('inspector-empty');
+    expect(empty).toHaveAttribute('data-viewpoint-id', 'bdd');
+    expect(empty).toHaveTextContent(/add to this diagram/i);
+    expect(
+      screen.getByTestId('inspector-empty-action-PartDefinition'),
+    ).toHaveTextContent('+ New Block');
+  });
+
+  it('creates a PartDefinition and selects it when the BDD CTA is clicked', async () => {
+    await bootstrap();
+    render(<Inspector />);
+    const before = useWorkspaceStore.getState().elements.length;
+    act(() => {
+      fireEvent.click(
+        screen.getByTestId('inspector-empty-action-PartDefinition'),
+      );
+    });
+    const after = useWorkspaceStore.getState().elements;
+    expect(after.length).toBe(before + 1);
+    const created = after[after.length - 1];
+    expect(created?.kind).toBe('PartDefinition');
+    expect(useWorkspaceStore.getState().selectedElementIds).toEqual([
+      created?.id,
+    ]);
+  });
+
+  it('renders an IBD drag-hint notice instead of a button on the IBD viewpoint', async () => {
+    await bootstrap();
+    const defId = useWorkspaceStore.getState().createBlock()!;
+    const ibdId = useWorkspaceStore.getState().openInternalDiagram(defId)!;
+    act(() => {
+      useWorkspaceStore.getState().setActiveDiagram(ibdId);
+      useWorkspaceStore.getState().setSelection([]);
+    });
+
+    render(<Inspector />);
+
+    const empty = screen.getByTestId('inspector-empty');
+    expect(empty).toHaveAttribute('data-viewpoint-id', 'ibd');
+    expect(
+      screen.queryByTestId('inspector-empty-actions'),
+    ).not.toBeInTheDocument();
+    const notice = screen.getByTestId('inspector-empty-notice-notice.PartUsage');
+    expect(notice).toHaveTextContent('+ New Part');
+    expect(notice).toHaveTextContent(/drag from the palette/i);
   });
 
   it('renders kind label, name input and description textarea for a single selection', async () => {

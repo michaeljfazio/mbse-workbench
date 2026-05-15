@@ -29,7 +29,7 @@ test.describe('Workspace shell (issue #30)', () => {
       page.getByRole('tab', { name: 'Inspector', selected: true }),
     ).toBeVisible();
     await expect(page.getByTestId('sidebar-panel')).toContainText(
-      /Select an element to edit/,
+      /Add to this diagram/,
     );
   });
 
