@@ -8,14 +8,31 @@ phase:13 — post-v1.0.0 polish + explorer rewrite
 ## Current iteration
 - Iteration #: 747
 - Started: 2026-05-15
-- Branch: issue/294-ibd-enclosing-frame (PR #295, auto-merge --squash
-  enabled at 07:41:53Z, CI run 25906553896 on 348a044 in_progress at
-  07:41:48Z; visuals expected to fail on first run — 7 IBD baselines
-  × 2 projects = up to 14 baselines to refresh next iter)
-- Iter-747: PR #293 (T-13.21 Requirement compartments) merged on the
-  iter-745 webkit-BDD baseline refresh — CI run 25905779167 on 5f90513
-  went green at 07:30:59Z and auto-merge --squash landed it; issue #292
-  closed. Shipped T-13.20 — IBD enclosing-block frame. New module
+- Branch: main (PR #295 merged 63a910a, issue #294 closed)
+- Iter-747: PR #295 (T-13.20 IBD enclosing-block frame) merged 63a910a
+  via CI rerun. First run on 80b34aa: all 578 e2e tests passed (no
+  visual baseline drift! `maxDiffPixelRatio: 0.01` absorbed the frame
+  z-index:-1 background-only addition on every IBD spec on both
+  chromium + webkit). However the `Upload Playwright report` step
+  failed with a GitHub artifact-storage flake: `Unexpected token '<',
+  "<!DOCTYPE "... is not valid JSON` across 5 retries — GitHub's
+  upload backend returned an HTML error page in place of JSON. Job
+  conclusion = failure, so auto-merge held off. Used
+  `gh run rerun 25906574923 --failed` to rerun the failed job; second
+  run (same SHA 80b34aa) finished `success` and auto-merge --squash
+  landed the PR. Issue #294 closed at 08:25:33Z. Lesson: artifact
+  upload flakes are transient infra; rerun rather than refreshing
+  baselines that aren't actually drifting. Earlier-iter prediction
+  (up to 14 IBD baselines need refresh) did not materialise — same
+  lucky outcome as T-13.18 (iter-742) where the change was small
+  enough in pixel terms to stay inside tolerance.
+
+  PR #293 (T-13.21 Requirement compartments) merged on the iter-745
+  webkit-BDD baseline refresh earlier this iter — CI run 25905779167
+  on 5f90513 went green at 07:30:59Z and auto-merge --squash landed it;
+  issue #292 closed.
+
+  Shipped this iter — T-13.20 — IBD enclosing-block frame. New module
   `src/viewpoints/ibd/enclosingFrame.ts` exposes two pure helpers:
   `computeEnclosingFrameBounds(rects, { padding?, headerHeight? })`
   returns the union bbox of all PartUsage rects + default 48px padding
@@ -43,10 +60,10 @@ phase:13 — post-v1.0.0 polish + explorer rewrite
   vite build clean. Visual baseline drift expected on all 7 IBD specs
   (`ibd-empty`, `ibd-one-part-no-ports`, `ibd-one-part-two-ports`,
   `ibd-two-parts`, `ibd-two-parts-one-connection`,
-  `ibd-two-parts-one-itemflow`) on both chromium + webkit — will
-  refresh from CI actuals next iteration. Out of scope: per-Part
-  drag-into-frame containment, frame resize handles, manual frame
-  repositioning.
+  `ibd-two-parts-one-itemflow`) on both chromium + webkit — but the
+  CI rerun came back green within tolerance, so no refresh needed.
+  Out of scope: per-Part drag-into-frame containment, frame resize
+  handles, manual frame repositioning.
 
 ## Current iteration (archived 745 → 746 → 747)
 - Iteration #: 745
@@ -716,20 +733,23 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
-Wait for PR #294 (T-13.20 IBD enclosing-block frame) CI. Visual baseline
-drift on the 7 IBD specs (chromium + webkit each, so up to 14 baselines)
-is expected; refresh from CI actuals using the docs/CONTEXT.md
-2026-05-12 procedure and push as a baseline-refresh follow-up commit on
-the same branch.
-
-Once PR #294 lands, pick the next Phase-13 backlog item:
-- T-13.19 BDD block compartments (parts/ports/values/constraints) —
-  complements T-13.20 / T-13.21 / T-13.22 in the SysMLv2 notation
-  conformance push.
+PR #295 merged; iter-748 should pick the next Phase-13 backlog item.
+Strongest candidate is T-13.19 (BDD block compartments) — completes the
+trio with T-13.20 / T-13.21 / T-13.22 that just landed in the SysMLv2
+notation conformance push, and the BDD viewpoint is the most-visible
+canvas in the demo. Alternatives:
 - T-13.05 Cmd-K command palette — biggest P1 discoverability gap.
 - T-13.25 Parametric: constraint-expression + value-property
   `: type = value` notation.
+- T-13.23 Activity pseudostate glyph review.
+- T-13.24 State pseudostate glyph review.
 
 Backlog (P1 notation conformance) status after T-13.20:
-- T-13.18 ✓, T-13.21 ✓, T-13.22 ✓, T-13.20 ✓ (this iter),
+- T-13.18 ✓, T-13.21 ✓, T-13.22 ✓, T-13.20 ✓,
   remaining: T-13.19, T-13.23, T-13.24, T-13.25, T-13.26.
+
+Operational note for iter-748+: if a `check` job fails ONLY on the
+`Upload Playwright report` step ("Unexpected token '<', ..." JSON
+parse), that's a transient GitHub artifact-storage flake — rerun the
+failed job with `gh run rerun <run-id> --failed` rather than refreshing
+baselines. Documented from iter-747.
