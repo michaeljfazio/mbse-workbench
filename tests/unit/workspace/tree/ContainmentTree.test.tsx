@@ -1658,4 +1658,166 @@ describe('<ContainmentTree />', () => {
       expect(after?.ownerId).toBe(rootId());
     });
   });
+
+  describe('right-click context menu (T-13.02)', () => {
+    it('right-clicking an element row opens its row menu and suppresses the native menu', async () => {
+      await bootstrap();
+      const a = useWorkspaceStore.getState().createBlock()!;
+
+      render(<ContainmentTree />);
+      const row = screen.getByTestId(`containment-tree-element-${a}`);
+      expect(
+        screen.queryByTestId(`containment-tree-element-menu-${a}`),
+      ).toBeNull();
+
+      const event = createEvent.contextMenu(row);
+      const prevented = !fireEvent(row, event);
+      expect(prevented).toBe(true);
+
+      expect(
+        screen.getByTestId(`containment-tree-element-menu-${a}`),
+      ).toBeInTheDocument();
+    });
+
+    it('right-clicking does not also activate / select the row', async () => {
+      await bootstrap();
+      const a = useWorkspaceStore.getState().createBlock()!;
+      // Pre-condition: row a is not selected.
+      expect(useWorkspaceStore.getState().selectedElementIds).toEqual([]);
+
+      render(<ContainmentTree />);
+      fireEvent.contextMenu(screen.getByTestId(`containment-tree-element-${a}`));
+
+      // Right-click must open the menu without invoking the row's onClick
+      // selection path (right-click does not fire a click event).
+      expect(useWorkspaceStore.getState().selectedElementIds).toEqual([]);
+    });
+
+    it('right-clicking a diagram row opens its row menu and suppresses the native menu', async () => {
+      await bootstrap();
+      const diagramId = useWorkspaceStore.getState().diagrams[0]!.id;
+
+      render(<ContainmentTree />);
+      const row = screen.getByTestId(`containment-tree-diagram-${diagramId}`);
+      expect(
+        screen.queryByTestId(`containment-tree-diagram-menu-${diagramId}`),
+      ).toBeNull();
+
+      const event = createEvent.contextMenu(row);
+      const prevented = !fireEvent(row, event);
+      expect(prevented).toBe(true);
+
+      expect(
+        screen.getByTestId(`containment-tree-diagram-menu-${diagramId}`),
+      ).toBeInTheDocument();
+    });
+
+    it('Escape closes a right-click-opened element-row menu', async () => {
+      await bootstrap();
+      const a = useWorkspaceStore.getState().createBlock()!;
+
+      render(<ContainmentTree />);
+      fireEvent.contextMenu(screen.getByTestId(`containment-tree-element-${a}`));
+      expect(
+        screen.getByTestId(`containment-tree-element-menu-${a}`),
+      ).toBeInTheDocument();
+
+      fireEvent.keyDown(document, { key: 'Escape' });
+      await waitFor(() => {
+        expect(
+          screen.queryByTestId(`containment-tree-element-menu-${a}`),
+        ).toBeNull();
+      });
+    });
+
+    it('outside pointerdown closes a right-click-opened element-row menu', async () => {
+      await bootstrap();
+      const a = useWorkspaceStore.getState().createBlock()!;
+
+      render(<ContainmentTree />);
+      fireEvent.contextMenu(screen.getByTestId(`containment-tree-element-${a}`));
+      expect(
+        screen.getByTestId(`containment-tree-element-menu-${a}`),
+      ).toBeInTheDocument();
+
+      fireEvent.pointerDown(document.body);
+      await waitFor(() => {
+        expect(
+          screen.queryByTestId(`containment-tree-element-menu-${a}`),
+        ).toBeNull();
+      });
+    });
+
+    it('right-clicking a different element row swaps which menu is open', async () => {
+      await bootstrap();
+      const a = useWorkspaceStore.getState().createBlock()!;
+      const b = useWorkspaceStore.getState().createBlock()!;
+
+      render(<ContainmentTree />);
+      fireEvent.contextMenu(screen.getByTestId(`containment-tree-element-${a}`));
+      expect(
+        screen.getByTestId(`containment-tree-element-menu-${a}`),
+      ).toBeInTheDocument();
+
+      fireEvent.contextMenu(screen.getByTestId(`containment-tree-element-${b}`));
+      // After right-clicking b, a's menu has closed via the document
+      // pointerdown handler, and b's menu is now open.
+      await waitFor(() => {
+        expect(
+          screen.queryByTestId(`containment-tree-element-menu-${a}`),
+        ).toBeNull();
+      });
+      expect(
+        screen.getByTestId(`containment-tree-element-menu-${b}`),
+      ).toBeInTheDocument();
+    });
+
+    it('right-click-opened menu items still trigger their action', async () => {
+      await bootstrap();
+      const a = useWorkspaceStore.getState().createBlock()!;
+      act(() => {
+        useWorkspaceStore.getState().renameElement(a, 'Pump');
+      });
+
+      render(<ContainmentTree />);
+      fireEvent.contextMenu(screen.getByTestId(`containment-tree-element-${a}`));
+      fireEvent.click(
+        screen.getByTestId(`containment-tree-element-menu-delete-${a}`),
+      );
+
+      expect(
+        useWorkspaceStore.getState().elements.find((e) => e.id === a),
+      ).toBeUndefined();
+    });
+
+    it('does not open the menu when right-clicking a row in rename mode', async () => {
+      await bootstrap();
+      const a = useWorkspaceStore.getState().createBlock()!;
+      act(() => {
+        useWorkspaceStore.getState().renameElement(a, 'Pump');
+      });
+
+      render(<ContainmentTree />);
+      // Enter rename mode via the kebab → Rename path.
+      fireEvent.click(
+        screen.getByTestId(`containment-tree-element-menu-trigger-${a}`),
+      );
+      fireEvent.click(
+        screen.getByTestId(`containment-tree-element-menu-rename-${a}`),
+      );
+      // Rename input is visible; the row is in rename mode.
+      expect(
+        screen.getByTestId(`containment-tree-element-rename-${a}`),
+      ).toBeInTheDocument();
+
+      // Right-clicking the row while renaming must NOT pop the context menu
+      // (the kebab disappears too while renaming).
+      const row = screen.getByTestId(`containment-tree-element-${a}`);
+      const event = createEvent.contextMenu(row);
+      fireEvent(row, event);
+      expect(
+        screen.queryByTestId(`containment-tree-element-menu-${a}`),
+      ).toBeNull();
+    });
+  });
 });

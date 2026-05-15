@@ -6,9 +6,59 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 752
+- Iteration #: 753
 - Started: 2026-05-15
-- Branch: issue/303-state-pseudostate-markers (PR #304; auto-merge --squash)
+- Branch: issue/307-tree-right-click-context-menu (PR pending; auto-merge --squash)
+- Working on: #307 — T-13.02 right-click context menu for the containment
+  tree. PR #306 (T-13.26 edge style audit — ItemFlow solid + all trace kinds
+  dashed) merged b2b7892 between iter-752 and this iter, closing the entire
+  P1 notation-conformance tier of Phase 13 (T-13.18 / .19 / .20 / .21 / .22 /
+  .23 / .24 / .25 / .26 all done). Picked the lowest-numbered unchecked
+  task in the lowest-priority tier per the Phase-13 Ralph protocol — P0
+  has T-13.01 and T-13.02 unchecked, and T-13.01 is functionally complete
+  via T-13.33c (Create representation submenu) + T-13.33d (diagram-row
+  Rename/Delete), so I'm marking it done in this STATUS update and
+  picking T-13.02. T-13.02 adds right-click parity for the existing
+  three-dots (`⋯`) row menus on both element rows and diagram rows.
+  Implementation: both `ContainmentTreeRowMenu` and
+  `ContainmentTreeDiagramRowMenu` now accept optional controlled-mode
+  props (`open?: boolean`, `onOpenChange?: (open: boolean) => void`) on
+  top of their internal `useState(false)` — when `open` is undefined the
+  menus behave exactly as today; when defined the parent forces them open.
+  `setOpen` always mirrors to internal state so a controlled-open menu
+  cleanly falls back to closed when the parent releases control (handles
+  the Escape-after-right-click path correctly). ContainmentTree adds a
+  single `contextMenuOpenKey: FocusKey | null` state slot, wires
+  `onContextMenu` handlers on every element row and diagram row
+  (preventDefault + stopPropagation + setContextMenuOpenKey(row.key)),
+  and passes `open={contextMenuOpenKey === row.key ? true : undefined}`
+  and `onOpenChange={(o) => { if (!o && key === row.key)
+  setContextMenuOpenKey(null); }}` down to each menu. Both rows guard
+  against opening the context menu while in rename mode (the kebab
+  trigger is already hidden during rename; same guard now applies on
+  right-click). Menu remains anchored to the row's kebab button position
+  (right edge); deliberate simplification over open-at-cursor, which
+  would require absolute positioning + clipping handling against the
+  pane edges. 7 new unit specs in
+  `tests/unit/workspace/tree/ContainmentTree.test.tsx`: right-click
+  opens element-row menu + preventDefault, right-click does not also
+  select the row, right-click opens diagram-row menu + preventDefault,
+  Escape closes a right-click-opened menu, outside pointerdown closes
+  a right-click-opened menu, right-clicking a different row swaps which
+  menu is open, right-click-opened menu items still trigger their
+  action, right-click is a no-op on rows in rename mode. Local check
+  green: 1131/1131 unit (was 1119; +7 new specs on this branch plus
+  ItemFlowEdge specs that came in via b2b7892), tsc -b clean, lint
+  clean (0 errors, 3 pre-existing warnings unchanged), build clean.
+  No visual baseline drift expected — the menu DOM only renders when
+  open, and the right-click path produces identical DOM to the kebab
+  path. T-13.01 marked done in the P0 backlog below; after T-13.02
+  merges the entire P0 "UI-unreachable features" tier (T-13.01..04)
+  closes.
+
+## Current iteration (archived 752 → 753)
+- Iteration #: 752
+- Branch: issue/303-state-pseudostate-markers (PR #304 merged eb64a79)
 - Working on: #303 — T-13.24 State pseudostate glyph review + uniform
   `data-pseudostate-shape` markers. PR #302 (T-13.23 Activity decision/merge
   SVG diamond) merged green at f90e39c with the visual baselines drifting
@@ -732,10 +782,11 @@ phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Last test run
 - Command: pnpm exec tsc -b && pnpm lint && pnpm test:unit && pnpm build
-- Result: PASS — 1119 unit (was 1106, +13 net), tsc -b clean, lint clean
+- Result: PASS — 1131 unit (was 1119; +7 new specs on this branch plus
+  ItemFlowEdge specs that came in via b2b7892), tsc -b clean, lint clean
   (0 errors, 3 pre-existing warnings unchanged), build clean
-- (e2e deferred to CI on PR #304; the change is `data-*` attribute only,
-  so no visual drift is expected on any baseline)
+- (e2e deferred to CI on PR #307; menu DOM is unchanged when open, so
+  no visual drift is expected on any baseline)
 - Visual baselines: regenerated in podman/playwright:v1.48.2-jammy
   container (full suite via scripts/regen-baselines.sh +
   scripts/regen-chat-baselines.sh for the 8 chat specs that need the
@@ -762,8 +813,13 @@ phase:13 — post-v1.0.0 polish + explorer rewrite
 - (none for this iteration)
 
 Backlog (P0 — UI-unreachable features):
-- T-13.01 Diagram lifecycle UI (create/rename/delete per viewpoint)
-- T-13.02 Project-tree right-click context menu (Rename/Delete/New)
+- [x] T-13.01 Diagram lifecycle UI (create/rename/delete per viewpoint) —
+      CLOSED functionally by T-13.33c (Create representation submenu,
+      iter-727 PR #272) for create-per-viewpoint and T-13.33d (diagram-row
+      Rename + Delete, iter-729 PR #273). No standalone PR; marked done
+      iter-753 during T-13.02 audit.
+- T-13.02 Project-tree right-click context menu (Rename/Delete/New) — in
+      flight iter-753 (#307), PR pending.
 - [x] T-13.03 Fix "New Requirement" empty-state dead-end — CLOSED by T-13.34
       (#276): CTA now creates a Requirement under root + queues inline rename.
 - [x] T-13.04 Per-section "+" affordances on project-tree categories.
@@ -900,25 +956,22 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
-Wait for PR #304 (T-13.24 uniform `data-pseudostate-shape` markers) CI.
-No visual drift expected — only `data-*` attributes were added; zero
-pixels changed. If CI fails ONLY on `Upload Playwright report`, that's
-the iter-747 GitHub artifact-storage flake — `gh run rerun <run-id>
---failed`. After PR #304 merges, pick the next Phase-13 backlog item.
-With T-13.24 done, only T-13.26 remains in the P1 notation-conformance
-tier:
-- T-13.26 Edge style audit — review Generalization (hollow-triangle
-  arrowhead), Composition (filled-diamond at owner end), RequirementTrace
-  family (dashed + stereotype label «derive»/«satisfy»/«verify»/«refine»),
-  ItemFlow (open-arrow + item-type label). Likely splittable per edge
-  family if the audit reveals multiple non-conforming styles.
-After T-13.26 closes the P1 notation-conformance tier entirely. The
-biggest remaining P1 features are T-13.05 (Cmd-K true command palette),
-T-13.06 (disabled-toolbar-button reason tooltips), and T-13.10 (undo/redo
-toolbar buttons). T-13.05 is the largest single feature in P1 and may
-warrant splitting into store-action + palette-UI sub-PRs.
+Wait for PR (T-13.02 right-click context menu, #307) CI. No visual
+drift expected — onContextMenu plus a controlled-open pass-through, with
+no DOM change to the menus themselves. If CI fails ONLY on
+`Upload Playwright report`, that's the iter-747 GitHub artifact-storage
+flake — `gh run rerun <run-id> --failed`. After PR #307 merges, the
+entire P0 "UI-unreachable features" tier of Phase 13 (T-13.01..04)
+closes; pick the next Phase-13 backlog item. With the P0 + P1
+notation-conformance tiers done, the most valuable next-up tasks are:
+- T-13.05 (Cmd-K true command palette, P1) — the largest single feature
+  in P1; will likely need a split between a store-side action registry
+  and a palette-UI sub-PR.
+- T-13.06 (disabled-toolbar-button reason tooltips, P1) — small, self-
+  contained; good for a quick iteration after a heavy one.
+- T-13.10 (undo/redo toolbar buttons, P1) — buttons already work via
+  keyboard; this surfaces the same actions in the toolbar.
 
-Backlog (P1 notation conformance) status after T-13.24:
+Backlog (P1 notation conformance) status after T-13.26:
 - T-13.18 ✓, T-13.19 ✓, T-13.20 ✓, T-13.21 ✓, T-13.22 ✓,
-  T-13.23 ✓, T-13.24 ✓ (this iter, awaiting CI), T-13.25 ✓.
-  Remaining: T-13.26.
+  T-13.23 ✓, T-13.24 ✓, T-13.25 ✓, T-13.26 ✓. Tier CLOSED.

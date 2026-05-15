@@ -21,6 +21,8 @@ export interface ContainmentTreeRowMenuProps {
   readonly onCreateRepresentation: (option: RepresentationOption) => void;
   readonly onDuplicate: () => void;
   readonly onMoveToPackage: (packageId: ElementId) => void;
+  readonly open?: boolean;
+  readonly onOpenChange?: (open: boolean) => void;
 }
 
 export function ContainmentTreeRowMenu({
@@ -35,8 +37,23 @@ export function ContainmentTreeRowMenu({
   onCreateRepresentation,
   onDuplicate,
   onMoveToPackage,
+  open: controlledOpen,
+  onOpenChange,
 }: ContainmentTreeRowMenuProps): JSX.Element {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = useCallback(
+    (next: boolean | ((v: boolean) => boolean)) => {
+      const resolved =
+        typeof next === 'function' ? (next as (v: boolean) => boolean)(open) : next;
+      // Always mirror to internal state so closes from a controlled-open menu
+      // (e.g. Escape after the parent forced it open) cleanly fall back to
+      // closed when the parent releases control.
+      setInternalOpen(resolved);
+      onOpenChange?.(resolved);
+    },
+    [onOpenChange, open],
+  );
   const [createOpen, setCreateOpen] = useState(false);
   const [repOpen, setRepOpen] = useState(false);
   const [moveOpen, setMoveOpen] = useState(false);
@@ -47,7 +64,7 @@ export function ContainmentTreeRowMenu({
     setCreateOpen(false);
     setRepOpen(false);
     setMoveOpen(false);
-  }, []);
+  }, [setOpen]);
 
   useEffect(() => {
     if (!open) return;
@@ -75,7 +92,7 @@ export function ContainmentTreeRowMenu({
       document.removeEventListener('pointerdown', onPointerDown);
       document.removeEventListener('keydown', onKeyDown);
     };
-  }, [open]);
+  }, [open, setOpen]);
 
   const canCreateChild = childKinds.length > 0;
   const canCreateRepresentation = representations.length > 0;

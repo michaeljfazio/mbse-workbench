@@ -6,17 +6,31 @@ export interface ContainmentTreeDiagramRowMenuProps {
   readonly diagramId: DiagramId;
   readonly onRename: () => void;
   readonly onDelete: () => void;
+  readonly open?: boolean;
+  readonly onOpenChange?: (open: boolean) => void;
 }
 
 export function ContainmentTreeDiagramRowMenu({
   diagramId,
   onRename,
   onDelete,
+  open: controlledOpen,
+  onOpenChange,
 }: ContainmentTreeDiagramRowMenuProps): JSX.Element {
-  const [open, setOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = useCallback(
+    (next: boolean | ((v: boolean) => boolean)) => {
+      const resolved =
+        typeof next === 'function' ? (next as (v: boolean) => boolean)(open) : next;
+      setInternalOpen(resolved);
+      onOpenChange?.(resolved);
+    },
+    [onOpenChange, open],
+  );
   const rootRef = useRef<HTMLSpanElement>(null);
 
-  const close = useCallback(() => setOpen(false), []);
+  const close = useCallback(() => setOpen(false), [setOpen]);
 
   useEffect(() => {
     if (!open) return;
@@ -36,7 +50,7 @@ export function ContainmentTreeDiagramRowMenu({
       document.removeEventListener('pointerdown', onPointerDown);
       document.removeEventListener('keydown', onKeyDown);
     };
-  }, [open]);
+  }, [open, setOpen]);
 
   return (
     <span ref={rootRef} className="relative ml-1 inline-flex shrink-0">
