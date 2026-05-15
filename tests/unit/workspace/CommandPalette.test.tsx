@@ -361,4 +361,107 @@ describe('<CommandPalette /> (T-13.05a/b)', () => {
     );
     expect(useWorkspaceStore.getState().pendingRenameElementId).toBe(blockId);
   });
+
+  // ---- T-13.05c — Selection-scoped Create representation commands ----
+
+  it('with a PartDefinition selected on a diagram, empty palette lists Create BDD/IBD/Parametric representation', async () => {
+    await bootstrap();
+    const blockId = useWorkspaceStore.getState().createBlock({ x: 0, y: 0 });
+    expect(blockId).not.toBeNull();
+    useWorkspaceStore.getState().setActiveSurface('diagram');
+    useWorkspaceStore.getState().setSelection([blockId!]);
+
+    render(<CommandPalette onClose={() => {}} />);
+
+    expect(
+      screen.getByTestId(
+        'command-palette-command-selection.create-representation.bdd',
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByTestId(
+        'command-palette-command-selection.create-representation.ibd',
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByTestId(
+        'command-palette-command-selection.create-representation.parametric',
+      ),
+    ).toBeVisible();
+  });
+
+  it('selection-scoped commands disappear when selection is cleared', async () => {
+    await bootstrap();
+    const blockId = useWorkspaceStore.getState().createBlock({ x: 0, y: 0 });
+    expect(blockId).not.toBeNull();
+    useWorkspaceStore.getState().setActiveSurface('diagram');
+    useWorkspaceStore.getState().setSelection([blockId!]);
+
+    const { unmount } = render(<CommandPalette onClose={() => {}} />);
+    expect(
+      screen.getByTestId(
+        'command-palette-command-selection.create-representation.ibd',
+      ),
+    ).toBeVisible();
+    unmount();
+
+    useWorkspaceStore.getState().setSelection([]);
+    render(<CommandPalette onClose={() => {}} />);
+    expect(
+      screen.queryByTestId(
+        'command-palette-command-selection.create-representation.ibd',
+      ),
+    ).toBeNull();
+  });
+
+  it('clicking Create IBD representation creates an IBD anchored to the block and sets it active', async () => {
+    await bootstrap();
+    const blockId = useWorkspaceStore.getState().createBlock({ x: 0, y: 0 });
+    expect(blockId).not.toBeNull();
+    useWorkspaceStore.getState().setActiveSurface('diagram');
+    useWorkspaceStore.getState().setSelection([blockId!]);
+    useWorkspaceStore.getState().renameElement(blockId!, 'EnginePart');
+
+    const diagramsBefore = useWorkspaceStore.getState().diagrams.length;
+    const onClose = vi.fn();
+    render(<CommandPalette onClose={onClose} />);
+
+    fireEvent.click(
+      screen.getByTestId(
+        'command-palette-command-selection.create-representation.ibd',
+      ),
+    );
+
+    const { diagrams, activeDiagramId } = useWorkspaceStore.getState();
+    expect(diagrams.length).toBe(diagramsBefore + 1);
+    const created = diagrams.find((d) => d.id === activeDiagramId);
+    expect(created).toBeDefined();
+    expect(created!.viewpointId).toBe('ibd');
+    expect(created!.name).toBe('EnginePart IBD');
+    expect(created!.context).toEqual({
+      kind: 'partDefinition',
+      id: blockId,
+    });
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('typing "IBD" surfaces the selection-scoped IBD command in the unified ranked list', async () => {
+    await bootstrap();
+    const blockId = useWorkspaceStore.getState().createBlock({ x: 0, y: 0 });
+    expect(blockId).not.toBeNull();
+    useWorkspaceStore.getState().setActiveSurface('diagram');
+    useWorkspaceStore.getState().setSelection([blockId!]);
+
+    render(<CommandPalette onClose={() => {}} />);
+    fireEvent.change(screen.getByTestId('command-palette-input'), {
+      target: { value: 'IBD' },
+    });
+
+    const ibdCmd = screen.getByTestId(
+      'command-palette-command-selection.create-representation.ibd',
+    );
+    expect(ibdCmd).toBeVisible();
+    // Command-bias keeps the scoped command active on first render.
+    expect(ibdCmd).toHaveAttribute('data-active', 'true');
+  });
 });

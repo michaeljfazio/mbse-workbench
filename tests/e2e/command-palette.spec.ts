@@ -238,6 +238,57 @@ test.describe('Phase 12 slice D — Cmd-K command palette (issue #234)', () => {
     );
   });
 
+  test('T-13.05c — selecting a Block on the diagram surfaces Create representation commands; clicking IBD opens an anchored IBD', async ({
+    page,
+  }) => {
+    // First open: no selection → no scoped commands.
+    await page.keyboard.press('ControlOrMeta+k');
+    await expect(
+      page.getByTestId(
+        'command-palette-command-selection.create-representation.ibd',
+      ),
+    ).toHaveCount(0);
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('command-palette')).toHaveCount(0);
+
+    // Use the palette itself to select a block on the BDD — pressing Enter
+    // on a result calls navigate + setActiveSurface('diagram') + selects the
+    // element on the active diagram, which is the exact precondition the
+    // scoped commands key off.
+    await page.keyboard.press('ControlOrMeta+k');
+    await page.getByTestId('command-palette-input').fill('alpha');
+    await expect(
+      page.getByTestId('command-palette-result-cp-block-alpha'),
+    ).toBeVisible();
+    await page.keyboard.press('Enter');
+    await expect(page.getByTestId('command-palette')).toHaveCount(0);
+
+    // Reopen — the three accepted representations for PartDefinition appear.
+    await page.keyboard.press('ControlOrMeta+k');
+    await expect(
+      page.getByTestId(
+        'command-palette-command-selection.create-representation.bdd',
+      ),
+    ).toBeVisible();
+    const ibdCmd = page.getByTestId(
+      'command-palette-command-selection.create-representation.ibd',
+    );
+    await expect(ibdCmd).toBeVisible();
+    await expect(
+      page.getByTestId(
+        'command-palette-command-selection.create-representation.parametric',
+      ),
+    ).toBeVisible();
+
+    // Click → palette closes; the workspace switches to a freshly-created
+    // IBD whose tab carries the "<owner> IBD" name and is the active tab.
+    await ibdCmd.click();
+    await expect(page.getByTestId('command-palette')).toHaveCount(0);
+    const newTab = page.getByRole('tab', { name: /AlphaSystem IBD/ });
+    await expect(newTab).toBeVisible();
+    await expect(newTab).toHaveAttribute('aria-selected', 'true');
+  });
+
   test('@a11y palette has zero serious/critical axe violations', async ({
     page,
   }) => {

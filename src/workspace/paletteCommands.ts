@@ -1,11 +1,15 @@
 // Phase 13 / T-13.05a — Command-palette scaffold.
 // Phase 13 / T-13.05b — Scoring + unified ranked list + open-chat /
 // show-inspector / rename-selection commands.
+// Phase 13 / T-13.05c — Selection-scoped Create representation commands.
 //
 // The Cmd-K palette grew up as element-search-only (Phase 12 slice D). T-13.05a
 // introduced a typed command registry so the same palette can host actions
 // alongside element navigation; T-13.05b adds a small scoring helper so command
-// matches and element matches can be ranked against each other in one list.
+// matches and element matches can be ranked against each other in one list;
+// T-13.05c starts paying the typed-context dividend by emitting commands that
+// depend on the current selection (e.g. one "Create <Viewpoint> representation"
+// command per viewpoint accepted by the selected element's kind).
 //
 // Each command is pure metadata + two pure functions (`isEnabled`, `run`) that
 // consume a small `PaletteCommandContext`. The CommandPalette component
@@ -14,12 +18,20 @@
 // makes them trivially unit-testable without bootstrapping the store, and
 // keeps the API surface stable as future slices add more groups.
 
+import type { ModelElement } from '@/model';
+
+import {
+  acceptedRepresentations,
+  type RepresentationOption,
+} from './tree/representationAcceptance';
+
 export interface PaletteCommandContext {
   readonly canUndo: boolean;
   readonly canRedo: boolean;
   readonly hasDiagramSelection: boolean;
   readonly hasSingleDiagramSelection: boolean;
   readonly hasProject: boolean;
+  readonly selectionTargetElement: ModelElement | null;
   readonly undo: () => void;
   readonly redo: () => void;
   readonly save: () => void;
@@ -27,6 +39,7 @@ export interface PaletteCommandContext {
   readonly openChat: () => void;
   readonly showInspector: () => void;
   readonly renameSelection: () => void;
+  readonly createRepresentation: (option: RepresentationOption) => void;
 }
 
 export interface PaletteCommand {
@@ -192,4 +205,34 @@ export function scoreElementMatch(
     candidate.name,
     candidate.id,
   ]);
+}
+
+// T-13.05c — Selection-scoped commands. Generated per render from
+// `context.selectionTargetElement`. Currently emits one "Create <Viewpoint>
+// representation" command per option returned by `acceptedRepresentations`.
+// Each command's `isEnabled` is intentionally a constant `true`: the generator
+// already only emits commands for the active selection, so the palette doesn't
+// have to filter them by context again.
+export function selectionScopedCommands(
+  context: PaletteCommandContext,
+): readonly PaletteCommand[] {
+  const target = context.selectionTargetElement;
+  if (!target) return [];
+  const options = acceptedRepresentations(target.kind);
+  return options.map((option) => createRepresentationCommand(option));
+}
+
+function createRepresentationCommand(
+  option: RepresentationOption,
+): PaletteCommand {
+  return {
+    id: `selection.create-representation.${option.viewpointId}`,
+    label: `Create ${option.label} representation`,
+    description: 'New diagram anchored to the selected element',
+    keywords: ['diagram', 'new', 'create', option.viewpointId, option.label],
+    isEnabled: () => true,
+    run: (c) => {
+      c.createRepresentation(option);
+    },
+  };
 }
