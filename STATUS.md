@@ -6,15 +6,19 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 761
+- Iteration #: 762
 - Started: 2026-05-15
-- Branch: issue/323-header-saved-indicator (PR #324 pending;
-  auto-merge --squash; CI queued)
-- Working on: #323 — T-13.09 Dirty-state + 'saved at' indicator in
-  header. PR #322 (T-13.08 inline project-name rename) merged at
-  14:59:29Z as b746ce0, closing #321. Picked T-13.09 as the next
-  slice per iter-760's Next-action plan: remaining small P1
-  operator-UX item before the larger T-13.07 inspector restructure.
+- Branch: (none — idle, awaiting next pick)
+- Working on: (idle) PR #324 merged 949e707 at 15:37:11Z, closing
+  #323. T-13.09 ships. With T-13.05a–d, T-13.06, T-13.08, T-13.09,
+  and T-13.10 all in main, the only remaining P1 operator-UX item
+  is T-13.07 (Inspector contextual "+ New …" panel when nothing
+  selected). Next iteration picks T-13.07.
+
+## Iter-761 archive
+- Branch: issue/323-header-saved-indicator (PR #324 merged 949e707
+  at 15:37:11Z on 2026-05-15). Shipped T-13.09 — Dirty-state +
+  'saved at' indicator in header.
 
   New `<span data-testid="workspace-saved-indicator">` rendered in
   the right cluster of the header between the project-name area and
@@ -51,22 +55,18 @@ phase:13 — post-v1.0.0 polish + explorer rewrite
   (cold load shows "Saved" + `data-state=clean` + title matching
   `^Last saved `). Local check green: 1257/1257 unit pass (was
   1237; +20 net), tsc -b clean, eslint 0 errors (3 pre-existing
-  warnings unchanged), vite build clean. New e2e passes on
-  Chromium locally; CI will run it on Chromium + WebKit. Agent
-  visual inspection at `artifacts/iteration-761/header-saved-
-  clean.png` confirms the chip renders as a small muted-foreground
-  `text-xs` "Saved" element between the project name and the
-  API-key chip.
+  warnings unchanged), vite build clean.
 
-  Visual baseline drift expected: adding a ~50px chip to the
-  header's right cluster shifts the API-key chip and Save button
-  leftwards by ~58px (chip width + 8px gap). Any committed
-  `@visual` baseline captured with `fullPage: false` whose
-  viewport includes the header band will likely drift on this
-  PR. The chip text itself is stable, so this is a one-shot DOM
-  shift, not ongoing wall-clock instability. If CI flags any
-  baselines, refresh per the `docs/CONTEXT.md` 2026-05-12
-  lift-from-trace procedure.
+  Iter-761's first CI run (25925415344) failed on 3 `@visual`
+  baselines as anticipated by the +58px header right-cluster shift:
+  `requirements-coverage-populated-chromium`,
+  `activity-with-action-chromium`, `bdd-two-blocks-linked-webkit`.
+  All three use `fullPage: false` so the new chip lands inside the
+  captured viewport. Iter-762 caught the drift via the
+  docs/CONTEXT.md 2026-05-12 lift-from-trace procedure (commit
+  b215d1f — "chore(visual): refresh 3 baselines for header saved-
+  indicator chip"); CI run 25926117940 came back green and PR
+  auto-merged at 15:37:11Z.
 
 ## Iter-760 archive
 - Branch: issue/321-header-project-rename (PR #322 merged b746ce0
@@ -1157,25 +1157,22 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
-Wait for PR #324 (T-13.09 Dirty-state + 'saved at' indicator) CI.
-Visual baseline drift is expected from the ~58px leftward shift of
-the right-cluster controls (chip width + gap) — any committed
-`@visual` baseline whose viewport includes the header band may
-drift. If CI flags drift, refresh per the docs/CONTEXT.md 2026-05-12
-lift-from-trace procedure. After this merges, the only remaining
-P1 operator-UX item is:
+Pick **T-13.07** — Inspector contextual "+ New …" panel when
+nothing selected. Bigger slice than the T-13.05–.10 cluster: the
+empty inspector currently shows just "Select something on the
+diagram to edit its properties." T-13.07 replaces that placeholder
+with the palette-accepted creation affordances for the active
+viewpoint, so an operator with nothing selected can still create
+the first element via the inspector. Worth opening a design issue
+first if the inspector restructure surface looks larger than a
+single PR — palette and inspector both consume the active
+viewpoint's accepted-kinds list today; T-13.07 should ride on top
+of `acceptedElementKinds(viewpointId)` without forking it.
 
-- **T-13.07** Inspector contextual "+ New …" panel when nothing
-  selected — bigger slice; unblocks the empty-inspector state by
-  surfacing palette-accepted creation affordances in the inspector.
-  Worth opening a design issue first if the inspector restructure
-  surface looks larger than expected.
-
-Recommended next slice after T-13.09 merges: **T-13.07**. With
-T-13.05a–d, T-13.06, T-13.08, T-13.09, and T-13.10 all in main,
-T-13.07 closes the P1 operator-UX tier and we can move on to the
-explorer cascade (T-13.29–.39) — most of which is the Phase-13
-gate's foundation.
+After T-13.07 closes the P1 operator-UX tier, the next live tier
+is the explorer cascade (T-13.29–.39) — the Phase-13 gate's
+foundation (schema migration, registry index, codemod readers,
+explicit root Package, discriminated DiagramContext).
 
 A recents-persistence pass for Cmd-K palette recents remains a future
 polish item (today's recents clear on reload). Out of scope for the
