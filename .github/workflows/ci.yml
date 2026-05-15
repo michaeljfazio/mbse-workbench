@@ -18,7 +18,12 @@ jobs:
   check:
     name: check
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # 60min cap (was 30) so a visual-baseline shake-out run that hits many
+    # @visual snapshot diffs still has time to retry (CI retries=2) and
+    # flush the playwright-report artifact before the job is cancelled.
+    # Without the report we can't apply the lift-from-trace rebaseline
+    # procedure in docs/CONTEXT.md.
+    timeout-minutes: 60
     steps:
       - name: Checkout
         uses: actions/checkout@v4

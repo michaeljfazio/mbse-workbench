@@ -6,10 +6,25 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 765
+- Iteration #: 766
 - Started: 2026-05-16
-- Branch: issue/330-diagram-tabs-open-close (PR pending)
-- Working on: #330 — T-13.37 Diagram tabs strip tracks "open" diagrams
+- Branch: issue/330-diagram-tabs-open-close (PR #331 open; first CI run
+  25933515121 cancelled at the 30-min job cap with E2E still running —
+  most likely tab-strip DOM diff caused many `@visual` specs to fail,
+  each retried 2× under `retries: 2` in `playwright.config.ts`,
+  blowing the wall clock. No `playwright-report` artifact was produced
+  because Playwright was SIGKILL'd before the HTML reporter flushed
+  (`gh api .../artifacts` returns `[]`). Without the report the
+  lift-from-trace rebaseline procedure in docs/CONTEXT.md cannot run.
+  Fix this iteration: bump `.github/workflows/ci.yml` job
+  `timeout-minutes` from 30 → 60 so a visual-shake-out run has room to
+  retry, complete, and upload the report. Next iteration: download the
+  fresh report, lift per-browser `*-actual.png` from
+  `data/<trace-hash>.zip` under each failing spec, commit as new
+  baselines, push. This is the routine post-T-13.16+17 procedure;
+  recent precedent is iter-759 (30 baselines refreshed for the toolbar
+  undo/redo growth) and iter-762 (3 baselines for header chip drift).
+- Previously working on (iter-765): #330 — T-13.37 Diagram tabs strip tracks "open" diagrams
   separately from the full diagram list. The containment tree is the
   authoritative master list of every diagram (rendered as `⌬`
   representation rows under each diagram's context element via
