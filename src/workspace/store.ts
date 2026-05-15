@@ -215,6 +215,12 @@ export interface WorkspaceState {
   readonly inspectorTab: InspectorTab;
   readonly storage: Storage | null;
   readonly modelVersion: number;
+  /** ISO timestamp of the most recent successful `saveProject()` (mirrors
+   * `project.modifiedAt` of that save). `null` before bootstrap completes. */
+  readonly lastSavedAt: string | null;
+  /** `bus.version()` snapshot at the moment of the most recent successful
+   * `saveProject()`. The dirty predicate is `modelVersion > lastSavedVersion`. */
+  readonly lastSavedVersion: number;
   readonly impactRootId: ElementId | null;
   readonly impactHighlightedIds: ReadonlySet<ElementId>;
   readonly impactHighlightedEdgeIds: ReadonlySet<EdgeId>;
@@ -503,6 +509,8 @@ const INITIAL_STATE: WorkspaceState = {
   inspectorTab: 'inspector',
   storage: null,
   modelVersion: 0,
+  lastSavedAt: null,
+  lastSavedVersion: 0,
   impactRootId: null,
   impactHighlightedIds: new Set<ElementId>(),
   impactHighlightedEdgeIds: new Set<EdgeId>(),
@@ -1025,6 +1033,8 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       rightPaneWidth: layout.rightPaneWidth,
       storage: storageInst,
       modelVersion: bus.version(),
+      lastSavedAt: project.modifiedAt,
+      lastSavedVersion: bus.version(),
       // Restore the most recent conversation as active so reloading shows history.
       activeConversationId: project.conversations.length > 0
         ? (project.conversations[project.conversations.length - 1]?.id ?? null)
@@ -1207,7 +1217,11 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       history: bus ? bus.getHistory() : project.history,
     };
     await repository.save(updated);
-    set({ project: updated });
+    set({
+      project: updated,
+      lastSavedAt: updated.modifiedAt,
+      lastSavedVersion: bus ? bus.version() : get().lastSavedVersion,
+    });
   },
 
   createBlock(position) {
