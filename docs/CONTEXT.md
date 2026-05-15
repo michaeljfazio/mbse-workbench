@@ -1137,3 +1137,15 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
   `tsc --noEmit`. Discovered on PR #228 where `additionalProperties` on
   `LLMToolDefinition.input_schema` and `memberIds` on union-Partial
   `update-element` patches passed `--noEmit` but failed `-b`.
+
+- 2026-05-15 (iter-747, PR #295): **`Upload Playwright report` infra
+  flakes are NOT test failures.** Symptom: the `check` job's final step
+  fails with `Unexpected token '<', "<!DOCTYPE "... is not valid JSON`
+  across all 5 upload retries, but the preceding `E2E tests` step
+  reports `N passed` cleanly. This is GitHub's artifact-storage backend
+  returning an HTML error page in place of JSON during `FinalizeArtifact`
+  — entirely a GitHub Actions infrastructure problem, unrelated to the
+  PR's code. Action: `gh run rerun <run-id> --failed` to rerun the
+  failed job at the same SHA; do NOT refresh visual baselines as if a
+  test failed. The tests already passed once. (Auto-merge will fire on
+  the green rerun without further commits.)
