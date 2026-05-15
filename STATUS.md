@@ -6,33 +6,38 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 735
+- Iteration #: 736
 - Started: 2026-05-15
-- Branch: issue/276-empty-state-explorer-cta (PR open, auto-merge pending)
-- Iter-735: PR #275 (T-13.35 filter bar) merged 65b464c at 03:20:18Z.
-  Shipped T-13.34 — wired the empty-state "New Block" and "New
-  Requirement" CTAs through the Containment-Tree create-child flow. New
-  store slot `pendingRenameElementId` + `setPendingRename` action; the
-  Containment Tree absorbs the pending id via a useEffect that
-  auto-expands ancestors, enters rename mode, scrolls into view, and
-  clears the pending flag. EmptyState now self-services New Block (=
-  createChildElement(rootId, 'PartDefinition', 'member', 'New Part
-  Definition') → setSelection → setPendingRename) and New Requirement
-  (= same, kind=Requirement, also setActiveSurface('requirements')).
-  Drops the `onNewBlock` prop in favour of an internal handler bound
-  to the store. Side-effect: T-13.03 ("New Requirement" dead-end) is
-  closed by the new flow — the CTA now produces an authored Requirement
-  ready to rename instead of dumping the user on an empty surface.
-  Cards gain a `disabled:` style for the no-project case; the two
-  create CTAs disable when project is null. 977/977 unit (+8 new: 1
-  store, 2 ContainmentTree, 5 EmptyState), tsc -b clean, lint clean
-  (0 errors, 4 pre-existing warnings), build clean. e2e
-  empty-state-error-boundary spec still green (5/5 chromium). Expected
-  CI drift: bdd-empty.png on chromium + webkit (card copy changed
-  from "Add the first part definition to the BDD." to "Adds a Part
-  Definition under the project root." and the requirement description
-  matches). Will refresh those two baselines from CI actuals once the
-  initial run reports the diff.
+- Branch: issue/280-store-move-element (PR #281 open, auto-merge enabled)
+- Iter-736: PR #277 (T-13.34) merged 1d2fdda; PR #279 (T-13.04 per-section
+  "+" affordances) merged 67642fc. Started T-13.36 (P0 gate item: drag-drop
+  move semantics for any container) — filed #280 + opened PR #281 for
+  the first slice, T-13.36a. Adds `moveElement(elementId, targetOwnerId):
+  boolean` to the workspace store. Resolves new `ownerRole` from the
+  same `acceptedChildKinds` table that powers the tree's Create-child
+  submenu; cycle guard up the ownerId chain; rejects unaccepted kinds,
+  no-op moves, and unknown ids; dispatches a single `update-element`
+  so undo is one step. Kept `moveElementBetweenPackages` distinct (ADR
+  0009 § 2 Package-in-Package rejection still wanted for the Package
+  canvas drop target). 9 new unit specs cover Package↔Package move +
+  undo, PortDefinition→PartDefinition (`ownerRole`=port),
+  ValueProperty→ActionDefinition (`ownerRole`=parameter), self-target
+  reject, cycle reject (Package→descendant), kind-not-accepted reject,
+  no-op reject, unknown-id reject, end-of-slot ownerIndex.
+  992/992 unit pass; tsc -b clean; lint clean (0 errors, 4 pre-existing
+  warnings); build clean. No UI changed → no visual baseline impact.
+  Next iter: T-13.36b — ContainmentTree drag source + drop target +
+  visual feedback + e2e walking the move end-to-end via real mouse
+  events.
+
+## Current iteration (archived 735 → 736)
+- Iteration #: 735
+- Branch: issue/276-empty-state-explorer-cta (PR #277 merged 1d2fdda;
+  follow-on PR #279 T-13.04 merged 67642fc)
+- Iter-735: Shipped T-13.34 (empty-state CTAs → explorer create-child +
+  pending-rename store slot). Side-effect: closed T-13.03. 977/977 unit
+  at the time of write. (Note: also covers iter-735→736 baseline drift —
+  bdd-empty.png on chromium + webkit refreshed in the PR #277 review pass.)
 
 ## Current iteration (archived 734 → 735)
 - Iteration #: 734
@@ -283,8 +288,9 @@ phase:13 — post-v1.0.0 polish + explorer rewrite
       T-13.31 — likely re-author against the new containment tree.
 
 ## Last test run
-- Command: pnpm typecheck && pnpm lint && pnpm test:unit && pnpm build && pnpm test:e2e (visual skipped on darwin per playwright.config grepInvert)
-- Result: PASS — 875 unit / 458 e2e
+- Command: pnpm typecheck && pnpm lint && pnpm test:unit && pnpm build
+- Result: PASS — 992 unit, tsc -b clean, lint clean, build clean
+- (e2e skipped this iter — store-only change, no UI surface affected)
 - Visual baselines: regenerated in podman/playwright:v1.48.2-jammy
   container (full suite via scripts/regen-baselines.sh +
   scripts/regen-chat-baselines.sh for the 8 chat specs that need the
@@ -351,8 +357,12 @@ Backlog (P0 — hierarchical Project Explorer foundations, decisions locked iter
       through createChildElement(rootId, …) + setPendingRename.
 
 Backlog (P1 — explorer features, JOURNAL iter-530):
-- T-13.35 Token-based filter bar (reuse commandPaletteSearch scorer).
-- T-13.36 Generalize drag-drop move semantics (any container, not just Package).
+- [x] T-13.35 Token-based filter bar — shipped iter-731 (#275).
+- T-13.36 Generalize drag-drop move semantics (any container, not just
+  Package). Promoted to P0 — gate item 4. Split into:
+  - [x] T-13.36a store action `moveElement` — PR #281 (iter-736).
+  - T-13.36b ContainmentTree drag source + drop target + visual
+    feedback + e2e (next iter).
 - T-13.37 Diagrams as representations (⌬ leaves under owning element).
 - T-13.38 Per-kind stereotype icons (lucide-react).
 - T-13.39 Stable URL fragments: #/element/<id>, #/diagram/<id>.
@@ -409,20 +419,26 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
-Wait for PR #276 (T-13.34 empty-state CTAs through the explorer) CI to
-merge. Expected drift: bdd-empty.png on chromium + webkit due to card
-copy changes; refresh from CI actuals when the first run reports it.
-Next P0 work (remaining in the explorer-foundation track):
-- T-13.04 Per-section "+" affordances on project-tree categories (also
-  the prerequisite for the flat-tree retirement — currently 13+ e2e
-  specs depend on `project-tree-group-<Kind>` drag-sources).
-- T-13.01 Diagram lifecycle UI (much of it has shipped via T-13.33c/d;
-  remaining bits live in the diagram tabs strip, not the explorer).
-- T-13.02 Project-tree right-click context menu — now mostly subsumed
-  by the explorer kebab menu (T-13.33a–d); revisit whether anything
-  beyond a right-click → kebab-menu shortcut is still wanted.
-- T-13.03 "New Requirement" dead-end — CLOSED by T-13.34 (CTA now
-  creates an authored Requirement + renames inline; surface still
-  switches to Requirements).
+Wait for PR #281 (T-13.36a moveElement) CI to merge. No visual baseline
+impact expected (store-only change). Next iter: T-13.36b — wire the
+ContainmentTree as a drag source / drop target for the new store
+action. Sketch:
+- Mark element rows draggable=true; set dataTransfer with element id.
+- Mark element rows as drop targets that call
+  `store.moveElement(draggedId, rowOwnerId)` on drop and reflect the
+  acceptance preview by toggling a hover class only when
+  `acceptedChildKinds(rowKind)` includes the dragged kind (cheap
+  pre-check matching the store action's reject path).
+- Playwright e2e covering: drag a PortDefinition from the project root
+  onto a PartDefinition row → verify it nests under the part with
+  ownerRole='port'; refresh page → state survives.
+- Forbid drop on diagram rows and the root self-drop.
+
+Remaining P0 work:
+- T-13.01 Diagram lifecycle UI — much shipped via T-13.33c/d; remaining
+  bits live in the diagram tabs strip, not the explorer.
+- T-13.02 Right-click context menu — mostly subsumed by the explorer
+  kebab menu (T-13.33a–d); revisit if a true right-click shortcut is
+  still wanted.
 P2 / deferred: #270 (T-13.33e Move to package / Duplicate, depends on
-T-13.36).
+T-13.36b landing first).
