@@ -215,6 +215,23 @@ test.describe('Use Case nodes + palette + inspector (issue #118)', () => {
     expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
   });
 
+  test('use-case node body is rendered as an SVG <ellipse> (Phase-13 gate invariant)', async ({
+    page,
+  }) => {
+    await gotoUseCase(page);
+    await page.getByTestId('toolbar-add-usecase').click();
+    const useCaseNode = page.locator('[data-use-case-node-kind="usecase"]').first();
+    await expect(useCaseNode).toBeVisible();
+    const ellipse = useCaseNode.locator('svg ellipse').first();
+    await expect(ellipse).toHaveCount(1);
+    const { rx, ry } = await ellipse.evaluate((el) => {
+      const e = el as SVGEllipseElement;
+      return { rx: e.rx.baseVal.value, ry: e.ry.baseVal.value };
+    });
+    expect(rx).toBeGreaterThan(0);
+    expect(ry).toBeGreaterThan(0);
+  });
+
   test('@visual use-case-with-actor-and-usecase baseline', async ({ page }) => {
     await gotoUseCase(page);
     await dragChipOntoCanvas(page, 'actor', { x: 160, y: 200 });
