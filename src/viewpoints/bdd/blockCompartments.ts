@@ -1,9 +1,11 @@
-import type {
-  ElementId,
-  ModelElement,
-  OwnerRole,
-  ValueLiteral,
-  ValueType,
+import {
+  formatConstraintExpression,
+  formatValuePropertySignature,
+  type ElementId,
+  type ModelElement,
+  type OwnerRole,
+  type ValueLiteral,
+  type ValueType,
 } from '@/model';
 
 export interface BddBlockCompartmentRegistry {
@@ -56,18 +58,15 @@ export function formatValuePropertyLabel(
   valueType: ValueType,
   defaultValue: ValueLiteral | undefined,
 ): string {
-  if (defaultValue === undefined) return `${name} : ${valueType}`;
-  const rendered =
-    typeof defaultValue === 'string' ? `"${defaultValue}"` : String(defaultValue);
-  return `${name} : ${valueType} = ${rendered}`;
+  return `${name} ${formatValuePropertySignature(valueType, defaultValue)}`;
 }
 
 export function formatConstraintUsageLabel(
   name: string,
   expression: string,
 ): string {
-  const trimmed = expression.trim();
-  return trimmed.length > 0 ? `${name} : ${trimmed}` : name;
+  const formatted = formatConstraintExpression(expression);
+  return formatted === null ? name : `${name} : ${formatted}`;
 }
 
 function capCompartment(

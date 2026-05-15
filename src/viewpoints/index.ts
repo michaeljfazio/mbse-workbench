@@ -229,7 +229,6 @@ export type {
 export {
   canonicalizeParametricConnection,
   ConstraintUsageNode,
-  formatValueDefault,
   isValidParametricConnection,
   PARAMETRIC_CONSTRAINT_USAGE_HEIGHT,
   PARAMETRIC_CONSTRAINT_USAGE_NODE_TYPE,

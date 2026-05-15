@@ -83,3 +83,9 @@ export type {
 } from './registry';
 
 export { createElementRegistry } from './registry';
+
+export {
+  formatConstraintExpression,
+  formatValueLiteral,
+  formatValuePropertySignature,
+} from './notation';
