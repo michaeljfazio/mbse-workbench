@@ -6,39 +6,59 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 744
+- Iteration #: 745
 - Started: 2026-05-15
 - Branch: issue/292-requirement-compartments (PR #293, auto-merge --squash
-  enabled, awaiting CI re-run 25904814805)
-- Working on: #292 — T-13.21 Requirement compartments. First CI run
-  25904289966 failed exactly as iter-743 predicted: 11 visual baselines
-  drifted from the RequirementNode compartment restructure. Lifted
-  actuals from the Playwright HTML report per the docs/CONTEXT.md
-  2026-05-12 lift-from-trace procedure (downloaded `playwright-report`
-  artifact, unzipped each `data/<trace>.zip`, parsed `test.trace` for
-  `*-actual.png` / `*-expected.png` sha1 pairs, cross-checked the
-  expected sha1 against `sha1sum tests/e2e/__screenshots__/...png` to
-  bind trace → committed baseline, copied `data/<actual-sha1>.png` over
-  the baseline). The 11 refreshed baselines:
+  enabled, awaiting CI re-run after baseline refresh push)
+- Working on: #292 — T-13.21 Requirement compartments. CI run 25904814805
+  on 0a1619f went green (the 11 requirement/trace baselines from iter-744
+  held). Auto-merge then synced main (merge commit 2d1ad21) and kicked
+  off CI run 25905256286. That run failed on exactly ONE baseline:
+  `bdd-two-blocks-linked-webkit.png` (3/3 attempts, all beyond
+  `maxDiffPixelRatio: 0.01`). This is the pre-existing edge-of-tolerance
+  baseline iter-742 flagged when T-13.18 landed (`STATUS.md` "Next
+  action" listed it as a non-gating follow-up). Unrelated to T-13.21 —
+  the BDD viewpoint does not render RequirementNode. The drift comes
+  from the post-T-13.16-contrast iter-721 baseline finally crossing the
+  threshold on this particular runner; iter-742 caught it as 2/4 flaky,
+  but the merge-with-main run was 0/3 stable beyond tolerance. Refreshed
+  the single webkit baseline from CI run 25905256286 actuals using the
+  docs/CONTEXT.md 2026-05-12 procedure:
+  - Downloaded `playwright-report` artifact via
+    `gh run download 25905256286 --name playwright-report --dir ...`
+  - Unzipped the single trace `data/178d2d4a….zip`, parsed `test.trace`
+    for `bdd-two-blocks-linked-{actual,expected,diff}.png` sha1s
+  - Cross-checked expected sha1 `cbe31ff…` against committed
+    `bdd-two-blocks-linked-webkit.png` (matched) — confirms the trace
+    belongs to webkit
+  - Copied `data/dbbf1b1….png` over the webkit baseline
+  Notable: this is the only failure this CI run. Chromium passed within
+  tolerance (no trace produced). The iter-744 prediction held for all
+  11 requirements/trace baselines (no further regen needed). Next iter:
+  push baseline-refresh commit, wait for CI to land PR #293, then move
+  to the next Phase-13 task.
+
+## Current iteration (archived 744 → 745)
+- Iteration #: 744
+- Branch: issue/292-requirement-compartments (CI re-run 25904814805 on
+  0a1619f passed; auto-merge synced main to 2d1ad21)
+- Iter-744: First CI run 25904289966 failed exactly as iter-743 predicted:
+  11 visual baselines drifted from the RequirementNode compartment
+  restructure. Lifted actuals from the Playwright HTML report
+  (`playwright-report` artifact, `data/<trace>.zip` → `test.trace` →
+  `*-actual.png` sha1, cross-checked expected sha1 against
+  `sha1sum tests/e2e/__screenshots__/...png`). The 11 refreshed:
   - requirements-create-and-edit.spec.ts:
     requirements-one-requirement-{chromium,webkit},
     requirements-three-requirements-{chromium,webkit},
     inspector-requirement-selected-{chromium,webkit}
   - requirements-trace-create.spec.ts:
     requirements-four-traces-{chromium,webkit},
-    requirements-trace-kind-popover-chromium (webkit passed within
-    tolerance — only chromium drifted there),
+    requirements-trace-kind-popover-chromium (webkit within tolerance),
     inspector-trace-edge-selected-{chromium,webkit}
-  Notable: the predicted phase-4/10/12 + final-gate baselines did NOT
-  drift — the existing `maxDiffPixelRatio: 0.01` tolerance absorbed the
-  small visual deltas at those viewport scales where each requirement
-  occupies less of the frame. Drift was localized to the
-  requirements-surface and cross-diagram-trace specs where requirement
-  nodes are foregrounded. Commit 0a1619f (`test(visual): refresh 11
-  requirements/trace baselines from CI actuals (T-13.21)`) pushed to
-  the PR branch; CI re-run 25904814805 queued. Next iter: monitor CI;
-  expect green, merge via auto-merge, then update status to the next
-  Phase-13 task.
+  Predicted phase-4/10/12 + final-gate baselines did NOT drift — the
+  0.01 tolerance absorbed the small viewport-scale deltas. Commit
+  0a1619f pushed; CI re-run 25904814805 green.
 
 ## Current iteration (archived 743 → 744)
 - Iteration #: 743
@@ -654,22 +674,17 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
-Wait for PR #293 (T-13.21) CI. Likely path: visual baselines drift on
-the three requirements specs (one-requirement, three-requirements,
-inspector-requirement-selected) on both chromium + webkit, plus any
-phase-4/10/12 + final-gate snapshot whose viewport includes a
-requirement node. Lift `*-actual.png` from `data/<trace-hash>.zip`
-test.trace per docs/CONTEXT.md 2026-05-12 procedure, push the
-refreshed baselines on the same branch, let auto-merge land.
+Wait for PR #293 (T-13.21) CI on the iter-745 baseline-refresh push.
+Only the webkit BDD baseline was refreshed; chromium and all
+requirements/trace baselines from iter-744 are unchanged, so the
+expected outcome is a clean green run that lets auto-merge land.
 
 Once PR #293 lands, pick the next Phase-13 backlog item:
 - T-13.20 IBD enclosing-block frame — render the
   `diagram.context.partDefinition.id` block as a labeled rectangle
   enclosing all PartUsage nodes. Required post-T-13.30, no schema work.
 - T-13.05 Cmd-K command palette — biggest P1 discoverability gap.
-- (Lower) BDD `bdd-two-blocks-linked.png` baseline-refresh follow-up —
-  iter-742 observed 2/4 flaky on chromium + webkit (pre-existing edge-
-  of-tolerance from iter-721). Worth a CI-actuals lift when picking up
-  any nearby BDD work, otherwise non-gating.
+The BDD `bdd-two-blocks-linked-webkit.png` follow-up listed in
+iter-742's "Next action" is now done (refreshed iter-745).
 Remaining P0 (UI-unreachable): T-13.01 / T-13.02 mostly subsumed by
 the explorer rewrite.

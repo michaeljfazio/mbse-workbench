@@ -93,6 +93,58 @@ describe('RequirementNode', () => {
     ).toHaveTextContent('approved');
   });
 
+  it('renders the «requirement» stereotype line above the name', () => {
+    renderRequirement(
+      {
+        elementId,
+        name: 'Stop on red',
+        reqId: 'R-001',
+        text: 'shall stop',
+        priority: 'high',
+        status: 'approved',
+      },
+      onRename,
+    );
+    const stereotype = screen.getByTestId(
+      `requirements-req-stereotype-${elementId}`,
+    );
+    expect(stereotype).toHaveTextContent('«requirement»');
+    // Stereotype appears before the name in DOM order.
+    const name = screen.getByTestId(`requirements-req-name-${elementId}`);
+    expect(
+      stereotype.compareDocumentPosition(name) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it('renders per-compartment labels (id / text / priority / status)', () => {
+    renderRequirement(
+      {
+        elementId,
+        name: 'X',
+        reqId: 'R',
+        text: 'y',
+        priority: 'medium',
+        status: 'draft',
+      },
+      onRename,
+    );
+    expect(
+      screen.getByTestId(`requirements-compartment-label-id-${elementId}`),
+    ).toHaveTextContent(/^id$/i);
+    expect(
+      screen.getByTestId(`requirements-compartment-label-text-${elementId}`),
+    ).toHaveTextContent(/^text$/i);
+    expect(
+      screen.getByTestId(
+        `requirements-compartment-label-priority-${elementId}`,
+      ),
+    ).toHaveTextContent(/^priority$/i);
+    expect(
+      screen.getByTestId(`requirements-compartment-label-status-${elementId}`),
+    ).toHaveTextContent(/^status$/i);
+  });
+
   it('falls back to em-dash when reqId is undefined', () => {
     renderRequirement(
       {
