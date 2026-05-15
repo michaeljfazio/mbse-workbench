@@ -109,6 +109,9 @@ export function ContainmentTree(): JSX.Element {
   const [renamingDiagramId, setRenamingDiagramId] = useState<DiagramId | null>(
     null,
   );
+  const [contextMenuOpenKey, setContextMenuOpenKey] = useState<FocusKey | null>(
+    null,
+  );
 
   const beginRename = useCallback((id: ElementId) => {
     setRenamingId(id);
@@ -652,6 +655,8 @@ export function ContainmentTree(): JSX.Element {
               onDragOver: handleElementDragOver,
               onDragLeave: handleElementDragLeave,
               onDrop: handleElementDrop,
+              contextMenuOpenKey,
+              setContextMenuOpenKey,
             })
           : renderDiagramRow(row, row.node.diagram, {
               focusKey,
@@ -665,6 +670,8 @@ export function ContainmentTree(): JSX.Element {
               commitDiagramRename,
               cancelDiagramRename,
               requestDiagramDelete,
+              contextMenuOpenKey,
+              setContextMenuOpenKey,
             }),
       )}
       </div>
@@ -712,6 +719,8 @@ interface ElementRowContext {
     event: DragEvent<HTMLDivElement>,
     target: ModelElement,
   ) => void;
+  readonly contextMenuOpenKey: FocusKey | null;
+  readonly setContextMenuOpenKey: (key: FocusKey | null) => void;
 }
 
 function renderElementRow(
@@ -758,6 +767,12 @@ function renderElementRow(
       onDragOver={(e) => ctx.onDragOver(e, element)}
       onDragLeave={(e) => ctx.onDragLeave(e, element)}
       onDrop={(e) => ctx.onDrop(e, element)}
+      onContextMenu={(e) => {
+        if (isRenaming) return;
+        e.preventDefault();
+        e.stopPropagation();
+        ctx.setContextMenuOpenKey(row.key);
+      }}
       style={{ paddingLeft: `${row.depth * 12 + 4}px` }}
       className={`group flex cursor-pointer select-none items-center gap-1 rounded px-1 py-1 text-sm text-foreground hover:bg-accent focus:outline-none focus:ring-1 focus:ring-primary ${
         isSelected ? 'bg-primary/10' : ''
@@ -812,6 +827,12 @@ function renderElementRow(
           onMoveToPackage={(packageId) =>
             ctx.requestMoveToPackage(element.id, packageId)
           }
+          open={ctx.contextMenuOpenKey === row.key ? true : undefined}
+          onOpenChange={(o) => {
+            if (!o && ctx.contextMenuOpenKey === row.key) {
+              ctx.setContextMenuOpenKey(null);
+            }
+          }}
         />
       ) : null}
     </div>
@@ -880,6 +901,8 @@ interface DiagramRowContext {
   readonly commitDiagramRename: (id: DiagramId, name: string) => void;
   readonly cancelDiagramRename: () => void;
   readonly requestDiagramDelete: (id: DiagramId) => void;
+  readonly contextMenuOpenKey: FocusKey | null;
+  readonly setContextMenuOpenKey: (key: FocusKey | null) => void;
 }
 
 function renderDiagramRow(
@@ -908,6 +931,12 @@ function renderDiagramRow(
         ctx.focusItem(row.key);
         ctx.handleActivate(row);
       }}
+      onContextMenu={(e) => {
+        if (isRenaming) return;
+        e.preventDefault();
+        e.stopPropagation();
+        ctx.setContextMenuOpenKey(row.key);
+      }}
       style={{ paddingLeft: `${row.depth * 12 + 4}px` }}
       className={`group flex cursor-pointer select-none items-center gap-1 rounded px-1 py-1 text-sm text-foreground/90 hover:bg-accent focus:outline-none focus:ring-1 focus:ring-primary ${
         isActive ? 'bg-primary/10 font-medium' : ''
@@ -934,6 +963,12 @@ function renderDiagramRow(
           diagramId={diagram.id}
           onRename={() => ctx.beginDiagramRename(diagram.id)}
           onDelete={() => ctx.requestDiagramDelete(diagram.id)}
+          open={ctx.contextMenuOpenKey === row.key ? true : undefined}
+          onOpenChange={(o) => {
+            if (!o && ctx.contextMenuOpenKey === row.key) {
+              ctx.setContextMenuOpenKey(null);
+            }
+          }}
         />
       ) : null}
     </div>
