@@ -222,6 +222,11 @@ export interface WorkspaceState {
   readonly activeConversationId: string | null;
   readonly pendingProposals: readonly ProposedChange[];
   readonly importError: ParseError | null;
+  /** Element queued to enter inline rename in the Containment Tree on its
+   * next render. Set by tree-external flows (e.g. the empty-state CTAs)
+   * after creating a new child; the tree consumes it and clears via
+   * setPendingRename(null). */
+  readonly pendingRenameElementId: ElementId | null;
 }
 
 export type ActiveSurfaceKind = 'diagram' | 'requirements';
@@ -424,6 +429,7 @@ export interface WorkspaceActions {
     | { readonly ok: false; readonly message: string }
   >;
   clearImportError(): void;
+  setPendingRename(id: ElementId | null): void;
 }
 
 export type WorkspaceStore = WorkspaceState & WorkspaceActions;
@@ -458,6 +464,7 @@ const INITIAL_STATE: WorkspaceState = {
   activeConversationId: null,
   pendingProposals: [],
   importError: null,
+  pendingRenameElementId: null,
 };
 
 /**
@@ -1049,6 +1056,10 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
 
   setSelection(ids) {
     set({ selectedElementIds: Array.from(ids) });
+  },
+
+  setPendingRename(id) {
+    set({ pendingRenameElementId: id });
   },
 
   setLeftPaneWidth(px) {

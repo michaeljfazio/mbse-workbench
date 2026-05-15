@@ -92,6 +92,10 @@ export function ContainmentTree(): JSX.Element {
   const setActiveDiagramAction = useWorkspaceStore((s) => s.setActiveDiagram);
   const renameDiagramAction = useWorkspaceStore((s) => s.renameDiagram);
   const deleteDiagramAction = useWorkspaceStore((s) => s.deleteDiagram);
+  const pendingRenameElementId = useWorkspaceStore(
+    (s) => s.pendingRenameElementId,
+  );
+  const setPendingRename = useWorkspaceStore((s) => s.setPendingRename);
 
   const [renamingId, setRenamingId] = useState<ElementId | null>(null);
   const [renamingDiagramId, setRenamingDiagramId] = useState<DiagramId | null>(
@@ -450,6 +454,27 @@ export function ContainmentTree(): JSX.Element {
     ancestorsOfElement,
     expandAncestors,
     scrollKeyIntoView,
+  ]);
+
+  useEffect(() => {
+    if (!pendingRenameElementId) return;
+    if (!elementsById.has(pendingRenameElementId)) {
+      // Pending rename references an element that no longer exists (e.g.
+      // creation failed or was undone). Drop it so we don't loop.
+      setPendingRename(null);
+      return;
+    }
+    expandAncestors(ancestorsOfElement(pendingRenameElementId));
+    setRenamingId(pendingRenameElementId);
+    scrollKeyIntoView(elKey(pendingRenameElementId));
+    setPendingRename(null);
+  }, [
+    pendingRenameElementId,
+    elementsById,
+    ancestorsOfElement,
+    expandAncestors,
+    scrollKeyIntoView,
+    setPendingRename,
   ]);
 
   const filterInput = (

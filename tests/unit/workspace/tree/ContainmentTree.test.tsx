@@ -240,6 +240,46 @@ describe('<ContainmentTree />', () => {
     });
   });
 
+  it('pendingRenameElementId: enters rename mode and clears the pending flag (T-13.34)', async () => {
+    await bootstrap();
+    const a = useWorkspaceStore.getState().createBlock()!;
+
+    render(<ContainmentTree />);
+    expect(
+      screen.queryByTestId(`containment-tree-element-rename-${a}`),
+    ).toBeNull();
+
+    act(() => {
+      useWorkspaceStore.getState().setPendingRename(a);
+    });
+
+    expect(
+      await screen.findByTestId(`containment-tree-element-rename-${a}`),
+    ).toBeInTheDocument();
+    await waitFor(() => {
+      expect(useWorkspaceStore.getState().pendingRenameElementId).toBeNull();
+    });
+  });
+
+  it('pendingRenameElementId: missing element id is dropped without entering rename (T-13.34)', async () => {
+    await bootstrap();
+
+    render(<ContainmentTree />);
+
+    act(() => {
+      useWorkspaceStore.getState().setPendingRename(
+        'never-existed' as ElementId,
+      );
+    });
+
+    await waitFor(() => {
+      expect(useWorkspaceStore.getState().pendingRenameElementId).toBeNull();
+    });
+    expect(
+      screen.queryByTestId('containment-tree-element-rename-never-existed'),
+    ).toBeNull();
+  });
+
   it('Enter on an element row selects it', async () => {
     await bootstrap();
     const a = useWorkspaceStore.getState().createBlock()!;
