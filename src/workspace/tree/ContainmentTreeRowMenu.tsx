@@ -3,31 +3,38 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ElementId } from '@/model';
 
 import type { ChildKindOption } from './childAcceptance';
+import type { RepresentationOption } from './representationAcceptance';
 
 export interface ContainmentTreeRowMenuProps {
   readonly elementId: ElementId;
   readonly canDelete: boolean;
   readonly childKinds: readonly ChildKindOption[];
+  readonly representations: readonly RepresentationOption[];
   readonly onRename: () => void;
   readonly onDelete: () => void;
   readonly onCreateChild: (option: ChildKindOption) => void;
+  readonly onCreateRepresentation: (option: RepresentationOption) => void;
 }
 
 export function ContainmentTreeRowMenu({
   elementId,
   canDelete,
   childKinds,
+  representations,
   onRename,
   onDelete,
   onCreateChild,
+  onCreateRepresentation,
 }: ContainmentTreeRowMenuProps): JSX.Element {
   const [open, setOpen] = useState(false);
   const [createOpen, setCreateOpen] = useState(false);
+  const [repOpen, setRepOpen] = useState(false);
   const rootRef = useRef<HTMLSpanElement>(null);
 
   const closeAll = useCallback(() => {
     setOpen(false);
     setCreateOpen(false);
+    setRepOpen(false);
   }, []);
 
   useEffect(() => {
@@ -38,12 +45,14 @@ export function ContainmentTreeRowMenu({
       if (event.target instanceof Node && !root.contains(event.target)) {
         setOpen(false);
         setCreateOpen(false);
+        setRepOpen(false);
       }
     }
     function onKeyDown(event: KeyboardEvent): void {
       if (event.key === 'Escape') {
         setOpen(false);
         setCreateOpen(false);
+        setRepOpen(false);
       }
     }
     document.addEventListener('pointerdown', onPointerDown);
@@ -55,6 +64,7 @@ export function ContainmentTreeRowMenu({
   }, [open]);
 
   const canCreateChild = childKinds.length > 0;
+  const canCreateRepresentation = representations.length > 0;
 
   return (
     <span ref={rootRef} className="relative ml-1 inline-flex shrink-0">
@@ -136,6 +146,50 @@ export function ContainmentTreeRowMenu({
                     e.stopPropagation();
                     closeAll();
                     onCreateChild(option);
+                  }}
+                  className="block w-full px-3 py-2 text-left text-foreground transition hover:bg-accent"
+                >
+                  {option.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
+          {canCreateRepresentation ? (
+            <button
+              type="button"
+              role="menuitem"
+              aria-haspopup="menu"
+              aria-expanded={repOpen}
+              data-testid={`containment-tree-element-menu-create-representation-${elementId}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                setRepOpen((v) => !v);
+              }}
+              className="flex w-full items-center justify-between px-3 py-2 text-left text-foreground transition hover:bg-accent"
+            >
+              <span>Create representation…</span>
+              <span aria-hidden="true" className="text-foreground/60">
+                ▸
+              </span>
+            </button>
+          ) : null}
+          {repOpen && canCreateRepresentation ? (
+            <div
+              role="menu"
+              aria-label="Create representation"
+              data-testid={`containment-tree-element-menu-create-representation-list-${elementId}`}
+              className="border-t border-border bg-card"
+            >
+              {representations.map((option) => (
+                <button
+                  key={option.viewpointId + ':' + option.contextKind}
+                  type="button"
+                  role="menuitem"
+                  data-testid={`containment-tree-element-menu-representation-${option.viewpointId}-${elementId}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    closeAll();
+                    onCreateRepresentation(option);
                   }}
                   className="block w-full px-3 py-2 text-left text-foreground transition hover:bg-accent"
                 >

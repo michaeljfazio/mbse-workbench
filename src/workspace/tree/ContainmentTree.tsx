@@ -18,6 +18,10 @@ import {
   type ContainmentTreeNode,
 } from './buildContainmentTree';
 import { acceptedChildKinds, type ChildKindOption } from './childAcceptance';
+import {
+  acceptedRepresentations,
+  type RepresentationOption,
+} from './representationAcceptance';
 import { ContainmentTreeRowMenu } from './ContainmentTreeRowMenu';
 
 type FocusKey = `el:${ElementId}` | `dg:${DiagramId}`;
@@ -78,6 +82,8 @@ export function ContainmentTree(): JSX.Element {
   const renameElementAction = useWorkspaceStore((s) => s.renameElement);
   const deleteElementAction = useWorkspaceStore((s) => s.deleteElement);
   const createChildElementAction = useWorkspaceStore((s) => s.createChildElement);
+  const createDiagramAction = useWorkspaceStore((s) => s.createDiagram);
+  const setActiveDiagramAction = useWorkspaceStore((s) => s.setActiveDiagram);
 
   const [renamingId, setRenamingId] = useState<ElementId | null>(null);
 
@@ -143,6 +149,29 @@ export function ContainmentTree(): JSX.Element {
     for (const d of diagrams) m.set(d.id, d);
     return m;
   }, [diagrams]);
+
+  const requestCreateRepresentation = useCallback(
+    (ownerId: ElementId, option: RepresentationOption) => {
+      const owner = elementsById.get(ownerId);
+      if (!owner) return;
+      const ownerName = owner.name.length > 0 ? owner.name : owner.kind;
+      const name = `${ownerName} ${option.label}`;
+      const newId = createDiagramAction(option.viewpointId, {
+        name,
+        context: { kind: option.contextKind, id: ownerId },
+      });
+      if (!newId) return;
+      setActiveDiagramAction(newId);
+      setCollapsed((prev) => {
+        const key = elKey(ownerId);
+        if (!prev.has(key)) return prev;
+        const next = new Set(prev);
+        next.delete(key);
+        return next;
+      });
+    },
+    [createDiagramAction, elementsById, setActiveDiagramAction],
+  );
 
   const ancestorsOfElement = useCallback(
     (id: ElementId): ElementId[] => {
@@ -413,6 +442,7 @@ export function ContainmentTree(): JSX.Element {
               cancelRename,
               requestDelete,
               requestCreateChild,
+              requestCreateRepresentation,
             })
           : renderDiagramRow(row, row.node.diagram, {
               focusKey,
@@ -442,6 +472,10 @@ interface ElementRowContext {
   readonly cancelRename: () => void;
   readonly requestDelete: (id: ElementId) => void;
   readonly requestCreateChild: (ownerId: ElementId, option: ChildKindOption) => void;
+  readonly requestCreateRepresentation: (
+    ownerId: ElementId,
+    option: RepresentationOption,
+  ) => void;
 }
 
 function renderElementRow(
@@ -515,9 +549,13 @@ function renderElementRow(
           elementId={element.id}
           canDelete={canDelete}
           childKinds={acceptedChildKinds(element.kind)}
+          representations={acceptedRepresentations(element.kind)}
           onRename={() => ctx.beginRename(element.id)}
           onDelete={() => ctx.requestDelete(element.id)}
           onCreateChild={(option) => ctx.requestCreateChild(element.id, option)}
+          onCreateRepresentation={(option) =>
+            ctx.requestCreateRepresentation(element.id, option)
+          }
         />
       ) : null}
     </div>
