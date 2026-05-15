@@ -93,6 +93,7 @@ import {
   type NodePosition,
 } from './diagram';
 import { computeImpactSet } from './impact/impact-set';
+import { acceptedChildKinds } from './tree/childAcceptance';
 import { parseSysmlText, type ParseError } from '@/parser';
 import { parseProjectJson } from './jsonProject';
 import type { ProposalResolution } from '@/llm';
@@ -397,6 +398,22 @@ export interface WorkspaceActions {
     elementId: ElementId,
     targetPackageId: ElementId,
   ): boolean;
+  /**
+   * Generalized container move. Re-owns `elementId` under `targetOwnerId`,
+   * resolving the new `ownerRole` from the containment-acceptance table
+   * (`acceptedChildKinds(target.kind)` — the same table that drives the
+   * tree's Create-child submenu). Returns `false` when:
+   *   - either id is unknown,
+   *   - target === element,
+   *   - target is a descendant of element (cycle),
+   *   - target does not accept the element's kind,
+   *   - the element is already at `(targetOwnerId, resolvedRole)`.
+   *
+   * Distinct from `moveElementBetweenPackages`, which keeps the ADR-0009
+   * Package-in-Package rejection used by the Package canvas drop target.
+   * The generalized form is the one used by the Containment Tree.
+   */
+  moveElement(elementId: ElementId, targetOwnerId: ElementId): boolean;
   undo(): void;
   redo(): void;
   setActiveConversation(id: string | null): void;
@@ -2396,6 +2413,52 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
           ownerId: targetPackageId,
           ownerRole: 'member' as OwnerRole,
           ownerIndex: nextOwnerIndex(elements, targetPackageId, 'member'),
+        },
+      },
+      user,
+    );
+    return true;
+  },
+
+  moveElement(elementId, targetOwnerId) {
+    const { bus, user, registry, elements } = get();
+    if (!bus || !user || !registry) return false;
+    if (elementId === targetOwnerId) return false;
+    const element = registry.get(elementId);
+    const target = registry.get(targetOwnerId);
+    if (!element || !target) return false;
+
+    // Cycle guard: target must not be a descendant of element.
+    {
+      let cursor: ModelElement | undefined = target;
+      const seen = new Set<ElementId>();
+      while (cursor && cursor.ownerId && !seen.has(cursor.ownerId)) {
+        if (cursor.ownerId === elementId) return false;
+        seen.add(cursor.ownerId);
+        cursor = registry.get(cursor.ownerId);
+      }
+    }
+
+    // Resolve ownerRole from the containment-acceptance table for target.kind.
+    const option = acceptedChildKinds(target.kind).find(
+      (o) => o.kind === element.kind,
+    );
+    if (!option) return false;
+    const role = option.ownerRole;
+
+    // No-op when already at the resolved owner+role.
+    if (element.ownerId === targetOwnerId && element.ownerRole === role) {
+      return false;
+    }
+
+    bus.dispatch(
+      {
+        kind: 'update-element',
+        id: elementId,
+        patch: {
+          ownerId: targetOwnerId,
+          ownerRole: role,
+          ownerIndex: nextOwnerIndex(elements, targetOwnerId, role),
         },
       },
       user,
