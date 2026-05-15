@@ -6,33 +6,47 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 747
+- Iteration #: 748
 - Started: 2026-05-15
-- Branch: main (PR #295 merged 63a910a, issue #294 closed)
-- Iter-747: PR #295 (T-13.20 IBD enclosing-block frame) merged 63a910a
-  via CI rerun. First run on 80b34aa: all 578 e2e tests passed (no
-  visual baseline drift! `maxDiffPixelRatio: 0.01` absorbed the frame
-  z-index:-1 background-only addition on every IBD spec on both
-  chromium + webkit). However the `Upload Playwright report` step
-  failed with a GitHub artifact-storage flake: `Unexpected token '<',
-  "<!DOCTYPE "... is not valid JSON` across 5 retries — GitHub's
-  upload backend returned an HTML error page in place of JSON. Job
-  conclusion = failure, so auto-merge held off. Used
-  `gh run rerun 25906574923 --failed` to rerun the failed job; second
-  run (same SHA 80b34aa) finished `success` and auto-merge --squash
-  landed the PR. Issue #294 closed at 08:25:33Z. Lesson: artifact
-  upload flakes are transient infra; rerun rather than refreshing
-  baselines that aren't actually drifting. Earlier-iter prediction
-  (up to 14 IBD baselines need refresh) did not materialise — same
-  lucky outcome as T-13.18 (iter-742) where the change was small
-  enough in pixel terms to stay inside tolerance.
-
-  PR #293 (T-13.21 Requirement compartments) merged on the iter-745
-  webkit-BDD baseline refresh earlier this iter — CI run 25905779167
-  on 5f90513 went green at 07:30:59Z and auto-merge --squash landed it;
-  issue #292 closed.
-
-  Shipped this iter — T-13.20 — IBD enclosing-block frame. New module
+- Branch: issue/297-bdd-block-compartments (PR #298, auto-merge --squash
+  enabled 08:37:46Z; rebased onto main this iter to clear STATUS.md
+  conflict with iter-747's status commit 80107a2)
+- Iter-748: PR #298 (T-13.19 BDD block compartments) first CI run
+  25908534051 on aaff339 came back red at 08:48:08Z with exactly the
+  drift profile iter-747 anticipated — 9 @visual baselines crossed
+  the `maxDiffPixelRatio: 0.01` threshold from BlockNode's new
+  compartment DOM (header + parts + ports + values + constraints
+  rows expand vertical span ~25-30%): bdd-three-blocks-autolayout
+  (chromium + webkit), bdd-two-blocks-linked (chromium only —
+  webkit edge-of-tolerance was already refreshed iter-745),
+  cross-diagram-trace inspector-block-with-trace-link + trace-link-popover
+  (chromium only — both popover-overlay-on-block specs),
+  inspector-block-selected (chromium + webkit), and
+  project-tree-populated (chromium + webkit — explorer kind badge
+  + block-row width co-shift). One flaky non-gating phase-6-gate
+  state-machine inspector-transition timeout (chromium only,
+  unrelated). Refreshed all 9 baselines from CI run 25908534051
+  actuals using the docs/CONTEXT.md 2026-05-12 lift-from-trace
+  procedure: downloaded `playwright-report` via `gh run download
+  --name playwright-report`, walked `data/*.zip` test.trace files
+  to extract per-name {actual,expected} sha1s, cross-checked
+  expected sha1 against committed PNG via `shasum` to disambiguate
+  chromium vs webkit traces, copied 9 `data/<actual-sha1>.png`
+  files over the baselines. Commit pushed; after iter-747's STATUS
+  commit landed on main (80107a2), branch was CONFLICTING — rebased
+  onto origin/main this iter and force-pushed to re-arm CI.
+- Iter-747 archive: shipped T-13.20 — IBD enclosing-block frame
+  (PR #295 → squash 63a910a). Notable: first CI run on 80b34aa had
+  all 578 e2e green (frame z-index:-1 + small pixel footprint stayed
+  inside `maxDiffPixelRatio: 0.01` on every IBD spec on chromium AND
+  webkit), but the `Upload Playwright report` step failed with a
+  GitHub artifact-storage flake — `Unexpected token '<', "<!DOCTYPE
+  "... is not valid JSON` across 5 retries (GitHub's upload backend
+  returned an HTML error page). `gh run rerun 25906574923 --failed`
+  cleared it; second run finished `success` and auto-merge --squash
+  landed the PR. Lesson recorded in docs/CONTEXT.md: artifact upload
+  flakes are transient infra; rerun rather than refreshing baselines
+  that aren't actually drifting. New module
   `src/viewpoints/ibd/enclosingFrame.ts` exposes two pure helpers:
   `computeEnclosingFrameBounds(rects, { padding?, headerHeight? })`
   returns the union bbox of all PartUsage rects + default 48px padding
@@ -733,23 +747,21 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
-PR #295 merged; iter-748 should pick the next Phase-13 backlog item.
-Strongest candidate is T-13.19 (BDD block compartments) — completes the
-trio with T-13.20 / T-13.21 / T-13.22 that just landed in the SysMLv2
-notation conformance push, and the BDD viewpoint is the most-visible
-canvas in the demo. Alternatives:
+Wait for PR #298 (T-13.19 BDD block compartments) CI re-run on the
+rebased branch (force-pushed onto main this iter). The 9 refreshed
+baselines are bit-exact CI actuals from run 25908534051 so should land
+within tolerance. If CI fails ONLY on the `Upload Playwright report`
+step ("Unexpected token '<', ..." JSON parse), that's the iter-747
+GitHub artifact-storage flake — `gh run rerun <run-id> --failed`
+rather than refreshing baselines. After PR #298 merges, pick the next
+Phase-13 backlog item:
 - T-13.05 Cmd-K command palette — biggest P1 discoverability gap.
 - T-13.25 Parametric: constraint-expression + value-property
   `: type = value` notation.
 - T-13.23 Activity pseudostate glyph review.
 - T-13.24 State pseudostate glyph review.
+- T-13.26 Edge style audit.
 
-Backlog (P1 notation conformance) status after T-13.20:
-- T-13.18 ✓, T-13.21 ✓, T-13.22 ✓, T-13.20 ✓,
-  remaining: T-13.19, T-13.23, T-13.24, T-13.25, T-13.26.
-
-Operational note for iter-748+: if a `check` job fails ONLY on the
-`Upload Playwright report` step ("Unexpected token '<', ..." JSON
-parse), that's a transient GitHub artifact-storage flake — rerun the
-failed job with `gh run rerun <run-id> --failed` rather than refreshing
-baselines. Documented from iter-747.
+Backlog (P1 notation conformance) status after T-13.19:
+- T-13.18 ✓, T-13.19 ✓ (this iter, awaiting CI), T-13.20 ✓,
+  T-13.21 ✓, T-13.22 ✓, remaining: T-13.23, T-13.24, T-13.25, T-13.26.
