@@ -6,58 +6,115 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 753
+- Iteration #: 754
 - Started: 2026-05-15
-- Branch: issue/307-tree-right-click-context-menu (PR pending; auto-merge --squash)
-- Working on: #307 — T-13.02 right-click context menu for the containment
-  tree. PR #306 (T-13.26 edge style audit — ItemFlow solid + all trace kinds
-  dashed) merged b2b7892 between iter-752 and this iter, closing the entire
-  P1 notation-conformance tier of Phase 13 (T-13.18 / .19 / .20 / .21 / .22 /
-  .23 / .24 / .25 / .26 all done). Picked the lowest-numbered unchecked
-  task in the lowest-priority tier per the Phase-13 Ralph protocol — P0
-  has T-13.01 and T-13.02 unchecked, and T-13.01 is functionally complete
-  via T-13.33c (Create representation submenu) + T-13.33d (diagram-row
-  Rename/Delete), so I'm marking it done in this STATUS update and
-  picking T-13.02. T-13.02 adds right-click parity for the existing
-  three-dots (`⋯`) row menus on both element rows and diagram rows.
-  Implementation: both `ContainmentTreeRowMenu` and
-  `ContainmentTreeDiagramRowMenu` now accept optional controlled-mode
-  props (`open?: boolean`, `onOpenChange?: (open: boolean) => void`) on
-  top of their internal `useState(false)` — when `open` is undefined the
-  menus behave exactly as today; when defined the parent forces them open.
-  `setOpen` always mirrors to internal state so a controlled-open menu
-  cleanly falls back to closed when the parent releases control (handles
-  the Escape-after-right-click path correctly). ContainmentTree adds a
-  single `contextMenuOpenKey: FocusKey | null` state slot, wires
-  `onContextMenu` handlers on every element row and diagram row
-  (preventDefault + stopPropagation + setContextMenuOpenKey(row.key)),
-  and passes `open={contextMenuOpenKey === row.key ? true : undefined}`
-  and `onOpenChange={(o) => { if (!o && key === row.key)
-  setContextMenuOpenKey(null); }}` down to each menu. Both rows guard
-  against opening the context menu while in rename mode (the kebab
-  trigger is already hidden during rename; same guard now applies on
-  right-click). Menu remains anchored to the row's kebab button position
-  (right edge); deliberate simplification over open-at-cursor, which
-  would require absolute positioning + clipping handling against the
-  pane edges. 7 new unit specs in
-  `tests/unit/workspace/tree/ContainmentTree.test.tsx`: right-click
-  opens element-row menu + preventDefault, right-click does not also
-  select the row, right-click opens diagram-row menu + preventDefault,
-  Escape closes a right-click-opened menu, outside pointerdown closes
-  a right-click-opened menu, right-clicking a different row swaps which
-  menu is open, right-click-opened menu items still trigger their
-  action, right-click is a no-op on rows in rename mode. Local check
-  green: 1131/1131 unit (was 1119; +7 new specs on this branch plus
-  ItemFlowEdge specs that came in via b2b7892), tsc -b clean, lint
-  clean (0 errors, 3 pre-existing warnings unchanged), build clean.
-  No visual baseline drift expected — the menu DOM only renders when
-  open, and the right-click path produces identical DOM to the kebab
-  path. T-13.01 marked done in the P0 backlog below; after T-13.02
-  merges the entire P0 "UI-unreachable features" tier (T-13.01..04)
-  closes.
+- Branch: issue/309-cmdk-command-palette-scaffold (PR #310 pending; auto-merge --squash)
+- Working on: #309 — T-13.05a Command-palette scaffold (typed command
+  registry + Actions section). PR #308 (T-13.02 right-click context menu)
+  merged 3a5c22e at 10:53:04Z, closing the entire P0 "UI-unreachable
+  features" tier of Phase 13 (T-13.01 / .02 / .03 / .04 all done) and the
+  P1 notation-conformance tier was already closed via T-13.26 (b2b7892).
+  Picked the lowest-numbered unchecked task in the lowest-numbered open
+  tier per the Phase-13 Ralph protocol — P1 operator-UX has T-13.05
+  through T-13.10 unchecked, and T-13.05 (Cmd-K → true command palette)
+  is the lowest-numbered. STATUS iter-753 flagged T-13.05 as "the largest
+  single feature" in P1, so I'm splitting it into reviewable slices
+  following the T-13.33 / T-13.36 precedent — this PR is **T-13.05a**,
+  the scaffold + first command group; T-13.05b / .c / .d will unify the
+  ranked list + add more groups + recents.
 
-## Current iteration (archived 752 → 753)
-- Iteration #: 752
+  T-13.05a converts the Cmd-K palette from element-search-only (Phase 12
+  slice D, #234) into a typed command registry + element search. With no
+  query the palette renders an **Actions** section listing the enabled
+  built-in commands (Undo / Redo / Save project as JSON / Delete
+  selection — the four already-keybound workspace actions). Typing
+  switches to the existing element-search view so all Phase-12
+  navigation behaviour is preserved unchanged.
+
+  Implementation: new module `src/workspace/paletteCommands.ts` exports
+  `PaletteCommand` + `PaletteCommandContext` types, a
+  `BUILT_IN_PALETTE_COMMANDS` registry, and a pure
+  `filterPaletteCommands(query, commands, ctx)` helper (enabled-only,
+  label / description / keyword substring match). Each command has an
+  `isEnabled(ctx)` predicate and a `run(ctx)` action — the registry is
+  free of any store import so it's trivially unit-testable without
+  bootstrapping. `CommandBus.canUndo()` / `canRedo()` added so the
+  palette can derive enablement reactively from the existing
+  `modelVersion` selector (which already ticks on every bus
+  dispatch/undo/redo via the subscribe-side `set({ modelVersion: …,
+  elements, edges })` in `store.bootstrap`). `CommandPalette.tsx`
+  refactored to build a `PaletteCommandContext` from store selectors
+  (`bus`, `modelVersion`, `project`, `selectedElementIds`,
+  `activeSurfaceKind`, plus the wired action methods), compute
+  `commands` or `elementMatches` based on whether the query is empty,
+  and dispatch the right code path on Enter / click. New testids:
+  `command-palette-commands-header`,
+  `command-palette-command-<command-id>`. Existing testids
+  (`command-palette`, `-input`, `-results`, `-result-<id>`, `-empty`,
+  `-close`) are unchanged. Active-row state, ArrowUp/Down wrap-around,
+  Enter to select, Tab focus trap, Esc close, click-on-backdrop close
+  — all unchanged from Phase 12.
+
+  Tests: 16 new unit specs in
+  `tests/unit/workspace/paletteCommands.test.ts` cover registry shape,
+  enable/disable predicates, run() delegation, and filter behaviour
+  (empty / whitespace / case / label / description / keyword matching).
+  8 new component specs in
+  `tests/unit/workspace/CommandPalette.test.tsx` render the palette
+  against the real workspace store (bootstrapped via
+  `createInMemorySessionRepository` + `createSessionUser`, matching the
+  EmptyState.test.tsx pattern) and assert: Actions header + enabled
+  commands appear when query is empty + project is loaded + some
+  history exists; disabled commands are omitted (no bus → no Undo/Redo;
+  no diagram selection → no Delete); first command starts active;
+  ArrowDown moves between commands; Enter on Undo dispatches the bus
+  undo (verified via element-count + modelVersion change); click on a
+  command row dispatches and calls onClose; typing hides Actions and
+  shows element search; clearing the input restores Actions; rendered
+  command labels are unique within the listbox. Save command requires
+  jsdom polyfills (`URL.createObjectURL` / `revokeObjectURL`) — stubbed
+  in beforeEach, restored in afterEach. New e2e spec in
+  `tests/e2e/command-palette.spec.ts` asserts the Actions header +
+  Save command on empty query, switches to element search when typing,
+  restores Actions on clear. All four pre-existing palette specs
+  (filter, arrow nav, empty match, axe) untouched.
+
+  Local check green: 1155/1155 unit pass (was 1131; +24 new specs),
+  tsc -b clean, lint clean (0 errors, 3 pre-existing warnings
+  unchanged), vite build clean. Agent visual inspection: captured
+  Chromium screenshots at `artifacts/iteration-754/palette-{empty,
+  query}.png` — empty-query view renders the Actions header + "Save
+  project as JSON" row with description + ⌘S kbd, active highlight on
+  first row; querying "block" with no matches shows the existing
+  empty-state copy. No committed visual baseline drift expected — the
+  new Actions DOM only renders when the palette is open AND the query
+  is empty, and no committed baseline screenshots that state.
+
+## Iter-753 archive
+- Branch: issue/307-tree-right-click-context-menu (PR #308 merged 3a5c22e
+  at 10:53:04Z on 2026-05-15). Shipped T-13.02 — right-click context
+  menu for the containment tree. Both `ContainmentTreeRowMenu` and
+  `ContainmentTreeDiagramRowMenu` accept optional controlled-mode props
+  (`open?`, `onOpenChange?`) layered over their existing
+  `useState(false)`. ContainmentTree adds a single
+  `contextMenuOpenKey: FocusKey | null` state slot, wires `onContextMenu`
+  (preventDefault + stopPropagation + setContextMenuOpenKey(row.key))
+  on every element row and diagram row, and passes
+  `open={contextMenuOpenKey === row.key ? true : undefined}` +
+  `onOpenChange` to each menu. Both rows guard against opening while in
+  rename mode. Menu anchors at the row's kebab button position (deliberate
+  simplification over open-at-cursor). 7 new unit specs cover
+  open/preventDefault/no-select on right-click for both row kinds,
+  Escape + outside-pointerdown close, row-swap, item-action wiring, and
+  no-op during rename. 1131/1131 unit pass (was 1119; +7 here plus
+  ItemFlowEdge specs from b2b7892), tsc/lint/build clean. With T-13.02
+  + the T-13.01 "functionally complete via T-13.33c/d" attribution
+  carried over from iter-752, the entire P0 "UI-unreachable features"
+  tier (T-13.01 / .02 / .03 / .04) of Phase 13 closes. Combined with
+  the P1 notation-conformance tier closed by T-13.26 (PR #306,
+  b2b7892), the next live tier is P1 operator-UX (T-13.05 → T-13.10).
+
+## Iter-752 archive
 - Branch: issue/303-state-pseudostate-markers (PR #304 merged eb64a79)
 - Working on: #303 — T-13.24 State pseudostate glyph review + uniform
   `data-pseudostate-shape` markers. PR #302 (T-13.23 Activity decision/merge
@@ -781,16 +838,16 @@ phase:13 — post-v1.0.0 polish + explorer rewrite
       T-13.31 — likely re-author against the new containment tree.
 
 ## Last test run
-- Command: pnpm exec tsc -b && pnpm lint && pnpm test:unit && pnpm build
-- Result: PASS — 1131 unit (was 1119; +7 new specs on this branch plus
-  ItemFlowEdge specs that came in via b2b7892), tsc -b clean, lint clean
-  (0 errors, 3 pre-existing warnings unchanged), build clean
-- (e2e deferred to CI on PR #307; menu DOM is unchanged when open, so
-  no visual drift is expected on any baseline)
-- Visual baselines: regenerated in podman/playwright:v1.48.2-jammy
-  container (full suite via scripts/regen-baselines.sh +
-  scripts/regen-chat-baselines.sh for the 8 chat specs that need the
-  test-mode preview build).
+- Command: pnpm typecheck && pnpm lint && pnpm test:unit && pnpm build
+- Result: PASS — 1155 unit (was 1131; +24 new specs across
+  `paletteCommands.test.ts` and `CommandPalette.test.tsx`), tsc clean,
+  lint clean (0 errors, 3 pre-existing warnings unchanged), build clean
+- (e2e deferred to CI on PR #310; only the empty-query branch of the
+  palette grows new DOM, and no committed visual baseline captures the
+  palette open, so no visual drift is expected on any baseline)
+- Visual baselines: not touched this iter. The new Actions section
+  renders only when palette is open + query is empty; baselines never
+  capture that state.
 
 ## Last health check
 - Iteration: 750 (every-10th periodic check per AGENT.md directive 13)
@@ -818,15 +875,25 @@ Backlog (P0 — UI-unreachable features):
       iter-727 PR #272) for create-per-viewpoint and T-13.33d (diagram-row
       Rename + Delete, iter-729 PR #273). No standalone PR; marked done
       iter-753 during T-13.02 audit.
-- T-13.02 Project-tree right-click context menu (Rename/Delete/New) — in
-      flight iter-753 (#307), PR pending.
+- [x] T-13.02 Project-tree right-click context menu (Rename/Delete/New).
+      Shipped iter-753 (#307, PR #308 → 3a5c22e). Closes the P0
+      "UI-unreachable features" tier.
 - [x] T-13.03 Fix "New Requirement" empty-state dead-end — CLOSED by T-13.34
       (#276): CTA now creates a Requirement under root + queues inline rename.
 - [x] T-13.04 Per-section "+" affordances on project-tree categories.
       Shipped iter-736 (PR #279, 67642fc).
 
 Backlog (P1 — discoverability/workflow):
-- T-13.05 Cmd-K → true command palette (actions, not just search)
+- T-13.05 Cmd-K → true command palette (actions, not just search). Split
+  into slices following the T-13.33 / T-13.36 precedent:
+  - T-13.05a Scaffold: typed `PaletteCommand` registry, Actions section,
+    initial four built-in commands (Undo / Redo / Save / Delete
+    selection). In flight iter-754 (#309, PR #310).
+  - T-13.05b Unified ranked list (commands + elements in one section);
+    more command groups (open chat, create diagram, rename selection,
+    toggle pane, focus tab N, …).
+  - T-13.05c Inspector / surface-scoped actions.
+  - T-13.05d Recently-used commands at the top.
 - T-13.06 Tooltip reasons on disabled toolbar buttons
 - T-13.07 Inspector contextual "+ New …" panel when nothing selected
 - T-13.08 Inline project-name rename in header
@@ -956,19 +1023,15 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
-Wait for PR (T-13.02 right-click context menu, #307) CI. No visual
-drift expected — onContextMenu plus a controlled-open pass-through, with
-no DOM change to the menus themselves. If CI fails ONLY on
-`Upload Playwright report`, that's the iter-747 GitHub artifact-storage
-flake — `gh run rerun <run-id> --failed`. After PR #307 merges, the
-entire P0 "UI-unreachable features" tier of Phase 13 (T-13.01..04)
-closes; pick the next Phase-13 backlog item. With the P0 + P1
-notation-conformance tiers done, the most valuable next-up tasks are:
-- T-13.05 (Cmd-K true command palette, P1) — the largest single feature
-  in P1; will likely need a split between a store-side action registry
-  and a palette-UI sub-PR.
+Wait for PR (T-13.05a Cmd-K scaffold, #309 / PR #310) CI. No visual
+drift expected — the new Actions DOM only renders when the palette is
+open AND the query is empty, and no committed visual baseline captures
+that state. After PR #310 merges, pick T-13.05b (unified ranked list +
+more command groups) as the next slice — that's the highest-leverage
+follow-up to keep the palette's discoverability rising. Alternative
+candidates if more variety is desired:
 - T-13.06 (disabled-toolbar-button reason tooltips, P1) — small, self-
-  contained; good for a quick iteration after a heavy one.
+  contained; good for a quick iteration.
 - T-13.10 (undo/redo toolbar buttons, P1) — buttons already work via
   keyboard; this surfaces the same actions in the toolbar.
 

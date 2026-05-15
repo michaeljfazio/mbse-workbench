@@ -162,6 +162,36 @@ test.describe('Phase 12 slice D — Cmd-K command palette (issue #234)', () => {
     ).toHaveCount(0);
   });
 
+  test('T-13.05a — empty query shows the Actions section with built-in commands', async ({
+    page,
+  }) => {
+    await page.keyboard.press('ControlOrMeta+k');
+    const palette = page.getByTestId('command-palette');
+    await expect(palette).toBeVisible();
+    // Actions header is rendered.
+    await expect(
+      page.getByTestId('command-palette-commands-header'),
+    ).toHaveText(/Actions/i);
+    // Save project is always available when a project is loaded; it serves
+    // as the always-on smoke check for the command rendering path.
+    await expect(
+      page.getByTestId('command-palette-command-workspace.save-project'),
+    ).toBeVisible();
+    // Typing switches back to element search and hides the Actions header.
+    await page.getByTestId('command-palette-input').fill('alpha');
+    await expect(
+      page.getByTestId('command-palette-commands-header'),
+    ).toHaveCount(0);
+    await expect(
+      page.getByTestId('command-palette-result-cp-block-alpha'),
+    ).toBeVisible();
+    // Clearing the input restores commands.
+    await page.getByTestId('command-palette-input').fill('');
+    await expect(
+      page.getByTestId('command-palette-commands-header'),
+    ).toBeVisible();
+  });
+
   test('@a11y palette has zero serious/critical axe violations', async ({
     page,
   }) => {
