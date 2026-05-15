@@ -1445,4 +1445,217 @@ describe('<ContainmentTree />', () => {
       expect(after?.ownerRole).toBe('member');
     });
   });
+
+  describe('Duplicate + Move to package (T-13.33e-b)', () => {
+    it('Duplicate dispatches duplicateElement and queues a pending rename on the clone', async () => {
+      await bootstrap();
+      const a = useWorkspaceStore.getState().createBlock()!;
+      act(() => {
+        useWorkspaceStore.getState().renameElement(a, 'Pump');
+      });
+
+      render(<ContainmentTree />);
+      fireEvent.click(
+        screen.getByTestId(`containment-tree-element-menu-trigger-${a}`),
+      );
+      fireEvent.click(
+        screen.getByTestId(`containment-tree-element-menu-duplicate-${a}`),
+      );
+
+      await waitFor(() => {
+        const elts = useWorkspaceStore
+          .getState()
+          .elements.filter((e) => e.kind === 'PartDefinition');
+        expect(elts).toHaveLength(2);
+      });
+      const clone = useWorkspaceStore
+        .getState()
+        .elements.find((e) => e.kind === 'PartDefinition' && e.id !== a)!;
+      expect(clone.name).toBe('Pump copy');
+      expect(
+        await screen.findByTestId(
+          `containment-tree-element-rename-${clone.id}`,
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it('Duplicate is hidden on the project root', async () => {
+      await bootstrap();
+      render(<ContainmentTree />);
+      fireEvent.click(
+        screen.getByTestId(
+          `containment-tree-element-menu-trigger-${rootId()}`,
+        ),
+      );
+      expect(
+        screen.queryByTestId(
+          `containment-tree-element-menu-duplicate-${rootId()}`,
+        ),
+      ).toBeNull();
+    });
+
+    it('Move to package… is hidden on the project root', async () => {
+      await bootstrap();
+      render(<ContainmentTree />);
+      fireEvent.click(
+        screen.getByTestId(
+          `containment-tree-element-menu-trigger-${rootId()}`,
+        ),
+      );
+      expect(
+        screen.queryByTestId(
+          `containment-tree-element-menu-move-to-package-${rootId()}`,
+        ),
+      ).toBeNull();
+    });
+
+    it('Move to package… opens the picker listing every Package except the current owner', async () => {
+      await bootstrap();
+      const sub = useWorkspaceStore
+        .getState()
+        .createChildElement(rootId(), 'Package', 'member', 'Sub')!;
+      const part = useWorkspaceStore.getState().createBlock()!;
+
+      render(<ContainmentTree />);
+      fireEvent.click(
+        screen.getByTestId(`containment-tree-element-menu-trigger-${part}`),
+      );
+      fireEvent.click(
+        screen.getByTestId(
+          `containment-tree-element-menu-move-to-package-${part}`,
+        ),
+      );
+
+      expect(
+        screen.getByTestId(
+          `containment-tree-element-menu-move-to-package-list-${part}`,
+        ),
+      ).toBeInTheDocument();
+      // "Sub" is listed; root (current owner) is not.
+      expect(
+        screen.getByTestId(
+          `containment-tree-element-menu-move-to-${sub}-${part}`,
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId(
+          `containment-tree-element-menu-move-to-${rootId()}-${part}`,
+        ),
+      ).toBeNull();
+    });
+
+    it('Move to package… is disabled when no Package would accept this kind', async () => {
+      await bootstrap();
+      // ValueProperty is not in acceptedChildKinds('Package').
+      const part = useWorkspaceStore.getState().createBlock()!;
+      const vp = useWorkspaceStore
+        .getState()
+        .createChildElement(part, 'ValueProperty', 'property', 'v')!;
+
+      render(<ContainmentTree />);
+      fireEvent.click(
+        screen.getByTestId(`containment-tree-element-menu-trigger-${vp}`),
+      );
+      const trigger = screen.queryByTestId(
+        `containment-tree-element-menu-move-to-package-${vp}`,
+      );
+      // A ValueProperty has the root Package available as a target candidate,
+      // but the trigger is disabled because the Package does not accept
+      // ValueProperty as a child.
+      expect(trigger).not.toBeNull();
+      expect(trigger).toBeDisabled();
+    });
+
+    it('picker disables descendant Packages with cycle reason', async () => {
+      await bootstrap();
+      const outer = useWorkspaceStore
+        .getState()
+        .createChildElement(rootId(), 'Package', 'member', 'Outer')!;
+      const inner = useWorkspaceStore
+        .getState()
+        .createChildElement(outer, 'Package', 'member', 'Inner')!;
+      // Sibling Package exists so the trigger is enabled and the picker opens.
+      useWorkspaceStore
+        .getState()
+        .createChildElement(rootId(), 'Package', 'member', 'Sibling');
+
+      render(<ContainmentTree />);
+      fireEvent.click(
+        screen.getByTestId(`containment-tree-element-menu-trigger-${outer}`),
+      );
+      fireEvent.click(
+        screen.getByTestId(
+          `containment-tree-element-menu-move-to-package-${outer}`,
+        ),
+      );
+      const innerButton = screen.getByTestId(
+        `containment-tree-element-menu-move-to-${inner}-${outer}`,
+      );
+      expect(innerButton).toBeDisabled();
+      expect(innerButton).toHaveAttribute('data-disabled-reason', 'cycle');
+    });
+
+    it('clicking a valid target dispatches moveElement and reparents the element', async () => {
+      await bootstrap();
+      const sub = useWorkspaceStore
+        .getState()
+        .createChildElement(rootId(), 'Package', 'member', 'Sub')!;
+      const part = useWorkspaceStore.getState().createBlock()!;
+
+      render(<ContainmentTree />);
+      fireEvent.click(
+        screen.getByTestId(`containment-tree-element-menu-trigger-${part}`),
+      );
+      fireEvent.click(
+        screen.getByTestId(
+          `containment-tree-element-menu-move-to-package-${part}`,
+        ),
+      );
+      fireEvent.click(
+        screen.getByTestId(
+          `containment-tree-element-menu-move-to-${sub}-${part}`,
+        ),
+      );
+
+      await waitFor(() => {
+        const moved = useWorkspaceStore
+          .getState()
+          .elements.find((e) => e.id === part);
+        expect(moved?.ownerId).toBe(sub);
+        expect(moved?.ownerRole).toBe('member');
+      });
+    });
+
+    it('clicking a disabled target is a no-op (does not dispatch moveElement)', async () => {
+      await bootstrap();
+      const outer = useWorkspaceStore
+        .getState()
+        .createChildElement(rootId(), 'Package', 'member', 'Outer')!;
+      const inner = useWorkspaceStore
+        .getState()
+        .createChildElement(outer, 'Package', 'member', 'Inner')!;
+      useWorkspaceStore
+        .getState()
+        .createChildElement(rootId(), 'Package', 'member', 'Sibling');
+
+      render(<ContainmentTree />);
+      fireEvent.click(
+        screen.getByTestId(`containment-tree-element-menu-trigger-${outer}`),
+      );
+      fireEvent.click(
+        screen.getByTestId(
+          `containment-tree-element-menu-move-to-package-${outer}`,
+        ),
+      );
+      const innerButton = screen.getByTestId(
+        `containment-tree-element-menu-move-to-${inner}-${outer}`,
+      );
+      fireEvent.click(innerButton);
+
+      const after = useWorkspaceStore
+        .getState()
+        .elements.find((e) => e.id === outer);
+      expect(after?.ownerId).toBe(rootId());
+    });
+  });
 });
