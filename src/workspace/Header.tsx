@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 
 import { ApiKeyChip } from './ApiKeyChip';
+import {
+  isDirty,
+  SAVED_INDICATOR_CLEAN_LABEL,
+  SAVED_INDICATOR_DIRTY_LABEL,
+  savedIndicatorTitle,
+} from './savedIndicator';
 import { useWorkspaceStore } from './store';
 import {
   projectNameTitle,
@@ -12,6 +18,9 @@ export function Header(): JSX.Element {
   const initialized = useWorkspaceStore((s) => s.initialized);
   const saveProject = useWorkspaceStore((s) => s.saveProject);
   const renameProject = useWorkspaceStore((s) => s.renameProject);
+  const modelVersion = useWorkspaceStore((s) => s.modelVersion);
+  const lastSavedVersion = useWorkspaceStore((s) => s.lastSavedVersion);
+  const lastSavedAt = useWorkspaceStore((s) => s.lastSavedAt);
   const saveReason = saveDisabledReason(initialized);
   const nameTitle = projectNameTitle(initialized);
   const [isRenaming, setIsRenaming] = useState(false);
@@ -52,6 +61,13 @@ export function Header(): JSX.Element {
         </button>
       )}
       <div className="ml-auto flex items-center gap-2">
+        {initialized ? (
+          <SavedIndicator
+            modelVersion={modelVersion}
+            lastSavedVersion={lastSavedVersion}
+            lastSavedAt={lastSavedAt}
+          />
+        ) : null}
         <ApiKeyChip />
         <button
           type="button"
@@ -66,6 +82,32 @@ export function Header(): JSX.Element {
         </button>
       </div>
     </header>
+  );
+}
+
+interface SavedIndicatorProps {
+  readonly modelVersion: number;
+  readonly lastSavedVersion: number;
+  readonly lastSavedAt: string | null;
+}
+
+function SavedIndicator({
+  modelVersion,
+  lastSavedVersion,
+  lastSavedAt,
+}: SavedIndicatorProps): JSX.Element {
+  const dirty = isDirty(modelVersion, lastSavedVersion);
+  const label = dirty ? SAVED_INDICATOR_DIRTY_LABEL : SAVED_INDICATOR_CLEAN_LABEL;
+  const title = savedIndicatorTitle({ lastSavedAt, nowMs: Date.now() });
+  return (
+    <span
+      data-testid="workspace-saved-indicator"
+      data-state={dirty ? 'dirty' : 'clean'}
+      title={title}
+      className="text-xs text-muted-foreground"
+    >
+      {label}
+    </span>
   );
 }
 

@@ -6,55 +6,90 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 760
+- Iteration #: 761
 - Started: 2026-05-15
-- Branch: issue/321-header-project-rename (PR #322 pending;
-  auto-merge --squash; CI in progress)
-- Working on: #321 — T-13.08 Inline project-name rename in header.
-  PR #320 (T-13.10 Undo/Redo toolbar buttons) merged at 14:25:00Z,
-  closing #319. Picked T-13.08 as the next slice per iter-759's
-  Next-action plan: header polish is a smaller risk surface than
-  T-13.07's inspector restructure, and `renameDiagram` / element-rename
-  already provide the inline-rename UX template to mirror.
+- Branch: issue/323-header-saved-indicator (PR #324 pending;
+  auto-merge --squash; CI queued)
+- Working on: #323 — T-13.09 Dirty-state + 'saved at' indicator in
+  header. PR #322 (T-13.08 inline project-name rename) merged at
+  14:59:29Z as b746ce0, closing #321. Picked T-13.09 as the next
+  slice per iter-760's Next-action plan: remaining small P1
+  operator-UX item before the larger T-13.07 inspector restructure.
 
-  `<Header />` rewritten: the project name is now a clickable
-  `<button data-testid="workspace-project-name">` that, on click,
-  swaps in a focused `<input data-testid="workspace-project-name-input">`
-  with the current name pre-selected. Enter / blur commit, Escape
-  cancels. The display affordance is disabled before bootstrap with
-  the existing SAVE_DISABLED_REASON; once initialized the title is
-  "Rename project". Same focus / select / commit / cancel pattern as
-  `ContainmentTreeRenameInput` and `ContainmentTreeDiagramRenameInput`.
+  New `<span data-testid="workspace-saved-indicator">` rendered in
+  the right cluster of the header between the project-name area and
+  the API-key chip. Chip text is a stable two-state enum ("Saved" /
+  "Saving…") so visual baselines don't drift with wall-clock time;
+  the "saved at" recency lives in the `title` attribute as
+  `Last saved <relative-time>` ("just now" / "Ns ago" / "Nm ago" /
+  "Nh ago" / "Yesterday" / "N days ago") — hover-only, never
+  captured by `@visual` screenshots.
 
-  New store action `renameProject(name)` lives next to `renameDiagram`
-  in `store.ts`: trims input, no-ops on empty / unchanged, writes
-  through `saveProject()`. Project metadata mutations stay outside
-  the command bus (consistent with `renameDiagram`); the bus is
-  reserved for model-element mutations.
+  Two new `WorkspaceState` slots: `lastSavedAt: string | null`
+  (mirrors `project.modifiedAt` of the most recent successful save)
+  and `lastSavedVersion: number` (`bus.version()` at save time).
+  `bootstrap` seeds both from the loaded project's `modifiedAt` +
+  `bus.version()` so a cold reload reads "Saved" immediately;
+  `saveProject()` updates them on success. Dirty predicate is
+  `modelVersion > lastSavedVersion`.
 
-  Helper module `toolbarDisabledReasons.ts` gains
+  Pure helpers in new module `src/workspace/savedIndicator.ts`:
+  `isDirty(modelVersion, lastSavedVersion)`,
+  `formatRelativeTime(nowMs, atMs)`,
+  `savedIndicatorTitle({ lastSavedAt, nowMs })` plus the chip-text
+  constants. Keeps the time-bucket boundaries unit-testable
+  independently of React. The "Never saved" branch covers the
+  pre-first-save case and unparseable timestamps.
+
+  Tests: 13 new unit on the helpers (3 `isDirty` + 7
+  `formatRelativeTime` boundary specs + 4 `savedIndicatorTitle`),
+  3 new unit on `<Header />` (hidden pre-bootstrap, clean state
+  with parseable title, dirty state when modelVersion outpaces
+  lastSavedVersion), 3 new unit on the store (bootstrap seeds the
+  slots, `saveProject()` advances them, initial state has `null`/
+  `0`), plus 1 new e2e `tests/e2e/header-saved-indicator.spec.ts`
+  (cold load shows "Saved" + `data-state=clean` + title matching
+  `^Last saved `). Local check green: 1257/1257 unit pass (was
+  1237; +20 net), tsc -b clean, eslint 0 errors (3 pre-existing
+  warnings unchanged), vite build clean. New e2e passes on
+  Chromium locally; CI will run it on Chromium + WebKit. Agent
+  visual inspection at `artifacts/iteration-761/header-saved-
+  clean.png` confirms the chip renders as a small muted-foreground
+  `text-xs` "Saved" element between the project name and the
+  API-key chip.
+
+  Visual baseline drift expected: adding a ~50px chip to the
+  header's right cluster shifts the API-key chip and Save button
+  leftwards by ~58px (chip width + 8px gap). Any committed
+  `@visual` baseline captured with `fullPage: false` whose
+  viewport includes the header band will likely drift on this
+  PR. The chip text itself is stable, so this is a one-shot DOM
+  shift, not ongoing wall-clock instability. If CI flags any
+  baselines, refresh per the `docs/CONTEXT.md` 2026-05-12
+  lift-from-trace procedure.
+
+## Iter-760 archive
+- Branch: issue/321-header-project-rename (PR #322 merged b746ce0
+  at 14:59:29Z on 2026-05-15). Shipped T-13.08 — Inline project-
+  name rename in header. `<Header />` rewritten: project name is
+  now a clickable `<button data-testid="workspace-project-name">`
+  that swaps in a focused, pre-selected
+  `<input data-testid="workspace-project-name-input">` on click;
+  Enter / blur commit, Escape cancels. New store action
+  `renameProject(name)` next to `renameDiagram` (trim,
+  empty-noop, unchanged-noop, pre-bootstrap noop, persists via
+  `saveProject()`). Helper module gains
   `PROJECT_NAME_ENABLED_TITLE = 'Rename project'`,
   `PROJECT_NAME_DISABLED_REASON = SAVE_DISABLED_REASON`, and
-  `projectNameTitle(initialized)` — preserves the iter-758/759
-  convention that toolbar surfaces extend the helper module instead
-  of re-deriving predicates per call site.
-
-  Tests: 4 new unit on `renameProject` (trim, empty-noop, unchanged-
-  noop, pre-bootstrap noop) + 6 new unit on `<Header />` (display-
-  mode disabled / enabled, click → focused-and-pre-selected input,
-  Enter commit, blur commit, Escape cancel) + 1 new e2e
-  `tests/e2e/header-project-rename.spec.ts` (two specs: golden path
-  with real keyboard input persisting across reload, plus Escape-
-  cancel). Local check green: 1237/1237 unit pass (was 1227; +10
-  net), tsc -b clean, lint clean (0 errors, 3 pre-existing warnings
-  unchanged), vite build clean. Both new e2e specs pass on Chromium
-  locally; CI will run them on Chromium + WebKit. Agent visual
-  inspection at `artifacts/iteration-760/header-{display,editing,
-  editing-typed,after-rename}.png` confirms display-mode pixels are
-  unchanged versus the prior static-span rendering.
-
-  No committed `@visual` baseline currently captures the header,
-  so no baseline drift is expected this PR.
+  `projectNameTitle(initialized)`. 4 new store + 6 new Header
+  unit specs + 2 new e2e (golden path with reload-persistence,
+  Escape cancel). 1237/1237 unit pass (was 1227, +10 net).
+  First CI run failed on 9612-pixel `inspector-action-selected-
+  chromium` drift (iter-759's toolbar-undo-redo addition; iter-
+  759's baseline refresh missed 5 specs). Iter-760 caught the
+  remaining 5 in commit 389fd4b ("chore(visual): refresh 5
+  baselines missed by iter-759 toolbar refresh") and CI run
+  25924264473 came back green.
 
 ## Iter-759 archive
 - Branch: issue/319-toolbar-undo-redo (PR #320 merged at 14:25:00Z
@@ -992,9 +1027,10 @@ Backlog (P1 — discoverability/workflow):
 - [x] T-13.06 Tooltip reasons on disabled toolbar buttons. Shipped iter-758
       (#317, PR #318 → 8fd5bef).
 - T-13.07 Inspector contextual "+ New …" panel when nothing selected
-- T-13.08 Inline project-name rename in header. In flight iter-760 (#321,
-  PR #322).
-- T-13.09 Dirty-state + "saved at" indicator
+- [x] T-13.08 Inline project-name rename in header. Shipped iter-760 (#321,
+      PR #322 → b746ce0).
+- T-13.09 Dirty-state + "saved at" indicator. In flight iter-761 (#323,
+  PR #324).
 - [x] T-13.10 Undo/redo toolbar buttons. Shipped iter-759 (#319, PR #320 →
       d5df07f's parent on main).
 
@@ -1121,27 +1157,25 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
-Wait for PR #322 (T-13.08 Inline project-name rename in header) CI. No
-committed `@visual` baseline captures the header, so no baseline drift
-is expected; if any spec turns out to capture the header band, refresh
-from the CI run's actuals per docs/CONTEXT.md 2026-05-12 lift-from-
-trace procedure. After this merges, the remaining P1 operator-UX tier
-items are:
+Wait for PR #324 (T-13.09 Dirty-state + 'saved at' indicator) CI.
+Visual baseline drift is expected from the ~58px leftward shift of
+the right-cluster controls (chip width + gap) — any committed
+`@visual` baseline whose viewport includes the header band may
+drift. If CI flags drift, refresh per the docs/CONTEXT.md 2026-05-12
+lift-from-trace procedure. After this merges, the only remaining
+P1 operator-UX item is:
 
-- **T-13.09** Dirty-state + "saved at" indicator — small header polish
-  slice. Needs a `dirty` predicate (committed dispatches since last
-  `saveProject()` succeeded) and a relative-time formatter. Could
-  bundle in the same `toolbarDisabledReasons.ts`-adjacent module or
-  live next to `<Header />`.
 - **T-13.07** Inspector contextual "+ New …" panel when nothing
   selected — bigger slice; unblocks the empty-inspector state by
   surfacing palette-accepted creation affordances in the inspector.
   Worth opening a design issue first if the inspector restructure
   surface looks larger than expected.
 
-Recommended next slice after T-13.08 merges: **T-13.09** (still small,
-keeps the operator-UX momentum on header polish). T-13.07 is the
-remaining big slice in the P1 tier.
+Recommended next slice after T-13.09 merges: **T-13.07**. With
+T-13.05a–d, T-13.06, T-13.08, T-13.09, and T-13.10 all in main,
+T-13.07 closes the P1 operator-UX tier and we can move on to the
+explorer cascade (T-13.29–.39) — most of which is the Phase-13
+gate's foundation.
 
 A recents-persistence pass for Cmd-K palette recents remains a future
 polish item (today's recents clear on reload). Out of scope for the

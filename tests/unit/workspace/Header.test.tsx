@@ -137,6 +137,35 @@ describe('<Header />', () => {
     expect(screen.queryByTestId('workspace-project-name-input')).toBeNull();
   });
 
+  it('hides the saved-indicator before bootstrap (T-13.09)', () => {
+    render(<Header />);
+    expect(screen.queryByTestId('workspace-saved-indicator')).toBeNull();
+  });
+
+  it('renders "Saved" with a parseable title after bootstrap (T-13.09)', async () => {
+    await act(async () => {
+      await bootstrap();
+    });
+    render(<Header />);
+    const indicator = screen.getByTestId('workspace-saved-indicator');
+    expect(indicator.textContent).toBe('Saved');
+    expect(indicator.getAttribute('data-state')).toBe('clean');
+    expect(indicator.getAttribute('title')).toMatch(/^Last saved /);
+  });
+
+  it('flips to "Saving…" when modelVersion outpaces lastSavedVersion (T-13.09)', async () => {
+    await act(async () => {
+      await bootstrap();
+    });
+    act(() => {
+      useWorkspaceStore.setState((s) => ({ modelVersion: s.lastSavedVersion + 1 }));
+    });
+    render(<Header />);
+    const indicator = screen.getByTestId('workspace-saved-indicator');
+    expect(indicator.textContent).toBe('Saving…');
+    expect(indicator.getAttribute('data-state')).toBe('dirty');
+  });
+
   it('Escape cancels the rename without mutating the store (T-13.08)', async () => {
     await act(async () => {
       await bootstrap();

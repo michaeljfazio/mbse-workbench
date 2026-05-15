@@ -288,6 +288,37 @@ describe('workspace store', () => {
     expect(useWorkspaceStore.getState().project).toBeNull();
   });
 
+  it('bootstrap seeds lastSavedAt and lastSavedVersion (T-13.09)', async () => {
+    const storage = makeMemoryStorage();
+    const repository = createInMemorySessionRepository({ storage });
+    const user = createSessionUser();
+    await useWorkspaceStore.getState().bootstrap({ repository, user, storage });
+    const s = useWorkspaceStore.getState();
+    expect(s.lastSavedAt).toBe(s.project!.modifiedAt);
+    expect(s.lastSavedVersion).toBe(s.modelVersion);
+  });
+
+  it('saveProject advances lastSavedAt + lastSavedVersion (T-13.09)', async () => {
+    const storage = makeMemoryStorage();
+    const repository = createInMemorySessionRepository({ storage });
+    const user = createSessionUser();
+    await useWorkspaceStore.getState().bootstrap({ repository, user, storage });
+
+    const beforeAt = useWorkspaceStore.getState().lastSavedAt;
+    await new Promise((resolve) => setTimeout(resolve, 2));
+    await useWorkspaceStore.getState().saveProject();
+    const after = useWorkspaceStore.getState();
+    expect(after.lastSavedAt).not.toBe(beforeAt);
+    expect(after.lastSavedAt).toBe(after.project!.modifiedAt);
+    expect(after.lastSavedVersion).toBe(after.modelVersion);
+  });
+
+  it('store starts with lastSavedAt=null / lastSavedVersion=0 (T-13.09)', () => {
+    const s = useWorkspaceStore.getState();
+    expect(s.lastSavedAt).toBeNull();
+    expect(s.lastSavedVersion).toBe(0);
+  });
+
   it('createDiagram appends a new IBD diagram and persists it (#49)', async () => {
     const storage = makeMemoryStorage();
     const repository = createInMemorySessionRepository({ storage });
