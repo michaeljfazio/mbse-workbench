@@ -108,7 +108,11 @@ import {
   autoLayoutDisabledReason,
   deleteDisabledReason,
   exportDisabledReason,
+  redoDisabledReason,
+  REDO_ENABLED_TITLE,
   splitDisabledReason,
+  undoDisabledReason,
+  UNDO_ENABLED_TITLE,
 } from './toolbarDisabledReasons';
 
 interface PendingConnection {
@@ -237,6 +241,15 @@ function CanvasInner(): JSX.Element {
   const impactHighlightedEdgeIds = useWorkspaceStore(
     (s) => s.impactHighlightedEdgeIds,
   );
+  const bus = useWorkspaceStore((s) => s.bus);
+  const modelVersion = useWorkspaceStore((s) => s.modelVersion);
+  const undo = useWorkspaceStore((s) => s.undo);
+  const redo = useWorkspaceStore((s) => s.redo);
+  // `modelVersion` ticks on every dispatch/undo/redo so canUndo/canRedo
+  // re-read from the bus each render — same pattern as CommandPalette.
+  void modelVersion;
+  const canUndo = bus?.canUndo() ?? false;
+  const canRedo = bus?.canRedo() ?? false;
 
   const selectedSet = useMemo(() => new Set(selectedElementIds), [selectedElementIds]);
 
@@ -1255,6 +1268,26 @@ function CanvasInner(): JSX.Element {
             </button>
           </>
         ) : null}
+        <button
+          type="button"
+          data-testid="toolbar-undo"
+          onClick={undo}
+          disabled={!canUndo}
+          title={undoDisabledReason(canUndo) ?? UNDO_ENABLED_TITLE}
+          className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-foreground shadow-sm transition hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Undo
+        </button>
+        <button
+          type="button"
+          data-testid="toolbar-redo"
+          onClick={redo}
+          disabled={!canRedo}
+          title={redoDisabledReason(canRedo) ?? REDO_ENABLED_TITLE}
+          className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-foreground shadow-sm transition hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Redo
+        </button>
         <button
           type="button"
           data-testid="toolbar-auto-layout"
