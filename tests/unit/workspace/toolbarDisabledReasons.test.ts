@@ -4,14 +4,18 @@ import {
   AUTO_LAYOUT_DISABLED_REASON,
   DELETE_DISABLED_REASON,
   EXPORT_DISABLED_REASON,
+  REDO_DISABLED_REASON,
   SAVE_DISABLED_REASON,
   SPLIT_ACTIVE_DIAGRAM_REASON,
   SPLIT_SECONDARY_DIAGRAM_REASON,
+  UNDO_DISABLED_REASON,
   autoLayoutDisabledReason,
   deleteDisabledReason,
   exportDisabledReason,
+  redoDisabledReason,
   saveDisabledReason,
   splitDisabledReason,
+  undoDisabledReason,
 } from '@/workspace/toolbarDisabledReasons';
 
 describe('toolbarDisabledReasons', () => {
@@ -80,6 +84,26 @@ describe('toolbarDisabledReasons', () => {
       expect(
         splitDisabledReason({ isActiveDiagram: false, isSecondaryDiagram: false }),
       ).toBeUndefined();
+    });
+  });
+
+  describe('undoDisabledReason', () => {
+    it('returns reason when canUndo is false', () => {
+      expect(undoDisabledReason(false)).toBe(UNDO_DISABLED_REASON);
+    });
+
+    it('returns undefined when canUndo is true', () => {
+      expect(undoDisabledReason(true)).toBeUndefined();
+    });
+  });
+
+  describe('redoDisabledReason', () => {
+    it('returns reason when canRedo is false', () => {
+      expect(redoDisabledReason(false)).toBe(REDO_DISABLED_REASON);
+    });
+
+    it('returns undefined when canRedo is true', () => {
+      expect(redoDisabledReason(true)).toBeUndefined();
     });
   });
 });

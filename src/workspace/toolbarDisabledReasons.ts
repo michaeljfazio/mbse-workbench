@@ -4,6 +4,10 @@ export const DELETE_DISABLED_REASON = 'Select something on the diagram to delete
 export const EXPORT_DISABLED_REASON = 'No elements to export';
 export const SPLIT_ACTIVE_DIAGRAM_REASON = 'Already the main diagram';
 export const SPLIT_SECONDARY_DIAGRAM_REASON = 'Already shown in the split pane';
+export const UNDO_DISABLED_REASON = 'Nothing to undo';
+export const REDO_DISABLED_REASON = 'Nothing to redo';
+export const UNDO_ENABLED_TITLE = 'Undo last action (Cmd-Z)';
+export const REDO_ENABLED_TITLE = 'Redo last undone action (Cmd-Shift-Z)';
 
 export function saveDisabledReason(initialized: boolean): string | undefined {
   return initialized ? undefined : SAVE_DISABLED_REASON;
@@ -30,4 +34,12 @@ export function splitDisabledReason(input: SplitDisabledInput): string | undefin
   if (input.isActiveDiagram) return SPLIT_ACTIVE_DIAGRAM_REASON;
   if (input.isSecondaryDiagram) return SPLIT_SECONDARY_DIAGRAM_REASON;
   return undefined;
+}
+
+export function undoDisabledReason(canUndo: boolean): string | undefined {
+  return canUndo ? undefined : UNDO_DISABLED_REASON;
+}
+
+export function redoDisabledReason(canRedo: boolean): string | undefined {
+  return canRedo ? undefined : REDO_DISABLED_REASON;
 }
