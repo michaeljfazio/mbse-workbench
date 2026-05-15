@@ -6,102 +6,83 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 756
+- Iteration #: 757
 - Started: 2026-05-15
-- Branch: issue/313-cmdk-create-representation (PR pending; auto-merge --squash)
-- Working on: #313 — T-13.05c Selection-scoped **Create representation**
-  palette commands. PR #312 (T-13.05b unified ranked list) merged d19b5f0
-  at 11:58:16Z. Picked T-13.05c as the next slice per iter-755's Next-
-  action plan — same lowest-numbered P1 operator-UX tier, continuing
-  T-13.05's a/b/c/d split. This is where the typed-context approach
-  introduced in T-13.05a starts paying real discoverability dividends:
-  commands appear in the palette only when a specific selection-shape
-  is satisfied.
+- Branch: issue/315-cmdk-recents (PR pending; auto-merge --squash)
+- Working on: #315 — T-13.05d Recently-used commands in Cmd-K palette.
+  PR #314 (T-13.05c selection-scoped Create-representation commands)
+  merged 7fc4f3b at 12:25:07Z. Picked T-13.05d as the next slice per
+  iter-756's Next-action plan — closes the T-13.05a/b/c/d series and
+  delivers the last operator-UX deliverable promised by the unified
+  command-palette plan.
 
-  T-13.05c emits one **Create <Viewpoint> representation** palette
-  command per option returned by `acceptedRepresentations(kind)` for
-  the single selected element on the active diagram. The pattern mirrors
-  the project-tree row submenu shipped in T-13.33c, but surfaces the
-  same action through Cmd-K:
-  - Single PartDefinition selected → BDD, IBD, Parametric commands.
-  - Single Package selected → BDD, Requirements, Use Case, Package.
-  - Single ActionDefinition selected → Activity.
-  - Single StateDefinition selected → State Machine.
-  - Anything else (PortUsage, PartUsage, ConnectionUsage, …) → no
-    extra commands (acceptedRepresentations returns []).
-  - No selection / multi-selection → no extra commands.
+  T-13.05d adds two complementary affordances:
+  1. **Recent section** at the top of the empty-query palette. The
+     workspace store gains an in-memory `recentCommandIds: readonly
+     string[]` slot capped at `MAX_RECENT_COMMAND_IDS = 5`, plus a
+     `recordCommandUse(id)` action that dedupes existing entries and
+     prepends MRU. The palette calls it from `runItem` whenever the
+     user picks a `command`-kind row. On next open, the empty palette
+     splits into two headers — **Recent** (MRU order, capped at 5,
+     disabled / unknown ids skipped silently) and **Actions** (the
+     remaining built-in + selection-scoped commands, with recents
+     filtered out so the same row never appears twice).
+  2. **Commands / Elements grouping** in the typed-query view once
+     the unified ranked list grows past
+     `UNIFIED_LIST_SECTION_THRESHOLD = 5` AND both kinds are present.
+     Below threshold (or one-kind-only) the existing flat ranked list
+     is preserved — the small-result case reads cleaner without
+     headers. Above threshold the view re-groups: all matching
+     commands first (registry/score order within), then all matching
+     elements. The `+0.05` command bias no longer just biases ties;
+     it's now load-bearing only for the sub-threshold flat ranking.
 
-  Command shape: `id = selection.create-representation.<viewpointId>`
-  (so the existing testid prefix convention generalises), `label =
-  "Create <Label> representation"`, `description = "New diagram anchored
-  to the selected element"`, keywords include `[diagram, new, create,
-  <viewpointId>, <label>]`. `isEnabled` is intentionally a constant
-  `true`: the generator already only emits commands for the active
-  selection, so the palette doesn't have to re-filter them by context.
+  Headers live as `<li role="presentation">` rows inside the same
+  `<ul role="listbox">`, so screen readers still see one listbox and
+  ArrowDown/Up navigation skips them automatically (no header sits
+  in the flat `items` array). `data-testid`s:
+  `command-palette-recent-header`, `command-palette-commands-header`
+  (preserved — re-used for the Recent-mode Actions header so all
+  Phase-12-vintage assertions still hold), `command-palette-section-
+  commands`, `command-palette-section-elements`.
 
-  `run` calls a new `createRepresentation(option)` action on
-  `PaletteCommandContext` that:
-  1. Looks up the selected element's display name (`element.name` or
-     `element.kind` when blank, matching the tree menu's behaviour).
-  2. Composes `name = "<owner> <label>"` — e.g. "AlphaSystem IBD" —
-     and dispatches `createDiagram(viewpointId, { name, context: {
-     kind: contextKind, id: ownerId } })`.
-  3. Calls `setActiveDiagram(newId)` so the freshly authored
-     representation is what the user lands on after closing the
-     palette.
+  Helper API: `paletteCommands.ts` exports `MAX_RECENT_COMMANDS`,
+  `UNIFIED_LIST_SECTION_THRESHOLD`, and a pure
+  `recentPaletteCommands(allCommands, recentIds, ctx)` that filters
+  to enabled + known and caps at MAX_RECENT_COMMANDS. The MRU-list
+  cap (store-side `MAX_RECENT_COMMAND_IDS`) is intentionally equal
+  to the render cap so the store and the renderer agree on the
+  budget. The `recentPaletteCommands` helper is the gate for both:
+  disabled recents are SKIPPED, not greyed out, so a Recent header
+  doesn't appear above a row the user can't click.
 
-  Implementation: `paletteCommands.ts` exports `selectionScopedCommands(
-  context)` returning `readonly PaletteCommand[]`. Two new fields on
-  `PaletteCommandContext`: `selectionTargetElement: ModelElement | null`
-  and `createRepresentation: (option: RepresentationOption) => void`.
-  `CommandPalette.tsx` resolves `selectionTargetElement` from
-  `selectedElementIds[0]` against the `elements` array when
-  `activeSurfaceKind === 'diagram'` and exactly one element is
-  selected; computes `allCommands = [...BUILT_IN, ...selectionScoped]`
-  per render; uses `allCommands` everywhere the previous code used
-  `BUILT_IN_PALETTE_COMMANDS`. Both empty-query Actions section and
-  query-ranked list pick up the scoped commands. They inherit the
-  `+0.05` command bias, so typing "IBD" with a part selected puts the
-  scoped command at index 0 above any element whose name contains
-  "IBD". Existing built-ins keep registry order; scoped commands
-  appear after them in empty mode.
+  Tests: 22 new (7 + 7 + 7 + 1 e2e). Local check green: 1205/1205
+  unit pass (was 1183; +22 net), tsc -b clean, lint clean (0 errors,
+  3 pre-existing warnings unchanged), vite build clean. New e2e
+  spec passes on Chromium + WebKit (476/476 e2e in the full run).
+  Agent visual inspection: four Chromium screenshots at
+  `artifacts/iteration-757/palette-{empty-no-recents,empty-with-
+  recent-save,query-small-flat-list,query-sectioned-headers}.png`
+  confirm (a) no Recent header before any command runs, (b) Recent
+  + Actions split after one Save with no Save duplication, (c)
+  query "alpha" stays a single flat list (1 item), (d) query
+  "selection" with 8 matches groups under COMMANDS / ELEMENTS
+  headers. No committed visual baseline captures the modal palette
+  so no baseline regen anticipated.
 
-  Tests: 11 new unit + 1 new e2e spec.
-  - `paletteCommands.test.ts` (+7): no selection → []; PartDefinition
-    → bdd / ibd / parametric (id + label assertions); Package → four
-    package representations; PortUsage → []; every scoped command is
-    enabled regardless of context flags; `run` delegates to
-    `createRepresentation` with the matching `{viewpointId, contextKind,
-    label}` option; `filterPaletteCommands("ibd", …)` matches by
-    viewpoint id keyword.
-  - `CommandPalette.test.tsx` (+4): with a PartDefinition selected on
-    a diagram, empty palette shows all three scoped commands; clearing
-    the selection removes them; clicking "Create IBD representation"
-    creates a diagram with `viewpointId: 'ibd'` + `name: "<owner>
-    IBD"` + `context: {kind: 'partDefinition', id: ownerId}` and sets
-    it active; querying "IBD" surfaces the scoped command as the
-    active row.
-  - `command-palette.spec.ts` (+1 e2e): seeds a BDD with three
-    PartDefinitions, confirms the scoped commands are absent without
-    selection, selects AlphaSystem via the palette's own search-and-
-    Enter flow, re-opens the palette, confirms all three scoped
-    commands appear, clicks "Create IBD representation", asserts the
-    new "AlphaSystem IBD" tab is active.
-
-  Local check green: 1183/1183 unit pass (was 1172; +11 net), tsc -b
-  clean, lint clean (0 errors, 3 pre-existing warnings unchanged),
-  vite build clean. New e2e spec passes on Chromium (full
-  command-palette.spec.ts: 8/8). Agent visual inspection: captured
-  Chromium screenshots at `artifacts/iteration-756/palette-{no-selection,
-  with-selection-empty-query, with-selection-query-ibd}.png` and
-  `after-create-ibd.png`. Confirms (a) scoped commands only render
-  when a single PartDefinition is selected; (b) empty-query Actions
-  section now shows Save / Delete / Open chat / Show inspector /
-  Rename selection / Create BDD/IBD/Parametric representation rows
-  with matching descriptions; (c) typing "IBD" filters to just
-  "Create IBD representation"; (d) clicking it switches to the new
-  "AlphaSystem IBD" tab with the empty IBD canvas. No committed visual
-  baseline captures the modal palette so no baseline regen anticipated.
+## Iter-756 archive
+- Branch: issue/313-cmdk-create-representation (PR #314 merged
+  7fc4f3b at 12:25:07Z on 2026-05-15). Shipped T-13.05c — selection-
+  scoped **Create representation** palette commands. Two new fields
+  on `PaletteCommandContext` (`selectionTargetElement` +
+  `createRepresentation`), one new `selectionScopedCommands(ctx)`
+  generator that emits one command per option returned by
+  `acceptedRepresentations(kind)` for the single selected element on
+  the active diagram. 11 new unit + 1 new e2e spec. 1183/1183 unit
+  pass (was 1172; +11 net), all checks clean. Agent visual
+  inspection at `artifacts/iteration-756/palette-{no-selection,
+  with-selection-empty-query,with-selection-query-ibd}.png` +
+  `after-create-ibd.png`.
 
 ## Iter-755 archive
 - Branch: issue/311-cmdk-unified-ranked-list (PR #312 merged d19b5f0
@@ -925,12 +906,13 @@ Backlog (P1 — discoverability/workflow):
   - [x] T-13.05a Scaffold: typed `PaletteCommand` registry, Actions
     section, initial four built-in commands (Undo / Redo / Save /
     Delete selection). Shipped iter-754 (PR #310, 44cd6df).
-  - T-13.05b Unified ranked list (commands + elements in one section);
-    more command groups (open chat, show inspector, rename selection
-    so far). In flight iter-755 (#311). Remaining ideas (create
-    diagram, focus pane, …) deferred to T-13.05c/d.
-  - T-13.05c Inspector / surface-scoped actions.
-  - T-13.05d Recently-used commands at the top.
+  - [x] T-13.05b Unified ranked list (commands + elements in one
+    section); open-chat / show-inspector / rename-selection commands.
+    Shipped iter-755 (PR #312, d19b5f0).
+  - [x] T-13.05c Selection-scoped Create representation commands.
+    Shipped iter-756 (PR #314, 7fc4f3b).
+  - T-13.05d Recently-used commands + Commands/Elements section
+    headers above the threshold. In flight iter-757 (#315).
 - T-13.06 Tooltip reasons on disabled toolbar buttons
 - T-13.07 Inspector contextual "+ New …" panel when nothing selected
 - T-13.08 Inline project-name rename in header
@@ -1060,23 +1042,25 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
-Wait for PR (T-13.05c selection-scoped Create-representation commands,
-#313) CI. No committed visual baseline captures the modal palette so
-no baseline regen is anticipated. After this merges, the natural next
-slice is **T-13.05d** (recents / pinned / grouped sections — surface
-the `data-item-kind` attribute T-13.05b added to drive a
-most-recently-used row above ranked results, plus visible section
-headers when the unified list grows past ~5 entries). The scoped
-commands shipped this iter make a recents bucket worthwhile: a user
-who repeatedly creates IBD representations for various parts will
-benefit from the most-recent scoped command surfacing first.
-Alternatives if a quick win is desired instead:
-- T-13.05e (Add port / inspector-scoped actions, P1) — pairs naturally
-  with T-13.05c; only difference is which store action wires up.
-- T-13.06 (disabled-toolbar-button reason tooltips, P1) — small,
-  self-contained; good for a quick iteration.
+Wait for PR (T-13.05d recents + Commands/Elements section headers,
+#315) CI. No committed visual baseline captures the modal palette so
+no baseline regen is anticipated. After this merges the entire
+T-13.05 series (a/b/c/d) closes — the operator-UX tier next-lowest
+slice is **T-13.06** (disabled-toolbar-button reason tooltips). Small,
+self-contained: each disabled toolbar button currently has no
+indication of why it's disabled; the slice wires a `title` /
+shadcn-tooltip showing the gating predicate (e.g. "Undo —
+nothing to undo", "Delete — no selection on the active diagram").
+Pairs naturally with the typed predicate plumbing T-13.05a put in
+place. Alternatives if a different direction is desired:
+- T-13.07 (inspector contextual "+ New …" panel when nothing
+  selected, P1) — bigger, but unblocks the empty-inspector state.
 - T-13.10 (undo/redo toolbar buttons, P1) — buttons already work via
   keyboard; this surfaces the same actions in the toolbar.
+- A recents persistence pass: today's recents are in-memory only
+  (cleared on reload). A future slice could mirror them to
+  sessionStorage so the "Recent" header survives reload. Out of
+  scope for T-13.05d.
 
 Backlog (P1 notation conformance) status after T-13.26:
 - T-13.18 ✓, T-13.19 ✓, T-13.20 ✓, T-13.21 ✓, T-13.22 ✓,

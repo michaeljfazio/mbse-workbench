@@ -464,4 +464,206 @@ describe('<CommandPalette /> (T-13.05a/b)', () => {
     // Command-bias keeps the scoped command active on first render.
     expect(ibdCmd).toHaveAttribute('data-active', 'true');
   });
+
+  // ---- T-13.05d — Recents + Commands/Elements sectioning ----
+
+  it('with no recents, the empty palette shows only the Actions section header', async () => {
+    await bootstrap();
+    useWorkspaceStore.getState().createBlock({ x: 0, y: 0 });
+
+    render(<CommandPalette onClose={() => {}} />);
+
+    expect(
+      screen.getByTestId('command-palette-commands-header'),
+    ).toHaveTextContent(/Actions/i);
+    expect(
+      screen.queryByTestId('command-palette-recent-header'),
+    ).toBeNull();
+  });
+
+  it('after running Undo via the palette, re-opening shows it under a Recent header at the top', async () => {
+    await bootstrap();
+    // Two changes so undo stays enabled after the first undo.
+    useWorkspaceStore.getState().createBlock({ x: 0, y: 0 });
+    useWorkspaceStore.getState().createBlock({ x: 0, y: 0 });
+
+    const onClose = vi.fn();
+    const { unmount } = render(<CommandPalette onClose={onClose} />);
+    fireEvent.click(
+      screen.getByTestId('command-palette-command-workspace.undo'),
+    );
+    expect(useWorkspaceStore.getState().recentCommandIds).toEqual([
+      'workspace.undo',
+    ]);
+    unmount();
+
+    render(<CommandPalette onClose={() => {}} />);
+    const recentHeader = screen.getByTestId('command-palette-recent-header');
+    expect(recentHeader).toHaveTextContent(/Recent/i);
+    const list = screen.getByTestId('command-palette-results');
+    // The first option in the listbox is Undo, beneath the Recent header.
+    const firstOption = within(list).getAllByRole('option')[0];
+    expect(firstOption).toHaveAttribute(
+      'data-testid',
+      'command-palette-command-workspace.undo',
+    );
+    // The Actions section still appears beneath, and does NOT duplicate Undo.
+    expect(
+      screen.getByTestId('command-palette-commands-header'),
+    ).toBeVisible();
+    const undoRows = within(list).getAllByTestId(
+      'command-palette-command-workspace.undo',
+    );
+    expect(undoRows.length).toBe(1);
+  });
+
+  it('recents preserve MRU order across multiple palette uses', async () => {
+    await bootstrap();
+    useWorkspaceStore.getState().createBlock({ x: 0, y: 0 });
+
+    // Use Show inspector then Open chat — most-recent-first should order
+    // them: open-chat, show-inspector.
+    const { unmount: u1 } = render(<CommandPalette onClose={() => {}} />);
+    fireEvent.click(
+      screen.getByTestId('command-palette-command-workspace.show-inspector'),
+    );
+    u1();
+    const { unmount: u2 } = render(<CommandPalette onClose={() => {}} />);
+    fireEvent.click(
+      screen.getByTestId('command-palette-command-workspace.open-chat'),
+    );
+    u2();
+
+    render(<CommandPalette onClose={() => {}} />);
+    const list = screen.getByTestId('command-palette-results');
+    const options = within(list).getAllByRole('option');
+    expect(options[0]).toHaveAttribute(
+      'data-testid',
+      'command-palette-command-workspace.open-chat',
+    );
+    expect(options[1]).toHaveAttribute(
+      'data-testid',
+      'command-palette-command-workspace.show-inspector',
+    );
+  });
+
+  it('a disabled recent (delete-selection without selection) is skipped, not shown beneath Recent', async () => {
+    await bootstrap();
+    const blockId = useWorkspaceStore.getState().createBlock({ x: 0, y: 0 });
+    expect(blockId).not.toBeNull();
+    useWorkspaceStore.getState().setActiveSurface('diagram');
+    useWorkspaceStore.getState().setSelection([blockId!]);
+
+    // Delete the selection via the palette (records delete-selection as recent).
+    const { unmount } = render(<CommandPalette onClose={() => {}} />);
+    fireEvent.click(
+      screen.getByTestId('command-palette-command-workspace.delete-selection'),
+    );
+    unmount();
+
+    // After delete, no diagram selection → delete is disabled.
+    useWorkspaceStore.getState().setSelection([]);
+    render(<CommandPalette onClose={() => {}} />);
+    // Recent header should not appear (delete-selection is the only recent
+    // and it's disabled; no other recents to fall back on).
+    expect(screen.queryByTestId('command-palette-recent-header')).toBeNull();
+    expect(
+      screen.queryByTestId(
+        'command-palette-command-workspace.delete-selection',
+      ),
+    ).toBeNull();
+  });
+
+  it('query-active small result set stays a single flat list with no section headers', async () => {
+    await bootstrap();
+    const blockId = useWorkspaceStore.getState().createBlock({ x: 0, y: 0 });
+    expect(blockId).not.toBeNull();
+    useWorkspaceStore.getState().renameElement(blockId!, 'SaveControlBlock');
+
+    render(<CommandPalette onClose={() => {}} />);
+    fireEvent.change(screen.getByTestId('command-palette-input'), {
+      target: { value: 'save' },
+    });
+
+    // Two items total (Save command + SaveControlBlock element) — below threshold.
+    expect(
+      screen.queryByTestId('command-palette-section-commands'),
+    ).toBeNull();
+    expect(
+      screen.queryByTestId('command-palette-section-elements'),
+    ).toBeNull();
+  });
+
+  it('query-active result set above the threshold groups under Commands / Elements headers', async () => {
+    await bootstrap();
+    // Seed six elements all matching "block": one command (save-project's
+    // keyword "project" matches via a different query) — easier here to use
+    // the substring "block" which matches the elements' names but NOT any
+    // command label/description/keyword. So we need a query that matches at
+    // least one command AND >5 elements. The "delete" command's label has
+    // "Delete selection" but keyword "remove" — let's use "selection" via
+    // delete's label.
+    const ids = [
+      useWorkspaceStore.getState().createBlock({ x: 0, y: 0 }),
+      useWorkspaceStore.getState().createBlock({ x: 0, y: 0 }),
+      useWorkspaceStore.getState().createBlock({ x: 0, y: 0 }),
+      useWorkspaceStore.getState().createBlock({ x: 0, y: 0 }),
+      useWorkspaceStore.getState().createBlock({ x: 0, y: 0 }),
+      useWorkspaceStore.getState().createBlock({ x: 0, y: 0 }),
+    ];
+    expect(ids.every((id) => id !== null)).toBe(true);
+    // Rename each to share the "selection" substring so they all match.
+    ids.forEach((id, i) => {
+      useWorkspaceStore.getState().renameElement(id!, `SelectionBlock${i}`);
+    });
+    // Also select one of them so delete-selection is enabled (and matches
+    // by label substring).
+    useWorkspaceStore.getState().setActiveSurface('diagram');
+    useWorkspaceStore.getState().setSelection([ids[0]!]);
+
+    render(<CommandPalette onClose={() => {}} />);
+    fireEvent.change(screen.getByTestId('command-palette-input'), {
+      target: { value: 'selection' },
+    });
+
+    expect(
+      screen.getByTestId('command-palette-section-commands'),
+    ).toHaveTextContent(/Commands/i);
+    expect(
+      screen.getByTestId('command-palette-section-elements'),
+    ).toHaveTextContent(/Elements/i);
+    // The single command match (Delete selection / Rename selection) is
+    // grouped before the elements regardless of score.
+    const list = screen.getByTestId('command-palette-results');
+    const options = within(list).getAllByRole('option');
+    expect(options[0]?.getAttribute('data-item-kind')).toBe('command');
+  });
+
+  it('Arrow navigation skips the section header rows', async () => {
+    await bootstrap();
+    // Trigger Recent section to appear.
+    useWorkspaceStore.getState().createBlock({ x: 0, y: 0 });
+    const { unmount } = render(<CommandPalette onClose={() => {}} />);
+    fireEvent.click(
+      screen.getByTestId('command-palette-command-workspace.save-project'),
+    );
+    unmount();
+
+    render(<CommandPalette onClose={() => {}} />);
+    const list = screen.getByTestId('command-palette-results');
+    const options = within(list).getAllByRole('option');
+    // First option (save) is active; ArrowDown advances to the second option,
+    // not into the "Actions" header.
+    expect(options[0]).toHaveAttribute('data-active', 'true');
+
+    fireEvent.keyDown(screen.getByTestId('command-palette'), {
+      key: 'ArrowDown',
+    });
+    expect(options[0]).toHaveAttribute('data-active', 'false');
+    expect(options[1]).toHaveAttribute('data-active', 'true');
+    // No `option` has the role "presentation" — headers live as separate <li>.
+    for (const option of options) {
+      expect(option.getAttribute('role')).toBe('option');
+    }
+  });
 });

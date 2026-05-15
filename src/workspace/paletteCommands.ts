@@ -2,6 +2,9 @@
 // Phase 13 / T-13.05b — Scoring + unified ranked list + open-chat /
 // show-inspector / rename-selection commands.
 // Phase 13 / T-13.05c — Selection-scoped Create representation commands.
+// Phase 13 / T-13.05d — Recently-used commands surfaced at the top of the
+// empty-query palette + Commands/Elements grouping in the ranked list once
+// it grows past UNIFIED_LIST_SECTION_THRESHOLD entries.
 //
 // The Cmd-K palette grew up as element-search-only (Phase 12 slice D). T-13.05a
 // introduced a typed command registry so the same palette can host actions
@@ -9,7 +12,10 @@
 // matches and element matches can be ranked against each other in one list;
 // T-13.05c starts paying the typed-context dividend by emitting commands that
 // depend on the current selection (e.g. one "Create <Viewpoint> representation"
-// command per viewpoint accepted by the selected element's kind).
+// command per viewpoint accepted by the selected element's kind); T-13.05d
+// adds a recents bucket so the user's most-used actions float to the top of
+// the empty palette, plus visible section headers once the typed-query list
+// grows enough that mixed Commands+Elements rows would otherwise blur together.
 //
 // Each command is pure metadata + two pure functions (`isEnabled`, `run`) that
 // consume a small `PaletteCommandContext`. The CommandPalette component
@@ -235,4 +241,35 @@ function createRepresentationCommand(
       c.createRepresentation(option);
     },
   };
+}
+
+// T-13.05d — Recents helper. Returns enabled commands matching the most-
+// recently-used ids in MRU order, capped at MAX_RECENT_COMMANDS. Stale ids
+// (e.g. a selection-scoped command whose generating selection has cleared,
+// or a command id from a prior session that no longer exists) are skipped
+// silently — the recents list is a UX nicety, not a source of truth.
+export const MAX_RECENT_COMMANDS = 5;
+
+// Below this total, the typed-query view stays a single flat ranked list
+// (the cleaner reading order for short result sets). Above it, the view
+// splits into Commands + Elements sections with visible headers so the
+// user can scan each kind without scoring noise blurring them.
+export const UNIFIED_LIST_SECTION_THRESHOLD = 5;
+
+export function recentPaletteCommands(
+  allCommands: readonly PaletteCommand[],
+  recentIds: readonly string[],
+  context: PaletteCommandContext,
+): readonly PaletteCommand[] {
+  if (recentIds.length === 0) return [];
+  const byId = new Map(allCommands.map((c) => [c.id, c]));
+  const out: PaletteCommand[] = [];
+  for (const id of recentIds) {
+    const cmd = byId.get(id);
+    if (!cmd) continue;
+    if (!cmd.isEnabled(context)) continue;
+    out.push(cmd);
+    if (out.length >= MAX_RECENT_COMMANDS) break;
+  }
+  return out;
 }

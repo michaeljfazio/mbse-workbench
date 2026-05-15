@@ -13,6 +13,7 @@ export {
   DEFAULT_RIGHT_PANE_WIDTH,
   LAYOUT_STORAGE_KEY,
   MAX_PANE_WIDTH,
+  MAX_RECENT_COMMAND_IDS,
   MIN_PANE_WIDTH,
   getActiveDiagram,
   getActiveViewpoint,

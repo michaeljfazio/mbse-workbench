@@ -229,7 +229,13 @@ export interface WorkspaceState {
    * after creating a new child; the tree consumes it and clears via
    * setPendingRename(null). */
   readonly pendingRenameElementId: ElementId | null;
+  /** Most-recently-used palette command ids, most-recent first. Capped at
+   * MAX_RECENT_COMMAND_IDS. Cleared on store reset; not persisted to the
+   * project — recents are a per-session UX affordance. */
+  readonly recentCommandIds: readonly string[];
 }
+
+export const MAX_RECENT_COMMAND_IDS = 5;
 
 export type ActiveSurfaceKind = 'diagram' | 'requirements';
 export type RequirementsSurfaceTab = 'editor' | 'coverage' | 'matrix';
@@ -467,6 +473,10 @@ export interface WorkspaceActions {
   >;
   clearImportError(): void;
   setPendingRename(id: ElementId | null): void;
+  /** Record that a palette command was used. Dedupes prior occurrences,
+   * prepends to recentCommandIds, and caps the list at
+   * MAX_RECENT_COMMAND_IDS. */
+  recordCommandUse(id: string): void;
 }
 
 export type WorkspaceStore = WorkspaceState & WorkspaceActions;
@@ -502,6 +512,7 @@ const INITIAL_STATE: WorkspaceState = {
   pendingProposals: [],
   importError: null,
   pendingRenameElementId: null,
+  recentCommandIds: [],
 };
 
 /**
@@ -1097,6 +1108,14 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
 
   setPendingRename(id) {
     set({ pendingRenameElementId: id });
+  },
+
+  recordCommandUse(id) {
+    if (id.length === 0) return;
+    const current = get().recentCommandIds;
+    const filtered = current.filter((existing) => existing !== id);
+    const next = [id, ...filtered].slice(0, MAX_RECENT_COMMAND_IDS);
+    set({ recentCommandIds: next });
   },
 
   setLeftPaneWidth(px) {
