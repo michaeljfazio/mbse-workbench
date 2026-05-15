@@ -8,6 +8,8 @@ export const UNDO_DISABLED_REASON = 'Nothing to undo';
 export const REDO_DISABLED_REASON = 'Nothing to redo';
 export const UNDO_ENABLED_TITLE = 'Undo last action (Cmd-Z)';
 export const REDO_ENABLED_TITLE = 'Redo last undone action (Cmd-Shift-Z)';
+export const PROJECT_NAME_ENABLED_TITLE = 'Rename project';
+export const PROJECT_NAME_DISABLED_REASON = SAVE_DISABLED_REASON;
 
 export function saveDisabledReason(initialized: boolean): string | undefined {
   return initialized ? undefined : SAVE_DISABLED_REASON;
@@ -42,4 +44,8 @@ export function undoDisabledReason(canUndo: boolean): string | undefined {
 
 export function redoDisabledReason(canRedo: boolean): string | undefined {
   return canRedo ? undefined : REDO_DISABLED_REASON;
+}
+
+export function projectNameTitle(initialized: boolean): string {
+  return initialized ? PROJECT_NAME_ENABLED_TITLE : PROJECT_NAME_DISABLED_REASON;
 }

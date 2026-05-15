@@ -239,6 +239,55 @@ describe('workspace store', () => {
     expect(useWorkspaceStore.getState().project).toBeNull();
   });
 
+  it('renameProject trims, updates project.name, and persists (T-13.08)', async () => {
+    const storage = makeMemoryStorage();
+    const repository = createInMemorySessionRepository({ storage });
+    const user = createSessionUser();
+    await useWorkspaceStore.getState().bootstrap({ repository, user, storage });
+
+    const saveSpy = vi.spyOn(repository, 'save');
+    useWorkspaceStore.getState().renameProject('  Acme System  ');
+    expect(useWorkspaceStore.getState().project?.name).toBe('Acme System');
+    expect(saveSpy).toHaveBeenCalledTimes(1);
+
+    // Persistence round-trip.
+    resetWorkspaceStoreForTests();
+    await useWorkspaceStore.getState().bootstrap({ repository, user, storage });
+    expect(useWorkspaceStore.getState().project?.name).toBe('Acme System');
+  });
+
+  it('renameProject is a no-op on empty / whitespace-only input (T-13.08)', async () => {
+    const storage = makeMemoryStorage();
+    const repository = createInMemorySessionRepository({ storage });
+    const user = createSessionUser();
+    await useWorkspaceStore.getState().bootstrap({ repository, user, storage });
+    const before = useWorkspaceStore.getState().project!.name;
+
+    const saveSpy = vi.spyOn(repository, 'save');
+    useWorkspaceStore.getState().renameProject('');
+    useWorkspaceStore.getState().renameProject('   ');
+    expect(useWorkspaceStore.getState().project?.name).toBe(before);
+    expect(saveSpy).not.toHaveBeenCalled();
+  });
+
+  it('renameProject is a no-op when the trimmed name is unchanged (T-13.08)', async () => {
+    const storage = makeMemoryStorage();
+    const repository = createInMemorySessionRepository({ storage });
+    const user = createSessionUser();
+    await useWorkspaceStore.getState().bootstrap({ repository, user, storage });
+    const current = useWorkspaceStore.getState().project!.name;
+
+    const saveSpy = vi.spyOn(repository, 'save');
+    useWorkspaceStore.getState().renameProject(`  ${current}  `);
+    expect(useWorkspaceStore.getState().project?.name).toBe(current);
+    expect(saveSpy).not.toHaveBeenCalled();
+  });
+
+  it('renameProject is a no-op before bootstrap (T-13.08)', () => {
+    useWorkspaceStore.getState().renameProject('Anything');
+    expect(useWorkspaceStore.getState().project).toBeNull();
+  });
+
   it('createDiagram appends a new IBD diagram and persists it (#49)', async () => {
     const storage = makeMemoryStorage();
     const repository = createInMemorySessionRepository({ storage });
