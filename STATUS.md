@@ -6,13 +6,120 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 764
+- Iteration #: 765
 - Started: 2026-05-16
-- Branch: issue/328-foundation-required-context (PR #329 pending;
-  auto-merge --squash; CI re-queued on fe23bb6)
-- Working on: #328 — T-13.29/.30 foundation closeout: required
-  `Diagram.context`, `Viewpoint.acceptedContextKinds`, legacy
-  migration synthesis, plus Phase-13 gate-invariant unit tests.
+- Branch: issue/330-diagram-tabs-open-close (PR pending)
+- Working on: #330 — T-13.37 Diagram tabs strip tracks "open" diagrams
+  separately from the full diagram list. The containment tree is the
+  authoritative master list of every diagram (rendered as `⌬`
+  representation rows under each diagram's context element via
+  `buildContainmentTree` — already shipped iter-723); the tab strip is
+  now a transient working set with close affordances. Closing a tab
+  leaves the representation row in the tree.
+
+  Surface changes:
+  1. `WorkspaceState.openDiagramIds: readonly DiagramId[]` (new slice).
+     Insertion-order list of diagram ids whose tabs are currently in
+     the strip. Persisted in `LayoutSnapshot` alongside
+     `secondaryDiagramId` so reloads preserve the working set.
+  2. `WorkspaceActions.openDiagram(id)` — adds to `openDiagramIds`
+     (idempotent) and activates. Delegates to `setActiveDiagram`.
+     Kept as a separate entry point so UI surfaces signal intent.
+  3. `WorkspaceActions.closeDiagramTab(id)` — removes from
+     `openDiagramIds`; if the closed tab was active, falls back to
+     the first surviving open id in insertion order, or null if none
+     remain (diagram itself stays in `state.diagrams`).
+  4. `setActiveDiagram(id)` now auto-appends to `openDiagramIds` if
+     the id wasn't already in the set, so every code path that
+     activates a diagram (`setActiveDiagram`, `splitDiagram`'s
+     promotion, `showDefinitionOnBdd`, `navigateToElementOnDiagram`,
+     `showRequirementTracesFor`, `showRequirementTracesFor`) leaves
+     the strip in a coherent state. The four inline
+     `set({ activeDiagramId })` callers in store.ts were refactored
+     to go through `setActiveDiagram` so the auto-open path runs.
+  5. Bootstrap: `initialOpenIds` = persisted set (filtered against
+     existing diagrams) OR `[diagrams[0].id]` if persisted-empty.
+     `initialActive` = first id of the open set (so reload re-focuses
+     the user's last-open tab). The earlier draft auto-forced
+     `diagrams[0].id` back into the open set even when persisted
+     state explicitly closed it — caught by the e2e reload spec.
+  6. `deleteDiagram(id)` strips `id` from `openDiagramIds`. The
+     fallback-active logic now prefers the next-open tab over
+     "first diagram in project" so deletion doesn't unintentionally
+     open a tab the user had closed.
+  7. `splitDiagram(id)` ensures the secondary id is in
+     `openDiagramIds` (`appendIfMissing`) so promoting from secondary
+     to primary via a tab click is always available.
+  8. Layout persistence: extracted `snapshotLayout(state)` helper —
+     every `writeLayout` site (left/right pane widths,
+     set/openDiagram, closeDiagramTab, splitDiagram, closeSplit,
+     deleteDiagram, import paths) now snapshots from current state
+     rather than reconstructing the literal. `LayoutSnapshot.openDiagramIds`
+     deserializes defensively (string-array filter); older snapshots
+     missing the field land at `[]` and the bootstrap fallback fires.
+  9. `CanvasPane` tab strip iterates `openTabs = openDiagramIds → diagrams`
+     instead of all diagrams. Each tab is a single
+     `<button role="tab">` containing the name + a styled
+     `<span data-testid="diagram-tab-close-<id>" aria-hidden>` close
+     X with its own `e.stopPropagation()` onClick. Backspace/Delete
+     while a tab is focused closes it (keyboard close shortcut). The
+     close affordance is a span (not a nested `<button>`) so the
+     parent stays a valid `role="tab"` button — three a11y dead-ends
+     learned the hard way:
+       - First attempt (close `<button>` inside a `<span>` wrapper
+         next to the tab `<button>`): axe `aria-required-children`
+         on tablist — close button isn't a tab.
+       - Second attempt (tab as `<div role="tab" tabindex>`, close
+         `<button tabindex=-1>` inside): axe
+         `nested-interactive` — negative tabindex inside an
+         interactive control still focusable to ATs.
+       - Final (single `<button role="tab">`, close as styled
+         `aria-hidden` span with onClick): passes both rules and
+         project-tree a11y spec.
+     Note: the *split toolbar* (⇆ buttons) still iterates over
+     `state.diagrams` (every project diagram, not just open ones) so
+     operators can split-compare a closed diagram into the secondary
+     pane without opening its primary tab first. `splitDiagram(id)`
+     pulls the secondary into `openDiagramIds` as a side effect.
+ 10. Empty state copy: "No diagrams" if `diagrams.length === 0`
+     (unchanged); "No open diagrams — open one from the tree" if
+     all tabs are closed but diagrams still exist. The latter is a
+     new UI state introduced by this slice.
+
+  New tests:
+  - `tests/unit/workspace/openDiagrams.test.ts` — 13 specs:
+    bootstrap default open set, openDiagram append-once + activate,
+    openDiagram for unknown id is no-op, closeDiagramTab removes from
+    open set without deleting diagram, close-active falls back to
+    next open, close-last-leaves-null, close-not-in-set is no-op,
+    setActiveDiagram auto-opens, deleteDiagram strips, persistence
+    round-trip, closed tabs do not reappear after reload, bootstrap
+    filters phantom persisted ids, splitDiagram opens secondary.
+  - `tests/e2e/diagram-tabs-open-close.spec.ts` — 4 specs (chromium +
+    webkit): initial single-tab open with second in tree only;
+    close removes tab but keeps tree row; tree-click reopens tab;
+    reload preserves open set including explicit-closed state.
+
+  Local check status:
+  - `tsc -b` clean.
+  - `eslint .` clean (0 errors, 3 pre-existing react-refresh
+    warnings unchanged).
+  - `vitest run` 1306/1306 unit pass (+13 new).
+  - `vite build` clean (876.27 kB JS / 42.40 kB CSS, gzip 243.49 +
+    8.18 — within pre-PR range).
+  - e2e: focused suite (split-view + project-tree + new spec) 12/12
+    pass on chromium; new spec also 4/4 pass on webkit. Full e2e
+    suite running locally in the background; visual `@visual` specs
+    will fail in CI on the canvas-header viewport baselines because
+    the tab strip's DOM changed (close X overlay, tab tabIndex
+    swap). Visual rebaseline follows the iter-25 procedure in
+    docs/CONTEXT.md: push, let CI fail, lift the per-browser
+    actuals out of the Playwright HTML report, commit as new
+    baselines, push again.
+
+  ## Prior iteration (archived)
+
+  Iteration #: 764 — Working on #328 (T-13.29/.30 foundation closeout).
 
   Iter-764 fix: CI run 25930710726 on e7a1845 failed only on
   `json-import-export.spec.ts:136` chromium + webkit (`round-trips:

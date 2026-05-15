@@ -123,6 +123,7 @@ interface LayoutSnapshot {
   readonly leftPaneWidth: number;
   readonly rightPaneWidth: number;
   readonly secondaryDiagramId: DiagramId | null;
+  readonly openDiagramIds: readonly DiagramId[];
 }
 
 function clampPaneWidth(px: number): number {
@@ -131,31 +132,35 @@ function clampPaneWidth(px: number): number {
 }
 
 function readLayout(storage: Storage): LayoutSnapshot {
+  const defaults: LayoutSnapshot = {
+    leftPaneWidth: DEFAULT_LEFT_PANE_WIDTH,
+    rightPaneWidth: DEFAULT_RIGHT_PANE_WIDTH,
+    secondaryDiagramId: null,
+    openDiagramIds: [],
+  };
   try {
     const raw = storage.getItem(LAYOUT_STORAGE_KEY);
-    if (raw === null) {
-      return {
-        leftPaneWidth: DEFAULT_LEFT_PANE_WIDTH,
-        rightPaneWidth: DEFAULT_RIGHT_PANE_WIDTH,
-        secondaryDiagramId: null,
-      };
-    }
+    if (raw === null) return defaults;
     const parsed = JSON.parse(raw) as Partial<LayoutSnapshot> & {
       secondaryDiagramId?: string | null;
+      openDiagramIds?: readonly unknown[];
     };
     const sd = parsed.secondaryDiagramId;
+    const openRaw = Array.isArray(parsed.openDiagramIds)
+      ? parsed.openDiagramIds
+      : [];
+    const openDiagramIds = openRaw.filter(
+      (v): v is DiagramId => typeof v === 'string' && v.length > 0,
+    );
     return {
       leftPaneWidth: clampPaneWidth(parsed.leftPaneWidth ?? DEFAULT_LEFT_PANE_WIDTH),
       rightPaneWidth: clampPaneWidth(parsed.rightPaneWidth ?? DEFAULT_RIGHT_PANE_WIDTH),
       secondaryDiagramId:
         typeof sd === 'string' && sd.length > 0 ? (sd as DiagramId) : null,
+      openDiagramIds,
     };
   } catch {
-    return {
-      leftPaneWidth: DEFAULT_LEFT_PANE_WIDTH,
-      rightPaneWidth: DEFAULT_RIGHT_PANE_WIDTH,
-      secondaryDiagramId: null,
-    };
+    return defaults;
   }
 }
 
@@ -165,6 +170,22 @@ function writeLayout(storage: Storage, snapshot: LayoutSnapshot): void {
   } catch {
     // Quota or storage unavailable — layout falls back to defaults next load.
   }
+}
+
+function appendIfMissing(
+  ids: readonly DiagramId[],
+  id: DiagramId,
+): readonly DiagramId[] {
+  return ids.includes(id) ? ids : [...ids, id];
+}
+
+function snapshotLayout(state: WorkspaceState): LayoutSnapshot {
+  return {
+    leftPaneWidth: state.leftPaneWidth,
+    rightPaneWidth: state.rightPaneWidth,
+    secondaryDiagramId: state.secondaryDiagramId,
+    openDiagramIds: state.openDiagramIds,
+  };
 }
 
 function defaultBrowserStorage(): Storage | null {
@@ -205,6 +226,12 @@ export interface WorkspaceState {
   readonly project: Project | null;
   readonly diagrams: readonly Diagram[];
   readonly activeDiagramId: DiagramId | null;
+  /** Diagrams whose tabs are currently visible in the canvas tab strip,
+   * in insertion order. A diagram remains in `state.diagrams` regardless
+   * of whether it appears here — the containment tree shows every diagram
+   * as a `⌬` representation row under its context element. Persisted in
+   * the layout snapshot so reloads preserve the working set. */
+  readonly openDiagramIds: readonly DiagramId[];
   readonly secondaryDiagramId: DiagramId | null;
   readonly elements: readonly ModelElement[];
   readonly edges: readonly ModelEdge[];
@@ -254,6 +281,15 @@ export interface CreateDiagramOptions {
 export interface WorkspaceActions {
   bootstrap(deps: BootstrapDeps): Promise<void>;
   setActiveDiagram(id: DiagramId): void;
+  /** Add `id` to `openDiagramIds` (idempotent, preserves insertion order)
+   * and activate it. The primary entry point used by UI surfaces — the
+   * containment tree, command palette, internal-diagram navigation, etc. */
+  openDiagram(id: DiagramId): void;
+  /** Remove `id` from `openDiagramIds`. The diagram itself is unaffected
+   * (it stays in `state.diagrams` and visible in the containment tree).
+   * If the closed tab was active, activate the next remaining open tab,
+   * or set `activeDiagramId = null` if none remain. */
+  closeDiagramTab(id: DiagramId): void;
   splitDiagram(id: DiagramId): void;
   closeSplit(): void;
   setSecondarySelection(ids: readonly ElementId[]): void;
@@ -499,6 +535,7 @@ const INITIAL_STATE: WorkspaceState = {
   project: null,
   diagrams: [],
   activeDiagramId: null,
+  openDiagramIds: [],
   secondaryDiagramId: null,
   elements: [],
   edges: [],
@@ -918,12 +955,13 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
 
   async bootstrap({ repository, user, provider, storage }) {
     const storageInst = storage ?? defaultBrowserStorage();
-    const layout = storageInst
+    const layout: LayoutSnapshot = storageInst
       ? readLayout(storageInst)
       : {
           leftPaneWidth: DEFAULT_LEFT_PANE_WIDTH,
           rightPaneWidth: DEFAULT_RIGHT_PANE_WIDTH,
           secondaryDiagramId: null,
+          openDiagramIds: [],
         };
     const collaborationProvider = provider ?? new NoopCollaborationProvider();
 
@@ -1013,6 +1051,23 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       void get().saveProject();
     });
 
+    const diagramIdSet = new Set(diagrams.map((d) => d.id));
+    // Filter persisted open-tab ids against the project's current diagrams;
+    // drop any whose diagram has since been deleted. If the persisted set
+    // is empty (or stale-empty), fall back to the project's first diagram
+    // so the user has at least one tab to look at after a fresh project.
+    const persistedOpenFiltered = layout.openDiagramIds.filter((id) =>
+      diagramIdSet.has(id),
+    );
+    const initialOpenIds: readonly DiagramId[] =
+      persistedOpenFiltered.length > 0
+        ? persistedOpenFiltered
+        : [diagrams[0]!.id];
+    // Activate the first id in the (possibly persisted) open set so reload
+    // can land on whatever tab the user last had focused. If the persisted
+    // active id is preserved later in the URL/Phase-13.39 hook, that will
+    // override here; today the convention is "first open tab wins."
+    const initialActive = initialOpenIds[0]!;
     set({
       initialized: true,
       user,
@@ -1022,7 +1077,8 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       provider: collaborationProvider,
       project,
       diagrams,
-      activeDiagramId: diagrams[0]!.id,
+      activeDiagramId: initialActive,
+      openDiagramIds: initialOpenIds,
       secondaryDiagramId:
         layout.secondaryDiagramId &&
         diagrams.some((d) => d.id === layout.secondaryDiagramId)
@@ -1046,14 +1102,43 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   },
 
   setActiveDiagram(id) {
-    const { diagrams, secondaryDiagramId } = get();
+    const { diagrams, secondaryDiagramId, openDiagramIds, storage } = get();
     if (!diagrams.some((d) => d.id === id)) return;
     // Avoid showing the same diagram on both sides: if the new primary is the
     // current secondary, close the split.
     if (secondaryDiagramId === id) {
       get().closeSplit();
     }
-    set({ activeDiagramId: id });
+    const nextOpen = appendIfMissing(openDiagramIds, id);
+    const opensChanged = nextOpen !== openDiagramIds;
+    set({ activeDiagramId: id, openDiagramIds: nextOpen });
+    if (storage && opensChanged) {
+      writeLayout(storage, snapshotLayout(get()));
+    }
+  },
+
+  openDiagram(id) {
+    // Same contract as setActiveDiagram today: both open the tab and activate
+    // it. Kept as a separate entry point so UI surfaces signal intent clearly
+    // ("open the diagram from the tree" vs "swap which tab is active").
+    get().setActiveDiagram(id);
+  },
+
+  closeDiagramTab(id) {
+    const { openDiagramIds, activeDiagramId, storage } = get();
+    if (!openDiagramIds.includes(id)) return;
+    const nextOpen = openDiagramIds.filter((openId) => openId !== id);
+    set({ openDiagramIds: nextOpen });
+    if (activeDiagramId === id) {
+      // Fall back to the next remaining open tab. The list preserved insertion
+      // order; picking the first surviving entry feels right ("rewind to your
+      // earlier-opened tab"). If none remain, activeDiagramId becomes null and
+      // the canvas renders its empty state.
+      set({ activeDiagramId: nextOpen[0] ?? null });
+    }
+    if (storage) {
+      writeLayout(storage, snapshotLayout(get()));
+    }
   },
 
   createDiagram(viewpointId, options) {
@@ -1118,29 +1203,36 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   },
 
   deleteDiagram(id) {
-    const {
-      diagrams,
-      activeDiagramId,
-      secondaryDiagramId,
-      storage,
-      leftPaneWidth,
-      rightPaneWidth,
-    } = get();
+    const { diagrams, activeDiagramId, secondaryDiagramId, openDiagramIds } =
+      get();
     if (!diagrams.some((d) => d.id === id)) return;
     const nextDiagrams = diagrams.filter((d) => d.id !== id);
-    set({ diagrams: nextDiagrams });
+    const nextOpenIds = openDiagramIds.filter((openId) => openId !== id);
+    const layoutChanged =
+      nextOpenIds.length !== openDiagramIds.length ||
+      secondaryDiagramId === id;
+    set({ diagrams: nextDiagrams, openDiagramIds: nextOpenIds });
     if (activeDiagramId === id) {
-      set({ activeDiagramId: nextDiagrams[0]?.id ?? null });
+      // Prefer activating another already-open tab; otherwise fall back to
+      // any remaining diagram (and pull it into the open set so the tab strip
+      // is non-empty whenever diagrams exist).
+      const nextActive =
+        nextOpenIds[0] ?? nextDiagrams[0]?.id ?? null;
+      if (nextActive !== null && !nextOpenIds.includes(nextActive)) {
+        set({
+          activeDiagramId: nextActive,
+          openDiagramIds: [...nextOpenIds, nextActive],
+        });
+      } else {
+        set({ activeDiagramId: nextActive });
+      }
     }
     if (secondaryDiagramId === id) {
       set({ secondaryDiagramId: null, secondarySelectedElementIds: [] });
-      if (storage) {
-        writeLayout(storage, {
-          leftPaneWidth,
-          rightPaneWidth,
-          secondaryDiagramId: null,
-        });
-      }
+    }
+    const { storage } = get();
+    if (storage && layoutChanged) {
+      writeLayout(storage, snapshotLayout(get()));
     }
     void get().saveProject();
   },
@@ -1163,59 +1255,48 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
 
   setLeftPaneWidth(px) {
     const width = clampPaneWidth(px);
-    const { storage, rightPaneWidth, secondaryDiagramId } = get();
     set({ leftPaneWidth: width });
+    const { storage } = get();
     if (storage) {
-      writeLayout(storage, {
-        leftPaneWidth: width,
-        rightPaneWidth,
-        secondaryDiagramId,
-      });
+      writeLayout(storage, snapshotLayout(get()));
     }
   },
 
   setRightPaneWidth(px) {
     const width = clampPaneWidth(px);
-    const { storage, leftPaneWidth, secondaryDiagramId } = get();
     set({ rightPaneWidth: width });
+    const { storage } = get();
     if (storage) {
-      writeLayout(storage, {
-        leftPaneWidth,
-        rightPaneWidth: width,
-        secondaryDiagramId,
-      });
+      writeLayout(storage, snapshotLayout(get()));
     }
   },
 
   splitDiagram(id) {
-    const { diagrams, storage, leftPaneWidth, rightPaneWidth, activeDiagramId } =
-      get();
+    const { diagrams, activeDiagramId, openDiagramIds } = get();
     if (!diagrams.some((d) => d.id === id)) return;
     // No-op if the requested split diagram is already the active primary.
     if (id === activeDiagramId) return;
+    // Promoting a diagram into the secondary pane also adds it to the open
+    // set: the operator typically wants to see its tab in the strip so they
+    // can later promote it back to primary by clicking the tab.
     set({
       secondaryDiagramId: id,
       secondarySelectedElementIds: [],
+      openDiagramIds: appendIfMissing(openDiagramIds, id),
     });
+    const { storage } = get();
     if (storage) {
-      writeLayout(storage, {
-        leftPaneWidth,
-        rightPaneWidth,
-        secondaryDiagramId: id,
-      });
+      writeLayout(storage, snapshotLayout(get()));
     }
   },
 
   closeSplit() {
-    const { storage, leftPaneWidth, rightPaneWidth, secondaryDiagramId } = get();
+    const { secondaryDiagramId } = get();
     if (secondaryDiagramId === null) return;
     set({ secondaryDiagramId: null, secondarySelectedElementIds: [] });
+    const { storage } = get();
     if (storage) {
-      writeLayout(storage, {
-        leftPaneWidth,
-        rightPaneWidth,
-        secondaryDiagramId: null,
-      });
+      writeLayout(storage, snapshotLayout(get()));
     }
   },
 
@@ -1582,10 +1663,8 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
     if (!definition || definition.kind !== 'PartDefinition') return null;
     const bdd = diagrams.find((d) => d.viewpointId === BDD_VIEWPOINT_ID);
     if (!bdd) return null;
-    set({
-      activeDiagramId: bdd.id,
-      selectedElementIds: [part.definitionId],
-    });
+    get().setActiveDiagram(bdd.id);
+    set({ selectedElementIds: [part.definitionId] });
     return bdd.id;
   },
 
@@ -1593,10 +1672,8 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
     const { diagrams, registry } = get();
     if (!registry || !registry.get(elementId)) return;
     if (!diagrams.some((d) => d.id === diagramId)) return;
-    set({
-      activeDiagramId: diagramId,
-      selectedElementIds: [elementId],
-    });
+    get().setActiveDiagram(diagramId);
+    set({ selectedElementIds: [elementId] });
   },
 
   showRequirementTracesFor(elementId) {
@@ -1610,10 +1687,8 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       (e) => e.kind === 'RequirementTrace' && e.targetId === elementId,
     );
     if (!trace) return null;
-    set({
-      activeDiagramId: reqDiagram.id,
-      selectedElementIds: [trace.sourceId],
-    });
+    get().setActiveDiagram(reqDiagram.id);
+    set({ selectedElementIds: [trace.sourceId] });
     return reqDiagram.id;
   },
 
@@ -2857,6 +2932,9 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       bus,
       diagrams: project.diagrams,
       activeDiagramId: project.diagrams[0]!.id,
+      // Import resets the open-tab set: only the freshly-active diagram
+      // is open; the rest start collapsed so the strip isn't flooded.
+      openDiagramIds: [project.diagrams[0]!.id],
       elements: registry.elements(),
       edges: registry.edges(),
       selectedElementIds: [],
@@ -2868,6 +2946,10 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       importError: null,
       modelVersion: bus.version(),
     });
+    const { storage } = get();
+    if (storage) {
+      writeLayout(storage, snapshotLayout(get()));
+    }
     return { ok: true };
   },
 
@@ -2928,6 +3010,9 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       bus,
       diagrams: project.diagrams,
       activeDiagramId: project.diagrams[0]!.id,
+      // Import resets the open-tab set: only the freshly-active diagram
+      // is open; the rest start collapsed so the strip isn't flooded.
+      openDiagramIds: [project.diagrams[0]!.id],
       elements: registry.elements(),
       edges: registry.edges(),
       selectedElementIds: [],
@@ -2939,6 +3024,10 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       importError: null,
       modelVersion: bus.version(),
     });
+    const { storage } = get();
+    if (storage) {
+      writeLayout(storage, snapshotLayout(get()));
+    }
     return { ok: true };
   },
 

@@ -1428,13 +1428,25 @@ function CanvasInner(): JSX.Element {
 export function CanvasPane(): JSX.Element {
   const diagrams = useWorkspaceStore((s) => s.diagrams);
   const activeDiagramId = useWorkspaceStore((s) => s.activeDiagramId);
+  const openDiagramIds = useWorkspaceStore((s) => s.openDiagramIds);
   const setActiveDiagram = useWorkspaceStore((s) => s.setActiveDiagram);
+  const closeDiagramTab = useWorkspaceStore((s) => s.closeDiagramTab);
   const activeSurfaceKind = useWorkspaceStore((s) => s.activeSurfaceKind);
   const setActiveSurface = useWorkspaceStore((s) => s.setActiveSurface);
   const secondaryDiagramId = useWorkspaceStore((s) => s.secondaryDiagramId);
   const splitDiagram = useWorkspaceStore((s) => s.splitDiagram);
 
   const requirementsActive = activeSurfaceKind === 'requirements';
+
+  // Resolve open ids → diagrams (filtering out any open ids whose diagram
+  // no longer exists; defensive against ordering bugs in deleteDiagram).
+  const openTabs = useMemo(() => {
+    const byId = new Map(diagrams.map((d) => [d.id, d] as const));
+    return openDiagramIds.flatMap((id) => {
+      const d = byId.get(id);
+      return d ? [d] : [];
+    });
+  }, [openDiagramIds, diagrams]);
 
   return (
     <section
@@ -1466,16 +1478,25 @@ export function CanvasPane(): JSX.Element {
           Requirements
         </button>
         <span aria-hidden="true" className="mx-1 h-4 w-px bg-border" />
-        {diagrams.length === 0 ? (
+        {openTabs.length === 0 ? (
           <span
             data-testid="diagram-tablist-empty"
             className="px-1 text-xs text-muted-foreground"
           >
-            No diagrams
+            {diagrams.length === 0
+              ? 'No diagrams'
+              : 'No open diagrams — open one from the tree'}
           </span>
         ) : (
-          diagrams.map((d) => {
+          openTabs.map((d) => {
             const isActive = !requirementsActive && d.id === activeDiagramId;
+            // The close X is a styled <span> (not a nested <button>) so
+            // the tab stays a valid `role="tab"` <button> with no nested
+            // interactive HTML elements and no nested tabindex — both axe
+            // serious-violation triggers under the ARIA tabs pattern.
+            // Keyboard close is via Cmd-W / Backspace on focused tab; the
+            // span is a mouse affordance only, gated by aria-hidden=true so
+            // assistive tech only announces the tab name.
             return (
               <button
                 key={d.id}
@@ -1490,13 +1511,37 @@ export function CanvasPane(): JSX.Element {
                   if (requirementsActive) setActiveSurface('diagram');
                   setActiveDiagram(d.id);
                 }}
-                className={`rounded-md px-3 py-1 text-xs font-medium transition ${
+                onKeyDown={(e) => {
+                  // Standard "close current tab" shortcuts: Backspace and
+                  // Delete close the focused tab without activating it.
+                  if (e.key === 'Backspace' || e.key === 'Delete') {
+                    e.preventDefault();
+                    closeDiagramTab(d.id);
+                  }
+                }}
+                className={`inline-flex items-center gap-1 rounded-md py-1 pl-3 pr-1.5 text-xs font-medium transition ${
                   isActive
                     ? 'bg-primary text-primary-foreground shadow-sm'
                     : 'text-muted-foreground hover:bg-accent'
                 }`}
               >
-                {d.name}
+                <span>{d.name}</span>
+                <span
+                  aria-hidden="true"
+                  title={`Close ${d.name}`}
+                  data-testid={`diagram-tab-close-${d.id}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    closeDiagramTab(d.id);
+                  }}
+                  className={`inline-flex h-4 w-4 cursor-pointer items-center justify-center rounded text-xs leading-none transition ${
+                    isActive
+                      ? 'hover:bg-primary-foreground/20'
+                      : 'opacity-60 hover:opacity-100'
+                  }`}
+                >
+                  ×
+                </span>
               </button>
             );
           })
@@ -1509,6 +1554,11 @@ export function CanvasPane(): JSX.Element {
             data-testid="split-toolbar"
             className="ml-1 flex items-center gap-0.5"
           >
+            {/* The split toolbar exposes every project diagram as a
+                "compare against" affordance — independent of whether the
+                diagram currently has an open tab. Clicking splitDiagram(id)
+                also adds the diagram to openDiagramIds so the operator can
+                later promote it from the secondary pane via its tab. */}
             {diagrams.map((d) => {
               const isActive = d.id === activeDiagramId;
               const isSecondary = d.id === secondaryDiagramId;
