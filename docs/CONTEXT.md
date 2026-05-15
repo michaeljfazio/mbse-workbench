@@ -8,6 +8,21 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
 
 ## Discovered facts
 
+- **2026-05-16 (iter-766, T-13.37)** — Playwright projects are split into
+  functional + visual pairs (`chromium`, `webkit`, `chromium-visual`,
+  `webkit-visual`) so visual specs can run with `retries: 0` while functional
+  specs keep the global `retries: 2`. A baseline storm previously tripled
+  the visual-spec wallclock on each retry and blew past both the 30- and
+  60-min job caps (cancellations on runs 25933515121 and 25935089963 for
+  PR #331). Retries don't help deterministic visual diffs — a real
+  regression diffs identically every time, so retrying is pure waste.
+  `snapshotPathTemplate` is overridden on each `-visual` project to keep
+  baseline file names `{arg}-chromium.png` / `{arg}-webkit.png` (rather
+  than `{arg}-chromium-visual.png`), so the existing committed baselines
+  remain valid. `SKIP_VISUAL_LOCALLY` (config-level `grepInvert`) still
+  drains the `-visual` projects entirely on non-CI macOS hosts; gate
+  fires only in CI.
+
 - **2026-05-14 (iter-705, #255)** — `pnpm typecheck` is a SILENT NO-OP.
   The root `tsconfig.json` declares `"files": []` plus `references` to
   `tsconfig.app.json` and `tsconfig.node.json`. Plain `tsc --noEmit`

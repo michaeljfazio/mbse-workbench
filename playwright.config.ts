@@ -32,14 +32,43 @@ export default defineConfig({
     deviceScaleFactor: 1,
     viewport: { width: 1280, height: 800 },
   },
+  // Split functional and visual specs into separate projects. Visual specs
+  // are deterministic — if a baseline diff is real, retrying produces the
+  // same diff. Globally `retries: 2` then triples the wallclock during a
+  // visual-baseline-drift storm (e.g. iter-765's tab-strip rename diff'd
+  // many baselines and pushed the job past the 60-min cap). Visual projects
+  // run with `retries: 0`; functional projects keep the global retries.
+  //
+  // `snapshotPathTemplate` is overridden per project so baseline file names
+  // stay `<arg>-chromium.png` / `<arg>-webkit.png` regardless of project
+  // name (otherwise renaming the project would invalidate every committed
+  // baseline).
   projects: [
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'], deviceScaleFactor: 1 },
+      grepInvert: /@visual/,
     },
     {
       name: 'webkit',
       use: { ...devices['Desktop Safari'], deviceScaleFactor: 1 },
+      grepInvert: /@visual/,
+    },
+    {
+      name: 'chromium-visual',
+      use: { ...devices['Desktop Chrome'], deviceScaleFactor: 1 },
+      grep: /@visual/,
+      retries: 0,
+      snapshotPathTemplate:
+        '{testDir}/__screenshots__/{testFileName}/{arg}-chromium{ext}',
+    },
+    {
+      name: 'webkit-visual',
+      use: { ...devices['Desktop Safari'], deviceScaleFactor: 1 },
+      grep: /@visual/,
+      retries: 0,
+      snapshotPathTemplate:
+        '{testDir}/__screenshots__/{testFileName}/{arg}-webkit{ext}',
     },
   ],
   webServer: {

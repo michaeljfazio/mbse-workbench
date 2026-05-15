@@ -18,11 +18,12 @@ jobs:
   check:
     name: check
     runs-on: ubuntu-latest
-    # 60min cap (was 30) so a visual-baseline shake-out run that hits many
-    # @visual snapshot diffs still has time to retry (CI retries=2) and
-    # flush the playwright-report artifact before the job is cancelled.
-    # Without the report we can't apply the lift-from-trace rebaseline
-    # procedure in docs/CONTEXT.md.
+    # 60min cap (was 30) so a baseline shake-out run still flushes the
+    # playwright-report artifact before the job is cancelled — that report
+    # is required by the lift-from-trace rebaseline procedure in
+    # docs/CONTEXT.md. Note: @visual specs run with `retries: 0` (see
+    # playwright.config.ts) so a baseline storm no longer triples the
+    # wallclock on retries; only functional flakes retry.
     timeout-minutes: 60
     steps:
       - name: Checkout
