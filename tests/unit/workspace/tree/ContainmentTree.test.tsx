@@ -780,6 +780,218 @@ describe('<ContainmentTree />', () => {
     });
   });
 
+  describe('diagram-row menu (T-13.33d)', () => {
+    it('renders a kebab trigger on each diagram row', async () => {
+      await bootstrap();
+      const dId = useWorkspaceStore.getState().diagrams[0]!.id;
+
+      render(<ContainmentTree />);
+      expect(
+        screen.getByTestId(`containment-tree-diagram-menu-trigger-${dId}`),
+      ).toBeInTheDocument();
+    });
+
+    it('Rename action puts the diagram name into edit mode; Enter commits via the store', async () => {
+      await bootstrap();
+      const dId = useWorkspaceStore.getState().diagrams[0]!.id;
+
+      render(<ContainmentTree />);
+      fireEvent.click(
+        screen.getByTestId(`containment-tree-diagram-menu-trigger-${dId}`),
+      );
+      fireEvent.click(
+        screen.getByTestId(`containment-tree-diagram-menu-rename-${dId}`),
+      );
+
+      const input = await screen.findByTestId(
+        `containment-tree-diagram-rename-${dId}`,
+      );
+      fireEvent.change(input, { target: { value: 'Renamed Diagram' } });
+      fireEvent.keyDown(input, { key: 'Enter' });
+
+      await waitFor(() => {
+        const dg = useWorkspaceStore
+          .getState()
+          .diagrams.find((d) => d.id === dId);
+        expect(dg?.name).toBe('Renamed Diagram');
+      });
+    });
+
+    it('Rename Escape cancels without mutating the diagram name', async () => {
+      await bootstrap();
+      const dId = useWorkspaceStore.getState().diagrams[0]!.id;
+      const original = useWorkspaceStore
+        .getState()
+        .diagrams.find((d) => d.id === dId)!.name;
+
+      render(<ContainmentTree />);
+      fireEvent.click(
+        screen.getByTestId(`containment-tree-diagram-menu-trigger-${dId}`),
+      );
+      fireEvent.click(
+        screen.getByTestId(`containment-tree-diagram-menu-rename-${dId}`),
+      );
+
+      const input = await screen.findByTestId(
+        `containment-tree-diagram-rename-${dId}`,
+      );
+      fireEvent.change(input, { target: { value: 'Discarded' } });
+      fireEvent.keyDown(input, { key: 'Escape' });
+
+      const dg = useWorkspaceStore
+        .getState()
+        .diagrams.find((d) => d.id === dId);
+      expect(dg?.name).toBe(original);
+      expect(
+        screen.queryByTestId(`containment-tree-diagram-rename-${dId}`),
+      ).toBeNull();
+    });
+
+    it('Delete on the active diagram removes it and falls back to another diagram', async () => {
+      await bootstrap();
+      const first = useWorkspaceStore.getState().diagrams[0]!.id;
+      const viewpointId = useWorkspaceStore.getState().viewpoints.list()[0]!.id;
+      const second = useWorkspaceStore
+        .getState()
+        .createDiagram(viewpointId, { name: 'Second' })!;
+      act(() => {
+        useWorkspaceStore.getState().setActiveDiagram(first);
+      });
+      expect(useWorkspaceStore.getState().activeDiagramId).toBe(first);
+
+      render(<ContainmentTree />);
+      fireEvent.click(
+        screen.getByTestId(`containment-tree-diagram-menu-trigger-${first}`),
+      );
+      fireEvent.click(
+        screen.getByTestId(`containment-tree-diagram-menu-delete-${first}`),
+      );
+
+      await waitFor(() => {
+        const state = useWorkspaceStore.getState();
+        expect(state.diagrams.find((d) => d.id === first)).toBeUndefined();
+        expect(state.activeDiagramId).toBe(second);
+      });
+    });
+
+    it('Delete on a non-active diagram leaves the active diagram untouched', async () => {
+      await bootstrap();
+      const first = useWorkspaceStore.getState().diagrams[0]!.id;
+      const viewpointId = useWorkspaceStore.getState().viewpoints.list()[0]!.id;
+      const second = useWorkspaceStore
+        .getState()
+        .createDiagram(viewpointId, { name: 'Second' })!;
+      act(() => {
+        useWorkspaceStore.getState().setActiveDiagram(first);
+      });
+
+      render(<ContainmentTree />);
+      fireEvent.click(
+        screen.getByTestId(`containment-tree-diagram-menu-trigger-${second}`),
+      );
+      fireEvent.click(
+        screen.getByTestId(`containment-tree-diagram-menu-delete-${second}`),
+      );
+
+      await waitFor(() => {
+        const state = useWorkspaceStore.getState();
+        expect(state.diagrams.find((d) => d.id === second)).toBeUndefined();
+        expect(state.activeDiagramId).toBe(first);
+      });
+    });
+
+    it('Delete of the last remaining diagram clears activeDiagramId', async () => {
+      await bootstrap();
+      const only = useWorkspaceStore.getState().diagrams[0]!.id;
+      expect(useWorkspaceStore.getState().diagrams).toHaveLength(1);
+
+      render(<ContainmentTree />);
+      fireEvent.click(
+        screen.getByTestId(`containment-tree-diagram-menu-trigger-${only}`),
+      );
+      fireEvent.click(
+        screen.getByTestId(`containment-tree-diagram-menu-delete-${only}`),
+      );
+
+      await waitFor(() => {
+        const state = useWorkspaceStore.getState();
+        expect(state.diagrams).toHaveLength(0);
+        expect(state.activeDiagramId).toBeNull();
+      });
+    });
+
+    it('clicking the kebab opens the menu and does not activate the diagram', async () => {
+      await bootstrap();
+      const first = useWorkspaceStore.getState().diagrams[0]!.id;
+      const viewpointId = useWorkspaceStore.getState().viewpoints.list()[0]!.id;
+      const second = useWorkspaceStore
+        .getState()
+        .createDiagram(viewpointId, { name: 'Second' })!;
+      act(() => {
+        useWorkspaceStore.getState().setActiveDiagram(first);
+      });
+
+      render(<ContainmentTree />);
+      fireEvent.click(
+        screen.getByTestId(`containment-tree-diagram-menu-trigger-${second}`),
+      );
+      expect(
+        screen.getByTestId(`containment-tree-diagram-menu-${second}`),
+      ).toBeInTheDocument();
+      expect(useWorkspaceStore.getState().activeDiagramId).toBe(first);
+    });
+  });
+
+  describe('renameDiagram / deleteDiagram (T-13.33d store actions)', () => {
+    it('renameDiagram updates the diagram name', async () => {
+      await bootstrap();
+      const dId = useWorkspaceStore.getState().diagrams[0]!.id;
+      act(() => {
+        useWorkspaceStore.getState().renameDiagram(dId, '  New Name  ');
+      });
+      const dg = useWorkspaceStore
+        .getState()
+        .diagrams.find((d) => d.id === dId);
+      expect(dg?.name).toBe('New Name');
+    });
+
+    it('renameDiagram is a no-op for empty/whitespace names', async () => {
+      await bootstrap();
+      const dId = useWorkspaceStore.getState().diagrams[0]!.id;
+      const before = useWorkspaceStore
+        .getState()
+        .diagrams.find((d) => d.id === dId)!.name;
+      act(() => {
+        useWorkspaceStore.getState().renameDiagram(dId, '   ');
+      });
+      const after = useWorkspaceStore
+        .getState()
+        .diagrams.find((d) => d.id === dId)!.name;
+      expect(after).toBe(before);
+    });
+
+    it('deleteDiagram clears secondaryDiagramId if it referenced the deleted diagram', async () => {
+      await bootstrap();
+      const first = useWorkspaceStore.getState().diagrams[0]!.id;
+      const viewpointId = useWorkspaceStore.getState().viewpoints.list()[0]!.id;
+      const second = useWorkspaceStore
+        .getState()
+        .createDiagram(viewpointId, { name: 'Second' })!;
+      act(() => {
+        useWorkspaceStore.getState().setActiveDiagram(first);
+        useWorkspaceStore.getState().splitDiagram(second);
+      });
+      expect(useWorkspaceStore.getState().secondaryDiagramId).toBe(second);
+
+      act(() => {
+        useWorkspaceStore.getState().deleteDiagram(second);
+      });
+      const state = useWorkspaceStore.getState();
+      expect(state.diagrams.find((d) => d.id === second)).toBeUndefined();
+      expect(state.secondaryDiagramId).toBeNull();
+    });
+  });
+
   describe('legacy: menu closes on outside pointerdown', () => {
     it('menu closes on outside pointerdown', async () => {
       await bootstrap();

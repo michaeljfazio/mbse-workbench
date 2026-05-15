@@ -242,6 +242,8 @@ export interface WorkspaceActions {
     viewpointId: ViewpointId,
     options?: CreateDiagramOptions,
   ): DiagramId | null;
+  renameDiagram(id: DiagramId, name: string): void;
+  deleteDiagram(id: DiagramId): void;
   setSelection(ids: readonly ElementId[]): void;
   setLeftPaneWidth(px: number): void;
   setRightPaneWidth(px: number): void;
@@ -1000,6 +1002,49 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
     set({ diagrams: [...diagrams, diagram] });
     void get().saveProject();
     return id;
+  },
+
+  renameDiagram(id, name) {
+    const trimmed = name.trim();
+    if (trimmed.length === 0) return;
+    const { diagrams } = get();
+    const existing = diagrams.find((d) => d.id === id);
+    if (!existing) return;
+    if (existing.name === trimmed) return;
+    set({
+      diagrams: diagrams.map((d) =>
+        d.id === id ? { ...d, name: trimmed } : d,
+      ),
+    });
+    void get().saveProject();
+  },
+
+  deleteDiagram(id) {
+    const {
+      diagrams,
+      activeDiagramId,
+      secondaryDiagramId,
+      storage,
+      leftPaneWidth,
+      rightPaneWidth,
+    } = get();
+    if (!diagrams.some((d) => d.id === id)) return;
+    const nextDiagrams = diagrams.filter((d) => d.id !== id);
+    set({ diagrams: nextDiagrams });
+    if (activeDiagramId === id) {
+      set({ activeDiagramId: nextDiagrams[0]?.id ?? null });
+    }
+    if (secondaryDiagramId === id) {
+      set({ secondaryDiagramId: null, secondarySelectedElementIds: [] });
+      if (storage) {
+        writeLayout(storage, {
+          leftPaneWidth,
+          rightPaneWidth,
+          secondaryDiagramId: null,
+        });
+      }
+    }
+    void get().saveProject();
   },
 
   setSelection(ids) {
