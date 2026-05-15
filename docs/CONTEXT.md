@@ -1149,3 +1149,21 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
   failed job at the same SHA; do NOT refresh visual baselines as if a
   test failed. The tests already passed once. (Auto-merge will fire on
   the green rerun without further commits.)
+
+- 2026-05-15 (iter-759, PR #320 fix-up commit e5050f6): **Adding buttons
+  to the canvas-toolbar can silently break split-view.** The diagram-panel
+  has `flex flex-1 flex-col` with no `min-w-0`, so its min-width is its
+  toolbar's min-content (sum of each button's longest-word width). Two
+  extra buttons (Undo + Redo, ~80–100px of min-content together) pushed
+  the panel's min-width above half of the available canvas-area width
+  in split-view at the default 1280×720 viewport, squeezing the
+  secondary pane to ~110px — narrow enough that the right-pane divider
+  intercepts pointer events at `close-split`'s coordinates and the
+  click never lands. **Rule:** any PR adding a persistent canvas-
+  toolbar button must verify the split-view e2e specs locally before
+  pushing, OR keep `min-w-0` on `diagram-panel` + `overflow-x-auto` on
+  `canvas-toolbar` so the panel can shrink and the toolbar scrolls
+  when squeezed. The visual baselines drift on every browser (chromium
+  + webkit) when the toolbar grows, which is *expected* and refreshed
+  via the lift-from-CI procedure — but split-view failures are
+  *functional* regressions and not OK to ride out via baseline regen.
