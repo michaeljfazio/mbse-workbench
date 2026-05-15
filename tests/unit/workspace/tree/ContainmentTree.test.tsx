@@ -613,6 +613,173 @@ describe('<ContainmentTree />', () => {
     });
   });
 
+  describe('Create representation submenu (T-13.33c)', () => {
+    it('PartDefinition row offers BDD, IBD, Parametric', async () => {
+      await bootstrap();
+      const part = useWorkspaceStore.getState().createBlock()!;
+
+      render(<ContainmentTree />);
+      fireEvent.click(
+        screen.getByTestId(`containment-tree-element-menu-trigger-${part}`),
+      );
+      fireEvent.click(
+        screen.getByTestId(
+          `containment-tree-element-menu-create-representation-${part}`,
+        ),
+      );
+      expect(
+        screen.getByTestId(
+          `containment-tree-element-menu-create-representation-list-${part}`,
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId(
+          `containment-tree-element-menu-representation-bdd-${part}`,
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId(
+          `containment-tree-element-menu-representation-ibd-${part}`,
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByTestId(
+          `containment-tree-element-menu-representation-parametric-${part}`,
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it('the Create representation submenu is hidden for kinds with no accepted viewpoints', async () => {
+      await bootstrap();
+      const reqId = useWorkspaceStore
+        .getState()
+        .createChildElement(rootId(), 'Requirement', 'member', 'R')!;
+      render(<ContainmentTree />);
+      fireEvent.click(
+        screen.getByTestId(`containment-tree-element-menu-trigger-${reqId}`),
+      );
+      expect(
+        screen.queryByTestId(
+          `containment-tree-element-menu-create-representation-${reqId}`,
+        ),
+      ).toBeNull();
+    });
+
+    it('selecting a viewpoint creates a new Diagram anchored to the row element and activates it', async () => {
+      await bootstrap();
+      const part = useWorkspaceStore.getState().createBlock()!;
+      act(() => {
+        useWorkspaceStore.getState().renameElement(part, 'Pump');
+      });
+      const before = useWorkspaceStore.getState().diagrams.length;
+
+      render(<ContainmentTree />);
+      fireEvent.click(
+        screen.getByTestId(`containment-tree-element-menu-trigger-${part}`),
+      );
+      fireEvent.click(
+        screen.getByTestId(
+          `containment-tree-element-menu-create-representation-${part}`,
+        ),
+      );
+      fireEvent.click(
+        screen.getByTestId(
+          `containment-tree-element-menu-representation-ibd-${part}`,
+        ),
+      );
+
+      await waitFor(() => {
+        expect(useWorkspaceStore.getState().diagrams.length).toBe(before + 1);
+      });
+      const added = useWorkspaceStore
+        .getState()
+        .diagrams.find((d) => d.context?.id === part)!;
+      expect(added.viewpointId).toBe('ibd');
+      expect(added.context).toEqual({ kind: 'partDefinition', id: part });
+      expect(added.name).toBe('Pump IBD');
+      expect(useWorkspaceStore.getState().activeDiagramId).toBe(added.id);
+    });
+
+    it('the new representation appears as a child row nested under its owner', async () => {
+      await bootstrap();
+      const part = useWorkspaceStore.getState().createBlock()!;
+
+      render(<ContainmentTree />);
+      fireEvent.click(
+        screen.getByTestId(`containment-tree-element-menu-trigger-${part}`),
+      );
+      fireEvent.click(
+        screen.getByTestId(
+          `containment-tree-element-menu-create-representation-${part}`,
+        ),
+      );
+      fireEvent.click(
+        screen.getByTestId(
+          `containment-tree-element-menu-representation-bdd-${part}`,
+        ),
+      );
+
+      await waitFor(() => {
+        const dg = useWorkspaceStore
+          .getState()
+          .diagrams.find((d) => d.context?.id === part);
+        expect(dg).toBeDefined();
+        expect(
+          screen.getByTestId(`containment-tree-diagram-${dg!.id}`),
+        ).toBeInTheDocument();
+      });
+    });
+
+    it('ActionDefinition offers exactly the Activity viewpoint', async () => {
+      await bootstrap();
+      const ad = useWorkspaceStore
+        .getState()
+        .createChildElement(rootId(), 'ActionDefinition', 'member', 'Pump.run')!;
+
+      render(<ContainmentTree />);
+      fireEvent.click(
+        screen.getByTestId(`containment-tree-element-menu-trigger-${ad}`),
+      );
+      fireEvent.click(
+        screen.getByTestId(
+          `containment-tree-element-menu-create-representation-${ad}`,
+        ),
+      );
+      expect(
+        screen.getByTestId(
+          `containment-tree-element-menu-representation-activity-${ad}`,
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId(
+          `containment-tree-element-menu-representation-bdd-${ad}`,
+        ),
+      ).toBeNull();
+    });
+
+    it('Package root offers BDD, Requirements, Use Case, Package', async () => {
+      await bootstrap();
+      render(<ContainmentTree />);
+      fireEvent.click(
+        screen.getByTestId(
+          `containment-tree-element-menu-trigger-${rootId()}`,
+        ),
+      );
+      fireEvent.click(
+        screen.getByTestId(
+          `containment-tree-element-menu-create-representation-${rootId()}`,
+        ),
+      );
+      for (const vp of ['bdd', 'requirements', 'use-case', 'package']) {
+        expect(
+          screen.getByTestId(
+            `containment-tree-element-menu-representation-${vp}-${rootId()}`,
+          ),
+        ).toBeInTheDocument();
+      }
+    });
+  });
+
   describe('legacy: menu closes on outside pointerdown', () => {
     it('menu closes on outside pointerdown', async () => {
       await bootstrap();
