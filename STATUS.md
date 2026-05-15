@@ -8,7 +8,10 @@ phase:13 — post-v1.0.0 polish + explorer rewrite
 ## Current iteration
 - Iteration #: 747
 - Started: 2026-05-15
-- Branch: issue/294-ibd-enclosing-frame (PR pending)
+- Branch: issue/294-ibd-enclosing-frame (PR #295, auto-merge --squash
+  enabled at 07:41:53Z, CI run 25906553896 on 348a044 in_progress at
+  07:41:48Z; visuals expected to fail on first run — 7 IBD baselines
+  × 2 projects = up to 14 baselines to refresh next iter)
 - Iter-747: PR #293 (T-13.21 Requirement compartments) merged on the
   iter-745 webkit-BDD baseline refresh — CI run 25905779167 on 5f90513
   went green at 07:30:59Z and auto-merge --squash landed it; issue #292
