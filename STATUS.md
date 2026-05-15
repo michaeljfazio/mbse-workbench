@@ -6,11 +6,28 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 741
+- Iteration #: 742
 - Started: 2026-05-15
-- Branch: issue/290-ibd-port-direction-glyphs (PR pending)
+- Branch: main (idle — PR #291 merged 7408b05)
+- Iter-742: PR #291 (T-13.18 IBD port direction glyphs) merged green on CI
+  run 25903598018; issue #290 closed. Notable: the IBD visual baselines
+  did NOT drift as iter-741 anticipated — the per-side label/glyph DOM
+  composition kept pixel diff within `maxDiffPixelRatio: 0.01` tolerance
+  on both chromium and webkit. So no baseline-refresh push was needed;
+  auto-merge landed the PR as-is. One incidental observation: the BDD
+  `bdd-two-blocks-linked.png` spec went 2/4 flaky on this run (11543 px
+  chromium, 13432 px webkit on first attempts, then stable on retries).
+  This is a pre-existing edge-of-tolerance baseline (last refreshed
+  iter-721 for the contrast fix, not touched by T-13.18) — Playwright's
+  built-in retries masked it as flaky rather than failing. Worth a
+  follow-up baseline refresh when convenient, but not gating. No code
+  work this iter beyond CI monitoring + main sync.
+
+## Current iteration (archived 741 → 742)
+- Iteration #: 741
+- Branch: issue/290-ibd-port-direction-glyphs (PR #291 merged 7408b05)
 - Iter-741: PR #289 (T-13.33e-b row-menu Duplicate + Move) merged aaf2ded;
-  closed umbrella issue #270 (T-13.33e fully done). Started T-13.18 — port
+  closed umbrella issue #270 (T-13.33e fully done). Shipped T-13.18 — port
   direction glyphs (SysMLv2 notation conformance). New pure helper
   `directionGlyph(direction, position)` in `src/viewpoints/ibd/partUsageHelpers.ts`
   resolves to one of {▶, ◀, ↔} so the arrow always points along the data-flow
@@ -29,10 +46,7 @@ phase:13 — post-v1.0.0 polish + explorer rewrite
   out-left, inout, in-on-both-sides (orientation flip), DOM child ordering
   per side, and the aria-hidden marker. 1042/1042 unit pass (was 1030,
   +12), tsc -b clean, lint clean (0 errors, 4 pre-existing warnings),
-  vite build clean. Visual baselines NOT regenerated locally — the new
-  glyph WILL drift IBD canvases on chromium + webkit; refresh from CI
-  actuals after the first push using the docs/CONTEXT.md 2026-05-12 lift
-  procedure if CI flags drift.
+  vite build clean.
 
 ## Current iteration (archived 740 → 741)
 - Iteration #: 740
@@ -477,7 +491,7 @@ Backlog (P0 — visual rendering / transparency, JOURNAL iter-529):
       PartUsageNode.tsx (rounded-full → rounded-none). Shipped iter-532 (#253).
 
 Backlog (P1 — SysMLv2 notation conformance, JOURNAL iter-529):
-- T-13.18 in-flight iter-741 (#290) — Port direction glyphs (in/out/inout) from PortDirection in model.
+- [x] T-13.18 Port direction glyphs (in/out/inout). Shipped iter-741 (#291).
 - T-13.19 BDD block compartments (parts/ports/values/constraints).
 - T-13.20 IBD enclosing-block frame (use diagram.context.partDefinition.id).
 - T-13.21 Requirement compartments (reqId/text/priority/status rows).
@@ -583,15 +597,16 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
-T-13.18 PR open for #290 — auto-merge enabled. Once it lands, IBD ports
-will carry SysMLv2 direction glyphs (▶/◀/↔). Expect chromium + webkit
-IBD visual baselines to drift on first CI run; refresh from actuals
-via the docs/CONTEXT.md 2026-05-12 lift procedure. Remaining candidates
-after T-13.18:
-- T-13.20 IBD enclosing-block frame — depends on diagram.context.
-  partDefinition.id (already required post-T-13.30).
+Pick the next Phase-13 backlog item. Top candidates:
+- T-13.20 IBD enclosing-block frame — render the
+  `diagram.context.partDefinition.id` block as a labeled rectangle
+  enclosing all PartUsage nodes. Required post-T-13.30, no schema work.
 - T-13.21 Requirement compartments — adds reqId/text/priority/status
-  rows; high reader-value with no schema work.
+  rows to RequirementNode; high reader-value, no schema work.
 - T-13.05 Cmd-K command palette — biggest P1 discoverability gap.
+- (Lower) BDD `bdd-two-blocks-linked.png` baseline-refresh follow-up —
+  iter-742 observed 2/4 flaky on chromium + webkit (pre-existing edge-
+  of-tolerance from iter-721). Worth a CI-actuals lift when picking up
+  any nearby BDD work, otherwise non-gating.
 Remaining P0 (UI-unreachable): T-13.01 / T-13.02 mostly subsumed by
 the explorer rewrite.
