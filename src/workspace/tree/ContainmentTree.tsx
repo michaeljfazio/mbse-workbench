@@ -24,6 +24,11 @@ import {
 } from './representationAcceptance';
 import { ContainmentTreeRowMenu } from './ContainmentTreeRowMenu';
 import { ContainmentTreeDiagramRowMenu } from './ContainmentTreeDiagramRowMenu';
+import {
+  computeFilteredKeys,
+  tokenizeFilter,
+  type TreeFilterKey,
+} from './treeFilter';
 
 type FocusKey = `el:${ElementId}` | `dg:${DiagramId}`;
 
@@ -223,6 +228,13 @@ export function ContainmentTree(): JSX.Element {
   // user-toggled overrides set; absence of an override means "use default".
   const [collapsed, setCollapsed] = useState<ReadonlySet<FocusKey>>(() => new Set());
 
+  const [filter, setFilter] = useState('');
+  const filterTokens = useMemo(() => tokenizeFilter(filter), [filter]);
+  const filteredKeys = useMemo<ReadonlySet<TreeFilterKey> | null>(
+    () => computeFilteredKeys(root, filterTokens),
+    [root, filterTokens],
+  );
+
   const expanded = useMemo<ReadonlySet<FocusKey>>(() => {
     if (!root) return new Set();
     const all = new Set<FocusKey>();
@@ -232,11 +244,21 @@ export function ContainmentTree(): JSX.Element {
       for (const child of node.children) visit(child);
     }
     visit(root);
-    for (const k of collapsed) all.delete(k);
+    // When a filter is active, force-expand every element so ancestors of
+    // matches are traversed by flatten(); user-toggled collapse state is
+    // overridden for the duration of the filter.
+    if (filteredKeys === null) {
+      for (const k of collapsed) all.delete(k);
+    }
     return all;
-  }, [root, collapsed]);
+  }, [root, collapsed, filteredKeys]);
 
-  const rows = useMemo(() => (root ? flatten(root, expanded) : []), [root, expanded]);
+  const rows = useMemo(() => {
+    if (!root) return [];
+    const all = flatten(root, expanded);
+    if (filteredKeys === null) return all;
+    return all.filter((r) => filteredKeys.has(r.key as TreeFilterKey));
+  }, [root, expanded, filteredKeys]);
 
   const [explicitFocusKey, setExplicitFocusKey] = useState<FocusKey | null>(null);
   const focusKey: FocusKey | null =
@@ -430,33 +452,60 @@ export function ContainmentTree(): JSX.Element {
     scrollKeyIntoView,
   ]);
 
+  const filterInput = (
+    <div className="px-2 pt-2">
+      <input
+        type="search"
+        value={filter}
+        onChange={(e) => setFilter(e.target.value)}
+        placeholder="Filter…"
+        aria-label="Filter containment tree"
+        data-testid="containment-tree-filter"
+        className="w-full rounded border border-border bg-card px-2 py-1 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+      />
+    </div>
+  );
+
   if (!root) {
     return (
-      <div
-        role="tree"
-        aria-label="Containment tree"
-        data-testid="containment-tree"
-        className="flex flex-col gap-0.5 p-2 text-sm"
-      >
-        <p
-          data-testid="containment-tree-empty"
-          className="px-2 py-1 text-xs text-muted-foreground"
+      <div className="flex flex-col">
+        {filterInput}
+        <div
+          role="tree"
+          aria-label="Containment tree"
+          data-testid="containment-tree"
+          className="flex flex-col gap-0.5 p-2 text-sm"
         >
-          No project loaded.
-        </p>
+          <p
+            data-testid="containment-tree-empty"
+            className="px-2 py-1 text-xs text-muted-foreground"
+          >
+            No project loaded.
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div
-      role="tree"
-      aria-label="Containment tree"
-      data-testid="containment-tree"
-      onKeyDown={onKeyDown}
-      className="flex flex-col gap-0.5 p-2 text-sm"
-    >
-      {rows.map((row) =>
+    <div className="flex flex-col">
+      {filterInput}
+      <div
+        role="tree"
+        aria-label="Containment tree"
+        data-testid="containment-tree"
+        onKeyDown={onKeyDown}
+        className="flex flex-col gap-0.5 p-2 text-sm"
+      >
+        {filterTokens.length > 0 && rows.length === 0 ? (
+          <p
+            data-testid="containment-tree-no-matches"
+            className="px-2 py-1 text-xs text-muted-foreground"
+          >
+            No matches.
+          </p>
+        ) : null}
+        {rows.map((row) =>
         row.node.kind === 'element'
           ? renderElementRow(row, row.node, {
               focusKey,
@@ -489,6 +538,7 @@ export function ContainmentTree(): JSX.Element {
               requestDiagramDelete,
             }),
       )}
+      </div>
     </div>
   );
 }
