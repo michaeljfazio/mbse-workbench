@@ -6,16 +6,56 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 758
+- Iteration #: 759
 - Started: 2026-05-15
-- Branch: issue/317-toolbar-disabled-reasons (PR #318 pending;
-  auto-merge --squash; CI run 25919321469 queued)
-- Working on: #317 — T-13.06 Disabled-toolbar-button reason tooltips.
-  PR #316 (T-13.05d recents + Commands/Elements grouping) merged
-  144a189 at 12:58:21Z, closing the entire T-13.05a/b/c/d series.
-  Picked T-13.06 as the next slice per iter-757's Next-action plan —
-  the lowest-numbered P1 operator-UX item that pairs naturally with
-  the typed predicate plumbing T-13.05a put in place.
+- Branch: issue/319-toolbar-undo-redo (PR #320 pending;
+  auto-merge --squash; CI in progress)
+- Working on: #319 — T-13.10 Undo/Redo toolbar buttons.
+  PR #318 (T-13.06 toolbar disabled-reason tooltips) merged 8fd5bef at
+  13:17:10Z, closing #317. Picked T-13.10 as the next slice per iter-758's
+  Next-action plan — the helper module `toolbarDisabledReasons.ts` from
+  T-13.06 is sized for incremental extension, and the bus already exposes
+  `canUndo()` / `canRedo()` with the keyboard shortcuts already wired, so
+  this is purely toolbar wiring (smaller risk surface than T-13.07's
+  inspector restructure).
+
+  Two new canvas-toolbar buttons `data-testid="toolbar-undo"` and
+  `toolbar-redo` rendered between the per-viewpoint `+ Add` buttons and
+  `Auto-layout`. Each subscribes to `bus` + `modelVersion` and reads
+  `canUndo` / `canRedo` reactively (same pattern as
+  `CommandPalette.tsx:76-80`). Disabled-reason titles
+  `"Nothing to undo"` / `"Nothing to redo"`, enabled-state titles
+  `"Undo last action (Cmd-Z)"` / `"Redo last undone action (Cmd-Shift-Z)"`.
+
+  New helper module exports: `undoDisabledReason(canUndo)`,
+  `redoDisabledReason(canRedo)`, plus `UNDO_DISABLED_REASON`,
+  `REDO_DISABLED_REASON`, `UNDO_ENABLED_TITLE`, `REDO_ENABLED_TITLE`
+  constants. Convention preserved: future toolbar surfaces extend
+  `toolbarDisabledReasons.ts` rather than re-deriving predicates.
+
+  Tests: 4 new unit (covering both helpers true/false branches) + 1 new
+  e2e `tests/e2e/toolbar-undo-redo.spec.ts` walking the golden path with
+  real mouse clicks on chromium + webkit. Regression specs
+  `bdd-auto-layout`, `phase-2-gate`, `toolbar-disabled-reasons` all pass.
+  Local check green: 1227/1227 unit pass (was 1223, +4 net), tsc -b
+  clean, lint clean (0 errors, 3 pre-existing warnings unchanged), vite
+  build clean. Agent visual inspection at
+  `artifacts/iteration-759/toolbar-{empty,after-add,after-undo}.png`
+  confirms Undo/Redo enable/disable states match expectations.
+
+  Visual baseline drift expected on CI: the toolbar's left cluster gains
+  ~110-120 px of new content, which will push any `@visual` baseline that
+  captures the diagram-panel viewport over the 0.01 tolerance — likely
+  `bdd-three-blocks-autolayout-*`, `bdd-two-blocks-linked-*`,
+  `inspector-*-selected-*`, the cross-diagram + impact specs that include
+  the toolbar, and every viewpoint's @visual scene. If CI flags any,
+  refresh from the failing run's actuals per the docs/CONTEXT.md
+  2026-05-12 lift-from-trace procedure.
+
+## Iter-758 archive
+- Branch: issue/317-toolbar-disabled-reasons (PR #318 merged 8fd5bef at
+  13:17:10Z on 2026-05-15). Shipped T-13.06 — Disabled-toolbar-button
+  reason tooltips.
 
   Every toolbar surface that goes disabled today (Save in the
   header, Auto-layout / Delete / Export in the canvas toolbar,
@@ -1063,33 +1103,28 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
-Wait for PR #318 (T-13.06 toolbar disabled-reason tooltips) CI.
-No committed visual baselines should drift since only `title` DOM
-attributes changed; if any flake, refresh per the docs/CONTEXT.md
-2026-05-12 lift-from-trace procedure. After this merges, the
-remaining P1 operator-UX tier items are:
+Wait for PR #320 (T-13.10 Undo/Redo toolbar buttons) CI. Visual
+baselines likely drift on @visual diagram specs (toolbar gained ~110-
+120 px of new content in the left cluster); refresh from CI run
+actuals per docs/CONTEXT.md 2026-05-12 lift-from-trace procedure if
+flagged. After this merges, the remaining P1 operator-UX tier items
+are:
 - **T-13.07** (inspector contextual "+ New …" panel when nothing
   selected) — bigger slice. Unblocks the empty-inspector state by
   surfacing palette-accepted creation affordances directly in the
   inspector pane.
-- **T-13.10** (undo/redo toolbar buttons) — keyboard shortcuts
-  already work; this surfaces the same actions in the toolbar.
-  Pair naturally with this PR — `toolbarDisabledReasons.ts` is
-  already in place, so the wiring will be a 3-line addition per
-  button (`undoDisabledReason(canUndo)`, etc.).
-- **T-13.08** / **T-13.09** if those exist in the Phase-13 backlog
-  — re-check STATUS.md backlog tier when picking up the next
-  slice.
+- **T-13.08** / **T-13.09** — re-check Phase-13 backlog tier (inline
+  project-name rename in header, dirty-state + "saved at" indicator)
+  when picking up the next slice.
 
-Recommended next slice: **T-13.10**, because the helper module
-ships in this PR is sized for incremental extension and the
-keyboard-already-wired undo/redo predicates (`canUndo`, `canRedo`)
-already exist in the store. Smaller risk surface than T-13.07's
-inspector restructure.
+Recommended next slice after T-13.10 merges: **T-13.08** or **T-13.09**
+(both small header polish items). T-13.07 is the next bigger slice —
+worth opening a design issue first if the inspector restructure surface
+turns out larger than expected.
 
 A recents-persistence pass remains a future polish item (today's
 recents are cleared on reload). Out of scope for the P1 tier;
-revisit after T-13.07/.10 land.
+revisit after T-13.07/.08/.09 land.
 
 Backlog (P1 notation conformance) status after T-13.26:
 - T-13.18 ✓, T-13.19 ✓, T-13.20 ✓, T-13.21 ✓, T-13.22 ✓,
