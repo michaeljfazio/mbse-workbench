@@ -6,9 +6,34 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 738
+- Iteration #: 739
 - Started: 2026-05-15
-- Branch: issue/284-duplicate-element-store (PR #285 open, auto-merge enabled)
+- Branch: issue/287-usecase-svg-ellipse (PR #288 merged 06d5d49)
+- Iter-739: PR #285 (T-13.33e-a duplicateElement) merged 48d8a02 — the
+  store-side half of T-13.33e is in. Shipped T-13.22 — UseCase node
+  body is now an inline `<svg><ellipse/>` instead of a div with
+  `borderRadius:50%`. Fill / stroke read from existing
+  `hsl(var(--card))` and `hsl(var(--border))` / `hsl(var(--primary))`
+  tokens, so light + dark themes still look right. Selected state
+  thickens stroke 2→3 px on top of the existing `ring-primary/30`
+  outer ring. Ellipse is inset by half the SELECTED stroke width
+  (1.5 px on each axis) so the React Flow bounding rectangle does
+  not shift between selected and unselected — handles, testids,
+  inline-rename, and acceptable-edge plumbing are unchanged.
+  Satisfies Phase-13 visual fidelity gate invariant #2 ("use-case
+  node is an SVG ellipse"). A new tests/e2e/use-case-nodes.spec.ts
+  asserts the use-case-usecase-* DOM contains an `<svg><ellipse>`
+  with non-zero `rx`/`ry` on chromium + webkit — exactly the shape
+  the Phase-13 gate will assert at close. The webkit @visual baseline
+  `use-case-with-actor-and-usecase-webkit.png` was refreshed from CI
+  run 25901671748 actual after the first run flagged drift on the
+  unselected stroke colour. Full check green on the merged HEAD: CI
+  run 25902364822 — typecheck, lint, 1015 unit, build, e2e chromium +
+  webkit all clean.
+
+## Current iteration (archived 738 → 739)
+- Iteration #: 738
+- Branch: issue/284-duplicate-element-store (PR #285 merged 48d8a02)
 - Iter-738: PR #283 (T-13.36b drag-drop UI) merged 4155856 — Phase-13
   gate item 4 (drag-drop move for any container) now fully shipped via
   T-13.36a + T-13.36b. Filed #284 and opened PR #285 for T-13.33e-a, the
@@ -386,7 +411,7 @@ Backlog (P1 — SysMLv2 notation conformance, JOURNAL iter-529):
 - T-13.19 BDD block compartments (parts/ports/values/constraints).
 - T-13.20 IBD enclosing-block frame (use diagram.context.partDefinition.id).
 - T-13.21 Requirement compartments (reqId/text/priority/status rows).
-- T-13.22 Use-case true ellipse shape (SVG, not rectangle).
+- [x] T-13.22 Use-case true ellipse shape (SVG, not rectangle). Shipped iter-739 (#288).
 - T-13.23 Activity pseudostate glyph review (initial/final/fork/join/dec/merge).
 - T-13.24 State pseudostate glyph review (initial/final/composite region).
 - T-13.25 Parametric: constraint-expression + value-property `: type = value`.
@@ -488,13 +513,19 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
-Wait for PR #285 (T-13.33e-a duplicateElement store) CI to merge. Next
-iter opens T-13.33e-b — wire "Duplicate" + "Move to package…" items
-into `ContainmentTreeRowMenu` against the existing `duplicateElement`
-+ `moveElement` store actions, including the package picker popover
-and Playwright coverage. After that, the remaining P0 work narrows to:
-- T-13.01 Diagram lifecycle UI — much shipped via T-13.33c/d; remaining
-  bits live in the diagram tabs strip, not the explorer.
-- T-13.02 Right-click context menu — mostly subsumed by the explorer
-  kebab menu (T-13.33a–d); revisit if a true right-click shortcut is
-  still wanted.
+PR #288 (T-13.22 UseCase ellipse) is merged. Two Phase-13 visual
+fidelity gate invariants are now satisfied: ports are squares
+(T-13.17), use-case is an SVG ellipse (T-13.22). Next iter: pick the
+highest-priority remaining backlog item. Candidates:
+- T-13.33e-b: UI wiring for duplicateElement (and "Move to package…")
+  in `ContainmentTreeRowMenu` — store action #285 already shipped, so
+  this is a thin, well-scoped follow-up.
+- T-13.18 Port direction glyphs (in/out/inout) — direct contributor to
+  SysMLv2 notation conformance, no schema cost.
+- T-13.20 IBD enclosing-block frame — depends on diagram.context.
+  partDefinition.id (already required post-T-13.30).
+- T-13.21 Requirement compartments — adds reqId/text/priority/status
+  rows; high reader-value with no schema work.
+Remaining P0 (UI-unreachable): T-13.01 / T-13.02 mostly subsumed by
+the explorer rewrite. T-13.05 Cmd-K command palette remains the
+biggest P1 gap.
