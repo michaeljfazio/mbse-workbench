@@ -27,6 +27,23 @@ export type {
   BddGeneralizationEdge,
 } from './bdd';
 
+export {
+  BDD_BLOCK_COMPARTMENT_DEFAULT_MAX_VISIBLE,
+  bddBlockEmptyCompartments,
+  computeBddBlockCompartments,
+  formatConstraintUsageLabel,
+  formatPartUsageLabel,
+  formatPortDefinitionLabel,
+  formatValuePropertyLabel,
+} from './bdd';
+export type {
+  BddBlockCompartment,
+  BddBlockCompartmentItem,
+  BddBlockCompartmentRegistry,
+  BddBlockCompartments,
+  ComputeBddBlockCompartmentsOptions,
+} from './bdd';
+
 export { isValidBddConnection } from './bdd';
 
 export {

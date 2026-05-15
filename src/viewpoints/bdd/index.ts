@@ -25,6 +25,23 @@ export type { BddGeneralizationEdge };
 export type BddEdge = BddCompositionEdge | BddGeneralizationEdge;
 export type BddEdgeKind = 'Composition' | 'Generalization';
 
+export {
+  BDD_BLOCK_COMPARTMENT_DEFAULT_MAX_VISIBLE,
+  bddBlockEmptyCompartments,
+  computeBddBlockCompartments,
+  formatConstraintUsageLabel,
+  formatPartUsageLabel,
+  formatPortDefinitionLabel,
+  formatValuePropertyLabel,
+} from './blockCompartments';
+export type {
+  BddBlockCompartment,
+  BddBlockCompartmentItem,
+  BddBlockCompartmentRegistry,
+  BddBlockCompartments,
+  ComputeBddBlockCompartmentsOptions,
+} from './blockCompartments';
+
 export { isValidBddConnection } from './isValidConnection';
 export {
   dagreLayout,
