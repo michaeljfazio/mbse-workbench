@@ -6,6 +6,61 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
+- Iteration #: 744
+- Started: 2026-05-15
+- Branch: issue/292-requirement-compartments (PR #293, auto-merge --squash
+  enabled, awaiting CI re-run 25904814805)
+- Working on: #292 — T-13.21 Requirement compartments. First CI run
+  25904289966 failed exactly as iter-743 predicted: 11 visual baselines
+  drifted from the RequirementNode compartment restructure. Lifted
+  actuals from the Playwright HTML report per the docs/CONTEXT.md
+  2026-05-12 lift-from-trace procedure (downloaded `playwright-report`
+  artifact, unzipped each `data/<trace>.zip`, parsed `test.trace` for
+  `*-actual.png` / `*-expected.png` sha1 pairs, cross-checked the
+  expected sha1 against `sha1sum tests/e2e/__screenshots__/...png` to
+  bind trace → committed baseline, copied `data/<actual-sha1>.png` over
+  the baseline). The 11 refreshed baselines:
+  - requirements-create-and-edit.spec.ts:
+    requirements-one-requirement-{chromium,webkit},
+    requirements-three-requirements-{chromium,webkit},
+    inspector-requirement-selected-{chromium,webkit}
+  - requirements-trace-create.spec.ts:
+    requirements-four-traces-{chromium,webkit},
+    requirements-trace-kind-popover-chromium (webkit passed within
+    tolerance — only chromium drifted there),
+    inspector-trace-edge-selected-{chromium,webkit}
+  Notable: the predicted phase-4/10/12 + final-gate baselines did NOT
+  drift — the existing `maxDiffPixelRatio: 0.01` tolerance absorbed the
+  small visual deltas at those viewport scales where each requirement
+  occupies less of the frame. Drift was localized to the
+  requirements-surface and cross-diagram-trace specs where requirement
+  nodes are foregrounded. Commit 0a1619f (`test(visual): refresh 11
+  requirements/trace baselines from CI actuals (T-13.21)`) pushed to
+  the PR branch; CI re-run 25904814805 queued. Next iter: monitor CI;
+  expect green, merge via auto-merge, then update status to the next
+  Phase-13 task.
+
+## Current iteration (archived 743 → 744)
+- Iteration #: 743
+- Started: 2026-05-15
+- Branch: issue/292-requirement-compartments (PR #293)
+- Iter-743: PR #293 pushed with auto-merge --squash. Restructured
+  RequirementNode from its prior header/footer mix into the
+  SysMLv2-conventional rectangle-with-stacked-compartments form:
+  «requirement» stereotype above the editable name in the header,
+  then explicit labeled compartments separated by `border-t
+  border-border` for id, text, and a priority/status meta row.
+  `REQUIREMENT_NODE_HEIGHT` 140 → 180 to fit four compartments; width
+  unchanged at 240. All existing testids (requirements-req-*,
+  -req-id-*, -req-name-*, -req-input-*, -req-text-*, -priority-*,
+  -status-*, -handle-top/bottom-*) kept stable so the 8 phase-gate +
+  cross-diagram e2e specs that reference them keep passing. New
+  testids requirements-req-stereotype-* and
+  requirements-compartment-label-{id,text,priority,status}-* surface
+  the new structure. 2 new unit specs cover the stereotype + label
+  set. Local check green; visual drift expected on CI.
+
+## Current iteration (archived 742 → 743)
 - Iteration #: 742
 - Started: 2026-05-15
 - Branch: main (idle — PR #291 merged 7408b05)
@@ -473,7 +528,8 @@ Backlog (P0 — UI-unreachable features):
 - T-13.02 Project-tree right-click context menu (Rename/Delete/New)
 - [x] T-13.03 Fix "New Requirement" empty-state dead-end — CLOSED by T-13.34
       (#276): CTA now creates a Requirement under root + queues inline rename.
-- T-13.04 Per-section "+" affordances on project-tree categories
+- [x] T-13.04 Per-section "+" affordances on project-tree categories.
+      Shipped iter-736 (PR #279, 67642fc).
 
 Backlog (P1 — discoverability/workflow):
 - T-13.05 Cmd-K → true command palette (actions, not just search)
@@ -495,6 +551,7 @@ Backlog (P1 — SysMLv2 notation conformance, JOURNAL iter-529):
 - T-13.19 BDD block compartments (parts/ports/values/constraints).
 - T-13.20 IBD enclosing-block frame (use diagram.context.partDefinition.id).
 - T-13.21 Requirement compartments (reqId/text/priority/status rows).
+      In flight — PR #293 (iter-743), auto-merge enabled, awaiting CI.
 - [x] T-13.22 Use-case true ellipse shape (SVG, not rectangle). Shipped iter-739 (#288).
 - T-13.23 Activity pseudostate glyph review (initial/final/fork/join/dec/merge).
 - T-13.24 State pseudostate glyph review (initial/final/composite region).
@@ -597,12 +654,18 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
-Pick the next Phase-13 backlog item. Top candidates:
+Wait for PR #293 (T-13.21) CI. Likely path: visual baselines drift on
+the three requirements specs (one-requirement, three-requirements,
+inspector-requirement-selected) on both chromium + webkit, plus any
+phase-4/10/12 + final-gate snapshot whose viewport includes a
+requirement node. Lift `*-actual.png` from `data/<trace-hash>.zip`
+test.trace per docs/CONTEXT.md 2026-05-12 procedure, push the
+refreshed baselines on the same branch, let auto-merge land.
+
+Once PR #293 lands, pick the next Phase-13 backlog item:
 - T-13.20 IBD enclosing-block frame — render the
   `diagram.context.partDefinition.id` block as a labeled rectangle
   enclosing all PartUsage nodes. Required post-T-13.30, no schema work.
-- T-13.21 Requirement compartments — adds reqId/text/priority/status
-  rows to RequirementNode; high reader-value, no schema work.
 - T-13.05 Cmd-K command palette — biggest P1 discoverability gap.
 - (Lower) BDD `bdd-two-blocks-linked.png` baseline-refresh follow-up —
   iter-742 observed 2/4 flaky on chromium + webkit (pre-existing edge-
