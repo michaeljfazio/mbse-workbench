@@ -207,6 +207,15 @@ describe('workspace store', () => {
     expect(useWorkspaceStore.getState().inspectorTab).toBe('inspector');
   });
 
+  it('setPendingRename round-trips an ElementId and clears via null (T-13.34)', () => {
+    expect(useWorkspaceStore.getState().pendingRenameElementId).toBeNull();
+    const id = mkElementId('p13-34');
+    useWorkspaceStore.getState().setPendingRename(id);
+    expect(useWorkspaceStore.getState().pendingRenameElementId).toBe(id);
+    useWorkspaceStore.getState().setPendingRename(null);
+    expect(useWorkspaceStore.getState().pendingRenameElementId).toBeNull();
+  });
+
   it('saveProject persists current registry contents and bumps modifiedAt', async () => {
     const storage = makeMemoryStorage();
     const repository = createInMemorySessionRepository({ storage });

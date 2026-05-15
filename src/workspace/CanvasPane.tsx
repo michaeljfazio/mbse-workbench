@@ -1296,7 +1296,7 @@ function CanvasInner(): JSX.Element {
         className="relative flex-1"
       >
         {elementCount === 0 && viewpoint.id === BDD_VIEWPOINT_ID ? (
-          <EmptyState onNewBlock={handleAddBlock} onImportJson={handleImportJson} />
+          <EmptyState onImportJson={handleImportJson} />
         ) : null}
         <ReactFlow
           nodes={flowNodes}

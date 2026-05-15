@@ -6,6 +6,41 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
+- Iteration #: 735
+- Started: 2026-05-15
+- Branch: issue/276-empty-state-explorer-cta (PR open, auto-merge pending)
+- Iter-735: PR #275 (T-13.35 filter bar) merged 65b464c at 03:20:18Z.
+  Shipped T-13.34 — wired the empty-state "New Block" and "New
+  Requirement" CTAs through the Containment-Tree create-child flow. New
+  store slot `pendingRenameElementId` + `setPendingRename` action; the
+  Containment Tree absorbs the pending id via a useEffect that
+  auto-expands ancestors, enters rename mode, scrolls into view, and
+  clears the pending flag. EmptyState now self-services New Block (=
+  createChildElement(rootId, 'PartDefinition', 'member', 'New Part
+  Definition') → setSelection → setPendingRename) and New Requirement
+  (= same, kind=Requirement, also setActiveSurface('requirements')).
+  Drops the `onNewBlock` prop in favour of an internal handler bound
+  to the store. Side-effect: T-13.03 ("New Requirement" dead-end) is
+  closed by the new flow — the CTA now produces an authored Requirement
+  ready to rename instead of dumping the user on an empty surface.
+  Cards gain a `disabled:` style for the no-project case; the two
+  create CTAs disable when project is null. 977/977 unit (+8 new: 1
+  store, 2 ContainmentTree, 5 EmptyState), tsc -b clean, lint clean
+  (0 errors, 4 pre-existing warnings), build clean. e2e
+  empty-state-error-boundary spec still green (5/5 chromium). Expected
+  CI drift: bdd-empty.png on chromium + webkit (card copy changed
+  from "Add the first part definition to the BDD." to "Adds a Part
+  Definition under the project root." and the requirement description
+  matches). Will refresh those two baselines from CI actuals once the
+  initial run reports the diff.
+
+## Current iteration (archived 734 → 735)
+- Iteration #: 734
+- Branch: issue/274-tree-filter-bar (PR #275 merged 65b464c)
+- Iter-734: PR #275 merged green at 03:20:18Z after iter-733 baseline
+  refresh. No code work this iter.
+
+## Current iteration (archived 731 → 734)
 - Iteration #: 731
 - Started: 2026-05-15
 - Branch: issue/274-tree-filter-bar (PR open, auto-merge enabled)
@@ -261,7 +296,8 @@ phase:13 — post-v1.0.0 polish + explorer rewrite
 Backlog (P0 — UI-unreachable features):
 - T-13.01 Diagram lifecycle UI (create/rename/delete per viewpoint)
 - T-13.02 Project-tree right-click context menu (Rename/Delete/New)
-- T-13.03 Fix "New Requirement" empty-state dead-end (auto-create req diagram)
+- [x] T-13.03 Fix "New Requirement" empty-state dead-end — CLOSED by T-13.34
+      (#276): CTA now creates a Requirement under root + queues inline rename.
 - T-13.04 Per-section "+" affordances on project-tree categories
 
 Backlog (P1 — discoverability/workflow):
@@ -309,7 +345,10 @@ Backlog (P0 — hierarchical Project Explorer foundations, decisions locked iter
 - T-13.32 Bidirectional tree↔canvas selection sync + reveal-in-tree action.
 - T-13.33 Three-dots context menu per node (Rename / Delete / Create child /
   Create representation / Expand-all / Move to package / Duplicate).
-- T-13.34 Wire empty-state CTAs through the explorer (new leaf + inline rename).
+- [x] T-13.34 Wire empty-state CTAs through the explorer (new leaf + inline rename).
+      Shipped iter-735 (#276): pendingRenameElementId store slot, ContainmentTree
+      useEffect picks it up; EmptyState routes New Block / New Requirement
+      through createChildElement(rootId, …) + setPendingRename.
 
 Backlog (P1 — explorer features, JOURNAL iter-530):
 - T-13.35 Token-based filter bar (reuse commandPaletteSearch scorer).
@@ -370,12 +409,20 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
-Wait for PR #274 (T-13.35 filter bar) CI to merge. Next P0 work:
-T-13.34 (empty-state CTAs through the explorer) — wire the four
-"Start your model" CTAs through Containment Tree create-child /
-create-representation flows so users learn the explorer affordances
-on first encounter. P2 / deferred: #270 (T-13.33e Move to package /
-Duplicate, depends on T-13.36). The "retire flat-by-kind ProjectTree"
-cutover is its own larger iteration because it requires migrating 13+
-e2e specs off `project-tree-group-<Kind>` drag-sources onto explicit
-"+" affordances (T-13.04).
+Wait for PR #276 (T-13.34 empty-state CTAs through the explorer) CI to
+merge. Expected drift: bdd-empty.png on chromium + webkit due to card
+copy changes; refresh from CI actuals when the first run reports it.
+Next P0 work (remaining in the explorer-foundation track):
+- T-13.04 Per-section "+" affordances on project-tree categories (also
+  the prerequisite for the flat-tree retirement — currently 13+ e2e
+  specs depend on `project-tree-group-<Kind>` drag-sources).
+- T-13.01 Diagram lifecycle UI (much of it has shipped via T-13.33c/d;
+  remaining bits live in the diagram tabs strip, not the explorer).
+- T-13.02 Project-tree right-click context menu — now mostly subsumed
+  by the explorer kebab menu (T-13.33a–d); revisit whether anything
+  beyond a right-click → kebab-menu shortcut is still wanted.
+- T-13.03 "New Requirement" dead-end — CLOSED by T-13.34 (CTA now
+  creates an authored Requirement + renames inline; surface still
+  switches to Requirements).
+P2 / deferred: #270 (T-13.33e Move to package / Duplicate, depends on
+T-13.36).

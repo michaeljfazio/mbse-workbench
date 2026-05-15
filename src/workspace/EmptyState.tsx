@@ -1,19 +1,29 @@
+import { useCallback } from 'react';
+
 import { useWorkspaceStore } from './store';
 
 interface CardProps {
   readonly testId: string;
   readonly title: string;
   readonly description: string;
+  readonly disabled?: boolean;
   readonly onClick: () => void;
 }
 
-function Card({ testId, title, description, onClick }: CardProps): JSX.Element {
+function Card({
+  testId,
+  title,
+  description,
+  disabled,
+  onClick,
+}: CardProps): JSX.Element {
   return (
     <button
       type="button"
       data-testid={testId}
       onClick={onClick}
-      className="flex flex-col items-start gap-1 rounded-md border border-border bg-card p-3 text-left shadow-sm transition hover:bg-accent"
+      disabled={disabled}
+      className="flex flex-col items-start gap-1 rounded-md border border-border bg-card p-3 text-left shadow-sm transition hover:bg-accent disabled:cursor-not-allowed disabled:opacity-50"
     >
       <span className="text-sm font-semibold text-foreground">{title}</span>
       <span className="text-xs text-muted-foreground">{description}</span>
@@ -30,20 +40,59 @@ const SHORTCUTS: ReadonlyArray<{ readonly keys: string; readonly action: string 
 ];
 
 /**
- * Shown over the canvas when a project has zero elements. Acts as a guided
- * entry point: create a first element, switch to Requirements, import a
- * project, or open chat. Also surfaces the keyboard-shortcut crib so new
- * users don't have to discover them by accident.
+ * Shown over the canvas when a project has zero authored elements. Acts as
+ * a guided entry point that teaches the explorer affordances: New Block
+ * and New Requirement run the same Containment-Tree create-child flow as
+ * the explorer kebab menu (create as a child of the root Package, select
+ * it, enter inline rename). Import JSON and Open Chat are kept as
+ * non-create flows. Also surfaces the keyboard-shortcut crib.
  */
 export function EmptyState({
-  onNewBlock,
   onImportJson,
 }: {
-  readonly onNewBlock: () => void;
   readonly onImportJson: () => void;
 }): JSX.Element {
+  const rootId = useWorkspaceStore((s) => s.project?.rootId ?? null);
+  const createChildElement = useWorkspaceStore((s) => s.createChildElement);
+  const setSelection = useWorkspaceStore((s) => s.setSelection);
+  const setPendingRename = useWorkspaceStore((s) => s.setPendingRename);
   const setActiveSurface = useWorkspaceStore((s) => s.setActiveSurface);
   const setInspectorTab = useWorkspaceStore((s) => s.setInspectorTab);
+
+  const handleNewBlock = useCallback(() => {
+    if (!rootId) return;
+    const id = createChildElement(
+      rootId,
+      'PartDefinition',
+      'member',
+      'New Part Definition',
+    );
+    if (!id) return;
+    setSelection([id]);
+    setPendingRename(id);
+  }, [rootId, createChildElement, setSelection, setPendingRename]);
+
+  const handleNewRequirement = useCallback(() => {
+    if (!rootId) return;
+    const id = createChildElement(
+      rootId,
+      'Requirement',
+      'member',
+      'New Requirement',
+    );
+    if (!id) return;
+    setActiveSurface('requirements');
+    setSelection([id]);
+    setPendingRename(id);
+  }, [
+    rootId,
+    createChildElement,
+    setActiveSurface,
+    setSelection,
+    setPendingRename,
+  ]);
+
+  const noProject = rootId === null;
   return (
     <div
       data-testid="workspace-empty-state"
@@ -60,14 +109,16 @@ export function EmptyState({
         <Card
           testId="empty-state-new-block"
           title="New Block"
-          description="Add the first part definition to the BDD."
-          onClick={onNewBlock}
+          description="Adds a Part Definition under the project root."
+          disabled={noProject}
+          onClick={handleNewBlock}
         />
         <Card
           testId="empty-state-new-requirement"
           title="New Requirement"
-          description="Open the Requirements surface to capture intent."
-          onClick={() => setActiveSurface('requirements')}
+          description="Adds a Requirement under the project root."
+          disabled={noProject}
+          onClick={handleNewRequirement}
         />
         <Card
           testId="empty-state-import-json"
