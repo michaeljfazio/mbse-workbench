@@ -10,6 +10,13 @@ export function createDiagramId(): DiagramId {
 export interface NodePosition {
   readonly x: number;
   readonly y: number;
+  /**
+   * Optional persisted dimensions for nodes that support user-driven resize
+   * (e.g. BDD PartDefinition blocks via NodeResizer). When absent the
+   * viewpoint's `nodeSizeFor` default is used. See phase-15/bdd-block-resize.
+   */
+  readonly width?: number;
+  readonly height?: number;
 }
 
 // A diagram's context anchors it to the owning element whose internal
