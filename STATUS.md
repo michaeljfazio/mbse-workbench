@@ -6,13 +6,16 @@ phase:14 — Standard library import (KerML + SysML)
 T-14.03 merged at 0f9890d (iter-783). T-14.04 in flight this iteration.
 
 ## Current iteration
-- Iteration #: 785
+- Iteration #: 786
 - Started: 2026-05-16
 - Branch: `issue/349-kerml-core-library`
-- Working on: #349 — PR #350 CI was red (86 failing tests) after iter-784
-  pushed T-14.04. Pushed fix `2ab00b6` to address all 33 functional
-  failures + reduce visual-baseline impact via default-collapse. Awaiting
-  CI green.
+- Working on: #349 — PR #350 CI on `bb7a274` finished red with **55 visual
+  baseline failures and 0 functional failures** (one webkit command-palette
+  flake passed on retry). All 55 are deliberate UI-shift due to T-14.03's
+  "Libraries" section header now occupying space in the explorer tree
+  pane. Lifted the 55 `*-actual.png` files from the
+  `playwright-test-results` artifact (amd64 Linux, identical renderer to
+  CI) and copied them over the baselines. Awaiting fresh CI.
 
 ## Phase 14 plan-of-record (epic #342)
 - [x] **T-14.01 (#343 → PR #344, 2cfc23f)** — Foundation schema hooks
@@ -28,6 +31,36 @@ T-14.03 merged at 0f9890d (iter-783). T-14.04 in flight this iteration.
 - [ ] **T-14.07** — Phase 14 gate spec: cold-start UI walkthrough
       exercises the library tree (read-only) + an `import`-using
       model round-trips
+
+## Iter-786 implementation notes (visual baseline refresh on PR #350)
+- **Diagnosis.** CI run 25958746408 (commit `bb7a274`) summary: 55 failed,
+  1 flaky, 570 passed. All 55 failures = `@visual` screenshot comparisons
+  at ~0.02 pixel-ratio (just above 0.01 threshold). The flake is
+  `[webkit] command-palette T-13.05d` which passed on retry — unrelated to
+  T-14.04. So there are **zero true functional regressions** on PR #350;
+  the only remaining work is rebaselining the visuals to match the
+  deliberate UI change.
+- **Approach.** Lifted the 55 `*-actual.png` files from CI's
+  `playwright-test-results` artifact (artifact id 7032464755). The artifact
+  is produced by amd64 Ubuntu 24.04 runners — the same renderer that
+  evaluates the baselines on the next CI run — so byte-for-byte deterministic.
+  No podman/regen-baselines.sh round-trip needed.
+- **Script.** `/tmp/lift-actuals2.sh` (ephemeral). Walks every
+  `test-results/<dir>/<name>-actual.png`, parses browser from the dir
+  suffix (`-chromium-visual` | `-webkit-visual`), maps `<dir>` back to a
+  `*.spec.ts` filename by longest-prefix match (with a fallback that
+  strips Playwright's `-[a-f0-9]{4,6}-` truncation hash for cases like
+  `requirements-create-and-ed-fd001-...` whose full spec name is
+  `requirements-create-and-edit.spec.ts`), then `cp` to
+  `tests/e2e/__screenshots__/<spec>.spec.ts/<name>-<browser>.png`.
+  Result: copied 55, skipped 0.
+- **Verification.** Spot-checked
+  `tests/e2e/__screenshots__/project-tree.spec.ts/project-tree-populated-chromium.png`
+  — shows the "LIBRARIES" section default-collapsed with `Base` (KerML
+  core root) and a lock-icon badge below the project content and above the
+  palette. Matches the expected UI from T-14.03 + iter-785's
+  default-collapse change. No unexpected layout shifts in the rest of
+  the frame.
 
 ## Iter-785 implementation notes (CI fix on PR #350)
 - **Symptom.** CI run 25958133933 was red: 33 distinct functional
@@ -121,6 +154,15 @@ T-14.03 merged at 0f9890d (iter-783). T-14.04 in flight this iteration.
 - (none)
 
 ## Decisions log
+- 2026-05-16 (iter-786): Rebaseline by lifting CI artifact actuals, not
+  by running `scripts/regen-baselines.sh` locally. Rationale: the
+  CI-uploaded `playwright-test-results` artifact contains the exact
+  `-actual.png` bytes the next CI run will compare against (same amd64
+  Ubuntu renderer). The podman container regen exists for cases where
+  CI hasn't yet produced actuals (new specs, or actuals not captured) —
+  it adds an arm64 round-trip risk per CONTEXT.md and is slower. Use it
+  when needed, but prefer artifact-lift when the failed run is already
+  in hand.
 - 2026-05-16 (iter-785): Library treated as a *projected* slice. The
   in-memory project carries library content (applied on `load()` and on
   parse paths), but sessionStorage + every exported file (JSON, SysMLv2
@@ -193,10 +235,8 @@ T-14.03 merged at 0f9890d (iter-783). T-14.04 in flight this iteration.
   only surface via `tsc -p tsconfig.app.json` or `tsc -b`.
 
 ## Next action
-1. Wait for CI on PR #350's iter-785 commit (`2ab00b6`).
-2. If green, auto-merge fires → T-14.05 opens next iteration.
-3. If a residual set of visual baselines still fails (default-collapse
-   may not bring all 54 within 0.01 threshold), the next iteration
-   dispatches a one-off baseline-update workflow (Linux runner, run
-   playwright with `--update-snapshots --grep @visual`, commit
-   results to the branch).
+1. Wait for CI on PR #350's iter-786 baseline-refresh commit.
+2. If green, auto-merge fires → T-14.05 (SysMLv2 `import` directive)
+   opens next iteration.
+3. If any residual visual baseline still fails, that is unexpected
+   — investigate as a genuine regression rather than another refresh.
