@@ -6,12 +6,54 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 770
+- Iteration #: 771
 - Started: 2026-05-16
 - Branch: issue/330-diagram-tabs-open-close (PR #331 still open)
-- Working on: align T-13.37's own e2e spec with the iter-769 cold-load-all
-  default; CI run 25950850531 surfaced 4 spec failures (2 tests × 2
-  browsers) plus ~22 @a11y AbortErrors and 2 @visual drifts.
+- Working on: unblock PR #331 by addressing CI infra @a11y AbortError
+  pattern that iter-770 hypothesized would clear with the spec fix but
+  did NOT (CI run 25951222573 still showed 13 failed + 10 flaky @a11y
+  specs on `Promise.all(getAnimations().map(a => a.finished))`).
+
+  **Diagnosis.** The pattern is independent of T-13.37 worker pressure.
+  When the page navigates or a tab swaps mid-test, in-flight animations
+  are aborted; their `.finished` promises reject, and `Promise.all`
+  propagates the rejection as AbortError. The wait only cares that the
+  animation queue has settled, not that every animation finished
+  successfully, so the call should use `Promise.allSettled`.
+
+  **Fix shipped this iteration (one commit, same branch — 674e692).**
+  Mechanical replace of `Promise.all(document.getAnimations().map((a)
+  => a.finished))` → `Promise.allSettled(...)` across 32 e2e specs (56
+  call sites). Pattern was duplicated rather than centralized in a
+  helper; mechanical perl one-liner over `tests/e2e/*.spec.ts`. Verified
+  one canary (`activity-empty @a11y`, 1 worker) passes locally.
+
+  Verification:
+  - canary: `pnpm exec playwright test activity-empty
+    --project=chromium --grep @a11y` — 1/1 PASS in 1.2s.
+  - grep: 0 occurrences of `Promise.all(document.getAnimations`,
+    56 occurrences of `Promise.allSettled(document.getAnimations`.
+
+  **Out of scope this iteration (deferred to follow-up).**
+  - 2 `chromium-visual` baseline drifts (`state-machine-with-state`,
+    `inspector-state-selected`, both 10568px / ratio 0.02 over 0.01
+    threshold). Likely cascade from iter-769's cold-load-all-tabs
+    change (more tabs visible = different tab-strip rendering). If
+    these persist after the @a11y fix lands, regenerate baselines
+    deliberately in a follow-up commit and document the cause in
+    that PR body.
+  - phase-6-gate.spec.ts:175 inspector-transition flake (chromium,
+    issue #161, 3-of-3 retries failed in this run). Pre-existing
+    flake; with allSettled reducing overall worker contention it
+    may pass on the next CI run. If it stays deterministic, escalate
+    #161's priority and fix in a focused PR.
+
+  Next iteration: watch CI on PR #331. If green, auto-merge lands it
+  (auto-merge enabled iter-765, still queued). If only the 2 visual
+  drifts remain, regenerate the baselines on the same branch. If the
+  phase-6-gate flake also persists, file a P1 follow-up to fix #161
+  before resuming the Phase-13 P0 explorer backlog (T-13.31 →
+  T-13.38 chain).
 
   **Diagnosis.** Iter-769 fixed the bootstrap regression by opening every
   diagram on cold load. That resolved the 159-spec tab-by-name cascade.
