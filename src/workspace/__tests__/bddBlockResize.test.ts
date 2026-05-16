@@ -5,7 +5,11 @@
  * - `NodePosition` width/height optional fields round-trip through
  *   `update-diagram-position` command + undo/redo.
  * - `toFlowNodes` respects the persisted size over the viewpoint default.
- * - The migrateLegacyProject round-trip preserves width/height when present.
+ *
+ * Note on persistence: `width`/`height` are additive optional fields on
+ * `NodePosition`. The repository layer's `migrate` pipeline spreads
+ * diagram objects through verbatim, so any stored size round-trips
+ * without an explicit migration. No version bump required.
  *
  * Refs #374
  */

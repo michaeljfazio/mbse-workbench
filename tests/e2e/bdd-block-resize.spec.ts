@@ -119,8 +119,14 @@ test.describe('BDD block resize handles (issue #374)', () => {
     await page.mouse.move(cx + 80, cy + 60, { steps: 16 });
     await page.mouse.up();
 
-    // Wait for React Flow to update the node dimensions
-    await page.waitForTimeout(150);
+    // Wait for React Flow to commit the new dimensions to the DOM by
+    // polling the block's bounding-box width until it has grown.
+    await expect
+      .poll(async () => {
+        const b = await block.boundingBox();
+        return b ? b.width : 0;
+      })
+      .toBeGreaterThan(blockBoxBefore.width + 50);
 
     const blockBoxAfter = await block.boundingBox();
     if (!blockBoxAfter) throw new Error('block bounding box missing after');
@@ -155,7 +161,12 @@ test.describe('BDD block resize handles (issue #374)', () => {
     await page.mouse.move(cx + 20, cy + 20, { steps: 4 });
     await page.mouse.move(cx + 80, cy + 60, { steps: 16 });
     await page.mouse.up();
-    await page.waitForTimeout(150);
+    await expect
+      .poll(async () => {
+        const b = await block.boundingBox();
+        return b ? b.width : 0;
+      })
+      .toBeGreaterThan(blockBoxBefore.width + 50);
 
     const blockBoxAfterResize = await block.boundingBox();
     if (!blockBoxAfterResize) throw new Error('block bounding box missing after resize');

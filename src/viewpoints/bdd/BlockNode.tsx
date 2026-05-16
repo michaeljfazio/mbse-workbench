@@ -145,7 +145,7 @@ export function BlockNode({ data, selected }: NodeProps<BddBlockNode>): JSX.Elem
     (_event, params) => {
       data.onResize(data.elementId, params.width, params.height);
     },
-    [data],
+    [data.onResize, data.elementId],
   );
 
   const compartments = data.compartments ?? bddBlockEmptyCompartments();
