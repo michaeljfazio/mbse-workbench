@@ -12,6 +12,7 @@ import {
   type EdgeChange,
   type Node,
   type NodeChange,
+  type NodeDragHandler,
 } from '@xyflow/react';
 
 import type {
@@ -98,6 +99,7 @@ import {
 import { ActivityPalette } from './ActivityPalette';
 import { ImpactBanner } from './ImpactBanner';
 import { ParametricPalette } from './ParametricPalette';
+import { DragCoordOverlay, type DragPos } from './DragCoordOverlay';
 import { StateMachinePalette } from './StateMachinePalette';
 import { UseCasePalette } from './UseCasePalette';
 import {
@@ -224,6 +226,8 @@ function CanvasInner(): JSX.Element {
   const [pendingUseCaseEdge, setPendingUseCaseEdge] =
     useState<PendingUseCaseEdge | null>(null);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  // Transient drag-coord overlay state — not persisted, cleared on drag-stop.
+  const [dragPos, setDragPos] = useState<DragPos | null>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
   const isConnectingRef = useRef(false);
   const shiftHeldRef = useRef(false);
@@ -947,6 +951,21 @@ function CanvasInner(): JSX.Element {
     ],
   );
 
+  // Show the drag-coord overlay while dragging; clear it on drag-stop.
+  const onNodeDrag = useCallback<NodeDragHandler>(
+    (_event, node) => {
+      setDragPos({ x: node.position.x, y: node.position.y });
+    },
+    [],
+  );
+
+  const onNodeDragStop = useCallback<NodeDragHandler>(
+    () => {
+      setDragPos(null);
+    },
+    [],
+  );
+
   const onNodeContextMenu = useCallback(
     (event: React.MouseEvent, node: Node): void => {
       openContextMenuForElement(event, node.id as ElementId);
@@ -1402,6 +1421,8 @@ function CanvasInner(): JSX.Element {
           onConnect={onConnect}
           onConnectStart={onConnectStart}
           onConnectEnd={onConnectEnd}
+          onNodeDrag={onNodeDrag}
+          onNodeDragStop={onNodeDragStop}
           onNodeContextMenu={onNodeContextMenu}
           onEdgeContextMenu={onEdgeContextMenu}
           isValidConnection={isValidConnection}
@@ -1415,6 +1436,7 @@ function CanvasInner(): JSX.Element {
           <Background gap={16} size={1} />
           <Controls showInteractive={false} position="bottom-right" />
         </ReactFlow>
+        <DragCoordOverlay dragPos={dragPos} />
         {pending ? (
           <EdgeKindPopover
             x={pending.x}
