@@ -7,23 +7,16 @@
  *
  * Where `dragPos` is null when no drag is active, or `{ x, y }` (canvas-space
  * node position, as reported by React Flow's `onNodeDrag` event).  The overlay
- * is pointer-events: none so it never intercepts drag events.
+ * is `pointer-events: none` so it never intercepts drag events, and
+ * `aria-hidden` because it duplicates information already available via the
+ * Inspector's position field — exposing it to screen readers would be redundant
+ * announce-spam during continuous drag.
  *
  * Refs #375
  */
 
-export interface DragPos {
-  readonly x: number;
-  readonly y: number;
-}
-
-/**
- * Format a canvas-space position as the `(x, y)` label shown in the overlay.
- * Coordinates are rounded to the nearest integer.
- */
-export function formatDragCoord(pos: DragPos): string {
-  return `(${Math.round(pos.x)}, ${Math.round(pos.y)})`;
-}
+import type { DragPos } from './dragCoord';
+import { formatDragCoord } from './dragCoord';
 
 interface DragCoordOverlayProps {
   readonly dragPos: DragPos | null;
@@ -35,9 +28,7 @@ export function DragCoordOverlay({ dragPos }: DragCoordOverlayProps): JSX.Elemen
   return (
     <div
       data-testid="drag-coord-overlay"
-      role="status"
-      aria-live="off"
-      aria-label={`Node position: ${formatDragCoord(dragPos)}`}
+      aria-hidden="true"
       className="pointer-events-none absolute bottom-10 left-3 z-50 select-none rounded-md border border-border bg-card/90 px-2 py-1 text-xs font-mono text-foreground shadow-md backdrop-blur-sm"
     >
       {formatDragCoord(dragPos)}

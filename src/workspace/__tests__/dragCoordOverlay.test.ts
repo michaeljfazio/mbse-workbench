@@ -13,7 +13,7 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { formatDragCoord } from '@/workspace/DragCoordOverlay';
+import { formatDragCoord } from '@/workspace/dragCoord';
 
 describe('formatDragCoord', () => {
   it('formats integer coordinates', () => {

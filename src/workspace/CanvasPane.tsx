@@ -99,7 +99,8 @@ import {
 import { ActivityPalette } from './ActivityPalette';
 import { ImpactBanner } from './ImpactBanner';
 import { ParametricPalette } from './ParametricPalette';
-import { DragCoordOverlay, type DragPos } from './DragCoordOverlay';
+import type { DragPos } from './dragCoord';
+import { DragCoordOverlay } from './DragCoordOverlay';
 import { StateMachinePalette } from './StateMachinePalette';
 import { UseCasePalette } from './UseCasePalette';
 import {

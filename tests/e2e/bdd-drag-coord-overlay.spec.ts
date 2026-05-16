@@ -138,43 +138,55 @@ test.describe('BDD drag-coord overlay (issue #375)', () => {
     await expect(overlay).not.toBeVisible();
   });
 
-  test('@a11y no serious/critical axe violations after drag (overlay gone)', async ({
+  test('@a11y no serious/critical axe violations mid-drag and post-drag', async ({
     page,
   }) => {
     await page.goto('/');
     const block = await addBlock(page);
     await placeBlockAt(page, block, 200, 140);
 
-    // Do a quick drag then release
     const blockBox = await block.boundingBox();
     if (!blockBox) throw new Error('block bounding box missing');
 
     const grabX = blockBox.x + blockBox.width / 2;
     const grabY = blockBox.y + 10;
 
+    // === Mid-drag axe scan ===
+    // Initiate the drag and pause with the overlay rendered. The overlay is
+    // a real interactive screen state per kickoff rubric dim 25, so it must
+    // pass the same axe ruleset as any other UI state.
     await page.mouse.move(grabX, grabY);
     await page.mouse.down();
     await page.mouse.move(grabX + 60, grabY + 40, { steps: 10 });
-    await page.mouse.up();
-
-    // Wait for overlay to clear
     const overlay = page.getByTestId('drag-coord-overlay');
+    await expect(overlay).toBeVisible();
+
+    const midDragResults = await new AxeBuilder({ page })
+      .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
+      .analyze();
+    const midDragBlocking = midDragResults.violations.filter(
+      (v) => v.impact === 'serious' || v.impact === 'critical',
+    );
+    expect(midDragBlocking, JSON.stringify(midDragBlocking, null, 2)).toEqual([]);
+
+    // Release the drag
+    await page.mouse.up();
     await expect(overlay).not.toBeVisible();
 
-    // Click canvas to deselect
+    // === Post-drag-stop axe scan ===
+    // Click canvas to deselect, then re-scan.
     const pane = page.locator('.react-flow__pane');
     const paneBox = await pane.boundingBox();
     if (!paneBox) throw new Error('pane not found');
     await page.mouse.click(paneBox.x + paneBox.width - 60, paneBox.y + 30);
 
-    const results = await new AxeBuilder({ page })
+    const postDragResults = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
       .analyze();
-
-    const blocking = results.violations.filter(
+    const postDragBlocking = postDragResults.violations.filter(
       (v) => v.impact === 'serious' || v.impact === 'critical',
     );
-    expect(blocking, JSON.stringify(blocking, null, 2)).toEqual([]);
+    expect(postDragBlocking, JSON.stringify(postDragBlocking, null, 2)).toEqual([]);
   });
 
   test('@visual bdd-mid-drag-overlay baseline — overlay visible, mouse still down', async ({
