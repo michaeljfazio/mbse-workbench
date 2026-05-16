@@ -148,7 +148,7 @@ test.describe('Requirements coverage tab (slice 3 of #176)', () => {
   }) => {
     await openCoverageTab(page);
     await page.evaluate(async () => {
-      await Promise.all(document.getAnimations().map((a) => a.finished));
+      await Promise.allSettled(document.getAnimations().map((a) => a.finished));
     });
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
@@ -163,7 +163,7 @@ test.describe('Requirements coverage tab (slice 3 of #176)', () => {
     await openCoverageTab(page);
     await page.mouse.move(0, 0);
     await page.evaluate(async () => {
-      await Promise.all(document.getAnimations().map((a) => a.finished));
+      await Promise.allSettled(document.getAnimations().map((a) => a.finished));
     });
     await expect(page).toHaveScreenshot(
       'requirements-coverage-populated.png',

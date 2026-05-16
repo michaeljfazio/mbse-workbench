@@ -315,7 +315,7 @@ test.describe('Phase 10 gate (issue #178)', () => {
     ).toBeVisible();
 
     await page.evaluate(async () => {
-      await Promise.all(document.getAnimations().map((a) => a.finished));
+      await Promise.allSettled(document.getAnimations().map((a) => a.finished));
     });
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
@@ -344,7 +344,7 @@ test.describe('Phase 10 gate (issue #178)', () => {
     ).toHaveText('1 / 1');
 
     await page.evaluate(async () => {
-      await Promise.all(document.getAnimations().map((a) => a.finished));
+      await Promise.allSettled(document.getAnimations().map((a) => a.finished));
     });
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
@@ -372,7 +372,7 @@ test.describe('Phase 10 gate (issue #178)', () => {
     await expect(page.getByTestId('impact-banner')).toBeVisible();
 
     await page.evaluate(async () => {
-      await Promise.all(document.getAnimations().map((a) => a.finished));
+      await Promise.allSettled(document.getAnimations().map((a) => a.finished));
     });
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
@@ -422,7 +422,7 @@ test.describe('Phase 10 gate (issue #178)', () => {
     await page.locator('body').click({ position: { x: 4, y: 4 } });
     await page.mouse.move(0, 0);
     await page.evaluate(async () => {
-      await Promise.all(document.getAnimations().map((a) => a.finished));
+      await Promise.allSettled(document.getAnimations().map((a) => a.finished));
     });
     await expect(page).toHaveScreenshot('phase-10-final.png', {
       fullPage: false,

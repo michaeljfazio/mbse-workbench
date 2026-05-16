@@ -6,226 +6,202 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 764
+- Iteration #: 774
 - Started: 2026-05-16
-- Branch: issue/328-foundation-required-context (PR #329 pending;
-  auto-merge --squash; CI re-queued on fe23bb6)
-- Working on: #328 — T-13.29/.30 foundation closeout: required
-  `Diagram.context`, `Viewpoint.acceptedContextKinds`, legacy
-  migration synthesis, plus Phase-13 gate-invariant unit tests.
+- Branch: issue/330-diagram-tabs-open-close (PR #331 still open)
+- Working on: fix the actual root cause of #161 inspector-transition
+  flake, which iter-773's defensive precondition + 15s timeout did not
+  address. CI run 25952332508 (iter-773's two commits) showed 1 of the
+  3 remaining failures fixed itself (state-machine visual baselines
+  passed — no further drift) and a second cleared (the @a11y suite
+  passed via iter-772's 120s timeout), but the inspector-transition
+  failure REMAINED at 3-of-3 retries. The 15s wait timed out, which
+  rules out "auto-select lands one frame late" — the test-failed-1.png
+  artifact from CI shows `inspector-empty` rendering for the full 15s
+  with the new Transition1 visible in the explorer tree but the
+  inspector showing the "Add to this diagram. Nothing is selected"
+  CTA. Selection had been CLEARED, not delayed.
 
-  Iter-764 fix: CI run 25930710726 on e7a1845 failed only on
-  `json-import-export.spec.ts:136` chromium + webkit (`round-trips:
-  Export JSON → Import JSON yields identical model`). Failure was a
-  stale test assertion — line 184 compared `persisted!.diagrams`
-  against the pre-migration `[SEED_DIAGRAM]` literal, but the new
-  Pass-5 diagram-context synthesis (correctly) populates
-  `{ kind: 'package', id: rootId }` onto every context-less legacy
-  diagram, so the migrated form no longer matches the raw literal.
-  Lines 182/183 already compare elements/edges to `preExport`; the
-  diagram line was the outlier. Fix at fe23bb6 changes line 184 to
-  `canonicalize(preExport!.diagrams)`, asserting true round-trip
-  losslessness in line with the test's documented intent. 602 other
-  e2e tests passed on the failing run; no other failures to address.
-  CI run 25931403539 queued on the fix commit.
+  **Real root cause (CanvasPane.tsx, not the test).** The auto-select
+  store update fires synchronously inside `onConnect` via
+  `setSelection([newTransitionId])`. React Flow v12 then asynchronously
+  emits a stray `{type:'select', id:<newEdge>, selected:false}` change
+  a few render ticks later — its internal edge state hasn't yet
+  propagated the externally-driven `selected:true` we put on the edges
+  prop. `onEdgesChange` runs that change through `applyEdgeChanges`,
+  computes `merged=[]` (preserved drops `newEdgeId` because it IS in
+  `elementEdgeIds`; `nextElementEdgeSelected` is empty because the
+  change deselected it), and calls `setSelection([])`, clobbering the
+  auto-selection. Under iter-769's workers=4 amplified CI load, the
+  stray emission lands later than the prior 100ms post-onConnectEnd
+  window, so the existing onNodesChange guard (which prevented the
+  symmetric stray-source-node-select from clobbering Backspace
+  semantics) was insufficient.
 
-  Inspection (Explore subagent) revealed most of T-13.29's schema
-  work already shipped piecemeal earlier in the explorer cascade
-  (`ownerId`/`ownerRole`/`ownerIndex` on ElementBase, parent-side
-  child arrays already dropped, `Project.rootId` already explicit,
-  registry already exposes `parentOf`/`childrenOf`, DiagramContext
-  already a four-kind discriminated union). Remaining work for the
-  bundled T-13.29/.30 foundation:
+  **Fix shipped this iteration (one commit, same branch).**
+  `src/workspace/CanvasPane.tsx`:
+   - Mirror the `isConnectingRef` guard from `onNodesChange` into
+     `onEdgesChange`'s select-change handling. While
+     `isConnectingRef.current` is true, edge select changes are
+     ignored — preserving any imperative `setSelection` from
+     `onConnect`.
+   - Bump the `onConnectEnd` cooldown from 100ms → 250ms to cover the
+     workers=4 envelope where the late edge-select emission was
+     landing past 100ms.
 
-  1. `Viewpoint.acceptedContextKinds: readonly ViewpointContextKind[]`
-     added to `src/viewpoints/types.ts`. Configured per JOURNAL
-     iter-531 table:
-     - BDD → `['package','partDefinition']`
-     - IBD → `['partDefinition']`
-     - Requirements → `['package']`
-     - Activity → `['actionDefinition']`
-     - State Machine → `['stateDefinition']`
-     - Use Case → `['package']`
-     - Parametric → `['partDefinition']`
-     - Package → `['package']`
-     `ViewpointContextKind` is duplicated locally in
-     `src/viewpoints/types.ts` (not re-imported from
-     `src/workspace/diagram.ts`) to avoid a circular type-only import
-     cycle. A new test in `diagramContext.test.ts` keeps the two
-     unions in lockstep with bidirectional assignability assertions.
+  This addresses BOTH transition auto-select races (the first-wait
+  one diagnosed by iter-773 AND the second-wait one that would
+  surface next), and any analogous race in IBD ConnectionUsage,
+  Activity ControlFlow/ObjectFlow, and Requirements RequirementTrace
+  paths that share the `onConnect → connectXxx() → setSelection([id])`
+  pattern. iter-773's test-side defenses (toHaveCount(1) precondition
+  + 15s timeout) stay in place — they are inert when the underlying
+  bug is fixed but useful as diagnostic isolators if the race ever
+  resurfaces from a different angle.
 
-  2. `Diagram.context` is now non-optional. Pre-existing `?` removed
-     from the type and from `src/workspace/diagram.ts` field
-     declaration.
+  Verification:
+  - `pnpm exec playwright test phase-6-gate --project=chromium
+    --workers=4 --grep "State Machine vertical slice"` — passes in
+    3.8s (was 3-of-3 retries timing out on CI run 25952332508).
+  - `pnpm exec playwright test state-machine-transitions
+    state-machine-nodes --project=chromium` — 17/17 pass (covers the
+    Transition auto-select pattern in isolation; no regression).
+  - `pnpm exec playwright test ibd activity --project=chromium` —
+    36/36 pass (covers the analogous ConnectionUsage / ItemFlow /
+    ControlFlow / ObjectFlow auto-select paths under the same
+    onConnect mechanism).
+  - `pnpm vitest run` — 1307/1307 pass.
+  - `pnpm typecheck` — green.
 
-  3. Store's `createDiagram(viewpointId, options?)` now:
-     - Validates `options.context.kind` against
-       `viewpoint.acceptedContextKinds` — rejects on mismatch.
-     - Synthesizes `{ kind: 'package', id: project.rootId }` when no
-       context is supplied AND the viewpoint accepts `'package'`.
-     - Rejects (returns null) when no context is supplied AND the
-       viewpoint does not accept `'package'` (Activity, IBD,
-       Parametric, State Machine require explicit context).
+  **Three-strikes status for #161.** Iter-773 was attempt 1 (test-side
+  precondition + 15s, didn't address the real cause). This iteration
+  is attempt 2 (real fix in CanvasPane). One more shot before #161 has
+  to escalate to status:needs-human.
 
-  4. `newDefaultDiagram(rootId)` (the seed BDD on a fresh workspace)
-     now carries `{ kind: 'package', id: rootId }`. Two call sites
-     in `store.ts` (bootstrap empty-projects branch + import-from-text
-     branch) updated.
+  Next iteration: watch CI on PR #331 (auto-merge enabled iter-765,
+  still queued). If green, PR lands T-13.37. Resume Phase-13 P0
+  explorer backlog (T-13.29 + T-13.30 single PR, then T-13.31).
 
-  5. `migrateLegacyProject` (`src/repository/migrate.ts`) synthesizes
-     `{ kind: 'package', id: rootId }` on any legacy diagram that
-     lacks a `context` field — Pass 5 added after the existing
-     element-migration passes. Already-context-bearing diagrams
-     round-trip unchanged.
+## Last test run
+- Commands:
+  - `pnpm exec playwright test phase-6-gate --project=chromium
+    --workers=4 --grep "State Machine vertical slice"`
+  - `pnpm exec playwright test state-machine-transitions
+    state-machine-nodes --project=chromium`
+  - `pnpm exec playwright test ibd activity --project=chromium`
+  - `pnpm vitest run`
+  - `pnpm typecheck`
+- Result: ALL PASS
+- Failures: (none introduced by this iteration)
 
-  6. Stale comment in `src/viewpoints/package/index.ts` referencing
-     `PackageElement.memberIds` updated to cite ADR-0011 containment.
+## Iter-769 archive
+- Branch: issue/330-diagram-tabs-open-close (PR #331 — still open,
+  auto-merge queued). Fixed the T-13.37 cold-load bootstrap regression
+  via `readLayout(storage): LayoutSnapshot | null` + 3-way
+  bootstrap branching (`persistedOpenFiltered.length > 0` honors
+  curation; `persistedLayout === null` cold-load opens every diagram;
+  warm-load empty filter falls back to `diagrams[0]`). New unit spec
+  `bootstrap opens every project diagram when no layout snapshot has
+  been persisted yet` covers it. CI infra changes from iter-767/768
+  (visual/functional project split, workers 2→4, 60-min cap,
+  `test-results/` incremental upload) were KEPT as independently
+  useful. CI run 25950850531 surfaced 4 residual T-13.37 spec
+  failures (now fixed in iter-770) plus pre-existing @a11y AbortError
+  pattern and 2 visual baseline drifts (deferred).
 
-  7. New tests:
-     - `tests/unit/viewpoints/acceptedContextKinds.test.ts` —
-       per-viewpoint table + non-empty invariant (9 specs).
-     - `tests/unit/repository/migrateDiagramContext.test.ts` —
-       synthesizes-default / preserves-existing / synthesizes-with-
-       synthesized-root (3 specs).
-     - `tests/unit/workspace/phase13GateInvariants.test.ts` — the
-       three live gate invariants from JOURNAL iter-531 (root-is-
-       unique, owner-refs-resolve, diagram-context-valid) on a
-       freshly-bootstrapped workspace; viewpoint-by-viewpoint
-       create-default vs require-explicit assertion; registry-has-
-       all-eight invariant (3 specs).
-     - `diagramContext.test.ts` extended with ViewpointContextKind
-       ↔ DiagramContextKind bidirectional-assignability assertion
-       (1 spec).
+## Known issues / blockers
+- (none for this iteration)
 
-  8. Existing tests updated:
-     - 5 store.test.ts createDiagram specs updated to reflect new
-       contract (default-context for Reqs/Pkg/BDD, reject for
-       Activity, require-explicit for Parametric/IBD).
-     - 3 obsolete unit specs removed (their scenarios are now
-       unreachable through the type system): "diagram with no
-       context" path in `flowGraph.test.ts`, `buildContainmentTree.test.ts`,
-       `enclosingFrame.test.ts`.
-     - `activityActions.test.ts`, `stateMachineActions.test.ts`,
-       `parametric-actions.test.ts`, `ibdActions.test.ts` helpers
-       (ensureXDiagram / bootstrapParametric) now pass synthetic
-       `createElementId()` contexts.
-     - `commandPaletteSearch.test.ts`, `navTargets.test.ts`,
-       `sessionStorage.test.ts`, `jsonProject.test.ts`,
-       `explain-diagram.test.ts` literal Diagram constructions now
-       carry contexts.
-     - `sessionStorage.test.ts` forward-compat spec renamed +
-       re-asserts that legacy `no-context` diagrams migrate to
-       `{ kind: 'package', id: rootId }`.
+Backlog (P0 — UI-unreachable features):
+- [x] T-13.01 Diagram lifecycle UI (create/rename/delete per viewpoint) —
+      CLOSED functionally by T-13.33c (Create representation submenu,
+      iter-727 PR #272) for create-per-viewpoint and T-13.33d (diagram-row
+      Rename + Delete, iter-729 PR #273). No standalone PR; marked done
+      iter-753 during T-13.02 audit.
+- [x] T-13.02 Project-tree right-click context menu (Rename/Delete/New).
+      Shipped iter-753 (#307, PR #308 → 3a5c22e). Closes the P0
+      "UI-unreachable features" tier.
+- [x] T-13.03 Fix "New Requirement" empty-state dead-end — CLOSED by T-13.34
+      (#276): CTA now creates a Requirement under root + queues inline rename.
+- [x] T-13.04 Per-section "+" affordances on project-tree categories.
+      Shipped iter-736 (PR #279, 67642fc).
 
-  Locked-decision boundary: legacy diagrams whose viewpoint does
-  NOT accept `'package'` (IBD/Activity/State/Parametric) end up with
-  a type-mismatched context after migration. This is an accepted
-  Phase-13 edge case (JOURNAL iter-531 explicitly chose this
-  trade-off); the strict invariant applies only to NEW diagrams
-  created via `createDiagram`. Future polish iterations can re-anchor
-  mismatched legacy diagrams via the upcoming "Move to container"
-  affordance (T-13.33e-b).
+Backlog (P1 — discoverability/workflow):
+- T-13.05 Cmd-K → true command palette (actions, not just search). Split
+  into slices following the T-13.33 / T-13.36 precedent:
+  - [x] T-13.05a Scaffold: typed `PaletteCommand` registry, Actions
+    section, initial four built-in commands (Undo / Redo / Save /
+    Delete selection). Shipped iter-754 (PR #310, 44cd6df).
+  - [x] T-13.05b Unified ranked list (commands + elements in one
+    section); open-chat / show-inspector / rename-selection commands.
+    Shipped iter-755 (PR #312, d19b5f0).
+  - [x] T-13.05c Selection-scoped Create representation commands.
+    Shipped iter-756 (PR #314, 7fc4f3b).
+  - T-13.05d Recently-used commands + Commands/Elements section
+    headers above the threshold. In flight iter-757 (#315).
+- [x] T-13.06 Tooltip reasons on disabled toolbar buttons. Shipped iter-758
+      (#317, PR #318 → 8fd5bef).
+- [x] T-13.07 Inspector contextual "+ New …" panel when nothing selected.
+      Shipped iter-763 (#326, PR #327 → 0bfd3af).
+- [x] T-13.08 Inline project-name rename in header. Shipped iter-760 (#321,
+      PR #322 → b746ce0).
+- [x] T-13.09 Dirty-state + "saved at" indicator. Shipped iter-762 (#323,
+      PR #324 → 949e707).
+- [x] T-13.10 Undo/redo toolbar buttons. Shipped iter-759 (#319, PR #320 →
+      d5df07f's parent on main).
 
-  Local check green:
-  - `tsc -b` clean.
-  - `eslint .` clean (0 errors, 3 pre-existing react-refresh
-    warnings unchanged).
-  - `vitest run` 1293/1293 unit pass (was 1278; +18 net new − 3
-    obsolete removed).
-  - `vite build` clean (874.84 kB JS / 42.04 kB CSS, gzip 242.95 +
-    8.15 — within pre-PR range).
-  - e2e suite deferred to CI; no UI behavior changed.
+Backlog (P0 — visual rendering / transparency, JOURNAL iter-529):
+- [x] T-13.16 Add `card` + `card-foreground` to tailwind.config.ts + define
+      `--card`/`--card-foreground` HSL tokens (light + dark) in index.css.
+      Shipped iter-532 (#253). 94 visual baselines regenerated.
+- [x] T-13.17 Replace circular port glyphs with square port glyphs in
+      PartUsageNode.tsx (rounded-full → rounded-none). Shipped iter-532 (#253).
 
-  T-13.07 closes P1 operator-UX tier (T-13.05 / .06 / .07 / .08 /
-  .09 / .10 all shipped); next live tier after this PR is the
-  remaining explorer-cascade items (T-13.31 already shipped as
-  ContainmentTree; T-13.32–.36 mostly done per Backlog (P0) —
-  T-13.37/.38/.39 remain).
+Backlog (P1 — SysMLv2 notation conformance, JOURNAL iter-529):
+- [x] T-13.18 Port direction glyphs (in/out/inout). Shipped iter-741 (#291).
+- T-13.19 BDD block compartments (parts/ports/values/constraints).
+- [x] T-13.20 IBD enclosing-block frame — shipped iter-747 (PR #294).
+- [x] T-13.21 Requirement compartments (reqId/text/priority/status rows). Shipped iter-744 (#293).
+- [x] T-13.22 Use-case true ellipse shape (SVG, not rectangle). Shipped iter-739 (#288).
+- [x] T-13.23 Activity pseudostate glyph review (initial/final/fork/join/dec/merge).
+      Decision/merge diamond → inline SVG polygon shipped iter-751 (#302,
+      merged f90e39c). Initial/final/fork/join confirmed conformant as-is
+      — no further change planned under this task.
+- [x] T-13.24 State pseudostate glyph review (initial/final/composite region).
+      Shipped iter-752 (#304). All three shapes conformant as-is; no SVG
+      conversion needed. Composite region out of scope (not in metamodel).
+      Generalized `data-pseudostate-shape` marker convention from T-13.23
+      across both pseudostate viewpoints for the Phase-13 visual-fidelity
+      gate's uniform DOM query.
+- [x] T-13.25 Parametric: constraint-expression + value-property `: type = value`.
+      In flight — PR #300 (iter-749), auto-merge enabled, awaiting CI.
+- T-13.26 Edge style audit (Gen hollow-triangle, Comp filled-diamond,
+  Trace family dashed + stereotype, ItemFlow open-arrow + item-type label).
 
-  The empty inspector previously read "Select an element to edit
-  its properties." with no creation affordance. This slice rewires
-  the empty state to a contextual launchpad: one `+ New {label}`
-  button per `viewpoint.paletteItems` of the active viewpoint, with
-  a `header` reading "<viewpoint label> / Add to this diagram /
-  Nothing is selected. Create a new element here, or click one on
-  the canvas to edit it." Clicking a button dispatches the same
-  store action the canvas toolbar "+ Add" / drop handler uses
-  today, with a cascade position computed from the active diagram's
-  existing positions count, and selects the new element so the
-  inspector flips immediately to the single-element editor.
+Backlog (P0 — hierarchical Project Explorer foundations, decisions locked iter-531):
+- T-13.29 Make `ownerId` + `ownerRole` + `ownerIndex` the SINGLE source of
+  truth on ElementBase. Drop all parent-side child arrays (Package.memberIds,
+  PartDefinition.portIds/propertyIds, PartUsage.portUsageIds,
+  ActionDefinition.parameterIds, InterfaceDefinition.portDefinitionIds).
+  Repository.load() backfills + synthesizes an explicit root Package equal to
+  Project.name; Project gains `rootId: ElementId`. Registry exposes
+  `parentOf` and `childrenOf(id, role?)` as O(1) lookups. Codemod readers.
+- T-13.30 Widen `DiagramContext` to a discriminated union over four kinds
+  { package | partDefinition | actionDefinition | stateDefinition } and
+  make it REQUIRED on every Diagram. Each viewpoint declares accepted
+  context kinds; the "Create representation…" menu reads from that table.
+  Migrate orphan diagrams to { kind: 'package', id: rootId }.
+- T-13.31 Replace flat-by-kind ProjectTree with containment-driven tree
+  rooted at the project package, with representations nested under owners.
 
-  New module `src/workspace/inspector/inspectorCreatePanel.ts`
-  exports four pure things:
-  - `inspectorCreatePanel(viewpoint)` walks `viewpoint.paletteItems`
-    and returns `{ actions, notices }`. Each accepted kind maps to
-    one `{ key, label, elementKind, defaultData }` action. The lone
-    notice path is IBD's PartUsage — creating one requires a
-    PartDefinition picker (PartUsageTypePopover) that only the
-    canvas surface owns, so the inspector surfaces a drag-hint
-    notice ("Drag from the palette onto the canvas to choose a
-    Part Definition.") instead of a button. The action `key`
-    discriminator includes `defaultData.nodeType` / `.stateType`
-    so the 7 Activity pseudostates + 3 State pseudostates each get
-    their own button.
-  - `cascadePosition(cascadeIndex, box, opts?)` returns a
-    NodePosition in a 2-column grid offset 60px from the top-left,
-    `box.{width,height}+40px` gap. Mirrors the existing
-    `handleAddBlock` / `handleAddAction` / ... math in CanvasPane.
-  - `cascadeBoxForAction(action)` returns the per-kind cascade box
-    from the viewpoint constants (BDD_BLOCK_WIDTH/HEIGHT,
-    REQUIREMENT_NODE_WIDTH/HEIGHT, actionNodeSize(...),
-    stateNodeSize(...), USE_CASE_*, PARAMETRIC_*, PACKAGE_*, ...).
-  - `dispatchInspectorCreate({ action, diagram }, storeActions)`
-    switches on `action.elementKind` and forwards to the matching
-    store action (createBlock / createRequirement /
-    createActionUsage / createStateUsage / createActor /
-    createUseCase / createConstraintUsage / createValueProperty /
-    createPackage). Returns the new ElementId or null. Takes store
-    actions via parameter so the helper unit-tests cleanly with a
-    mock store; the React caller pulls actions imperatively via
-    `useWorkspaceStore.getState()` at click time (avoids the
-    Zustand "fresh object every render → infinite loop" trap that
-    the first iteration of the wiring hit).
-
-  Inspector.tsx: new `<InspectorEmptyState />` subcomponent
-  rendered in place of the prior `<p data-testid="inspector-empty">`
-  placeholder. Subscribes to `getActiveViewpoint(s)` +
-  `getActiveDiagram(s)`. Falls back to the old "Select an element
-  to edit its properties." placeholder when viewpoint/diagram are
-  unresolved (pre-bootstrap or no-active-diagram cases). Buttons
-  carry stable testids `inspector-empty-action-<kind>` (with
-  `.<variant>` suffix for ActionUsage / StateUsage); notices carry
-  `inspector-empty-notice-<key>`. The container retains the prior
-  `data-testid="inspector-empty"` plus a new
-  `data-viewpoint-id="<id>"` attribute for e2e + visual-fidelity
-  assertions.
-
-  Tests: 19 new unit specs in
-  `tests/unit/workspace/inspector/inspectorCreatePanel.test.ts`
-  (6 panel-shape × 4 viewpoint variants + 3 cascadePosition +
-  2 cascadeBoxForAction + 8 dispatch routing/cascade-index specs).
-  2 modified + 1 new unit spec in `Inspector.test.tsx` (renamed
-  "empty placeholder" assertion → "create panel" assertion,
-  click-creates-and-selects spec, IBD notice-path spec).
-  1 new e2e `tests/e2e/inspector-empty-state-cta.spec.ts`:
-  cold-load → click + New Block → assert new block visible on the
-  canvas + inspector-single shows Block 1. 2 e2e tweaks: existing
-  `inspector.spec.ts` empty-selection assertion updated to assert
-  the create-panel header text; `workspace-shell.spec.ts` sidebar
-  placeholder regex updated similarly. Local check green:
-  1278/1278 unit pass (was 1257, +21 net), tsc -b clean, eslint
-  clean (0 errors, 3 pre-existing warnings unchanged), vite build
-  clean. Inspector chromium e2e suite (9 tests) green.
-
-  Predicted visual baseline drift on CI (left to the lift-from-
-  trace procedure if flagged): every `*-empty.png` baseline that
-  captures the viewport-wide sidebar will see the inspector DOM
-  change from a one-line placeholder to a header + button list —
-  `bdd-empty`, `activity-empty`, `requirements-empty`,
-  `state-machine-empty`, `use-case-empty`, `parametric-empty`,
-  `package-empty`, each on chromium + webkit. `bdd-one-block.png`
-  and other populated-canvas baselines should hold (their
-  inspector is the single-element editor, unchanged).
+## Iter-768 archive (one-line)
+- Misdiagnosed PR-#331 CI cancellation as visual-baseline drift; spent
+  iter-767/-768 on CI infra (visual/functional project split, workers
+  2→4, timeout 30→60, incremental test-results upload). The infra
+  changes are kept (independently useful) but the actual root cause
+  was a functional regression in T-13.37's cold-load `openDiagramIds`
+  fallback — see current iteration above. Iter-768's
+  `playwright-test-results` upload made this diagnosis possible.
 
 ## Iter-763 archive
 - Branch: issue/326-inspector-empty-state-cta (PR #327 merged

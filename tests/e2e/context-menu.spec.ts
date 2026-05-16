@@ -253,7 +253,7 @@ test.describe('Cross-diagram navigation context menu (issue #53)', () => {
     await expect(page.getByTestId('element-context-menu')).toBeVisible();
 
     await page.evaluate(async () => {
-      await Promise.all(document.getAnimations().map((a) => a.finished));
+      await Promise.allSettled(document.getAnimations().map((a) => a.finished));
     });
 
     const results = await new AxeBuilder({ page })
@@ -277,7 +277,7 @@ test.describe('Cross-diagram navigation context menu (issue #53)', () => {
     await expect(page.getByTestId('element-context-menu')).toBeVisible();
     // Settle animations.
     await page.evaluate(async () => {
-      await Promise.all(document.getAnimations().map((a) => a.finished));
+      await Promise.allSettled(document.getAnimations().map((a) => a.finished));
     });
     await page.mouse.move(0, 0);
     await expect(page).toHaveScreenshot('context-menu-bdd.png', {

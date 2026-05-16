@@ -385,7 +385,7 @@ test.describe('Phase 3 gate (issue #54)', () => {
     await expect(page.getByTestId('inspector-name')).toHaveValue('EngineV2');
 
     await page.evaluate(async () => {
-      await Promise.all(document.getAnimations().map((a) => a.finished));
+      await Promise.allSettled(document.getAnimations().map((a) => a.finished));
     });
 
     const results = await new AxeBuilder({ page })

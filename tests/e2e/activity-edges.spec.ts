@@ -374,7 +374,7 @@ test.describe('Activity edges (issue #89)', () => {
     ).toHaveCount(1);
 
     await page.evaluate(async () => {
-      await Promise.all(document.getAnimations().map((a) => a.finished));
+      await Promise.allSettled(document.getAnimations().map((a) => a.finished));
     });
 
     const results = await new AxeBuilder({ page })

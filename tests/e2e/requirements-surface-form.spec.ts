@@ -86,7 +86,7 @@ test.describe('Requirements surface — editable form pane (slice 3 of #173)', (
     await page.getByTestId('requirements-surface-row-r-stop').click();
     await expect(page.getByTestId('requirements-surface-form')).toBeVisible();
     await page.evaluate(async () => {
-      await Promise.all(document.getAnimations().map((a) => a.finished));
+      await Promise.allSettled(document.getAnimations().map((a) => a.finished));
     });
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
@@ -105,7 +105,7 @@ test.describe('Requirements surface — editable form pane (slice 3 of #173)', (
     await expect(page.getByTestId('requirements-surface-form')).toBeVisible();
     await page.mouse.move(0, 0);
     await page.evaluate(async () => {
-      await Promise.all(document.getAnimations().map((a) => a.finished));
+      await Promise.allSettled(document.getAnimations().map((a) => a.finished));
     });
     await expect(page).toHaveScreenshot(
       'requirements-surface-form-populated.png',

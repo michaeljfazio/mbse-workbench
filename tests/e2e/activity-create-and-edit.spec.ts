@@ -196,7 +196,7 @@ test.describe('Activity drop + inspector (issue #88)', () => {
     await gotoActivity(page);
     await page.getByTestId('toolbar-add-action').click();
     await page.evaluate(async () => {
-      await Promise.all(document.getAnimations().map((a) => a.finished));
+      await Promise.allSettled(document.getAnimations().map((a) => a.finished));
     });
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
@@ -237,7 +237,7 @@ test.describe('Activity drop + inspector (issue #88)', () => {
     await gotoActivity(page);
     await dragChipOntoCanvas(page, 'decision', { x: 240, y: 240 });
     await page.evaluate(async () => {
-      await Promise.all(document.getAnimations().map((a) => a.finished));
+      await Promise.allSettled(document.getAnimations().map((a) => a.finished));
     });
     await expect(page).toHaveScreenshot('inspector-action-selected.png', {
       fullPage: false,

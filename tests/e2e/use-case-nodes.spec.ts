@@ -204,7 +204,7 @@ test.describe('Use Case nodes + palette + inspector (issue #118)', () => {
     await dragChipOntoCanvas(page, 'actor', { x: 160, y: 200 });
     await dragChipOntoCanvas(page, 'usecase', { x: 420, y: 200 });
     await page.evaluate(async () => {
-      await Promise.all(document.getAnimations().map((a) => a.finished));
+      await Promise.allSettled(document.getAnimations().map((a) => a.finished));
     });
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])

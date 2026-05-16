@@ -217,7 +217,24 @@ test.describe('Phase 6 gate (issue #107)', () => {
       bottomHandleOf(page, `state-machine-initial-${initialId}`),
       topHandleOf(page, `state-machine-state-${idleId}`),
     );
-    await expect(page.getByTestId('inspector-transition')).toBeVisible();
+    // Precondition (#161 fix 1): isolate "did the drag create the edge?"
+    // from "did the inspector auto-select and mount?" — the latter lands
+    // a frame after the former and can race the render tick under CI
+    // load (cold-load-all-tabs amplifies concurrent render activity).
+    await expect(
+      page.locator(
+        '[data-testid^="state-machine-edge-"][data-edge-kind="Transition"]',
+      ),
+    ).toHaveCount(1);
+    // #161 fix 2: raise the auto-select-and-mount wait at this seam
+    // specifically. Under amplified CI load the default 5s race-wins
+    // before the inspector subscribes to the freshly-selected edge.
+    // Line 240's second wait still uses the default — it follows a
+    // user-initiated drag from an already-rendered canvas and has
+    // never been observed flaking.
+    await expect(page.getByTestId('inspector-transition')).toBeVisible({
+      timeout: 15_000,
+    });
 
     // Step 3 — wire Idle → Running. The auto-selected Transition's inspector
     // exposes trigger / guard / effect; fill them now to avoid re-selecting
@@ -540,7 +557,7 @@ test.describe('Phase 6 gate (issue #107)', () => {
   }) => {
     await gotoStateMachine(page);
     await page.evaluate(async () => {
-      await Promise.all(document.getAnimations().map((a) => a.finished));
+      await Promise.allSettled(document.getAnimations().map((a) => a.finished));
     });
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
@@ -579,7 +596,7 @@ test.describe('Phase 6 gate (issue #107)', () => {
     // Clear selection so focus rings don't dominate the axe sample.
     await page.locator('body').click({ position: { x: 4, y: 4 } });
     await page.evaluate(async () => {
-      await Promise.all(document.getAnimations().map((a) => a.finished));
+      await Promise.allSettled(document.getAnimations().map((a) => a.finished));
     });
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
@@ -619,7 +636,7 @@ test.describe('Phase 6 gate (issue #107)', () => {
     await page.getByTestId('inspector-transition-effect').press('Enter');
 
     await page.evaluate(async () => {
-      await Promise.all(document.getAnimations().map((a) => a.finished));
+      await Promise.allSettled(document.getAnimations().map((a) => a.finished));
     });
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])

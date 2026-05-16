@@ -239,7 +239,7 @@ test.describe('Parametric ParameterBinding edges (issue #137)', () => {
       page.locator('[data-testid^="parametric-binding-edge-"]'),
     ).toHaveCount(1);
     await page.evaluate(async () => {
-      await Promise.all(document.getAnimations().map((a) => a.finished));
+      await Promise.allSettled(document.getAnimations().map((a) => a.finished));
     });
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])

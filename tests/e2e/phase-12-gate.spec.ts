@@ -441,6 +441,13 @@ test.describe('Phase 12 gate (issue #238) — round-trip + full-viewpoint smoke'
   test('@a11y every viewpoint screen and the requirements surfaces have no serious accessibility violations', async ({
     page,
   }) => {
+    // 11 sequential AxeBuilder.analyze() calls (8 viewpoints + 3 requirements
+    // subtabs) over the cold-load-all-tabs workspace exceed the default 30s
+    // test timeout on CI runners. The test is deliberately comprehensive —
+    // give it the budget it needs rather than splitting the gate into
+    // narrower per-screen tests that would lose the "scan every surface in
+    // one pass" contract.
+    test.setTimeout(120_000);
     for (const tab of DIAGRAM_TABS) {
       await activateDiagramTab(page, tab);
       const results = await new AxeBuilder({ page })

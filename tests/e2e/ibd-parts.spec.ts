@@ -247,7 +247,7 @@ test.describe('IBD parts (issue #50)', () => {
 
     // Settle any transitions before axe samples computed styles.
     await page.evaluate(async () => {
-      await Promise.all(document.getAnimations().map((a) => a.finished));
+      await Promise.allSettled(document.getAnimations().map((a) => a.finished));
     });
 
     const results = await new AxeBuilder({ page })

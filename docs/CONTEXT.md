@@ -8,6 +8,63 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
 
 ## Discovered facts
 
+- **2026-05-16 (iter-774, #161 root cause)** — When `onConnect` in
+  `CanvasPane.tsx` creates an edge-element (Transition / ConnectionUsage /
+  ItemFlow / ControlFlow / ObjectFlow / RequirementTrace) and immediately
+  calls `setSelection([newId])`, React Flow v12 asynchronously emits a
+  stray `{type:'select', id:<newEdge>, selected:false}` change a few
+  render ticks later — its internal edge state hasn't propagated the
+  externally-driven `selected:true` we put on the edges prop. Without a
+  guard, `onEdgesChange` runs that change through `applyEdgeChanges` and
+  `setSelection([])` clobbers the auto-selection. The fix mirrors the
+  existing `isConnectingRef` guard from `onNodesChange` (which prevents
+  the symmetric stray source-node-select from breaking Backspace
+  semantics) into `onEdgesChange`, AND bumps the `onConnectEnd` cooldown
+  from 100ms → 250ms because under workers=4 CI load the late emission
+  lands past 100ms. Manifested as the long-running phase-6-gate
+  `inspector-transition` flake (issue #161); iter-773 misdiagnosed it as
+  a timing race and added a 15s wait that the actual clobber rendered
+  inert. Always: imperative `setSelection` after `onConnect` MUST be
+  protected by a connection-window guard, or auto-select silently
+  evaporates.
+
+- **2026-05-16 (iter-769, T-13.37 regression)** — `readLayout(storage)` in
+  `src/workspace/store.ts` now returns `LayoutSnapshot | null`; null means
+  the storage key was absent, i.e. this is a cold load (first session
+  opening this project). The null vs non-null distinction is load-bearing:
+  bootstrap opens *every* project diagram on cold load (the "open tabs"
+  working set is meaningful only after the user curates it; before that
+  the legacy "all diagrams are tabs" behavior matches expectations and
+  keeps e2e seed patterns working), but with a persisted snapshot whose
+  filtered open set is empty (user closed everything, or every formerly-
+  open diagram was deleted) it falls back to the project's first diagram
+  so the user is not stuck on the empty state across a reload. The
+  triggering regression: T-13.37 (commit 35f9554) shipped a fallback that
+  opened only `diagrams[0]` on cold load. Every e2e test that seeded a
+  project with multiple diagrams (~159 specs) then hung 30s on
+  `getByRole('tab', { name: '<second diagram>' })`. CI cancelled at the
+  60-min cap; the "lift visual baselines from actuals" thread on iter-767
+  and -768 was diagnosing the wrong symptom — `playwright-test-results`
+  contained 471 `test-failed-1.png` screenshots but ZERO `-actual.png`
+  files, meaning none of the failures were visual-snapshot drift. They
+  were all functional `locator.click` timeouts cascading from the tabs
+  regression. Fix in `bootstrap()` around line 1054.
+
+- **2026-05-16 (iter-766, T-13.37)** — Playwright projects are split into
+  functional + visual pairs (`chromium`, `webkit`, `chromium-visual`,
+  `webkit-visual`) so visual specs can run with `retries: 0` while functional
+  specs keep the global `retries: 2`. A baseline storm previously tripled
+  the visual-spec wallclock on each retry and blew past both the 30- and
+  60-min job caps (cancellations on runs 25933515121 and 25935089963 for
+  PR #331). Retries don't help deterministic visual diffs — a real
+  regression diffs identically every time, so retrying is pure waste.
+  `snapshotPathTemplate` is overridden on each `-visual` project to keep
+  baseline file names `{arg}-chromium.png` / `{arg}-webkit.png` (rather
+  than `{arg}-chromium-visual.png`), so the existing committed baselines
+  remain valid. `SKIP_VISUAL_LOCALLY` (config-level `grepInvert`) still
+  drains the `-visual` projects entirely on non-CI macOS hosts; gate
+  fires only in CI.
+
 - **2026-05-14 (iter-705, #255)** — `pnpm typecheck` is a SILENT NO-OP.
   The root `tsconfig.json` declares `"files": []` plus `references` to
   `tsconfig.app.json` and `tsconfig.node.json`. Plain `tsc --noEmit`
@@ -1167,3 +1224,44 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
   + webkit) when the toolbar grows, which is *expected* and refreshed
   via the lift-from-CI procedure — but split-view failures are
   *functional* regressions and not OK to ride out via baseline regen.
+
+- 2026-05-16 (iter-767, PR #331): **`playwright-report/` does NOT survive
+  a job-cancelled timeout — `test-results/` does.** Iter-766 split visual
+  specs into `retries:0` projects (worth keeping) and bumped the job cap
+  to 60min, but run 25937962140 still cancelled at exactly 60min with
+  ~412/612 specs done; the upload step then logged
+  `No files were found with the provided path: playwright-report` and
+  produced an empty artifact list. The HTML reporter only flushes
+  `playwright-report/` once the run completes, so cancellation eats it.
+  Two fixes shipped together in this iter: (1) bumped Playwright
+  `workers` from 2 → 4 in `playwright.config.ts` — ubuntu-latest has
+  4 vCPU/16 GB and the conservative `cores/2` default was the bottleneck;
+  (2) added a second `upload-artifact` step for `test-results/` in
+  `.github/workflows/ci.yml`. `test-results/` is written incrementally
+  per test and contains `<arg>-actual.png` for every failing
+  `toHaveScreenshot` assertion — that's the actual input the lift-from-
+  trace rebaseline procedure needs, and it survives cancellation. The
+  procedure documented earlier (lift from `data/<trace-hash>.zip` in the
+  HTML report) still works when the report does flush; otherwise lift
+  from the `playwright-test-results` artifact's per-test subdirectory.
+
+- **2026-05-16 (iter-770, T-13.37 spec fix)** — The T-13.37 e2e spec
+  (`tests/e2e/diagram-tabs-open-close.spec.ts`) was originally written
+  assuming "cold-load opens only the first/bootstrap diagram" and asserts
+  `tab-d-bdd-two` has count 0 immediately after seeding two diagrams.
+  That assertion is incompatible with the iter-769 cold-load-all default
+  (which 40+ pre-existing e2e seed patterns depend on — they
+  `sessionStorage.setItem('mbse:v1:project:<id>', ...)` with multiple
+  diagrams and click tabs by name without first opening them). The
+  resolution kept the cold-load-all behavior (single-load-bearing
+  default; matches user mental model "no curation yet → all open") and
+  rewrote the three failing T-13.37 tests to first close a tab before
+  asserting closure/persistence behavior. The T-13.37 *feature* (close
+  removes from strip + tree row persists + reload persists curation +
+  tree-row re-opens) is still fully covered — the tests now reach the
+  closed state via explicit `close-X` click rather than relying on a
+  cold-load default. **Rule:** when a spec was written before a
+  behavior change, prefer adapting the spec to the new behavior (if
+  the change is correct and load-bearing) over reverting the behavior
+  — but verify the *underlying feature* is still covered end-to-end
+  before declaring done.

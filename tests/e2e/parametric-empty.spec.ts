@@ -89,7 +89,7 @@ test.describe('Parametric viewpoint (issue #135)', () => {
     // transition with an in-between bg/text colour pair that fails the
     // contrast check (see docs/CONTEXT.md 2026-05-12 entry).
     await page.evaluate(async () => {
-      await Promise.all(document.getAnimations().map((a) => a.finished));
+      await Promise.allSettled(document.getAnimations().map((a) => a.finished));
     });
 
     const results = await new AxeBuilder({ page })
