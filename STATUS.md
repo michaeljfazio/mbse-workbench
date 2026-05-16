@@ -3,68 +3,48 @@
 ## Current phase
 phase:15 — Architect-driven UX & feature hardening
 
-Walk 1 (iter-794) is complete. Ten issues filed (#368–#377). Three
-of them are `p0` (Activity, State Machine, Parametric — no UI entry
-point) and four are `p1` (direct-manipulation deficiencies and the
-creation-surface inconsistency). Rubric advanced on 14 of 28
-dimensions: 7 at score 2, 7 at score 1. Fourteen dimensions remain
-at `0 — unmeasured` and inform subsequent walks.
+Iter-795: errata + pivot. While planning the iter-795 engineer batch
+for the three p0 issues (#368/#369/#370 missing-viewpoint family),
+an `Explore` subagent surfaced that the walk-1 Playwright probe
+had a buggy ancestor check — it was opening the Package root's row
+menu every time, regardless of which row was nominally targeted.
+All eight viewpoints ARE registered and the Phase-13 cold-start gate
+test creates each one via UI on every CI run. The walk-1 issues
+were reframed from "no entry point" (p0) to "discoverability gap on
+Package row menu" (p2), and rubric dims 6/8/9/11 raised from 1 → 2.
+
+Iter-795's engineer batch pivots to the interaction issues:
+**#374 (resize handles) + #375 (drag-position display)**. #376
+(four UI surfaces for Block creation) is a `type:design` issue and
+deferred to a follow-up ADR-driven batch.
 
 ## Current iteration
-- Iteration #: 794
-- Started: 2026-05-16
-- Branch: `phase-15/walk-1-log`
-- Working on: walk-1 close-out PR
+- Iteration #: 795
+- Started: 2026-05-17
+- Branches in-flight:
+  - `chore/iter-795-walk-1-errata` (doc-only, this PR)
+  - `phase-15/interaction-resize-drag` (engineer batch, dispatched separately)
 
 ## Last test run
-- Command: `pnpm run check` (last green on `main` is `64f8106`, iter-793's JOURNAL append).
-- This walk-1 PR touches only `docs/architect/walks/walk-1.md`,
-  `docs/architect/quality-rubric.md`, `STATUS.md` — no `src/` changes,
-  CI expected to pass.
+- Main last green at `0c78e6b` (iter-794 walk-1 close-out).
+- Errata PR: doc-only, no `src/` changes, `pnpm run check` expected to pass.
 
 ## Known issues / blockers
-- (none for the walk-1 close-out itself)
+- (none)
 
-Open phase:15 issues — `status:ready` and awaiting engineer iterations:
+## Open phase:15 issues — distribution after iter-795 errata
 
-| Issue | Severity | Theme |
-|-------|----------|-------|
-| [#368](https://github.com/michaeljfazio/mbse-workbench/issues/368) | p0 | Activity Diagram entry point |
-| [#369](https://github.com/michaeljfazio/mbse-workbench/issues/369) | p0 | State Machine Diagram entry point |
-| [#370](https://github.com/michaeljfazio/mbse-workbench/issues/370) | p0 | Parametric Diagram entry point |
-| [#371](https://github.com/michaeljfazio/mbse-workbench/issues/371) | p2 | IBD submenu discoverability |
-| [#372](https://github.com/michaeljfazio/mbse-workbench/issues/372) | p2 | Palette dynamic-growth surprise |
-| [#373](https://github.com/michaeljfazio/mbse-workbench/issues/373) | p3 | Usage categories missing `+` |
-| [#374](https://github.com/michaeljfazio/mbse-workbench/issues/374) | p1 | No resize handles on Block |
-| [#375](https://github.com/michaeljfazio/mbse-workbench/issues/375) | p1 | No drag-position display |
-| [#376](https://github.com/michaeljfazio/mbse-workbench/issues/376) | p1 | Four UI surfaces for Block creation |
-| [#377](https://github.com/michaeljfazio/mbse-workbench/issues/377) | p3 | Palette label inconsistency |
+| Severity | Count | Issues |
+|----------|-------|--------|
+| p1 | 3 | #374 (resize), #375 (drag-coord), #376 (4-way Block — design) |
+| p2 | 5 | #368 / #369 / #370 / #371 (discoverability), #372 (palette dynamic growth) |
+| p3 | 2 | #373 (usage no `+`), #377 (palette labels) |
 
 ## Decisions log
 
-Iter-792 + iter-793 entries preserved in commit history (PR #362,
-#365, #367). Iter-794 decisions:
-
-- 2026-05-16 (iter-794): Walk-1 ran headless Chromium against the
-  deployed vphase-14 Pages (`fac60c772942673ff1f33f936197fc2abf49a8e7`).
-  The kickoff prefers `headed` Chromium; in this non-interactive
-  harness the rendered DOM observed via Playwright is functionally
-  equivalent and screenshots are the witness. Documented at the top
-  of `walk-1-exec.py`. If headedness ever matters to a finding
-  (anti-aliasing, focus-visible behaviour), the walk re-runs under a
-  Playwright `--headed` configuration.
-- 2026-05-16 (iter-794): Three `p0` issues (#368/#369/#370) cover
-  Activity / State Machine / Parametric viewpoints, each as a
-  separate issue per A.7 "one issue per defect". They share a likely
-  root cause (the `Create representation…` registry omits these
-  viewpoint kinds) and per A.8 grouping heuristic #1 ("Foundational
-  / schema work first") will likely batch into a single PR in
-  iter-795.
+- 2026-05-17 (iter-795): walk-1 self-correction. Three p0 reframed to p2 after corrected Playwright probe. Lesson recorded: use the `containment-tree-element-menu-trigger-${elementId}` testid pattern (per `phase-13-cold-start.spec.ts`) for any row-specific affordance probe.
+- 2026-05-17 (iter-795): Engineer batch pivots from missing-viewpoint to interaction (#374/#375). #376 deferred to ADR.
 
 ## Next action
 
-Open walk-1 close-out PR (branch `phase-15/walk-1-log`, closes the
-walk-log bookkeeping issue to be filed). After merge, iter-795
-begins by reading STATUS, selecting the missing-viewpoint engineer
-batch (#368 + #369 + #370, optionally #371), and dispatching a
-subagent on a `phase-15/viewpoint-entry-points` branch.
+After this errata PR merges and CI green, dispatch a Sonnet engineer subagent on `phase-15/interaction-resize-drag` to close #374 + #375 (NodeResizer wrapper + onNodeDrag overlay). Pre-PR review subagent against the diff before opening the PR.
