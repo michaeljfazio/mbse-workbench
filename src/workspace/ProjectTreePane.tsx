@@ -1,4 +1,5 @@
 import { ContainmentTree } from './tree/ContainmentTree';
+import { LibrariesSection } from './tree/LibrariesSection';
 import { ProjectTree } from './tree/ProjectTree';
 import { useWorkspaceStore } from './store';
 
@@ -34,6 +35,7 @@ export function ProjectTreePane({ width }: ProjectTreePaneProps): JSX.Element {
           </h2>
           <ContainmentTree />
         </section>
+        <LibrariesSection />
         <section aria-label="Palette" data-testid="project-tree-palette-section">
           <h2 className="px-3 py-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
             Palette
