@@ -157,3 +157,28 @@ Walk-1 is **complete**. The broad-sweep mission held: every viewpoint was touche
 After the missing-viewpoint batch lands and `vphase-15.1` deploys, walk-2 should be a regression walk re-running walk-1's discovery passes to confirm reach is restored, followed by a deep-dive walk per viewpoint as each reaches rubric score ≥ 2.
 
 **Walk file finalised.** No further edits to this file. Subsequent walk findings go in `walk-2.md`, `walk-3.md`, …
+
+## Errata — iter-795 self-correction
+
+While planning the iter-795 engineer batch for the three p0 issues (#368 Activity, #369 State Machine, #370 Parametric), an `Explore` subagent surfaced that **all eight viewpoints are registered** in `src/workspace/store.ts` and the **Phase-13 cold-start gate test** (`tests/e2e/phase-13-cold-start.spec.ts`) creates all eight diagrams via UI on every CI run. The static map in `src/workspace/tree/representationAcceptance.ts` actually offers:
+
+| Owner kind | Submenu |
+|------------|---------|
+| Package | BDD, Requirements, Use Case, Package |
+| PartDefinition | BDD, **IBD**, **Parametric** |
+| ActionDefinition | **Activity** |
+| StateDefinition | **State Machine** |
+
+A corrected Playwright probe using the `containment-tree-element-menu-trigger-${elementId}` testid pattern confirmed Activity is reachable from an `ActionDefinition` row. The walk-1 script's `open_row_menu_for` Python helper had a too-loose ancestor check that caused it to always open the **Package root's** row menu — every owner-kind I tested was reading Package's submenu, not its own. That's why the walk concluded "only 4 of 8 viewpoints offered" universally.
+
+**Consequence.** Issues #368/#369/#370 were re-scoped from **p0 "no UI creation entry point"** to **p2 "discoverability gap on Package row menu"** with explanatory comments. The real finding survives — an architect surveying the Project root's row menu sees 4 of 8 viewpoints and must already know SysML containment semantics to navigate to the rest — but this is a UX discoverability problem, not a missing feature.
+
+**Rubric corrections** (also recorded in `quality-rubric.md` score delta log):
+- Dimension 6 (IBD): 1 → 2 (reachable via inspector and via PartDefinition row menu).
+- Dimension 8 (Activity): 1 → 2.
+- Dimension 9 (State machine): 1 → 2.
+- Dimension 11 (Parametric): 1 → 2.
+
+**Lesson recorded.** For all future walks, prefer the data-testid pattern used by the Phase-13 spec (`containment-tree-element-menu-trigger-${elementId}`) over text-content heuristics for any row-specific affordance. Loose ancestor checks across explorer panels produce false-positive matches because element text bubbles up the panel ancestry.
+
+The walk-1 Python scripts under `artifacts/phase-15/walk-1/` are kept as-is — they are the historical record of the bug. Future walks may import a corrected helper from `artifacts/phase-15/_lib/` if one is written.
