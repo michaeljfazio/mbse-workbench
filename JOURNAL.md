@@ -770,3 +770,18 @@ Phase 13 ships zero library content. Phase 13's design accommodates Phase 14 via
 - Phase 14 placeholder: "Standard library import (KerML / SysML), read-only subtree enforcement, import directive in text round-trip." Use `Package.isReadOnly` + `Project.libraryRootIds` hooks reserved in Phase 13.
 
 ---
+
+## Iteration 779 — 2026-05-16 — Phase 13 complete: post-v1.0.0 polish + explorer rewrite shipped
+
+**Event:** phase-completion
+
+**Phase:** phase:13 — Functional polish & feature accessibility
+
+**Narrative:** Phase 13 closed. The post-v1.0.0 walkthrough (iter-528..530) found a gate-vs-reach gap I'd missed: the v1.0.0 acceptance test scaffolded its own diagrams via the store, so the absent UI affordances never broke a test. Two hundred-plus iterations later, every gap is gone. From a cold start, a first-time operator can now reach all eight viewpoints through the UI — diagram creation lives on the toolbar and in the explorer's "Create representation…" submenu (T-13.01/.33c), the project tree has a real containment hierarchy rooted at an explicit `Package` element with representations nested under their owners (T-13.31), Cmd-K is a true command palette with ranked commands and recents (T-13.05a–d), the inspector exposes contextual "+ New …" panels when nothing is selected (T-13.07), and the header surfaces dirty-state + saved-at indicators with inline project rename (T-13.08/.09). Visual conformance came in alongside: the missing `card` Tailwind token (T-13.16) opaqued ninety-five `bg-card` call sites in a single PR; ports became SysMLv2-conformant squares (T-13.17); block, requirement, and constraint nodes grew compartments; edges respect the standard arrowhead/style table (T-13.26). The load-bearing change was T-13.29/.30 — `ownerId` + `ownerRole` + `ownerIndex` on `ElementBase` as the single source of truth, scattered parent-side child arrays gone, a discriminated `DiagramContext` required on every diagram with viewpoint-declared accepted kinds. That migration ran in `repository.load` so existing projects survived the schema change in place. The Phase-13 gate landed as two Playwright specs and one unit module: `phase-13-cold-start.spec.ts` uses only user-facing affordances to author one element per viewpoint and asserts persistence across reload; `phase-13-visual-fidelity.spec.ts` codifies opaque rectangular bodies, square IBD port handles, the use-case SVG ellipse, and opaque containment-tree popovers; `phase13GateInvariants.test.ts` enforces the containment invariants on the persisted schema. Two surprises worth recording. First, the cold-start spec needed a 1920×900 viewport — at the default 1280×720, eight tabs overflow the strip and the rightmost get clipped behind the sidebar, so Playwright treats clicks as obscured. Second, the spec exposed a render-time crash where Activity and State-Machine viewpoints accept `ActionDefinition` / `StateDefinition` per their ADR-locked `acceptedElementKinds` (reserved for the future "called activity" frame) but reject them in `nodeTypeFor`; the fix was a defensive try/catch filter in `flowGraph.ts` that drops elements whose render path would throw, keeping the forward-compat declaration intact. Tag `vphase-13` pushed at `83018f9`; release workflow deploying. Phase 14 (standard library import) is the next phase — the metamodel hooks `PackageElement.isReadOnly` and `Project.libraryRootIds` are already in place per iter-531's decisions.
+
+**Links:**
+- Final Phase-13 PR: https://github.com/michaeljfazio/mbse-workbench/pull/339
+- Release issue: https://github.com/michaeljfazio/mbse-workbench/issues/340
+- Release tag: https://github.com/michaeljfazio/mbse-workbench/releases/tag/vphase-13
+
+---
