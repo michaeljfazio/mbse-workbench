@@ -259,7 +259,16 @@ export function migrateLegacyProject(raw: unknown): Project {
     ? (obj.conversations as Project['conversations'])
     : [];
 
-  return {
+  // Phase 14 hook (T-14.01): preserve `libraryRootIds` if present and shaped
+  // as an array of element-id strings. Mixed-type arrays are dropped wholesale
+  // (treated as a corrupt entry); absent fields stay undefined.
+  const libraryRootIds =
+    Array.isArray(obj.libraryRootIds) &&
+    obj.libraryRootIds.every((v): v is string => typeof v === 'string')
+      ? (obj.libraryRootIds as ElementId[])
+      : undefined;
+
+  const base: Project = {
     id: obj.id as Project['id'],
     name,
     createdAt:
@@ -277,4 +286,7 @@ export function migrateLegacyProject(raw: unknown): Project {
     history,
     conversations,
   };
+  return libraryRootIds === undefined
+    ? base
+    : { ...base, libraryRootIds };
 }

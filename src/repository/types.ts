@@ -14,6 +14,15 @@ export interface Project {
    * legacy projects that predate the explicit-root invariant. See ADR 0011.
    */
   rootId: ElementId;
+  /**
+   * Phase 14 hook. Element IDs of read-only library root Packages
+   * (standard KerML / SysML libraries) that the explorer renders as
+   * siblings of `rootId` under a "Libraries" header. Undefined or
+   * empty means no libraries. ADR 0011 §Consequences reserved the
+   * field name; T-14.01 lands the schema; T-14.03 lands the
+   * explorer surface; T-14.04 lands the seeded library content.
+   */
+  libraryRootIds?: readonly ElementId[];
   elements: readonly ModelElement[];
   edges: readonly ModelEdge[];
   diagrams: readonly Diagram[];
