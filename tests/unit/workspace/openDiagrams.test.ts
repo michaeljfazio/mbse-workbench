@@ -203,6 +203,41 @@ describe('openDiagram / closeDiagramTab', () => {
     expect(restored.diagrams.some((d) => d.id === second)).toBe(true);
   });
 
+  it('bootstrap opens every project diagram when no layout snapshot has been persisted yet', async () => {
+    // Cold-load case: the project already has multiple diagrams (e.g. an
+    // e2e seed wrote it directly to sessionStorage) but no LayoutSnapshot
+    // exists yet. Bootstrap should open every diagram so tab-by-name
+    // locators resolve immediately — the alternative (open only the
+    // first) made the entire e2e suite hang waiting for the second tab
+    // to appear (CI run 25949230853, T-13.37 regression).
+    const storage = makeMemoryStorage();
+    // First bootstrap creates the seed project with one diagram. Add a
+    // second through the public API — createDiagram persists the project
+    // but does not touch LAYOUT_STORAGE_KEY.
+    const repository1 = createInMemorySessionRepository({ storage });
+    const user1 = createSessionUser();
+    await useWorkspaceStore
+      .getState()
+      .bootstrap({ repository: repository1, user: user1, storage });
+    const first = useWorkspaceStore.getState().diagrams[0]!.id;
+    const second = useWorkspaceStore.getState().createDiagram(BDD_VIEWPOINT_ID);
+    if (!second) throw new Error('createDiagram returned null');
+
+    // Tear down. Explicitly wipe the layout key so the next bootstrap
+    // looks at a project-with-two-diagrams but a fresh-session layout.
+    resetWorkspaceStoreForTests();
+    storage.removeItem(LAYOUT_STORAGE_KEY);
+
+    const repository2 = createInMemorySessionRepository({ storage });
+    const user2 = createSessionUser();
+    await useWorkspaceStore
+      .getState()
+      .bootstrap({ repository: repository2, user: user2, storage });
+    const restored = useWorkspaceStore.getState();
+    expect(restored.openDiagramIds).toEqual([first, second]);
+    expect(restored.activeDiagramId).toBe(first);
+  });
+
   it('bootstrap filters out persisted open ids whose diagram no longer exists', async () => {
     const storage = makeMemoryStorage();
     // Seed the layout with a phantom id alongside whatever the bootstrap

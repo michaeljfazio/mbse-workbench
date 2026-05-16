@@ -131,16 +131,16 @@ function clampPaneWidth(px: number): number {
   return Math.min(MAX_PANE_WIDTH, Math.max(MIN_PANE_WIDTH, Math.round(px)));
 }
 
-function readLayout(storage: Storage): LayoutSnapshot {
-  const defaults: LayoutSnapshot = {
-    leftPaneWidth: DEFAULT_LEFT_PANE_WIDTH,
-    rightPaneWidth: DEFAULT_RIGHT_PANE_WIDTH,
-    secondaryDiagramId: null,
-    openDiagramIds: [],
-  };
+// Returns null when no LayoutSnapshot has been persisted yet for this session
+// (the storage key is absent or unreadable). The null vs non-null distinction
+// is load-bearing: cold-load (null) means "the user has not curated an open
+// set yet" so bootstrap opens every project diagram; a non-null snapshot,
+// even one whose openDiagramIds is [], means the user has touched the open
+// set and we honor what they curated.
+function readLayout(storage: Storage): LayoutSnapshot | null {
   try {
     const raw = storage.getItem(LAYOUT_STORAGE_KEY);
-    if (raw === null) return defaults;
+    if (raw === null) return null;
     const parsed = JSON.parse(raw) as Partial<LayoutSnapshot> & {
       secondaryDiagramId?: string | null;
       openDiagramIds?: readonly unknown[];
@@ -160,7 +160,7 @@ function readLayout(storage: Storage): LayoutSnapshot {
       openDiagramIds,
     };
   } catch {
-    return defaults;
+    return null;
   }
 }
 
@@ -955,14 +955,13 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
 
   async bootstrap({ repository, user, provider, storage }) {
     const storageInst = storage ?? defaultBrowserStorage();
-    const layout: LayoutSnapshot = storageInst
-      ? readLayout(storageInst)
-      : {
-          leftPaneWidth: DEFAULT_LEFT_PANE_WIDTH,
-          rightPaneWidth: DEFAULT_RIGHT_PANE_WIDTH,
-          secondaryDiagramId: null,
-          openDiagramIds: [],
-        };
+    const persistedLayout = storageInst ? readLayout(storageInst) : null;
+    const layout: LayoutSnapshot = persistedLayout ?? {
+      leftPaneWidth: DEFAULT_LEFT_PANE_WIDTH,
+      rightPaneWidth: DEFAULT_RIGHT_PANE_WIDTH,
+      secondaryDiagramId: null,
+      openDiagramIds: [],
+    };
     const collaborationProvider = provider ?? new NoopCollaborationProvider();
 
     const metadata = await repository.list();
@@ -1053,16 +1052,31 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
 
     const diagramIdSet = new Set(diagrams.map((d) => d.id));
     // Filter persisted open-tab ids against the project's current diagrams;
-    // drop any whose diagram has since been deleted. If the persisted set
-    // is empty (or stale-empty), fall back to the project's first diagram
-    // so the user has at least one tab to look at after a fresh project.
+    // drop any whose diagram has since been deleted.
     const persistedOpenFiltered = layout.openDiagramIds.filter((id) =>
       diagramIdSet.has(id),
     );
-    const initialOpenIds: readonly DiagramId[] =
-      persistedOpenFiltered.length > 0
-        ? persistedOpenFiltered
-        : [diagrams[0]!.id];
+    // Three cases, in order:
+    //   1. Persisted layout exists AND its filtered open set is non-empty →
+    //      honor what the user curated.
+    //   2. No persisted layout (cold load — first session opening this
+    //      project) → open every project diagram as a tab. The "open tabs"
+    //      working set is a transient curation; before the user has touched
+    //      it, the legacy "all diagrams are tabs" behavior matches their
+    //      expectation. Seeded test projects depend on this so tab-by-name
+    //      locators resolve without the test having to pre-seed a layout.
+    //   3. Persisted layout exists but its filtered open set is empty (every
+    //      tab was closed, OR every formerly-open diagram has since been
+    //      deleted) → fall back to the project's first diagram so the user
+    //      is not stuck staring at the empty state across a reload.
+    let initialOpenIds: readonly DiagramId[];
+    if (persistedOpenFiltered.length > 0) {
+      initialOpenIds = persistedOpenFiltered;
+    } else if (persistedLayout === null) {
+      initialOpenIds = diagrams.map((d) => d.id);
+    } else {
+      initialOpenIds = [diagrams[0]!.id];
+    }
     // Activate the first id in the (possibly persisted) open set so reload
     // can land on whatever tab the user last had focused. If the persisted
     // active id is preserved later in the URL/Phase-13.39 hook, that will

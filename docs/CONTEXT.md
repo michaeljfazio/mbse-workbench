@@ -8,6 +8,28 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
 
 ## Discovered facts
 
+- **2026-05-16 (iter-769, T-13.37 regression)** — `readLayout(storage)` in
+  `src/workspace/store.ts` now returns `LayoutSnapshot | null`; null means
+  the storage key was absent, i.e. this is a cold load (first session
+  opening this project). The null vs non-null distinction is load-bearing:
+  bootstrap opens *every* project diagram on cold load (the "open tabs"
+  working set is meaningful only after the user curates it; before that
+  the legacy "all diagrams are tabs" behavior matches expectations and
+  keeps e2e seed patterns working), but with a persisted snapshot whose
+  filtered open set is empty (user closed everything, or every formerly-
+  open diagram was deleted) it falls back to the project's first diagram
+  so the user is not stuck on the empty state across a reload. The
+  triggering regression: T-13.37 (commit 35f9554) shipped a fallback that
+  opened only `diagrams[0]` on cold load. Every e2e test that seeded a
+  project with multiple diagrams (~159 specs) then hung 30s on
+  `getByRole('tab', { name: '<second diagram>' })`. CI cancelled at the
+  60-min cap; the "lift visual baselines from actuals" thread on iter-767
+  and -768 was diagnosing the wrong symptom — `playwright-test-results`
+  contained 471 `test-failed-1.png` screenshots but ZERO `-actual.png`
+  files, meaning none of the failures were visual-snapshot drift. They
+  were all functional `locator.click` timeouts cascading from the tabs
+  regression. Fix in `bootstrap()` around line 1054.
+
 - **2026-05-16 (iter-766, T-13.37)** — Playwright projects are split into
   functional + visual pairs (`chromium`, `webkit`, `chromium-visual`,
   `webkit-visual`) so visual specs can run with `retries: 0` while functional

@@ -6,405 +6,219 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 768
+- Iteration #: 769
 - Started: 2026-05-16
 - Branch: issue/330-diagram-tabs-open-close (PR #331 still open)
-- Working on: unblock the visual-baseline rebaseline procedure for PR
-  #331 by making CI complete AND making the actuals survive
-  cancellation. Iter-767's split-visual-into-retries:0 change was
-  worth keeping (real regressions still fail fast; functional flakes
-  still get 2 retries), but it wasn't enough on its own — run
-  25937962140 cancelled at exactly 60 min with 412/612 specs done.
-  Two independent gaps caused the lift-from-trace procedure to be
-  blocked:
+- Working on: root-cause fix for the failing CI on PR #331 (T-13.37).
 
-  (a) **Wallclock cap not yet under the 60-min budget.** With
-      `workers: 2` (Playwright's conservative `cores/2` default for
-      a 4-vCPU runner) and 612 specs, the run cannot complete in
-      time. The dot-progress timestamps in CI run 25937962140 show
-      ~10.5 specs/min globally, i.e. ~58 min for all 612 with the
-      retries that fire — right at the cap, and over it under any
-      flake load.
+  **Diagnosis correction.** Iter-767 and iter-768 framed the CI
+  cancellations as a visual-baseline-drift problem and spent two
+  iterations on CI infrastructure (visual/functional project split,
+  workers 2→4, timeout 30→60min, `test-results/` upload). All of that
+  was treating a symptom. The `playwright-test-results` artifact from
+  run 25949230853 (82 MB, finally captured thanks to iter-768's
+  incremental-upload step) tells the real story:
 
-  (b) **`playwright-report/` does not survive cancellation.** The
-      HTML reporter only flushes at end-of-run, so the upload step
-      logged `No files were found with the provided path:
-      playwright-report` on 25937962140. The artifact list is
-      empty, and the iter-767 plan ("download the playwright-report
-      from the next CI run") was unrunnable as a result.
+    find -name "*-actual.png"      → 0 files
+    find -name "test-failed-1.png" → 471 files
 
-  Changes shipped this iteration (single commit on the same
-  branch):
-  1. `playwright.config.ts` — bumped `workers` from 2 → 4 in CI.
-     ubuntu-latest has 4 vCPU / 16 GB; each worker drives one
-     browser process at a time so peak memory stays well under
-     the 16 GB ceiling. Inline comment explains the trade-off and
-     calls out the fallback to 3 if flake-from-contention appears.
-  2. `.github/workflows/ci.yml` — added a second upload-artifact
-     step for `test-results/` (named `playwright-test-results`).
-     `test-results/` is written incrementally per test and
-     contains `<arg>-actual.png` for every failing
-     `toHaveScreenshot` assertion, so it survives cancellation and
-     is the input the rebaseline procedure actually needs. The
-     existing `playwright-report` upload stays for the
-     happy-path-complete case.
-  3. `docs/CONTEXT.md` — recorded the cancellation/upload gap and
-     the workers bump, so the next iteration that hits a
-     baseline-drift storm finds the pattern.
+  Zero visual-snapshot diffs. 471 functional-failure screenshots
+  (~159 unique specs × 1 initial + 2 retries × 2 browsers). Every
+  failing trace ends the same way: `locator.click` on
+  `getByRole('tab', { name: '<diagram-name>' })` times out at 30s
+  because that tab does not exist in the DOM.
+
+  **Root cause.** T-13.37's `bootstrap()` opens only the project's
+  *first* diagram on cold load when no LayoutSnapshot is persisted
+  yet (store.ts ~line 1062):
+
+      initialOpenIds = persistedOpenFiltered.length > 0
+        ? persistedOpenFiltered
+        : [diagrams[0]!.id];          // ← regression here
+
+  Every e2e seed pattern writes a `mbse:v1:project:<id>` JSON with
+  multiple diagrams directly into sessionStorage (no LayoutSnapshot)
+  and immediately tries to click a non-first diagram tab by name —
+  e.g. activity-create-and-edit seeds `[d-bdd, d-activity]` then
+  clicks "System Activity". On main pre-T-13.37 the tab strip
+  rendered every project diagram, so the locator resolved instantly.
+  Post-T-13.37 only "Main BDD" was open, "System Activity" never
+  appeared, and the click hung 30s × 3 retries × 2 browsers per
+  spec across ~159 specs → 60-min job cap → cancellation.
+
+  **Fix shipped this iteration (one commit, same branch).** Three
+  pieces:
+
+  1. `src/workspace/store.ts` — `readLayout(storage)` now returns
+     `LayoutSnapshot | null`. `null` ↔ "no snapshot persisted yet,
+     this is a cold load." The bootstrap fork at line 1054 now
+     branches three ways instead of two:
+        - filtered open set non-empty → honor what the user curated
+        - persistedLayout === null (cold load) → open every diagram
+        - persistedLayout exists but filtered to empty (user closed
+          everything, or every formerly-open diagram was deleted) →
+          fall back to `diagrams[0]` (one tab so the user is not
+          stuck on the empty state across a reload)
+
+  2. `tests/unit/workspace/openDiagrams.test.ts` — new spec
+     `bootstrap opens every project diagram when no layout snapshot
+     has been persisted yet`. Builds a project with two diagrams
+     via the public store API, wipes `LAYOUT_STORAGE_KEY`,
+     re-bootstraps, asserts both ids appear in `openDiagramIds`
+     (legacy "phantom-only persisted layout" test still passes
+     because its fallback path is the warm-load-empty-filter
+     branch, not the cold-load branch).
+
+  3. `docs/CONTEXT.md` — recorded the cold-load semantics and
+     the iter-767/-768 misdiagnosis so future iterations skip the
+     visual-baseline rabbit hole if they see ~159 e2e tab-click
+     timeouts on a PR that touches `openDiagramIds`.
 
   Verification:
-  - `pnpm exec tsc -b` clean (no output).
-  - `CI=1 pnpm exec playwright test --list` reports 612 specs in
-    60 files (unchanged from iter-767), confirming the workers
-    change didn't accidentally drop any project.
-  - No production code touched; risk surface is purely CI
-    infrastructure.
+  - `pnpm exec tsc -b` — clean (no output).
+  - `pnpm exec vitest run` — 1307/1307 unit pass in 11.17s
+    (was 1306; +1 new cold-load spec). All 14 specs in
+    `openDiagrams.test.ts` pass.
+  - `pnpm exec playwright test tests/e2e/activity-create-and-edit
+    --project=chromium -g "clicking + Action drops"` — passes in
+    718ms (previously hung 30s × 3 retries). The very test whose
+    trace was the diagnostic anchor for this iteration.
+  - `pnpm exec playwright test tests/e2e/activity-edges
+    --project=chromium` — 16/16 pass.
+  - `pnpm exec playwright test tests/e2e/bdd-canvas
+    --project=chromium` — 5/5 pass. Confirms BDD's single-diagram
+    seed pattern still works (that case lands in the cold-load
+    branch which now opens "all" = "the one", same effective
+    behavior).
+  - 1 local failure in
+    `activity-create-and-edit.spec.ts:193:3` (@a11y, AbortError on
+    `document.getAnimations()`) — verified pre-existing
+    environmental quirk: same test passed in main CI run
+    25931979113 (8.1min, 604 passed) at 91ac0d6 immediately before
+    T-13.37 merged, and it fails identically on this branch with
+    the iter-769 fix stashed. Not introduced by this fix.
 
-  Next iteration: download `playwright-test-results` from the next
-  CI run on this branch; lift the `<arg>-actual.png` files
-  out of each failing-spec subdirectory; copy into
-  `tests/e2e/__screenshots__/...` under the matching baseline
-  filenames; commit and push. If the run actually completes
-  green/red under the new workers count, the
-  `playwright-report` artifact will also be available and the
-  `data/<trace-hash>.zip` procedure works too — either path is
-  fine. Procedure: docs/CONTEXT.md (latest entry + earlier
-  lift-from-trace section). Recent precedent: iter-759 (30
-  baselines for toolbar undo/redo growth), iter-762 (3 baselines
-  for header chip drift).
+  **CI infrastructure scope.** The visual/functional project split
+  (iter-767) and incremental `test-results/` upload (iter-768) are
+  KEPT. Both are independently valuable: retries:0 on @visual specs
+  saves real time on baseline drift (when it next happens), and
+  the artifact-survives-cancellation upload is the reason this
+  iteration could diagnose anything. The `workers: 2 → 4` bump
+  (iter-768) is also kept — under the 4-worker assumption a clean
+  e2e suite finishes in ~25-30min comfortably under the 60-min cap.
+  Once CI confirms the suite goes green I'll consider whether to
+  pull `workers` back to `cores/2` (default) or leave it pinned.
 
-  ## Prior iteration (archived — iter-767)
+  Next iteration: watch CI on PR #331. If green, auto-merge will
+  land it (auto-merge was enabled iter-765, confirmed still queued
+  via `gh pr view 331`). Then resume the Phase-13 P0 explorer
+  backlog (T-13.31 → T-13.38 chain, decisions locked iter-531).
+  If CI surfaces residual visual baseline drift from T-13.37's
+  diagram-tabs-strip DOM changes (the close-X glyphs are new), the
+  iter-768 procedure (download `playwright-test-results`, lift
+  `<arg>-actual.png` → `tests/e2e/__screenshots__/`) now actually
+  works because (a) the suite completes in time and (b) the
+  `playwright-report` artifact also flushes on success.
 
-  Iter-767 split each browser into separate visual / non-visual
-  Playwright projects so `@visual` specs run with `retries: 0`
-  (functional kept `retries: 2`). `snapshotPathTemplate` was
-  overridden per visual project to keep baseline filenames stable
-  as `<arg>-chromium.png` / `<arg>-webkit.png`. The split is
-  preserved by iter-768.
-- Previously working on (iter-765): #330 — T-13.37 Diagram tabs strip tracks "open" diagrams
-  separately from the full diagram list. The containment tree is the
-  authoritative master list of every diagram (rendered as `⌬`
-  representation rows under each diagram's context element via
-  `buildContainmentTree` — already shipped iter-723); the tab strip is
-  now a transient working set with close affordances. Closing a tab
-  leaves the representation row in the tree.
+## Last test run
+- Command: `pnpm exec vitest run` + targeted playwright specs
+- Result: PASS (1307 unit, 22 e2e targeted; 1 known-environmental
+  a11y flake unrelated to this fix per stash-comparison check)
+- Failures: (none introduced by this iteration)
 
-  Surface changes:
-  1. `WorkspaceState.openDiagramIds: readonly DiagramId[]` (new slice).
-     Insertion-order list of diagram ids whose tabs are currently in
-     the strip. Persisted in `LayoutSnapshot` alongside
-     `secondaryDiagramId` so reloads preserve the working set.
-  2. `WorkspaceActions.openDiagram(id)` — adds to `openDiagramIds`
-     (idempotent) and activates. Delegates to `setActiveDiagram`.
-     Kept as a separate entry point so UI surfaces signal intent.
-  3. `WorkspaceActions.closeDiagramTab(id)` — removes from
-     `openDiagramIds`; if the closed tab was active, falls back to
-     the first surviving open id in insertion order, or null if none
-     remain (diagram itself stays in `state.diagrams`).
-  4. `setActiveDiagram(id)` now auto-appends to `openDiagramIds` if
-     the id wasn't already in the set, so every code path that
-     activates a diagram (`setActiveDiagram`, `splitDiagram`'s
-     promotion, `showDefinitionOnBdd`, `navigateToElementOnDiagram`,
-     `showRequirementTracesFor`, `showRequirementTracesFor`) leaves
-     the strip in a coherent state. The four inline
-     `set({ activeDiagramId })` callers in store.ts were refactored
-     to go through `setActiveDiagram` so the auto-open path runs.
-  5. Bootstrap: `initialOpenIds` = persisted set (filtered against
-     existing diagrams) OR `[diagrams[0].id]` if persisted-empty.
-     `initialActive` = first id of the open set (so reload re-focuses
-     the user's last-open tab). The earlier draft auto-forced
-     `diagrams[0].id` back into the open set even when persisted
-     state explicitly closed it — caught by the e2e reload spec.
-  6. `deleteDiagram(id)` strips `id` from `openDiagramIds`. The
-     fallback-active logic now prefers the next-open tab over
-     "first diagram in project" so deletion doesn't unintentionally
-     open a tab the user had closed.
-  7. `splitDiagram(id)` ensures the secondary id is in
-     `openDiagramIds` (`appendIfMissing`) so promoting from secondary
-     to primary via a tab click is always available.
-  8. Layout persistence: extracted `snapshotLayout(state)` helper —
-     every `writeLayout` site (left/right pane widths,
-     set/openDiagram, closeDiagramTab, splitDiagram, closeSplit,
-     deleteDiagram, import paths) now snapshots from current state
-     rather than reconstructing the literal. `LayoutSnapshot.openDiagramIds`
-     deserializes defensively (string-array filter); older snapshots
-     missing the field land at `[]` and the bootstrap fallback fires.
-  9. `CanvasPane` tab strip iterates `openTabs = openDiagramIds → diagrams`
-     instead of all diagrams. Each tab is a single
-     `<button role="tab">` containing the name + a styled
-     `<span data-testid="diagram-tab-close-<id>" aria-hidden>` close
-     X with its own `e.stopPropagation()` onClick. Backspace/Delete
-     while a tab is focused closes it (keyboard close shortcut). The
-     close affordance is a span (not a nested `<button>`) so the
-     parent stays a valid `role="tab"` button — three a11y dead-ends
-     learned the hard way:
-       - First attempt (close `<button>` inside a `<span>` wrapper
-         next to the tab `<button>`): axe `aria-required-children`
-         on tablist — close button isn't a tab.
-       - Second attempt (tab as `<div role="tab" tabindex>`, close
-         `<button tabindex=-1>` inside): axe
-         `nested-interactive` — negative tabindex inside an
-         interactive control still focusable to ATs.
-       - Final (single `<button role="tab">`, close as styled
-         `aria-hidden` span with onClick): passes both rules and
-         project-tree a11y spec.
-     Note: the *split toolbar* (⇆ buttons) still iterates over
-     `state.diagrams` (every project diagram, not just open ones) so
-     operators can split-compare a closed diagram into the secondary
-     pane without opening its primary tab first. `splitDiagram(id)`
-     pulls the secondary into `openDiagramIds` as a side effect.
- 10. Empty state copy: "No diagrams" if `diagrams.length === 0`
-     (unchanged); "No open diagrams — open one from the tree" if
-     all tabs are closed but diagrams still exist. The latter is a
-     new UI state introduced by this slice.
+## Known issues / blockers
+- (none for this iteration)
 
-  New tests:
-  - `tests/unit/workspace/openDiagrams.test.ts` — 13 specs:
-    bootstrap default open set, openDiagram append-once + activate,
-    openDiagram for unknown id is no-op, closeDiagramTab removes from
-    open set without deleting diagram, close-active falls back to
-    next open, close-last-leaves-null, close-not-in-set is no-op,
-    setActiveDiagram auto-opens, deleteDiagram strips, persistence
-    round-trip, closed tabs do not reappear after reload, bootstrap
-    filters phantom persisted ids, splitDiagram opens secondary.
-  - `tests/e2e/diagram-tabs-open-close.spec.ts` — 4 specs (chromium +
-    webkit): initial single-tab open with second in tree only;
-    close removes tab but keeps tree row; tree-click reopens tab;
-    reload preserves open set including explicit-closed state.
+Backlog (P0 — UI-unreachable features):
+- [x] T-13.01 Diagram lifecycle UI (create/rename/delete per viewpoint) —
+      CLOSED functionally by T-13.33c (Create representation submenu,
+      iter-727 PR #272) for create-per-viewpoint and T-13.33d (diagram-row
+      Rename + Delete, iter-729 PR #273). No standalone PR; marked done
+      iter-753 during T-13.02 audit.
+- [x] T-13.02 Project-tree right-click context menu (Rename/Delete/New).
+      Shipped iter-753 (#307, PR #308 → 3a5c22e). Closes the P0
+      "UI-unreachable features" tier.
+- [x] T-13.03 Fix "New Requirement" empty-state dead-end — CLOSED by T-13.34
+      (#276): CTA now creates a Requirement under root + queues inline rename.
+- [x] T-13.04 Per-section "+" affordances on project-tree categories.
+      Shipped iter-736 (PR #279, 67642fc).
 
-  Local check status:
-  - `tsc -b` clean.
-  - `eslint .` clean (0 errors, 3 pre-existing react-refresh
-    warnings unchanged).
-  - `vitest run` 1306/1306 unit pass (+13 new).
-  - `vite build` clean (876.27 kB JS / 42.40 kB CSS, gzip 243.49 +
-    8.18 — within pre-PR range).
-  - e2e: focused suite (split-view + project-tree + new spec) 12/12
-    pass on chromium; new spec also 4/4 pass on webkit. Full e2e
-    suite running locally in the background; visual `@visual` specs
-    will fail in CI on the canvas-header viewport baselines because
-    the tab strip's DOM changed (close X overlay, tab tabIndex
-    swap). Visual rebaseline follows the iter-25 procedure in
-    docs/CONTEXT.md: push, let CI fail, lift the per-browser
-    actuals out of the Playwright HTML report, commit as new
-    baselines, push again.
+Backlog (P1 — discoverability/workflow):
+- T-13.05 Cmd-K → true command palette (actions, not just search). Split
+  into slices following the T-13.33 / T-13.36 precedent:
+  - [x] T-13.05a Scaffold: typed `PaletteCommand` registry, Actions
+    section, initial four built-in commands (Undo / Redo / Save /
+    Delete selection). Shipped iter-754 (PR #310, 44cd6df).
+  - [x] T-13.05b Unified ranked list (commands + elements in one
+    section); open-chat / show-inspector / rename-selection commands.
+    Shipped iter-755 (PR #312, d19b5f0).
+  - [x] T-13.05c Selection-scoped Create representation commands.
+    Shipped iter-756 (PR #314, 7fc4f3b).
+  - T-13.05d Recently-used commands + Commands/Elements section
+    headers above the threshold. In flight iter-757 (#315).
+- [x] T-13.06 Tooltip reasons on disabled toolbar buttons. Shipped iter-758
+      (#317, PR #318 → 8fd5bef).
+- [x] T-13.07 Inspector contextual "+ New …" panel when nothing selected.
+      Shipped iter-763 (#326, PR #327 → 0bfd3af).
+- [x] T-13.08 Inline project-name rename in header. Shipped iter-760 (#321,
+      PR #322 → b746ce0).
+- [x] T-13.09 Dirty-state + "saved at" indicator. Shipped iter-762 (#323,
+      PR #324 → 949e707).
+- [x] T-13.10 Undo/redo toolbar buttons. Shipped iter-759 (#319, PR #320 →
+      d5df07f's parent on main).
 
-  ## Prior iteration (archived)
+Backlog (P0 — visual rendering / transparency, JOURNAL iter-529):
+- [x] T-13.16 Add `card` + `card-foreground` to tailwind.config.ts + define
+      `--card`/`--card-foreground` HSL tokens (light + dark) in index.css.
+      Shipped iter-532 (#253). 94 visual baselines regenerated.
+- [x] T-13.17 Replace circular port glyphs with square port glyphs in
+      PartUsageNode.tsx (rounded-full → rounded-none). Shipped iter-532 (#253).
 
-  Iteration #: 764 — Working on #328 (T-13.29/.30 foundation closeout).
+Backlog (P1 — SysMLv2 notation conformance, JOURNAL iter-529):
+- [x] T-13.18 Port direction glyphs (in/out/inout). Shipped iter-741 (#291).
+- T-13.19 BDD block compartments (parts/ports/values/constraints).
+- [x] T-13.20 IBD enclosing-block frame — shipped iter-747 (PR #294).
+- [x] T-13.21 Requirement compartments (reqId/text/priority/status rows). Shipped iter-744 (#293).
+- [x] T-13.22 Use-case true ellipse shape (SVG, not rectangle). Shipped iter-739 (#288).
+- [x] T-13.23 Activity pseudostate glyph review (initial/final/fork/join/dec/merge).
+      Decision/merge diamond → inline SVG polygon shipped iter-751 (#302,
+      merged f90e39c). Initial/final/fork/join confirmed conformant as-is
+      — no further change planned under this task.
+- [x] T-13.24 State pseudostate glyph review (initial/final/composite region).
+      Shipped iter-752 (#304). All three shapes conformant as-is; no SVG
+      conversion needed. Composite region out of scope (not in metamodel).
+      Generalized `data-pseudostate-shape` marker convention from T-13.23
+      across both pseudostate viewpoints for the Phase-13 visual-fidelity
+      gate's uniform DOM query.
+- [x] T-13.25 Parametric: constraint-expression + value-property `: type = value`.
+      In flight — PR #300 (iter-749), auto-merge enabled, awaiting CI.
+- T-13.26 Edge style audit (Gen hollow-triangle, Comp filled-diamond,
+  Trace family dashed + stereotype, ItemFlow open-arrow + item-type label).
 
-  Iter-764 fix: CI run 25930710726 on e7a1845 failed only on
-  `json-import-export.spec.ts:136` chromium + webkit (`round-trips:
-  Export JSON → Import JSON yields identical model`). Failure was a
-  stale test assertion — line 184 compared `persisted!.diagrams`
-  against the pre-migration `[SEED_DIAGRAM]` literal, but the new
-  Pass-5 diagram-context synthesis (correctly) populates
-  `{ kind: 'package', id: rootId }` onto every context-less legacy
-  diagram, so the migrated form no longer matches the raw literal.
-  Lines 182/183 already compare elements/edges to `preExport`; the
-  diagram line was the outlier. Fix at fe23bb6 changes line 184 to
-  `canonicalize(preExport!.diagrams)`, asserting true round-trip
-  losslessness in line with the test's documented intent. 602 other
-  e2e tests passed on the failing run; no other failures to address.
-  CI run 25931403539 queued on the fix commit.
+Backlog (P0 — hierarchical Project Explorer foundations, decisions locked iter-531):
+- T-13.29 Make `ownerId` + `ownerRole` + `ownerIndex` the SINGLE source of
+  truth on ElementBase. Drop all parent-side child arrays (Package.memberIds,
+  PartDefinition.portIds/propertyIds, PartUsage.portUsageIds,
+  ActionDefinition.parameterIds, InterfaceDefinition.portDefinitionIds).
+  Repository.load() backfills + synthesizes an explicit root Package equal to
+  Project.name; Project gains `rootId: ElementId`. Registry exposes
+  `parentOf` and `childrenOf(id, role?)` as O(1) lookups. Codemod readers.
+- T-13.30 Widen `DiagramContext` to a discriminated union over four kinds
+  { package | partDefinition | actionDefinition | stateDefinition } and
+  make it REQUIRED on every Diagram. Each viewpoint declares accepted
+  context kinds; the "Create representation…" menu reads from that table.
+  Migrate orphan diagrams to { kind: 'package', id: rootId }.
+- T-13.31 Replace flat-by-kind ProjectTree with containment-driven tree
+  rooted at the project package, with representations nested under owners.
 
-  Inspection (Explore subagent) revealed most of T-13.29's schema
-  work already shipped piecemeal earlier in the explorer cascade
-  (`ownerId`/`ownerRole`/`ownerIndex` on ElementBase, parent-side
-  child arrays already dropped, `Project.rootId` already explicit,
-  registry already exposes `parentOf`/`childrenOf`, DiagramContext
-  already a four-kind discriminated union). Remaining work for the
-  bundled T-13.29/.30 foundation:
-
-  1. `Viewpoint.acceptedContextKinds: readonly ViewpointContextKind[]`
-     added to `src/viewpoints/types.ts`. Configured per JOURNAL
-     iter-531 table:
-     - BDD → `['package','partDefinition']`
-     - IBD → `['partDefinition']`
-     - Requirements → `['package']`
-     - Activity → `['actionDefinition']`
-     - State Machine → `['stateDefinition']`
-     - Use Case → `['package']`
-     - Parametric → `['partDefinition']`
-     - Package → `['package']`
-     `ViewpointContextKind` is duplicated locally in
-     `src/viewpoints/types.ts` (not re-imported from
-     `src/workspace/diagram.ts`) to avoid a circular type-only import
-     cycle. A new test in `diagramContext.test.ts` keeps the two
-     unions in lockstep with bidirectional assignability assertions.
-
-  2. `Diagram.context` is now non-optional. Pre-existing `?` removed
-     from the type and from `src/workspace/diagram.ts` field
-     declaration.
-
-  3. Store's `createDiagram(viewpointId, options?)` now:
-     - Validates `options.context.kind` against
-       `viewpoint.acceptedContextKinds` — rejects on mismatch.
-     - Synthesizes `{ kind: 'package', id: project.rootId }` when no
-       context is supplied AND the viewpoint accepts `'package'`.
-     - Rejects (returns null) when no context is supplied AND the
-       viewpoint does not accept `'package'` (Activity, IBD,
-       Parametric, State Machine require explicit context).
-
-  4. `newDefaultDiagram(rootId)` (the seed BDD on a fresh workspace)
-     now carries `{ kind: 'package', id: rootId }`. Two call sites
-     in `store.ts` (bootstrap empty-projects branch + import-from-text
-     branch) updated.
-
-  5. `migrateLegacyProject` (`src/repository/migrate.ts`) synthesizes
-     `{ kind: 'package', id: rootId }` on any legacy diagram that
-     lacks a `context` field — Pass 5 added after the existing
-     element-migration passes. Already-context-bearing diagrams
-     round-trip unchanged.
-
-  6. Stale comment in `src/viewpoints/package/index.ts` referencing
-     `PackageElement.memberIds` updated to cite ADR-0011 containment.
-
-  7. New tests:
-     - `tests/unit/viewpoints/acceptedContextKinds.test.ts` —
-       per-viewpoint table + non-empty invariant (9 specs).
-     - `tests/unit/repository/migrateDiagramContext.test.ts` —
-       synthesizes-default / preserves-existing / synthesizes-with-
-       synthesized-root (3 specs).
-     - `tests/unit/workspace/phase13GateInvariants.test.ts` — the
-       three live gate invariants from JOURNAL iter-531 (root-is-
-       unique, owner-refs-resolve, diagram-context-valid) on a
-       freshly-bootstrapped workspace; viewpoint-by-viewpoint
-       create-default vs require-explicit assertion; registry-has-
-       all-eight invariant (3 specs).
-     - `diagramContext.test.ts` extended with ViewpointContextKind
-       ↔ DiagramContextKind bidirectional-assignability assertion
-       (1 spec).
-
-  8. Existing tests updated:
-     - 5 store.test.ts createDiagram specs updated to reflect new
-       contract (default-context for Reqs/Pkg/BDD, reject for
-       Activity, require-explicit for Parametric/IBD).
-     - 3 obsolete unit specs removed (their scenarios are now
-       unreachable through the type system): "diagram with no
-       context" path in `flowGraph.test.ts`, `buildContainmentTree.test.ts`,
-       `enclosingFrame.test.ts`.
-     - `activityActions.test.ts`, `stateMachineActions.test.ts`,
-       `parametric-actions.test.ts`, `ibdActions.test.ts` helpers
-       (ensureXDiagram / bootstrapParametric) now pass synthetic
-       `createElementId()` contexts.
-     - `commandPaletteSearch.test.ts`, `navTargets.test.ts`,
-       `sessionStorage.test.ts`, `jsonProject.test.ts`,
-       `explain-diagram.test.ts` literal Diagram constructions now
-       carry contexts.
-     - `sessionStorage.test.ts` forward-compat spec renamed +
-       re-asserts that legacy `no-context` diagrams migrate to
-       `{ kind: 'package', id: rootId }`.
-
-  Locked-decision boundary: legacy diagrams whose viewpoint does
-  NOT accept `'package'` (IBD/Activity/State/Parametric) end up with
-  a type-mismatched context after migration. This is an accepted
-  Phase-13 edge case (JOURNAL iter-531 explicitly chose this
-  trade-off); the strict invariant applies only to NEW diagrams
-  created via `createDiagram`. Future polish iterations can re-anchor
-  mismatched legacy diagrams via the upcoming "Move to container"
-  affordance (T-13.33e-b).
-
-  Local check green:
-  - `tsc -b` clean.
-  - `eslint .` clean (0 errors, 3 pre-existing react-refresh
-    warnings unchanged).
-  - `vitest run` 1293/1293 unit pass (was 1278; +18 net new − 3
-    obsolete removed).
-  - `vite build` clean (874.84 kB JS / 42.04 kB CSS, gzip 242.95 +
-    8.15 — within pre-PR range).
-  - e2e suite deferred to CI; no UI behavior changed.
-
-  T-13.07 closes P1 operator-UX tier (T-13.05 / .06 / .07 / .08 /
-  .09 / .10 all shipped); next live tier after this PR is the
-  remaining explorer-cascade items (T-13.31 already shipped as
-  ContainmentTree; T-13.32–.36 mostly done per Backlog (P0) —
-  T-13.37/.38/.39 remain).
-
-  The empty inspector previously read "Select an element to edit
-  its properties." with no creation affordance. This slice rewires
-  the empty state to a contextual launchpad: one `+ New {label}`
-  button per `viewpoint.paletteItems` of the active viewpoint, with
-  a `header` reading "<viewpoint label> / Add to this diagram /
-  Nothing is selected. Create a new element here, or click one on
-  the canvas to edit it." Clicking a button dispatches the same
-  store action the canvas toolbar "+ Add" / drop handler uses
-  today, with a cascade position computed from the active diagram's
-  existing positions count, and selects the new element so the
-  inspector flips immediately to the single-element editor.
-
-  New module `src/workspace/inspector/inspectorCreatePanel.ts`
-  exports four pure things:
-  - `inspectorCreatePanel(viewpoint)` walks `viewpoint.paletteItems`
-    and returns `{ actions, notices }`. Each accepted kind maps to
-    one `{ key, label, elementKind, defaultData }` action. The lone
-    notice path is IBD's PartUsage — creating one requires a
-    PartDefinition picker (PartUsageTypePopover) that only the
-    canvas surface owns, so the inspector surfaces a drag-hint
-    notice ("Drag from the palette onto the canvas to choose a
-    Part Definition.") instead of a button. The action `key`
-    discriminator includes `defaultData.nodeType` / `.stateType`
-    so the 7 Activity pseudostates + 3 State pseudostates each get
-    their own button.
-  - `cascadePosition(cascadeIndex, box, opts?)` returns a
-    NodePosition in a 2-column grid offset 60px from the top-left,
-    `box.{width,height}+40px` gap. Mirrors the existing
-    `handleAddBlock` / `handleAddAction` / ... math in CanvasPane.
-  - `cascadeBoxForAction(action)` returns the per-kind cascade box
-    from the viewpoint constants (BDD_BLOCK_WIDTH/HEIGHT,
-    REQUIREMENT_NODE_WIDTH/HEIGHT, actionNodeSize(...),
-    stateNodeSize(...), USE_CASE_*, PARAMETRIC_*, PACKAGE_*, ...).
-  - `dispatchInspectorCreate({ action, diagram }, storeActions)`
-    switches on `action.elementKind` and forwards to the matching
-    store action (createBlock / createRequirement /
-    createActionUsage / createStateUsage / createActor /
-    createUseCase / createConstraintUsage / createValueProperty /
-    createPackage). Returns the new ElementId or null. Takes store
-    actions via parameter so the helper unit-tests cleanly with a
-    mock store; the React caller pulls actions imperatively via
-    `useWorkspaceStore.getState()` at click time (avoids the
-    Zustand "fresh object every render → infinite loop" trap that
-    the first iteration of the wiring hit).
-
-  Inspector.tsx: new `<InspectorEmptyState />` subcomponent
-  rendered in place of the prior `<p data-testid="inspector-empty">`
-  placeholder. Subscribes to `getActiveViewpoint(s)` +
-  `getActiveDiagram(s)`. Falls back to the old "Select an element
-  to edit its properties." placeholder when viewpoint/diagram are
-  unresolved (pre-bootstrap or no-active-diagram cases). Buttons
-  carry stable testids `inspector-empty-action-<kind>` (with
-  `.<variant>` suffix for ActionUsage / StateUsage); notices carry
-  `inspector-empty-notice-<key>`. The container retains the prior
-  `data-testid="inspector-empty"` plus a new
-  `data-viewpoint-id="<id>"` attribute for e2e + visual-fidelity
-  assertions.
-
-  Tests: 19 new unit specs in
-  `tests/unit/workspace/inspector/inspectorCreatePanel.test.ts`
-  (6 panel-shape × 4 viewpoint variants + 3 cascadePosition +
-  2 cascadeBoxForAction + 8 dispatch routing/cascade-index specs).
-  2 modified + 1 new unit spec in `Inspector.test.tsx` (renamed
-  "empty placeholder" assertion → "create panel" assertion,
-  click-creates-and-selects spec, IBD notice-path spec).
-  1 new e2e `tests/e2e/inspector-empty-state-cta.spec.ts`:
-  cold-load → click + New Block → assert new block visible on the
-  canvas + inspector-single shows Block 1. 2 e2e tweaks: existing
-  `inspector.spec.ts` empty-selection assertion updated to assert
-  the create-panel header text; `workspace-shell.spec.ts` sidebar
-  placeholder regex updated similarly. Local check green:
-  1278/1278 unit pass (was 1257, +21 net), tsc -b clean, eslint
-  clean (0 errors, 3 pre-existing warnings unchanged), vite build
-  clean. Inspector chromium e2e suite (9 tests) green.
-
-  Predicted visual baseline drift on CI (left to the lift-from-
-  trace procedure if flagged): every `*-empty.png` baseline that
-  captures the viewport-wide sidebar will see the inspector DOM
-  change from a one-line placeholder to a header + button list —
-  `bdd-empty`, `activity-empty`, `requirements-empty`,
-  `state-machine-empty`, `use-case-empty`, `parametric-empty`,
-  `package-empty`, each on chromium + webkit. `bdd-one-block.png`
-  and other populated-canvas baselines should hold (their
-  inspector is the single-element editor, unchanged).
+## Iter-768 archive (one-line)
+- Misdiagnosed PR-#331 CI cancellation as visual-baseline drift; spent
+  iter-767/-768 on CI infra (visual/functional project split, workers
+  2→4, timeout 30→60, incremental test-results upload). The infra
+  changes are kept (independently useful) but the actual root cause
+  was a functional regression in T-13.37's cold-load `openDiagramIds`
+  fallback — see current iteration above. Iter-768's
+  `playwright-test-results` upload made this diagnosis possible.
 
 ## Iter-763 archive
 - Branch: issue/326-inspector-empty-state-cta (PR #327 merged
