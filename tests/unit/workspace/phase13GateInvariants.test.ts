@@ -75,10 +75,20 @@ describe('Phase-13 gate invariants (JOURNAL iter-531)', () => {
     const elements = project!.elements;
     const byId = new Map(elements.map((e) => [e.id, e]));
 
-    // Invariant 1
+    // Invariant 1 (evolved by Phase 14): every `ownerId === null` element is
+    // either the project rootId or a library root listed in libraryRootIds.
+    // ADR 0011 §Invariant-1 originally said "exactly one root"; T-14.04
+    // introduces vendored library subtrees whose Package roots are also
+    // ownerId-null siblings — the invariant becomes "exactly one *project*
+    // root plus N *library* roots".
     const roots = elements.filter((e) => e.ownerId === null);
-    expect(roots).toHaveLength(1);
-    expect(roots[0]!.id).toBe(project!.rootId);
+    const projectRoots = roots.filter((e) => e.id === project!.rootId);
+    expect(projectRoots).toHaveLength(1);
+    const libraryRootIdSet = new Set(project!.libraryRootIds ?? []);
+    const otherRoots = roots.filter((e) => e.id !== project!.rootId);
+    for (const r of otherRoots) {
+      expect(libraryRootIdSet.has(r.id)).toBe(true);
+    }
 
     // Invariant 2
     for (const e of elements) {

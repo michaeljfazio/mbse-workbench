@@ -9,6 +9,7 @@ import {
 } from '@testing-library/react';
 
 import type { ElementId } from '@/model';
+import { isLibraryElement } from '@/library';
 import { createSessionUser } from '@/collab';
 import { createInMemorySessionRepository } from '@/repository';
 import { ContainmentTree } from '@/workspace/tree/ContainmentTree';
@@ -1481,14 +1482,25 @@ describe('<ContainmentTree />', () => {
       );
 
       await waitFor(() => {
-        const elts = useWorkspaceStore
-          .getState()
-          .elements.filter((e) => e.kind === 'PartDefinition');
-        expect(elts).toHaveLength(2);
+        // T-14.04 vendors KerML PartDefinitions in `elements` — filter out
+        // library elements when counting user-authored parts.
+        const s = useWorkspaceStore.getState();
+        const libRoots = s.project?.libraryRootIds;
+        const userParts = s.elements.filter(
+          (e) =>
+            e.kind === 'PartDefinition' &&
+            !isLibraryElement(e, libRoots, s.elements),
+        );
+        expect(userParts).toHaveLength(2);
       });
-      const clone = useWorkspaceStore
-        .getState()
-        .elements.find((e) => e.kind === 'PartDefinition' && e.id !== a)!;
+      const s2 = useWorkspaceStore.getState();
+      const libRoots = s2.project?.libraryRootIds;
+      const clone = s2.elements.find(
+        (e) =>
+          e.kind === 'PartDefinition' &&
+          e.id !== a &&
+          !isLibraryElement(e, libRoots, s2.elements),
+      )!;
       expect(clone.name).toBe('Pump copy');
       expect(
         await screen.findByTestId(

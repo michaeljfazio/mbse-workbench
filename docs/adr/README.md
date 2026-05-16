@@ -18,3 +18,4 @@ to the index below in chronological order.
 - [0010 — LLM architecture: provider, dispatcher, tool registry, diff-preview seam](0010-llm-architecture.md)
 - [0011 — Explorer foundation: ownerId single source of truth + required DiagramContext](0011-explorer-foundation-ownerid-context.md)
 - [0012 — Library seam enforcement: command-bus pre-apply guard + onError surface](0012-library-seam-enforcement.md)
+- [0013 — KerML core library: fixture shape, merge semantics, downstream filtering](0013-kerml-core-library-fixture.md)

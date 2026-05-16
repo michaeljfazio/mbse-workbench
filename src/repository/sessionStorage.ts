@@ -1,3 +1,5 @@
+import { applyStandardLibrary } from '@/library';
+
 import { migrateLegacyProject } from './migrate';
 import {
   ProjectNotFoundError,
@@ -65,7 +67,7 @@ export function createInMemorySessionRepository(
     async load(projectId) {
       const project = readProject(projectId);
       if (!project) throw new ProjectNotFoundError(projectId);
-      return project;
+      return applyStandardLibrary(project);
     },
 
     async save(project) {

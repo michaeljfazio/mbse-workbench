@@ -88,6 +88,14 @@ describe('<LibrariesSection />', () => {
 
   it('renders nothing when project has no libraryRootIds', async () => {
     await bootstrap();
+    // T-14.04 seeds KerML core into every bootstrapped project; explicitly
+    // clear libraryRootIds (and drop library elements) to isolate this test.
+    const project = useWorkspaceStore.getState().project!;
+    act(() => {
+      useWorkspaceStore.setState({
+        project: { ...project, libraryRootIds: undefined },
+      });
+    });
     const { container } = render(<LibrariesSection />);
     expect(container).toBeEmptyDOMElement();
   });

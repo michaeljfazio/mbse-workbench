@@ -53,6 +53,7 @@ import type { Command, CommandBus, DiagramPositionStore } from '@/commands';
 import { createCommandBus, LibraryViolationError } from '@/commands';
 import type { CollaborationProvider, User } from '@/collab';
 import { NoopCollaborationProvider } from '@/collab';
+import { applyStandardLibrary, isLibraryElement } from '@/library';
 import type { ModelRepository, Project } from '@/repository';
 import { EMPTY_COMMAND_HISTORY } from '@/repository';
 import {
@@ -612,8 +613,19 @@ function newDefaultDiagram(rootId: ElementId): Diagram {
   };
 }
 
-function nextBlockName(elements: readonly ModelElement[]): string {
-  const blocks = elements.filter((e): e is PartDefinitionElement => e.kind === 'PartDefinition');
+function nextBlockName(
+  elements: readonly ModelElement[],
+  libraryRootIds: readonly ElementId[] | undefined,
+): string {
+  // Library-vendored PartDefinitions (KerML `Anything`, `Item`, etc.) live
+  // alongside user blocks in `elements` but must not influence the autoname
+  // counter — otherwise the first user block in a fresh project is named
+  // "Block 6" instead of "Block 1".
+  const blocks = elements.filter(
+    (e): e is PartDefinitionElement =>
+      e.kind === 'PartDefinition' &&
+      !isLibraryElement(e, libraryRootIds, elements),
+  );
   let n = blocks.length + 1;
   const taken = new Set(blocks.map((b) => b.name));
   while (taken.has(`Block ${n}`)) n += 1;
@@ -977,7 +989,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
     if (firstMetadata) {
       project = await repository.load(firstMetadata.id);
     } else {
-      project = newEmptyProject();
+      project = applyStandardLibrary(newEmptyProject());
     }
 
     // Ensure the project carries at least one diagram. Older persisted
@@ -1365,7 +1377,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
     const block: PartDefinitionElement = {
       id,
       kind: 'PartDefinition',
-      name: nextBlockName(elements),
+      name: nextBlockName(elements, project.libraryRootIds),
       isAbstract: false,
       ownerId,
       ownerRole: 'member',
@@ -1509,7 +1521,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   },
 
   runAutoLayout(diagramId) {
-    const { bus, user, diagrams, elements, edges, viewpoints } = get();
+    const { bus, user, diagrams, elements, edges, viewpoints, project } = get();
     if (!bus || !user) return;
     const diagram = diagrams.find((d) => d.id === diagramId);
     if (!diagram) return;
@@ -1517,9 +1529,16 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
     const accepted = viewpoint
       ? new Set<string>(viewpoint.acceptedElementKinds)
       : null;
-    const layoutInput = accepted
+    // Library elements (T-14.04) are not diagram nodes — they live in the
+    // explorer's read-only "Libraries" section. Exclude them from the
+    // auto-layout candidate set, otherwise a fresh empty BDD with no user
+    // content would still position the KerML core PartDefinitions and bump
+    // the model version.
+    const libRoots = project?.libraryRootIds;
+    const layoutInput = (accepted
       ? elements.filter((e) => accepted.has(e.kind))
-      : elements;
+      : elements
+    ).filter((e) => !isLibraryElement(e, libRoots, elements));
     if (layoutInput.length === 0) return;
     const layout = dagreLayout(layoutInput, edges, {
       nodeWidth: BDD_BLOCK_WIDTH,

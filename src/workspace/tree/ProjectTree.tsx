@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 
+import { isLibraryElement } from '@/library';
 import {
   ELEMENT_KINDS,
   type ElementId,
@@ -106,6 +107,7 @@ function flattenVisible(
 export function ProjectTree(): JSX.Element {
   const allElements = useWorkspaceStore((s) => s.elements);
   const projectRootId = useWorkspaceStore((s) => s.project?.rootId ?? null);
+  const libraryRootIds = useWorkspaceStore((s) => s.project?.libraryRootIds);
   const viewpoints = useWorkspaceStore((s) => s.viewpoints);
   const activeViewpoint = useWorkspaceStore(getActiveViewpoint);
   const selectedElementIds = useWorkspaceStore((s) => s.selectedElementIds);
@@ -116,9 +118,17 @@ export function ProjectTree(): JSX.Element {
   // The implicit project-root Package is hidden from the flat-by-kind tree:
   // it represents the project itself, not a user-modelled package. T-13.31
   // replaces this view with a containment tree where the root is the root.
+  // Library elements (T-14.04) are also hidden — the LibrariesSection renders
+  // them under its own header, and they would otherwise pollute kind-group
+  // counts (e.g. "Blocks (5)" on a fresh project because of KerML).
   const elements = useMemo(
-    () => (projectRootId ? allElements.filter((e) => e.id !== projectRootId) : allElements),
-    [allElements, projectRootId],
+    () =>
+      allElements.filter((e) => {
+        if (projectRootId !== null && e.id === projectRootId) return false;
+        if (isLibraryElement(e, libraryRootIds, allElements)) return false;
+        return true;
+      }),
+    [allElements, projectRootId, libraryRootIds],
   );
 
   const [collapsed, setCollapsed] = useState<ReadonlySet<ElementKind>>(
