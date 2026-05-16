@@ -141,11 +141,12 @@ export function BlockNode({ data, selected }: NodeProps<BddBlockNode>): JSX.Elem
     setEditing(false);
   }, [data.name]);
 
+  const { onResize, elementId } = data;
   const handleResizeEnd = useCallback<OnResizeEnd>(
     (_event, params) => {
-      data.onResize(data.elementId, params.width, params.height);
+      onResize(elementId, params.width, params.height);
     },
-    [data.onResize, data.elementId],
+    [onResize, elementId],
   );
 
   const compartments = data.compartments ?? bddBlockEmptyCompartments();
