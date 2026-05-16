@@ -6,9 +6,70 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 774
+- Iteration #: 775
 - Started: 2026-05-16
-- Branch: issue/330-diagram-tabs-open-close (PR #331 still open)
+- Branch: issue/332-tree-stereotype-icons (PR pending — about to open)
+- Working on: **T-13.38 — Per-kind stereotype icons in containment tree
+  (lucide-react)**. PR #331 merged a4c9655 at 04:47:34Z; post-merge CI
+  on main (run 25953111151) was in_progress at iteration start. #161
+  fix (iter-774 CanvasPane onEdgesChange isConnectingRef guard +
+  100→250ms onConnectEnd cooldown) rode in on PR #331 and is now on
+  main; pending post-merge CI confirmation before closing #161.
+
+  Picked the lowest-numbered open P1 explorer-cascade item per the
+  STATUS backlog (T-13.35/.36/.37 shipped → T-13.38 next; T-13.39 stays
+  open). New `src/workspace/tree/kindIcons.ts` exposes a typed
+  `Record<ElementKind, LucideIcon>` over all 19 element kinds and a
+  `kindIcon(kind): LucideIcon` accessor. ContainmentTree element rows
+  render `<Icon aria-hidden data-kind-icon={kind}
+  className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />` between
+  the disclosure caret and the element name; the right-side uppercase
+  kind label stays as the textual fallback. Definition/usage pairs
+  (Action, State, Port, Constraint) reuse the same icon — kind text
+  already disambiguates, and the icon stands in as a stereotype-class
+  marker.
+
+  Mapping: Package=Package, PartDefinition=Box, PartUsage=Component,
+  PortDefinition/PortUsage=Plug, InterfaceDefinition=Cable,
+  ConnectionUsage=Link, ItemFlow=MoveRight, Requirement=ClipboardCheck,
+  ActionDefinition/ActionUsage=Play, StateDefinition/StateUsage=Circle,
+  Transition=MoveRight, UseCase=Target, Actor=User,
+  ConstraintDefinition/ConstraintUsage=Sigma, ValueProperty=Hash. All
+  19 verified present under node_modules/lucide-react/dist/esm/icons/.
+
+  Tests: 3 new unit (`tests/unit/workspace/tree/kindIcons.test.ts`)
+  assert the full ElementKind→icon mapping, that each maps to a
+  callable React component that renders an `<svg>`, and that def/usage
+  pairs reuse the same icon. 1 new unit in
+  `ContainmentTree.test.tsx` asserts element rows render an SVG with
+  `data-kind-icon` matching the element's kind plus
+  `aria-hidden="true"`. 1311/1311 unit pass (was 1307; +4 net), tsc -b
+  clean, eslint 0 errors (3 pre-existing react-refresh warnings
+  unchanged), vite build clean.
+
+  Anticipated CI drift: every `@visual` baseline that captures the
+  viewport (most use `expect(page).toHaveScreenshot()` with
+  `fullPage: false`) includes the project-tree pane on the left and
+  will shift by the icon's 14px column + 4px gap. Standard
+  lift-from-trace refresh (`-actual.png` artifacts from
+  `playwright-test-results`) is the documented procedure — bundle the
+  baseline refresh into the next iteration if CI surfaces the drift.
+
+## Iter-774 archive
+- Branch: issue/330-diagram-tabs-open-close (PR #331 merged a4c9655 at
+  04:47:34Z on 2026-05-16). Shipped T-13.37 — Diagram tabs strip
+  tracks open tabs separately from project diagrams. PR also rode the
+  #161 real root-cause fix: `CanvasPane.tsx` mirrored its
+  `isConnectingRef` guard from `onNodesChange` into `onEdgesChange`'s
+  select-change handling and bumped the post-`onConnectEnd` cooldown
+  100→250ms. Addresses both transition auto-select races (first-wait
+  and second-wait) plus analogous IBD ConnectionUsage, Activity
+  ControlFlow/ObjectFlow, and Requirements RequirementTrace
+  onConnect→setSelection patterns. 1307/1307 unit pass; phase-6-gate
+  passes in 3.8s under --workers=4 (was 3-of-3 retries timing out on
+  CI run 25952332508).
+
+## Original iter-774 working note
 - Working on: fix the actual root cause of #161 inspector-transition
   flake, which iter-773's defensive precondition + 15s timeout did not
   address. CI run 25952332508 (iter-773's two commits) showed 1 of the
