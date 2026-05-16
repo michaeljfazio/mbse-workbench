@@ -5,25 +5,47 @@ Phase 14 — Standard library import (KerML / SysML): kickoff pending
 phase:14 — Standard library import (post-v1.0.0 follow-on)
 
 Phase 13 closed at iter-779. Tag `vphase-13` placed at 83018f9 (T-13.44
-merge, 2026-05-16 06:46:56Z); release workflow `queued` against
-`headBranch: vphase-13` at 06:50:00Z. Release issue #340 open. JOURNAL
-phase-completion entry appended for iter-779.
+merge, 2026-05-16 06:46:56Z); release workflow run [25955411574](https://github.com/michaeljfazio/mbse-workbench/actions/runs/25955411574)
+SUCCEEDED at 06:50:55Z (build / deploy / github-release all green).
+Release issue #340 open until PR #341 (release closure: JOURNAL + STATUS)
+auto-merges; the post-deploy smoke ran clean at iter-780 and 15 screenshots
+are uploaded as `vphase-13` release assets.
 
 ## Current iteration
-- Iteration #: 779
+- Iteration #: 780
 - Started: 2026-05-16
 - Branch: issue/340-release-vphase-13
-- Working on: #340 — release: vphase-13 (Functional polish & feature
-  accessibility, post-v1.0.0). This PR closes the release issue, lands the
-  JOURNAL phase-completion entry, and rewrites STATUS.md to the canonical
-  AGENT.md format (the iter-history archive that had accumulated through
-  the Phase-13 cascade is dropped per AGENT.md "The file is overwritten
-  each iteration").
+- Working on: #340 — post-deploy smoke against the deployed Pages URL. The
+  iter-779 PR #341 (docs-only release closure) is mid-CI with auto-merge
+  enabled. This iteration adds `scripts/smoke-vphase-13.mjs` and re-runs
+  the smoke against the deployed artifact to satisfy AGENT.md Ralph loop
+  step 17 ("After the release deploys, fetch the Pages URL and exercise
+  the released app in a Playwright session…").
+
+## Post-deploy smoke summary (iter-780)
+- **URL:** `https://michaeljfazio.github.io/mbse-workbench/` (HTTP 200)
+- **Script:** `scripts/smoke-vphase-13.mjs` (Playwright + Chromium, 1920×900)
+- **Result:** PASS — 16 steps, zero console errors
+- **Coverage:** cold-start shell → root Package + Main BDD bootstrap →
+  first Block via inspector empty-state CTA → ActionDefinition +
+  StateDefinition via tree row menu → 7 non-BDD representations via the
+  "Create representation…" submenu (T-13.33c) → activate each of the 8
+  viewpoints (toolbar add where available) → Cmd-K command palette →
+  chat tab API-key modal → chat needs-key state
+- **Phase-13 features confirmed in pixels:** opaque card backgrounds
+  (T-13.16), hierarchical containment tree with stereotype labels +
+  per-kind icons (T-13.29/.30/.38), eight viewpoint tabs reachable via
+  the tree row-menu "Create representation…" submenu (T-13.33c), filter
+  bar + live palette counts, keyboard-shortcut panel, API-key missing
+  pill, Cmd-K command palette
+- **Release assets:** 15 PNGs uploaded to the `vphase-13` GitHub release
+- **Issue #340 comment:** [posted](https://github.com/michaeljfazio/mbse-workbench/issues/340#issuecomment-4466093348)
+  linking to release assets + summarising the feature surface
 
 ## Phase 13 closure summary
 - Tag pushed: `vphase-13` at 83018f9 (T-13.44 merge, 2026-05-16 06:46:56Z).
-- Release workflow: queued at 06:50:00Z on the tag (run on `vphase-13`).
-- Release issue: #340.
+- Release workflow: run 25955411574 SUCCEEDED at 06:50:55Z.
+- Release issue: #340 (closes via PR #341 once it auto-merges).
 - All five Phase-13 gate items pass:
   - **#1 Cold-start UI walkthrough** — `tests/e2e/phase-13-cold-start.spec.ts`
     (T-13.44, iter-778, PR #339).
@@ -74,9 +96,20 @@ P2 items carried forward from Phase 13:
   react-refresh warnings unchanged), `vite build` clean.
 
 ## Known issues / blockers
-- (none — release workflow in flight; post-deploy smoke is the next iteration)
+- (none — release workflow green, post-deploy smoke green, PR #341 mid-CI
+  with auto-merge)
 
 ## Decisions log
+- 2026-05-16 (iter-780): Post-deploy smoke `scripts/smoke-vphase-13.mjs`
+  mirrors the cold-start spec's UI flow rather than seeding sessionStorage
+  (the vphase-11 precedent). The Phase-13 schema migration (iter-531)
+  made the old seed pattern invalid (now requires explicit root Package
+  + diagram contexts); reusing the cold-start spec's known-good flow is
+  cheaper than re-deriving a valid seed. Released artifacts uploaded to
+  the GitHub Release rather than committed — matches the actual vphase-4
+  through vphase-11 precedent (despite AGENT.md prose suggesting
+  `.gitignore` `!artifacts/release-*` keeps them in-tree, no prior
+  release-vphase-* folder is in git).
 - 2026-05-16 (iter-779): Tag `vphase-13` placed at the last functional
   commit (T-13.44 merge, 83018f9) rather than at the release-issue PR.
   Mirrors the vphase-12 convention (tag at last feature commit, journal
@@ -94,16 +127,10 @@ P2 items carried forward from Phase 13:
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
-Once this status-reset PR merges, the next iteration:
+Once PR #341 auto-merges and issue #340 closes:
 
-1. Confirm the `vphase-13` release workflow run is green and the Pages
-   deploy at `https://michaeljfazio.github.io/mbse-workbench/` serves the
-   new build (HTTP 200 + the Phase-13 feature surface — opaque nodes,
-   square IBD ports, hierarchical containment tree, command palette, etc.).
-2. Run a Playwright smoke against the deployed URL covering all eight
-   viewpoints; save screenshots under `artifacts/release-vphase-13/` and
-   link them on release issue #340 before closing it.
-3. Decompose Phase 14 just-in-time per AGENT.md — open child issues with
+1. Close release issue #340 (auto via "Closes #340" in PR body).
+2. Decompose Phase 14 just-in-time per AGENT.md — open child issues with
    `phase:14`, `type:feature`, `status:ready`, `pX`. Recommended first
    slices (just-in-time picks subject to revision when implementation
    begins):
@@ -125,7 +152,7 @@ Once this status-reset PR merges, the next iteration:
      library elements. Round-trip identity preserved.
    - **P1** — Namespace resolution for unqualified names against imported
      packages with a precedence table (local → imported → root).
-4. Pick the lowest-numbered P0 child issue and start the slice.
+3. Pick the lowest-numbered P0 child issue and start the slice.
 
 A `docs/adr/0012-phase-14-library-seam.md` is the natural design
 artifact for the seam decision once Phase 14 starts — defer authoring
