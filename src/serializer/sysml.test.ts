@@ -596,3 +596,63 @@ describe('serializeProject — determinism + snapshot', () => {
     expect(text).toMatchSnapshot();
   });
 });
+
+describe('serializeProject — import directives (T-14.05)', () => {
+  it('emits no `import` lines when the project references no library content', () => {
+    const text = serializeProject(
+      buildProject([
+        asMember<Extract<ModelElement, { kind: 'PartDefinition' }>>(
+          { id: eid('p'), kind: 'PartDefinition', name: 'P', isAbstract: false },
+          0,
+        ),
+      ]),
+    );
+    expect(text).not.toContain('import ');
+  });
+
+  it('emits `import Base::*;` when a PartUsage references a KerML element', () => {
+    // Use a literal id matching KERML_CORE_ELEMENT_IDS.Part to keep the
+    // serializer test free of `@/library` import wiring.
+    const text = serializeProject(
+      buildProject([
+        asMember<Extract<ModelElement, { kind: 'PartUsage' }>>(
+          {
+            id: eid('pu'),
+            kind: 'PartUsage',
+            name: 'p',
+            definitionId: 'kerml.core.Base.Part' as ElementId,
+          },
+          0,
+        ),
+      ]),
+    );
+    expect(text).toContain('import Base::*;');
+  });
+
+  it('emits each detected qualname once', () => {
+    const text = serializeProject(
+      buildProject([
+        asMember<Extract<ModelElement, { kind: 'PartUsage' }>>(
+          {
+            id: eid('pu1'),
+            kind: 'PartUsage',
+            name: 'p1',
+            definitionId: 'kerml.core.Base.Part' as ElementId,
+          },
+          0,
+        ),
+        asMember<Extract<ModelElement, { kind: 'PartUsage' }>>(
+          {
+            id: eid('pu2'),
+            kind: 'PartUsage',
+            name: 'p2',
+            definitionId: 'kerml.core.Base.Item' as ElementId,
+          },
+          1,
+        ),
+      ]),
+    );
+    const matches = text.match(/import Base::\*;/g) ?? [];
+    expect(matches).toHaveLength(1);
+  });
+});

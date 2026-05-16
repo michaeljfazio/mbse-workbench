@@ -17,6 +17,7 @@ import type {
   ValueType,
 } from '@/model';
 import { ACTION_NODE_TYPE_VALUES, STATE_NODE_TYPE_VALUES } from '@/model';
+import { STANDARD_LIBRARY_NAMES_BY_QUALNAME } from '@/library';
 
 export interface ParseError {
   readonly line: number;
@@ -29,6 +30,12 @@ export interface ParsedProject {
   readonly edges: ModelEdge[];
   readonly projectId?: ProjectId;
   readonly projectName?: string;
+  /**
+   * Qualified names from leading `import <Qualname>::*;` directives, in
+   * source order. T-14.05 surfaces these for documentation / round-trip;
+   * namespace resolution against the named packages lands in T-14.06.
+   */
+  readonly imports?: readonly string[];
 }
 
 export type ParseResult =
@@ -79,7 +86,7 @@ class ParserError extends Error {
   }
 }
 
-const PUNCT_CHARS = new Set(['{', '}', '[', ']', ':', ';', ',', '=']);
+const PUNCT_CHARS = new Set(['{', '}', '[', ']', ':', ';', ',', '=', '*']);
 
 function tokenize(src: string): Token[] {
   const tokens: Token[] = [];
@@ -172,6 +179,12 @@ function tokenize(src: string): Token[] {
     }
     if (ch === '-' && src[i + 1] === '>') {
       tokens.push({ type: 'arrow', value: '->', line, col });
+      col += 2;
+      i += 2;
+      continue;
+    }
+    if (ch === ':' && src[i + 1] === ':') {
+      tokens.push({ type: 'punct', value: '::', line, col });
       col += 2;
       i += 2;
       continue;
@@ -270,6 +283,7 @@ class Parser {
 
   parseFile(): ParsedProject {
     const edges: ModelEdge[] = [];
+    const imports: string[] = [];
 
     if (this.peek().type === 'idmark') {
       this.projectId = this.consume().value as ProjectId;
@@ -278,6 +292,12 @@ class Parser {
     let topIndex = 0;
     while (this.peek().type !== 'eof') {
       const t = this.peek();
+      if (this.isImportDirective()) {
+        const qn = this.parseImportDirective();
+        imports.push(qn);
+        this.seedLibraryNames(qn);
+        continue;
+      }
       if (this.isEdgeKeyword(t.value)) {
         edges.push(this.parseEdge());
         continue;
@@ -307,7 +327,69 @@ class Parser {
     if (this.projectName !== undefined) {
       (result as { projectName?: string }).projectName = this.projectName;
     }
+    if (imports.length > 0) {
+      (result as { imports?: readonly string[] }).imports = imports;
+    }
     return result;
+  }
+
+  /**
+   * True iff the current position starts an `import <Qualname>::*;`
+   * directive. Disambiguates from the `import` *edge* form
+   * (`import src -> tgt;`) by requiring a `::` after the first ident.
+   */
+  private isImportDirective(): boolean {
+    const t0 = this.peek();
+    if (t0.type !== 'ident' || t0.value !== 'import') return false;
+    const t1 = this.peek(1);
+    if (t1.type !== 'ident') return false;
+    const t2 = this.peek(2);
+    return t2.type === 'punct' && t2.value === '::';
+  }
+
+  /** Seeds `nameToId` with the short names of standard-library elements
+   * under `qn`, so unqualified references in the body resolve to library
+   * element ids. No-op for unknown qualnames (the directive is then
+   * decorative — full namespace resolution lands in T-14.06). */
+  private seedLibraryNames(qn: string): void {
+    const inner = STANDARD_LIBRARY_NAMES_BY_QUALNAME.get(qn);
+    if (!inner) return;
+    for (const [shortName, id] of inner) {
+      // Don't overwrite a user-defined name with a library binding.
+      if (!this.nameToId.has(shortName)) {
+        this.nameToId.set(shortName, id);
+      }
+    }
+  }
+
+  /** Consumes `import Ident ('::' Ident)* '::' '*' ';'` and returns the
+   * qualified name (e.g. `'Base'` or `'kerml::core::Base'`). */
+  private parseImportDirective(): string {
+    this.expectIdent('import');
+    const parts: string[] = [this.expectIdent().value];
+    while (this.peek().type === 'punct' && this.peek().value === '::') {
+      this.consume();
+      const next = this.peek();
+      if (next.type === 'punct' && next.value === '*') {
+        this.consume();
+        this.expectPunct(';');
+        return parts.join('::');
+      }
+      if (next.type !== 'ident') {
+        throw new ParserError(
+          `expected identifier or '*' after '::'`,
+          next.line,
+          next.col,
+        );
+      }
+      parts.push(this.consume().value);
+    }
+    const t = this.peek();
+    throw new ParserError(
+      `import directive must end with '::*;'`,
+      t.line,
+      t.col,
+    );
   }
 
   private isEdgeKeyword(value: string): boolean {

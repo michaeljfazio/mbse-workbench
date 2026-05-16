@@ -541,3 +541,60 @@ describe('parseSysmlText — edges round-trip', () => {
     ]);
   });
 });
+
+describe('parseSysmlText — import directives (T-14.05)', () => {
+  it('accepts a single bare `import Foo::*;` directive at top level', () => {
+    const text = `// id: P1\nimport Base::*;\n\npackage Foo { // id: pkg1\n}\n`;
+    const res = parseSysmlText(text);
+    expect(res.ok).toBe(true);
+    if (!res.ok) throw new Error('parse failed');
+    expect(res.value.imports).toEqual(['Base']);
+    expect(res.value.elements).toHaveLength(1);
+    expect(res.value.elements[0]?.kind).toBe('Package');
+  });
+
+  it('accepts a multi-segment qualified name', () => {
+    const text = `import kerml::core::Base::*;\n`;
+    const res = parseSysmlText(text);
+    expect(res.ok).toBe(true);
+    if (!res.ok) throw new Error('parse failed');
+    expect(res.value.imports).toEqual(['kerml::core::Base']);
+  });
+
+  it('accepts multiple import directives, preserving source order', () => {
+    const text = `import Base::*;\nimport std::Sys::*;\n`;
+    const res = parseSysmlText(text);
+    expect(res.ok).toBe(true);
+    if (!res.ok) throw new Error('parse failed');
+    expect(res.value.imports).toEqual(['Base', 'std::Sys']);
+  });
+
+  it('still parses the `import` *edge* form (PackageImport) when used as edge', () => {
+    const text = `package A { // id: a\n}\npackage B { // id: b\n}\nimport a -> b; // id: e1\n`;
+    const res = parseSysmlText(text);
+    expect(res.ok).toBe(true);
+    if (!res.ok) throw new Error('parse failed');
+    expect(res.value.imports).toBeUndefined();
+    expect(res.value.edges).toHaveLength(1);
+    expect(res.value.edges[0]?.kind).toBe('PackageImport');
+  });
+
+  it('rejects a malformed import directive missing the `::*;` tail', () => {
+    const text = `import Base;\n`;
+    const res = parseSysmlText(text);
+    // `import Base;` is neither a valid directive nor a valid edge —
+    // missing arrow / package body — so it must fail with line/col.
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.errors[0]?.line).toBeGreaterThan(0);
+    }
+  });
+
+  it('omits the imports field when no directives are present', () => {
+    const text = `package Foo { // id: pkg1\n}\n`;
+    const res = parseSysmlText(text);
+    expect(res.ok).toBe(true);
+    if (!res.ok) throw new Error('parse failed');
+    expect(res.value.imports).toBeUndefined();
+  });
+});

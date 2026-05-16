@@ -2,6 +2,10 @@ import type { ElementId, ModelElement } from '@/model';
 
 export const KERML_CORE_LIBRARY_ROOT_ID = 'kerml.core.Base' as ElementId;
 
+/** Qualified name used in `import …::*;` directives that reference the
+ * KerML core library root. Matches the `name` of the root Package. */
+export const KERML_CORE_QUALIFIED_NAME = 'Base' as const;
+
 export const KERML_CORE_ELEMENT_IDS = {
   Base: KERML_CORE_LIBRARY_ROOT_ID,
   Anything: 'kerml.core.Base.Anything' as ElementId,
