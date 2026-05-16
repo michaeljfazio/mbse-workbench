@@ -5,6 +5,15 @@ import { expect, test, type Page } from '@playwright/test';
 // the containment tree (every diagram appears in the tree as a `⌬`
 // representation row under its context element). Closing a tab leaves
 // the representation in the tree; clicking the tree row re-opens the tab.
+//
+// Cold-load default: when no LayoutSnapshot has been persisted yet
+// (fresh session / seeded test project), the open-tabs working set
+// defaults to every project diagram. Once the user closes any tab the
+// curated set persists across reloads — that's the load-bearing T-13.37
+// behavior. The "every diagram is a tab" cold-load default is what 40+
+// pre-existing e2e seed patterns depend on (they seed
+// `mbse:v1:project:<id>` directly and immediately click tabs by name);
+// see store.ts `bootstrap` and docs/CONTEXT.md 2026-05-16 entry.
 
 const SEED_PROJECT_ID = 'p-tabs-open-close';
 
@@ -80,18 +89,26 @@ test.describe('T-13.37 — Diagram tabs open/close (issue #330)', () => {
     ).toBeVisible();
   });
 
-  test('only the bootstrap diagram is open initially; the other lives in the tree', async ({
+  test('every project diagram renders as a tab AND as a tree representation row', async ({
     page,
   }) => {
-    // First diagram's tab is rendered and active.
+    // Cold-load semantics: the project ships two diagrams and no
+    // LayoutSnapshot has been persisted yet, so the open-tabs working
+    // set defaults to "every project diagram" (see store.ts
+    // `bootstrap`). The first diagram is active by default.
     const tabOne = page.getByTestId('diagram-tab-d-bdd-one');
+    const tabTwo = page.getByTestId('diagram-tab-d-bdd-two');
     await expect(tabOne).toBeVisible();
+    await expect(tabTwo).toBeVisible();
     await expect(tabOne).toHaveAttribute('aria-selected', 'true');
+    await expect(tabTwo).toHaveAttribute('aria-selected', 'false');
 
-    // The second diagram is NOT in the tab strip — it is closed.
-    await expect(page.getByTestId('diagram-tab-d-bdd-two')).toHaveCount(0);
-
-    // But it is in the containment tree as a representation row.
+    // Each diagram also lives in the containment tree as a `⌬`
+    // representation row under its context element — the tree is the
+    // permanent home; the tab strip is the transient working set.
+    await expect(
+      page.getByTestId('containment-tree-diagram-d-bdd-one'),
+    ).toBeVisible();
     await expect(
       page.getByTestId('containment-tree-diagram-d-bdd-two'),
     ).toBeVisible();
@@ -100,10 +117,10 @@ test.describe('T-13.37 — Diagram tabs open/close (issue #330)', () => {
   test('clicking close on a tab removes it from the strip but keeps the tree row', async ({
     page,
   }) => {
-    // First open the second diagram from the tree, so the strip has two tabs.
-    await page.getByTestId('containment-tree-diagram-d-bdd-two').click();
+    // Both tabs are open on cold load. Activate the second by clicking
+    // its tab so the close action targets the active tab.
+    await page.getByTestId('diagram-tab-d-bdd-two').click();
     const tabTwo = page.getByTestId('diagram-tab-d-bdd-two');
-    await expect(tabTwo).toBeVisible();
     await expect(tabTwo).toHaveAttribute('aria-selected', 'true');
 
     // Close the second tab.
@@ -125,7 +142,10 @@ test.describe('T-13.37 — Diagram tabs open/close (issue #330)', () => {
   test('clicking a closed diagram in the tree re-opens its tab and activates it', async ({
     page,
   }) => {
-    // Confirm second is closed.
+    // Close the second tab first so the tree-row click has work to do
+    // (cold-load opens every diagram as a tab; the test exercises the
+    // re-open path, so we must reach the closed state first).
+    await page.getByTestId('diagram-tab-close-d-bdd-two').click();
     await expect(page.getByTestId('diagram-tab-d-bdd-two')).toHaveCount(0);
 
     // Click the tree row.

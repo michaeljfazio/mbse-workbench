@@ -6,125 +6,110 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 769
+- Iteration #: 770
 - Started: 2026-05-16
 - Branch: issue/330-diagram-tabs-open-close (PR #331 still open)
-- Working on: root-cause fix for the failing CI on PR #331 (T-13.37).
+- Working on: align T-13.37's own e2e spec with the iter-769 cold-load-all
+  default; CI run 25950850531 surfaced 4 spec failures (2 tests × 2
+  browsers) plus ~22 @a11y AbortErrors and 2 @visual drifts.
 
-  **Diagnosis correction.** Iter-767 and iter-768 framed the CI
-  cancellations as a visual-baseline-drift problem and spent two
-  iterations on CI infrastructure (visual/functional project split,
-  workers 2→4, timeout 30→60min, `test-results/` upload). All of that
-  was treating a symptom. The `playwright-test-results` artifact from
-  run 25949230853 (82 MB, finally captured thanks to iter-768's
-  incremental-upload step) tells the real story:
+  **Diagnosis.** Iter-769 fixed the bootstrap regression by opening every
+  diagram on cold load. That resolved the 159-spec tab-by-name cascade.
+  But T-13.37's own spec
+  (`tests/e2e/diagram-tabs-open-close.spec.ts`) had been written under
+  the *previous* assumption that cold load opens only the bootstrap
+  diagram — three of its four tests asserted `tab-d-bdd-two` count = 0
+  immediately after seeding, and the third tested re-open from a
+  "naturally" closed state. With iter-769 the second tab IS visible on
+  cold load, so those assertions inverted. Test 4 ("reload preserves
+  open tabs") was already correct under both semantics.
 
-    find -name "*-actual.png"      → 0 files
-    find -name "test-failed-1.png" → 471 files
+  **Decision.** Keep iter-769's cold-load-all behavior (single load-
+  bearing default; matches the 40+ pre-existing e2e seed patterns'
+  expectation and the user mental model "no curation yet → all open").
+  Rewrite the three failing T-13.37 tests to reach the closed state
+  via an explicit `close-X` click before asserting closure /
+  re-open / tree-persistence behavior. The T-13.37 *feature* — close
+  removes from strip + tree row persists + reload persists curation +
+  tree-row re-opens — is still fully covered end-to-end.
 
-  Zero visual-snapshot diffs. 471 functional-failure screenshots
-  (~159 unique specs × 1 initial + 2 retries × 2 browsers). Every
-  failing trace ends the same way: `locator.click` on
-  `getByRole('tab', { name: '<diagram-name>' })` times out at 30s
-  because that tab does not exist in the DOM.
+  **Fix shipped this iteration (one commit, same branch).** Two pieces:
 
-  **Root cause.** T-13.37's `bootstrap()` opens only the project's
-  *first* diagram on cold load when no LayoutSnapshot is persisted
-  yet (store.ts ~line 1062):
+  1. `tests/e2e/diagram-tabs-open-close.spec.ts` — rewrote tests 1, 2, 3:
+     - Test 1 is now "every project diagram renders as a tab AND as a
+       tree representation row" (both tabs visible + first active +
+       both tree rows visible).
+     - Test 2 (close removes tab, tree row persists) — activate via tab
+       click instead of via tree-row click. Assertion unchanged.
+     - Test 3 (tree-row re-opens closed tab) — close the second tab via
+       `close-X` first, then click the tree row. Assertion unchanged.
+     Test 4 (reload preserves open tabs) unchanged.
+     File-level comment also updated to document the cold-load semantics
+     so future readers don't re-trip the same assumption.
 
-      initialOpenIds = persistedOpenFiltered.length > 0
-        ? persistedOpenFiltered
-        : [diagrams[0]!.id];          // ← regression here
-
-  Every e2e seed pattern writes a `mbse:v1:project:<id>` JSON with
-  multiple diagrams directly into sessionStorage (no LayoutSnapshot)
-  and immediately tries to click a non-first diagram tab by name —
-  e.g. activity-create-and-edit seeds `[d-bdd, d-activity]` then
-  clicks "System Activity". On main pre-T-13.37 the tab strip
-  rendered every project diagram, so the locator resolved instantly.
-  Post-T-13.37 only "Main BDD" was open, "System Activity" never
-  appeared, and the click hung 30s × 3 retries × 2 browsers per
-  spec across ~159 specs → 60-min job cap → cancellation.
-
-  **Fix shipped this iteration (one commit, same branch).** Three
-  pieces:
-
-  1. `src/workspace/store.ts` — `readLayout(storage)` now returns
-     `LayoutSnapshot | null`. `null` ↔ "no snapshot persisted yet,
-     this is a cold load." The bootstrap fork at line 1054 now
-     branches three ways instead of two:
-        - filtered open set non-empty → honor what the user curated
-        - persistedLayout === null (cold load) → open every diagram
-        - persistedLayout exists but filtered to empty (user closed
-          everything, or every formerly-open diagram was deleted) →
-          fall back to `diagrams[0]` (one tab so the user is not
-          stuck on the empty state across a reload)
-
-  2. `tests/unit/workspace/openDiagrams.test.ts` — new spec
-     `bootstrap opens every project diagram when no layout snapshot
-     has been persisted yet`. Builds a project with two diagrams
-     via the public store API, wipes `LAYOUT_STORAGE_KEY`,
-     re-bootstraps, asserts both ids appear in `openDiagramIds`
-     (legacy "phantom-only persisted layout" test still passes
-     because its fallback path is the warm-load-empty-filter
-     branch, not the cold-load branch).
-
-  3. `docs/CONTEXT.md` — recorded the cold-load semantics and
-     the iter-767/-768 misdiagnosis so future iterations skip the
-     visual-baseline rabbit hole if they see ~159 e2e tab-click
-     timeouts on a PR that touches `openDiagramIds`.
+  2. `docs/CONTEXT.md` — added an iter-770 entry recording the spec
+     adaptation pattern so future iterations prefer adapting specs to
+     new behavior (when the change is correct and load-bearing) over
+     reverting.
 
   Verification:
-  - `pnpm exec tsc -b` — clean (no output).
-  - `pnpm exec vitest run` — 1307/1307 unit pass in 11.17s
-    (was 1306; +1 new cold-load spec). All 14 specs in
-    `openDiagrams.test.ts` pass.
-  - `pnpm exec playwright test tests/e2e/activity-create-and-edit
-    --project=chromium -g "clicking + Action drops"` — passes in
-    718ms (previously hung 30s × 3 retries). The very test whose
-    trace was the diagnostic anchor for this iteration.
-  - `pnpm exec playwright test tests/e2e/activity-edges
-    --project=chromium` — 16/16 pass.
-  - `pnpm exec playwright test tests/e2e/bdd-canvas
-    --project=chromium` — 5/5 pass. Confirms BDD's single-diagram
-    seed pattern still works (that case lands in the cold-load
-    branch which now opens "all" = "the one", same effective
-    behavior).
-  - 1 local failure in
-    `activity-create-and-edit.spec.ts:193:3` (@a11y, AbortError on
-    `document.getAnimations()`) — verified pre-existing
-    environmental quirk: same test passed in main CI run
-    25931979113 (8.1min, 604 passed) at 91ac0d6 immediately before
-    T-13.37 merged, and it fails identically on this branch with
-    the iter-769 fix stashed. Not introduced by this fix.
+  - `pnpm exec playwright test diagram-tabs-open-close --project=chromium`
+    — 4/4 pass in 2.6s.
+  - `pnpm exec playwright test diagram-tabs-open-close --project=webkit`
+    — 4/4 pass in 2.8s.
+  - `pnpm exec vitest run tests/unit/workspace/openDiagrams.test.ts`
+    — 14/14 pass. The iter-769 unit spec ("bootstrap opens every project
+    diagram when no layout snapshot has been persisted yet") still
+    passes, confirming the cold-load-all behavior is intact.
 
-  **CI infrastructure scope.** The visual/functional project split
-  (iter-767) and incremental `test-results/` upload (iter-768) are
-  KEPT. Both are independently valuable: retries:0 on @visual specs
-  saves real time on baseline drift (when it next happens), and
-  the artifact-survives-cancellation upload is the reason this
-  iteration could diagnose anything. The `workers: 2 → 4` bump
-  (iter-768) is also kept — under the 4-worker assumption a clean
-  e2e suite finishes in ~25-30min comfortably under the 60-min cap.
-  Once CI confirms the suite goes green I'll consider whether to
-  pull `workers` back to `cores/2` (default) or leave it pinned.
+  **Out of scope this iteration.** The CI run also showed:
+  - ~22 `@a11y` `AbortError: The user aborted a request.` failures
+    across 11 specs × 2 browsers, all on
+    `page.evaluate(async () => Promise.all(document.getAnimations()
+    .map(a => a.finished)))`. iter-769 flagged this as a pre-existing
+    environmental quirk; the spread (every viewpoint empty-state) plus
+    the failure mode (AbortError) is consistent with worker CPU
+    pressure from the T-13.37 tab-click cascade (30s timeout × 3
+    retries × 2 browsers × 159 specs × 4 workers). Hypothesis: with
+    the T-13.37 spec fixed the worker pressure drops and these
+    AbortErrors disappear. If they persist after next CI, file a
+    separate `type:bug` issue.
+  - 2 `chromium-visual` baselines drifted
+    (`state-machine-with-state`, `inspector-state-selected`). These
+    are on the `retries:0` visual project and likely independent
+    drift; investigate after the functional gate is clean. (Both
+    specs are on the new `chromium-visual` project that was split
+    out in iter-767; their first surfacing on this branch may simply
+    be CI's first time running them without retries masking drift.)
 
   Next iteration: watch CI on PR #331. If green, auto-merge will
-  land it (auto-merge was enabled iter-765, confirmed still queued
-  via `gh pr view 331`). Then resume the Phase-13 P0 explorer
-  backlog (T-13.31 → T-13.38 chain, decisions locked iter-531).
-  If CI surfaces residual visual baseline drift from T-13.37's
-  diagram-tabs-strip DOM changes (the close-X glyphs are new), the
-  iter-768 procedure (download `playwright-test-results`, lift
-  `<arg>-actual.png` → `tests/e2e/__screenshots__/`) now actually
-  works because (a) the suite completes in time and (b) the
-  `playwright-report` artifact also flushes on success.
+  land it (auto-merge enabled iter-765, still queued). Then resume
+  the Phase-13 P0 explorer backlog (T-13.31 → T-13.38 chain). If CI
+  still shows the @a11y AbortErrors or the 2 visual drifts, file
+  separate follow-up issues and pick them in priority order.
 
 ## Last test run
-- Command: `pnpm exec vitest run` + targeted playwright specs
-- Result: PASS (1307 unit, 22 e2e targeted; 1 known-environmental
-  a11y flake unrelated to this fix per stash-comparison check)
+- Command: targeted `pnpm exec playwright test diagram-tabs-open-close
+  --project={chromium,webkit}` + `pnpm exec vitest run
+  tests/unit/workspace/openDiagrams.test.ts`
+- Result: PASS (4/4 chromium + 4/4 webkit on T-13.37 spec; 14/14 unit
+  on cold-load behavior)
 - Failures: (none introduced by this iteration)
+
+## Iter-769 archive
+- Branch: issue/330-diagram-tabs-open-close (PR #331 — still open,
+  auto-merge queued). Fixed the T-13.37 cold-load bootstrap regression
+  via `readLayout(storage): LayoutSnapshot | null` + 3-way
+  bootstrap branching (`persistedOpenFiltered.length > 0` honors
+  curation; `persistedLayout === null` cold-load opens every diagram;
+  warm-load empty filter falls back to `diagrams[0]`). New unit spec
+  `bootstrap opens every project diagram when no layout snapshot has
+  been persisted yet` covers it. CI infra changes from iter-767/768
+  (visual/functional project split, workers 2→4, 60-min cap,
+  `test-results/` incremental upload) were KEPT as independently
+  useful. CI run 25950850531 surfaced 4 residual T-13.37 spec
+  failures (now fixed in iter-770) plus pre-existing @a11y AbortError
+  pattern and 2 visual baseline drifts (deferred).
 
 ## Known issues / blockers
 - (none for this iteration)

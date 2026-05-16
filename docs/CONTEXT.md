@@ -1224,3 +1224,24 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
   procedure documented earlier (lift from `data/<trace-hash>.zip` in the
   HTML report) still works when the report does flush; otherwise lift
   from the `playwright-test-results` artifact's per-test subdirectory.
+
+- **2026-05-16 (iter-770, T-13.37 spec fix)** — The T-13.37 e2e spec
+  (`tests/e2e/diagram-tabs-open-close.spec.ts`) was originally written
+  assuming "cold-load opens only the first/bootstrap diagram" and asserts
+  `tab-d-bdd-two` has count 0 immediately after seeding two diagrams.
+  That assertion is incompatible with the iter-769 cold-load-all default
+  (which 40+ pre-existing e2e seed patterns depend on — they
+  `sessionStorage.setItem('mbse:v1:project:<id>', ...)` with multiple
+  diagrams and click tabs by name without first opening them). The
+  resolution kept the cold-load-all behavior (single-load-bearing
+  default; matches user mental model "no curation yet → all open") and
+  rewrote the three failing T-13.37 tests to first close a tab before
+  asserting closure/persistence behavior. The T-13.37 *feature* (close
+  removes from strip + tree row persists + reload persists curation +
+  tree-row re-opens) is still fully covered — the tests now reach the
+  closed state via explicit `close-X` click rather than relying on a
+  cold-load default. **Rule:** when a spec was written before a
+  behavior change, prefer adapting the spec to the new behavior (if
+  the change is correct and load-bearing) over reverting the behavior
+  — but verify the *underlying feature* is still covered end-to-end
+  before declaring done.
