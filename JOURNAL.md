@@ -819,3 +819,20 @@ Phase 13 ships zero library content. Phase 13's design accommodates Phase 14 via
 - ADR index: https://github.com/michaeljfazio/mbse-workbench/blob/main/docs/adr/README.md
 
 ---
+
+## Iteration 793 — 2026-05-16 — Phase 15 begun — architect-driven hardening
+
+**Event:** phase-completion
+
+**Phase:** phase:15 — Architect-driven UX & feature hardening
+
+**Narrative:** The endeavour had been declared COMPLETE at iter-792 — phases 0..14 closed, `v1.0.0` and `vphase-14` released, Pages live, smoke green, every halting condition met under AGENT.md's literal scope. Then the operator opened Phase 15 with a kickoff prompt pasted into a fresh session, naming the gap every prior phase had quietly inherited: gates passed by tests written *against the store* never asked whether a real architect could use the tool to model a real system. Phase 15 answers by doing it — the agent now wears two hats (architect / engineer), the source of truth becomes the architect's lived experience of the **deployed** application, and the deliverable doubles to a workbench judged against a 28-dimension production-quality rubric *and* a worked example, the A320-class fly-by-wire FCS, built end-to-end through the UI alone. The bootstrap itself was instructive: the kickoff doc landed on main in parallel (#363) while this branch was preparing the constitution amendment, so the bootstrap branch rebased onto the new main, git correctly skipped the duplicate kickoff-doc commit as already-applied, and the remaining four commits replayed cleanly — `--force-with-lease` push under Phase 15's A.8 rebase-over-merge rule. The structural change is `AGENT.md` itself: it gained a 500-line `## Phase 15` section carrying Section A of the kickoff prompt verbatim, with the rubric of 28 dimensions (all scored `0 — unmeasured`) living at `docs/architect/quality-rubric.md` as the explicit termination signal. Iter-794 begins the first architect walk — a broad sweep across every viewpoint on an empty project — and the loop resumes under the extended constitution.
+
+**Links:**
+- Bootstrap issue: https://github.com/michaeljfazio/mbse-workbench/issues/364
+- Bootstrap PR (merged `b874578`): https://github.com/michaeljfazio/mbse-workbench/pull/365
+- Kickoff prompt: https://github.com/michaeljfazio/mbse-workbench/blob/main/docs/superpowers/specs/2026-05-16-phase-15-architect-kickoff.md
+- Constitution amendment (AGENT.md `## Phase 15` section): https://github.com/michaeljfazio/mbse-workbench/blob/main/AGENT.md
+- Production-quality rubric: https://github.com/michaeljfazio/mbse-workbench/blob/main/docs/architect/quality-rubric.md
+
+---
