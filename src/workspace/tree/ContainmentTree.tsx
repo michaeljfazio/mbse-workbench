@@ -19,6 +19,7 @@ import {
   type ContainmentTreeNode,
 } from './buildContainmentTree';
 import { acceptedChildKinds, type ChildKindOption } from './childAcceptance';
+import { kindIcon } from './kindIcons';
 import {
   computePackageTargets,
   type PackageTargetOption,
@@ -790,6 +791,7 @@ function renderElementRow(
       >
         {hasChildren ? (isExpanded ? '▾' : '▸') : ''}
       </span>
+      <KindIcon kind={element.kind} />
       {isRenaming ? (
         <ContainmentTreeRenameInput
           elementId={element.id}
@@ -836,6 +838,17 @@ function renderElementRow(
         />
       ) : null}
     </div>
+  );
+}
+
+function KindIcon({ kind }: { readonly kind: ElementKind }): JSX.Element {
+  const Icon = kindIcon(kind);
+  return (
+    <Icon
+      aria-hidden="true"
+      data-kind-icon={kind}
+      className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+    />
   );
 }
 

@@ -78,6 +78,24 @@ describe('<ContainmentTree />', () => {
     expect(bLeaf).toHaveAttribute('aria-level', '2');
   });
 
+  it('renders a stereotype icon for each element row with data-kind-icon', async () => {
+    await bootstrap();
+    const a = useWorkspaceStore.getState().createBlock()!;
+
+    render(<ContainmentTree />);
+    const rootRow = screen.getByTestId(`containment-tree-element-${rootId()}`);
+    const blockRow = screen.getByTestId(`containment-tree-element-${a}`);
+
+    const rootIcon = rootRow.querySelector('[data-kind-icon]');
+    const blockIcon = blockRow.querySelector('[data-kind-icon]');
+    expect(rootIcon).not.toBeNull();
+    expect(blockIcon).not.toBeNull();
+    expect(rootIcon!.getAttribute('data-kind-icon')).toBe('Package');
+    expect(blockIcon!.getAttribute('data-kind-icon')).toBe('PartDefinition');
+    expect(rootIcon!.tagName.toLowerCase()).toBe('svg');
+    expect(rootIcon!.getAttribute('aria-hidden')).toBe('true');
+  });
+
   it('clicking an element node selects it in the workspace store', async () => {
     await bootstrap();
     const a = useWorkspaceStore.getState().createBlock()!;
