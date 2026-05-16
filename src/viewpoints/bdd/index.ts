@@ -19,7 +19,7 @@ import {
 } from './GeneralizationEdge';
 
 export { BDD_BLOCK_NODE_TYPE, BDD_COMPOSITION_EDGE_TYPE, BDD_GENERALIZATION_EDGE_TYPE };
-export type { BddBlockData, BddBlockNode, BlockRenameCallback } from './BlockNode';
+export type { BddBlockData, BddBlockNode, BlockRenameCallback, BlockResizeCallback } from './BlockNode';
 export type { BddCompositionEdge };
 export type { BddGeneralizationEdge };
 export type BddEdge = BddCompositionEdge | BddGeneralizationEdge;

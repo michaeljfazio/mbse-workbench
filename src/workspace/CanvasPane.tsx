@@ -183,6 +183,7 @@ function CanvasInner(): JSX.Element {
   const initialized = useWorkspaceStore((s) => s.initialized);
   const setSelection = useWorkspaceStore((s) => s.setSelection);
   const setNodePosition = useWorkspaceStore((s) => s.setNodePosition);
+  const setNodeSize = useWorkspaceStore((s) => s.setNodeSize);
   const createBlock = useWorkspaceStore((s) => s.createBlock);
   const deleteSelection = useWorkspaceStore((s) => s.deleteSelection);
   const deleteElement = useWorkspaceStore((s) => s.deleteElement);
@@ -277,6 +278,14 @@ function CanvasInner(): JSX.Element {
     [elements],
   );
 
+  const onResize = useCallback(
+    (elementId: ElementId, width: number, height: number) => {
+      if (!diagram) return;
+      setNodeSize(diagram.id, elementId, width, height);
+    },
+    [diagram, setNodeSize],
+  );
+
   const flowNodes = useMemo(() => {
     if (!viewpoint || !diagram) return [];
     return toFlowNodes(
@@ -287,6 +296,7 @@ function CanvasInner(): JSX.Element {
       renameElement,
       registry,
       impactHighlightedIds,
+      onResize,
     );
   }, [
     canvasElements,
@@ -296,6 +306,7 @@ function CanvasInner(): JSX.Element {
     renameElement,
     registry,
     impactHighlightedIds,
+    onResize,
   ]);
 
   const flowEdges = useMemo(() => {

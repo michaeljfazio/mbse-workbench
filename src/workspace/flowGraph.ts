@@ -35,6 +35,7 @@ export function toFlowNodes(
   onRename: (id: ElementId, name: string) => void,
   registry: RegistryLookup | null,
   impactHighlightedIds: ReadonlySet<ElementId>,
+  onResize?: (id: ElementId, width: number, height: number) => void,
 ): Node[] {
   const partUsageRects: IbdRect[] = [];
   const elementNodes = elements
@@ -59,11 +60,15 @@ export function toFlowNodes(
       let data: Record<string, unknown>;
       if (el.kind === 'PartDefinition' && registry) {
         const compartments = computeBddBlockCompartments(el.id, registry);
+        // onResize is required by BddBlockData. Provide a no-op fallback so
+        // callers that predate the resize feature (tests, export) don't break.
+        const onResizeFn = onResize ?? ((_id, _w, _h) => undefined);
         data = {
           elementId: el.id,
           name: el.name,
           compartments,
           onRename,
+          onResize: onResizeFn,
         };
       } else if (el.kind === 'PartUsage' && registry) {
         const definition = registry.get(el.definitionId);
@@ -143,7 +148,11 @@ export function toFlowNodes(
       } else {
         data = { elementId: el.id, name: el.name, onRename };
       }
-      const { width, height } = viewpoint.nodeSizeFor(el);
+      const defaultSize = viewpoint.nodeSizeFor(el);
+      // Prefer the persisted size (set when the user resizes via NodeResizer)
+      // over the viewpoint's static default.
+      const width = pos.width ?? defaultSize.width;
+      const height = pos.height ?? defaultSize.height;
       const isImpact = impactHighlightedIds.has(el.id);
       const node: Node = {
         id: el.id,

@@ -337,6 +337,17 @@ export interface WorkspaceActions {
     elementId: ElementId,
     position: NodePosition,
   ): void;
+  /**
+   * Persist a user-driven resize for `elementId` in `diagramId`. Merges
+   * `width`/`height` into the element's existing position entry, leaving
+   * `x`/`y` unchanged. One call = one undo-able command. See phase-15 #374.
+   */
+  setNodeSize(
+    diagramId: DiagramId,
+    elementId: ElementId,
+    width: number,
+    height: number,
+  ): void;
   runAutoLayout(diagramId: DiagramId): void;
   addPortToDefinition(
     definitionId: ElementId,
@@ -1513,6 +1524,25 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
     if (!diagram) return;
     const existing = diagram.positions[elementId];
     if (existing && existing.x === position.x && existing.y === position.y) return;
+    bus.dispatch(
+      {
+        kind: 'update-diagram-position',
+        diagramId,
+        elementId,
+        position,
+      },
+      user,
+    );
+  },
+
+  setNodeSize(diagramId, elementId, width, height) {
+    const { bus, user, diagrams } = get();
+    if (!bus || !user) return;
+    const diagram = diagrams.find((d) => d.id === diagramId);
+    if (!diagram) return;
+    const existing = diagram.positions[elementId] ?? { x: 0, y: 0 };
+    if (existing.width === width && existing.height === height) return;
+    const position: NodePosition = { ...existing, width, height };
     bus.dispatch(
       {
         kind: 'update-diagram-position',
