@@ -168,7 +168,6 @@ function LibraryRow({
       aria-level={depth + 1}
       aria-selected={isSelected}
       aria-expanded={hasChildren ? isExpanded : undefined}
-      aria-readonly="true"
       data-testid={`libraries-tree-element-${element.id}`}
       data-element-id={element.id}
       data-kind={element.kind}

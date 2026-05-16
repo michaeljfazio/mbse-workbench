@@ -67,6 +67,8 @@ import {
   type Viewpoint,
 } from '@/viewpoints';
 
+import { isLibraryElement } from '@/library';
+
 import { RequirementsSurface } from './RequirementsSurface';
 import { SecondaryCanvasPane } from './SecondaryCanvasPane';
 import { toFlowEdges, toFlowNodes } from './flowGraph';
@@ -254,6 +256,18 @@ function CanvasInner(): JSX.Element {
 
   const selectedSet = useMemo(() => new Set(selectedElementIds), [selectedElementIds]);
 
+  const libraryRootIds = useWorkspaceStore(
+    (s) => s.project?.libraryRootIds ?? undefined,
+  );
+
+  // Library elements live in the read-only "Libraries" tree, not on any
+  // diagram canvas. Strip them before handing the element list to the flow
+  // builders so a fresh BDD doesn't pre-paint with KerML core PartDefinitions.
+  const canvasElements = useMemo(
+    () => elements.filter((e) => !isLibraryElement(e, libraryRootIds, elements)),
+    [elements, libraryRootIds],
+  );
+
   const partDefinitions = useMemo(
     () =>
       elements
@@ -266,7 +280,7 @@ function CanvasInner(): JSX.Element {
   const flowNodes = useMemo(() => {
     if (!viewpoint || !diagram) return [];
     return toFlowNodes(
-      elements,
+      canvasElements,
       viewpoint,
       diagram,
       selectedSet,
@@ -275,7 +289,7 @@ function CanvasInner(): JSX.Element {
       impactHighlightedIds,
     );
   }, [
-    elements,
+    canvasElements,
     viewpoint,
     diagram,
     selectedSet,
@@ -288,12 +302,12 @@ function CanvasInner(): JSX.Element {
     if (!viewpoint) return [];
     return toFlowEdges(
       edges,
-      elements,
+      canvasElements,
       viewpoint,
       selectedSet,
       impactHighlightedEdgeIds,
     );
-  }, [edges, elements, viewpoint, selectedSet, impactHighlightedEdgeIds]);
+  }, [edges, canvasElements, viewpoint, selectedSet, impactHighlightedEdgeIds]);
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {
