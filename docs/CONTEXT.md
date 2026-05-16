@@ -8,6 +8,26 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
 
 ## Discovered facts
 
+- **2026-05-16 (iter-774, #161 root cause)** — When `onConnect` in
+  `CanvasPane.tsx` creates an edge-element (Transition / ConnectionUsage /
+  ItemFlow / ControlFlow / ObjectFlow / RequirementTrace) and immediately
+  calls `setSelection([newId])`, React Flow v12 asynchronously emits a
+  stray `{type:'select', id:<newEdge>, selected:false}` change a few
+  render ticks later — its internal edge state hasn't propagated the
+  externally-driven `selected:true` we put on the edges prop. Without a
+  guard, `onEdgesChange` runs that change through `applyEdgeChanges` and
+  `setSelection([])` clobbers the auto-selection. The fix mirrors the
+  existing `isConnectingRef` guard from `onNodesChange` (which prevents
+  the symmetric stray source-node-select from breaking Backspace
+  semantics) into `onEdgesChange`, AND bumps the `onConnectEnd` cooldown
+  from 100ms → 250ms because under workers=4 CI load the late emission
+  lands past 100ms. Manifested as the long-running phase-6-gate
+  `inspector-transition` flake (issue #161); iter-773 misdiagnosed it as
+  a timing race and added a 15s wait that the actual clobber rendered
+  inert. Always: imperative `setSelection` after `onConnect` MUST be
+  protected by a connection-window guard, or auto-select silently
+  evaporates.
+
 - **2026-05-16 (iter-769, T-13.37 regression)** — `readLayout(storage)` in
   `src/workspace/store.ts` now returns `LayoutSnapshot | null`; null means
   the storage key was absent, i.e. this is a cold load (first session

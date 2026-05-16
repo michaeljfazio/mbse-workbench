@@ -363,7 +363,20 @@ function CanvasInner(): JSX.Element {
       );
 
       const hasSelectChange = changes.some((c) => c.type === 'select');
-      if (hasSelectChange) {
+      // Mirror the onNodesChange guard. After connectXxx() creates an edge
+      // and we call setSelection([newEdgeId]) imperatively, RF v12 sometimes
+      // emits a stray `{type:'select', id:<newEdge>, selected:false}` a few
+      // render ticks later — its internal edge state hasn't caught up to the
+      // externally-driven `selected:true` we set on the next render's edges
+      // prop. Without this guard, that stray change runs through
+      // applyEdgeChanges and computes `merged=[]` (preserved drops the
+      // newEdgeId because it IS in elementEdgeIds; nextElementEdgeSelected is
+      // empty because the change deselects it), which clobbers the auto-
+      // selection. Issue #161's inspector-transition flake is exactly this:
+      // under amplified CI load (workers=4) the stray emission lands inside
+      // the 250ms post-onConnectEnd window and the inspector renders empty.
+      const shouldIgnoreEdgeSelect = isConnectingRef.current;
+      if (hasSelectChange && !shouldIgnoreEdgeSelect) {
         const next = applyEdgeChanges(changes, flowEdges);
         const nextElementEdgeSelected: ElementId[] = next
           .filter((e) => e.selected && elementEdgeIds.has(e.id as ElementId))
@@ -424,14 +437,24 @@ function CanvasInner(): JSX.Element {
   );
 
   const onConnectEnd = useCallback(() => {
-    // React Flow emits a stray `{type:'select', selected:true}` for the
-    // connection-drag source node a few render ticks after onConnect/onConnectEnd.
-    // We keep `isConnecting` true long enough for those late emissions to be
-    // ignored. A short timeout (longer than typical React render flush) is
-    // sufficient; the next drag will set the flag back to true immediately.
+    // React Flow emits two classes of stray select changes a few render
+    // ticks after onConnect/onConnectEnd:
+    //   1. `{type:'select', id:<sourceNode>, selected:true}` for the
+    //      connection-drag source node (caught by onNodesChange's guard).
+    //   2. `{type:'select', id:<newEdge>, selected:false}` for the
+    //      freshly-added edge whose externally-set `selected:true` RF
+    //      hasn't yet propagated into its internal state (caught by
+    //      onEdgesChange's matching guard).
+    // We keep `isConnecting` true long enough for both classes to be
+    // ignored. 100ms was sufficient under the prior CI config (workers=2)
+    // but iter-769's workers=4 bump amplified concurrent activity and
+    // pushed the late edge-select emission past 100ms — producing the
+    // #161 inspector-transition flake. 250ms covers the new envelope
+    // without affecting normal interaction (next drag resets the flag
+    // immediately).
     setTimeout(() => {
       isConnectingRef.current = false;
-    }, 100);
+    }, 250);
   }, []);
 
   const onConnect = useCallback(

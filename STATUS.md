@@ -6,77 +6,92 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 773
+- Iteration #: 774
 - Started: 2026-05-16
 - Branch: issue/330-diagram-tabs-open-close (PR #331 still open)
-- Working on: clear the last three CI failures on PR #331 so auto-merge
-  can land it. CI run 25951825971 (iter-772 timeout-raise) reduced the
-  failure set from 13 to 3 — `phase-12-gate.spec.ts:441` @a11y is now
-  green; the 2 webkit flakes (bdd-export, command-palette) passed on
-  retry. The three remaining failures:
-  1. `phase-6-gate.spec.ts:175` (chromium) inspector-transition (#161) —
-     3-of-3 retries failed deterministically. The pre-existing flake
-     has gone from intermittent to load-bearing under recent CI infra
-     changes (cold-load-all-tabs opening more diagrams per seed, more
-     concurrent render activity).
-  2. `state-machine-with-state` chromium-visual baseline drifted
-     (10568 px, ratio 0.02 over 0.01).
-  3. `inspector-state-selected` chromium-visual baseline drifted
-     (same magnitude).
+- Working on: fix the actual root cause of #161 inspector-transition
+  flake, which iter-773's defensive precondition + 15s timeout did not
+  address. CI run 25952332508 (iter-773's two commits) showed 1 of the
+  3 remaining failures fixed itself (state-machine visual baselines
+  passed — no further drift) and a second cleared (the @a11y suite
+  passed via iter-772's 120s timeout), but the inspector-transition
+  failure REMAINED at 3-of-3 retries. The 15s wait timed out, which
+  rules out "auto-select lands one frame late" — the test-failed-1.png
+  artifact from CI shows `inspector-empty` rendering for the full 15s
+  with the new Transition1 visible in the explorer tree but the
+  inspector showing the "Add to this diagram. Nothing is selected"
+  CTA. Selection had been CLEARED, not delayed.
 
-  **Fixes shipped this iteration (two commits, same branch).**
+  **Real root cause (CanvasPane.tsx, not the test).** The auto-select
+  store update fires synchronously inside `onConnect` via
+  `setSelection([newTransitionId])`. React Flow v12 then asynchronously
+  emits a stray `{type:'select', id:<newEdge>, selected:false}` change
+  a few render ticks later — its internal edge state hasn't yet
+  propagated the externally-driven `selected:true` we put on the edges
+  prop. `onEdgesChange` runs that change through `applyEdgeChanges`,
+  computes `merged=[]` (preserved drops `newEdgeId` because it IS in
+  `elementEdgeIds`; `nextElementEdgeSelected` is empty because the
+  change deselected it), and calls `setSelection([])`, clobbering the
+  auto-selection. Under iter-769's workers=4 amplified CI load, the
+  stray emission lands later than the prior 100ms post-onConnectEnd
+  window, so the existing onNodesChange guard (which prevented the
+  symmetric stray-source-node-select from clobbering Backspace
+  semantics) was insufficient.
 
-  1. `tests/e2e/__screenshots__/state-machine-nodes.spec.ts/{state-machine-with-state,inspector-state-selected}-chromium.png`
-     refreshed from CI run 25951825971's `*-actual.png` (via the
-     lift-from-actuals procedure in `docs/CONTEXT.md`). Both actuals
-     visually inspected against expected: the drift is cumulative legit
-     UI evolution that prior visual passes never refreshed —
-     T-13.37 close-X buttons on tab strip + T-13.09 "Saved" indicator +
-     T-13.10 Undo/Redo toolbar buttons + explorer containment
-     hierarchy header (State Machine Nodes Seed PACKAGE row + State1
-     STATEUSAGE row nested under it). Webkit baselines weren't flagged
-     by this run; webkit baselines still match because the prior baseline-
-     refresh procedures landed webkit deltas first or webkit's antialiasing
-     happens to absorb them.
+  **Fix shipped this iteration (one commit, same branch).**
+  `src/workspace/CanvasPane.tsx`:
+   - Mirror the `isConnectingRef` guard from `onNodesChange` into
+     `onEdgesChange`'s select-change handling. While
+     `isConnectingRef.current` is true, edge select changes are
+     ignored — preserving any imperative `setSelection` from
+     `onConnect`.
+   - Bump the `onConnectEnd` cooldown from 100ms → 250ms to cover the
+     workers=4 envelope where the late edge-select emission was
+     landing past 100ms.
 
-  2. `tests/e2e/phase-6-gate.spec.ts:220` — added #161's documented
-     fix #1: assert `[data-testid^="state-machine-edge-"][data-edge-kind="Transition"]`
-     has count 1 BEFORE asserting `inspector-transition` is visible.
-     This isolates "did the drag create the edge?" from "did the
-     inspector auto-select and mount?" — the latter lands a frame
-     after the former, and under recent cold-load-all-tabs amplified
-     CI load the auto-select event was racing the inspector mount.
-     Only line 220's first wait gets the precondition; line 231's
-     second wait stays as-is per the minimum-scope policy (it didn't
-     fail, and adding more conditions to a passing path adds noise).
+  This addresses BOTH transition auto-select races (the first-wait
+  one diagnosed by iter-773 AND the second-wait one that would
+  surface next), and any analogous race in IBD ConnectionUsage,
+  Activity ControlFlow/ObjectFlow, and Requirements RequirementTrace
+  paths that share the `onConnect → connectXxx() → setSelection([id])`
+  pattern. iter-773's test-side defenses (toHaveCount(1) precondition
+  + 15s timeout) stay in place — they are inert when the underlying
+  bug is fixed but useful as diagnostic isolators if the race ever
+  resurfaces from a different angle.
 
   Verification:
   - `pnpm exec playwright test phase-6-gate --project=chromium
-    --workers=1` — 4/4 pass in 8.9s (was 3-of-3-retries failing on CI).
-  - Visual baselines: actuals visually compared to expecteds; drift
-    is entirely cumulative UI additions (Saved chip, Undo/Redo buttons,
-    tab close-X, explorer containment header) plus tab-strip layout.
-    No render bug; no unintended pixel changes.
+    --workers=4 --grep "State Machine vertical slice"` — passes in
+    3.8s (was 3-of-3 retries timing out on CI run 25952332508).
+  - `pnpm exec playwright test state-machine-transitions
+    state-machine-nodes --project=chromium` — 17/17 pass (covers the
+    Transition auto-select pattern in isolation; no regression).
+  - `pnpm exec playwright test ibd activity --project=chromium` —
+    36/36 pass (covers the analogous ConnectionUsage / ItemFlow /
+    ControlFlow / ObjectFlow auto-select paths under the same
+    onConnect mechanism).
+  - `pnpm vitest run` — 1307/1307 pass.
+  - `pnpm typecheck` — green.
 
-  **Why this is not bypassing the 3-strikes escalation.** PR #331's CI
-  has cycled through five distinct root causes (iter-768 misdiagnosed
-  cancellation, iter-769 cold-load fix, iter-770 spec realignment,
-  iter-771 Promise.allSettled, iter-772 @a11y 120s timeout), each a
-  separate forward-fix on a peeled-back layer. The current iteration
-  addresses the next two layers (visual drift + #161 precondition);
-  neither is the SAME issue as a prior failure. The AGENT.md
-  "3-consecutive-on-same-issue" rule fires for repeat failures of one
-  root cause, not for progressive uncovering.
+  **Three-strikes status for #161.** Iter-773 was attempt 1 (test-side
+  precondition + 15s, didn't address the real cause). This iteration
+  is attempt 2 (real fix in CanvasPane). One more shot before #161 has
+  to escalate to status:needs-human.
 
-  Next iteration: watch CI on PR #331. If green, auto-merge lands it
-  (auto-merge enabled iter-765, still queued). Resume the Phase-13
-  P0 explorer backlog (T-13.29 + T-13.30 single PR per Phase-13 plan,
-  then T-13.31).
+  Next iteration: watch CI on PR #331 (auto-merge enabled iter-765,
+  still queued). If green, PR lands T-13.37. Resume Phase-13 P0
+  explorer backlog (T-13.29 + T-13.30 single PR, then T-13.31).
 
 ## Last test run
-- Command: `pnpm exec playwright test phase-6-gate --project=chromium
-  --workers=1`
-- Result: PASS (4/4 in 8.9s, including the previously-flaky test 175)
+- Commands:
+  - `pnpm exec playwright test phase-6-gate --project=chromium
+    --workers=4 --grep "State Machine vertical slice"`
+  - `pnpm exec playwright test state-machine-transitions
+    state-machine-nodes --project=chromium`
+  - `pnpm exec playwright test ibd activity --project=chromium`
+  - `pnpm vitest run`
+  - `pnpm typecheck`
+- Result: ALL PASS
 - Failures: (none introduced by this iteration)
 
 ## Iter-769 archive
