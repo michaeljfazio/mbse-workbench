@@ -63,27 +63,17 @@ export function LibrariesSection(): JSX.Element | null {
     return out;
   }, [elements, diagrams, libraryRootIds]);
 
-  // Default-expanded: every library root starts expanded so descendants are
-  // immediately visible. User-toggled collapses are tracked here.
-  const [collapsed, setCollapsed] = useState<ReadonlySet<ElementId>>(
+  // Default-collapsed: library roots start collapsed so the tree stays
+  // compact when a standard library (e.g. KerML core, 9+ elements) is
+  // auto-merged into every project. Users expand via the disclosure caret
+  // to browse contents; selection from elsewhere still resolves via the
+  // store, independent of this expansion state.
+  const [expanded, setExpanded] = useState<ReadonlySet<ElementId>>(
     () => new Set(),
   );
 
-  const expanded = useMemo<ReadonlySet<ElementId>>(() => {
-    const all = new Set<ElementId>();
-    const visit = (n: ContainmentElementNode): void => {
-      all.add(n.element.id);
-      for (const c of n.children) {
-        if (c.kind === 'element') visit(c);
-      }
-    };
-    for (const lib of libraries) visit(lib);
-    for (const k of collapsed) all.delete(k);
-    return all;
-  }, [libraries, collapsed]);
-
   const toggleExpanded = useCallback((id: ElementId) => {
-    setCollapsed((prev) => {
+    setExpanded((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);

@@ -153,6 +153,10 @@ describe('<LibrariesSection />', () => {
     act(() => seedLibraries([{ root: kerml, children: [part] }]));
 
     render(<LibrariesSection />);
+    // Library roots start collapsed (T-14.04 follow-up: avoids tree
+    // clutter when KerML core auto-merges). Expand the root to see the
+    // descendant row.
+    fireEvent.click(screen.getByTestId(`libraries-tree-disclosure-${kerml.id}`));
     const descendant = screen.getByTestId(`libraries-tree-element-${part.id}`);
     expect(descendant.querySelector('[data-testid="libraries-lock-badge"]')).not.toBeNull();
   });
@@ -177,17 +181,19 @@ describe('<LibrariesSection />', () => {
 
     render(<LibrariesSection />);
     const rootRow = screen.getByTestId(`libraries-tree-element-${kerml.id}`);
-    expect(rootRow).toHaveAttribute('aria-expanded', 'true');
-    expect(screen.getByTestId(`libraries-tree-element-${part.id}`)).toBeInTheDocument();
-
-    const caret = screen.getByTestId(`libraries-tree-disclosure-${kerml.id}`);
-    fireEvent.click(caret);
+    // Default-collapsed: descendants are not in the tree until the user
+    // expands the root.
     expect(rootRow).toHaveAttribute('aria-expanded', 'false');
     expect(screen.queryByTestId(`libraries-tree-element-${part.id}`)).toBeNull();
 
+    const caret = screen.getByTestId(`libraries-tree-disclosure-${kerml.id}`);
     fireEvent.click(caret);
     expect(rootRow).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByTestId(`libraries-tree-element-${part.id}`)).toBeInTheDocument();
+
+    fireEvent.click(caret);
+    expect(rootRow).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByTestId(`libraries-tree-element-${part.id}`)).toBeNull();
   });
 
   it('clicking a library row selects the element in the workspace store', async () => {
@@ -197,6 +203,7 @@ describe('<LibrariesSection />', () => {
     act(() => seedLibraries([{ root: kerml, children: [part] }]));
 
     render(<LibrariesSection />);
+    fireEvent.click(screen.getByTestId(`libraries-tree-disclosure-${kerml.id}`));
     fireEvent.click(screen.getByTestId(`libraries-tree-element-${part.id}`));
     expect(useWorkspaceStore.getState().selectedElementIds).toEqual([part.id]);
   });

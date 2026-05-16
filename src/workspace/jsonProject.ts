@@ -1,3 +1,4 @@
+import { applyStandardLibrary, stripStandardLibrary } from '@/library';
 import { migrateLegacyProject } from '@/repository/migrate';
 import type { Project } from '@/repository/types';
 
@@ -6,7 +7,12 @@ export type ParseProjectJsonResult =
   | { readonly ok: false; readonly message: string };
 
 export function serializeProjectJson(project: Project): string {
-  return `${JSON.stringify(project, null, 2)}\n`;
+  // Mirror the repository.save() boundary: exported JSON is user content
+  // only. Library content is re-merged on import via applyStandardLibrary,
+  // and including it would bloat the file with deterministically-derivable
+  // bytes.
+  const userOnly = stripStandardLibrary(project);
+  return `${JSON.stringify(userOnly, null, 2)}\n`;
 }
 
 export function parseProjectJson(text: string): ParseProjectJsonResult {
@@ -39,9 +45,11 @@ export function parseProjectJson(text: string): ParseProjectJsonResult {
   if (!Array.isArray(obj.diagrams) || obj.diagrams.length === 0) {
     return { ok: false, message: 'project.diagrams must be a non-empty array' };
   }
-  // Delegate root synthesis + legacy schema migration to the shared codemod.
+  // Delegate root synthesis + legacy schema migration to the shared codemod,
+  // then re-merge the standard library so the imported in-memory project has
+  // the same library shape as a `load()`-ed project.
   try {
-    return { ok: true, project: migrateLegacyProject(obj) };
+    return { ok: true, project: applyStandardLibrary(migrateLegacyProject(obj)) };
   } catch (err) {
     const detail = err instanceof Error ? err.message : 'invalid project';
     return { ok: false, message: detail };

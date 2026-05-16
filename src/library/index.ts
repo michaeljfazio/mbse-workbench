@@ -36,6 +36,53 @@ export function isLibraryElement(
 }
 
 /**
+ * Inverse of `applyStandardLibrary`, scoped to the *standard* (canonical,
+ * vendored) libraries — currently just KerML core. User-defined library
+ * roots in `libraryRootIds` and their subtrees are preserved.
+ *
+ * Used at the persistence boundary (repository.save, JSON export) so
+ * sessionStorage and exported files stay "user content only" with respect
+ * to canonical libraries; canonical library content is re-merged by
+ * `applyStandardLibrary` on load. Idempotent — returns the input
+ * reference-equal when there is nothing to strip.
+ */
+const STANDARD_LIBRARY_ROOT_IDS: ReadonlySet<ElementId> = new Set([
+  KERML_CORE_LIBRARY_ROOT_ID,
+]);
+
+export function stripStandardLibrary(project: Project): Project {
+  const libraryRootIds = project.libraryRootIds;
+  if (!libraryRootIds || libraryRootIds.length === 0) return project;
+  const standardRoots = libraryRootIds.filter((id) =>
+    STANDARD_LIBRARY_ROOT_IDS.has(id),
+  );
+  if (standardRoots.length === 0) return project;
+  const stripRootSet = new Set(standardRoots);
+  const byId = new Map(project.elements.map((e) => [e.id, e]));
+  const remaining = project.elements.filter((e) => {
+    let cursor: ModelElement | undefined = e;
+    const seen = new Set<ElementId>();
+    while (cursor) {
+      if (stripRootSet.has(cursor.id)) return false;
+      if (cursor.ownerId === null) return true;
+      if (seen.has(cursor.id)) return true;
+      seen.add(cursor.id);
+      cursor = byId.get(cursor.ownerId);
+    }
+    return true;
+  });
+  const nextLibraryRootIds = libraryRootIds.filter(
+    (id) => !STANDARD_LIBRARY_ROOT_IDS.has(id),
+  );
+  const next: Project = { ...project, elements: remaining };
+  if (nextLibraryRootIds.length === 0) {
+    const { libraryRootIds: _omit, ...rest } = next;
+    return rest;
+  }
+  return { ...next, libraryRootIds: nextLibraryRootIds };
+}
+
+/**
  * Returns a project with the KerML standard library merged in. Idempotent —
  * if the library root is already in `libraryRootIds` and every library
  * element is already present in `elements`, the input project is returned

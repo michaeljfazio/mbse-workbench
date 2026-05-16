@@ -2932,7 +2932,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       rootId = rootPkg.id;
       elements = [rootPkg, ...importedElements];
     }
-    const project: Project = {
+    const project: Project = applyStandardLibrary({
       id: projectId,
       name: parsed.value.projectName ?? get().project?.name ?? 'Imported Project',
       createdAt: now,
@@ -2943,7 +2943,7 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       diagrams: [newDefaultDiagram(rootId)],
       history: EMPTY_COMMAND_HISTORY,
       conversations: [],
-    };
+    });
     await repository.save(project);
     const registry = createElementRegistry();
     for (const el of project.elements) registry.add(el);

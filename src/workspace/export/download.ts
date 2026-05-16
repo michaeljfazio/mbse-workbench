@@ -1,3 +1,4 @@
+import { stripStandardLibrary } from '@/library';
 import type { Project } from '@/repository/types';
 import { serializeProject } from '@/serializer';
 import { serializeProjectJson } from '@/workspace/jsonProject';
@@ -26,7 +27,9 @@ export interface DownloadProjectSysmlOptions {
 export function downloadProjectSysml({
   project,
 }: DownloadProjectSysmlOptions): void {
-  const text = serializeProject(project);
+  // Mirror the JSON/sessionStorage boundary: emit user content only.
+  // Library subtrees are canonical and re-merged on load/parse.
+  const text = serializeProject(stripStandardLibrary(project));
   const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
   triggerDownload(blob, `${slugifyDiagramName(project.name)}.sysml`);
 }
