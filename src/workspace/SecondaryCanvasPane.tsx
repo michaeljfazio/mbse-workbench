@@ -11,6 +11,8 @@ import {
 } from '@xyflow/react';
 
 import type { ElementId } from '@/model';
+import { isLibraryElement } from '@/library';
+
 import { toFlowEdges, toFlowNodes } from './flowGraph';
 import type { DiagramId } from './diagram';
 import { useWorkspaceStore } from './store';
@@ -46,10 +48,19 @@ function SecondaryCanvasInner({ diagramId }: Props): JSX.Element {
 
   const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
 
+  const libraryRootIds = useWorkspaceStore(
+    (s) => s.project?.libraryRootIds ?? undefined,
+  );
+
+  const canvasElements = useMemo(
+    () => elements.filter((e) => !isLibraryElement(e, libraryRootIds, elements)),
+    [elements, libraryRootIds],
+  );
+
   const flowNodes = useMemo(() => {
     if (!viewpoint || !diagram) return [];
     return toFlowNodes(
-      elements,
+      canvasElements,
       viewpoint,
       diagram,
       selectedSet,
@@ -58,7 +69,7 @@ function SecondaryCanvasInner({ diagramId }: Props): JSX.Element {
       impactHighlightedIds,
     );
   }, [
-    elements,
+    canvasElements,
     viewpoint,
     diagram,
     selectedSet,
@@ -71,12 +82,12 @@ function SecondaryCanvasInner({ diagramId }: Props): JSX.Element {
     if (!viewpoint) return [];
     return toFlowEdges(
       edges,
-      elements,
+      canvasElements,
       viewpoint,
       selectedSet,
       impactHighlightedEdgeIds,
     );
-  }, [edges, elements, viewpoint, selectedSet, impactHighlightedEdgeIds]);
+  }, [edges, canvasElements, viewpoint, selectedSet, impactHighlightedEdgeIds]);
 
   const onNodesChange = useCallback(
     (changes: NodeChange[]) => {

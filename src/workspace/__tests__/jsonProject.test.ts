@@ -8,6 +8,8 @@ import type { ModelElement, PackageElement, PartDefinitionElement } from '@/mode
 import type { Project } from '@/repository/types';
 import { EMPTY_COMMAND_HISTORY } from '@/repository/types';
 
+import { stripStandardLibrary } from '@/library';
+
 import { parseProjectJson, serializeProjectJson } from '../jsonProject';
 
 function makeProject(): Project {
@@ -53,13 +55,16 @@ function makeProject(): Project {
 }
 
 describe('jsonProject', () => {
-  it('round-trips a project losslessly', () => {
+  it('round-trips a project losslessly (user content only; library is merged on parse)', () => {
     const project = makeProject();
     const text = serializeProjectJson(project);
     const parsed = parseProjectJson(text);
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
-    expect(parsed.project).toEqual(project);
+    // parseProjectJson re-merges the standard library so the in-memory
+    // project mirrors a `load()`-ed shape. Strip it before comparison —
+    // the user-content portion of the round-trip is what must be lossless.
+    expect(stripStandardLibrary(parsed.project)).toEqual(project);
   });
 
   it('serializes as pretty-printed JSON ending with a newline', () => {

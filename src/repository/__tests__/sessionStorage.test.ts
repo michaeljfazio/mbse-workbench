@@ -8,6 +8,7 @@ import {
   type ModelElement,
   type ProjectId,
 } from '@/model';
+import { isLibraryElement } from '@/library';
 import {
   createInMemorySessionRepository,
   EMPTY_COMMAND_HISTORY,
@@ -214,12 +215,17 @@ describe('InMemorySessionRepository', () => {
     await repo.save(project);
     const loaded = await repo.load(project.id);
 
+    // T-14.04: load() seeds the KerML standard library. Compare against the
+    // user-authored subset (ownerId chain not under a library root).
+    const userElements = loaded.elements.filter(
+      (e) => !isLibraryElement(e, loaded.libraryRootIds, loaded.elements),
+    );
     // +1 for the synthesized/explicit root Package.
-    expect(loaded.elements).toHaveLength(ELEMENT_KINDS.length + 1);
+    expect(userElements).toHaveLength(ELEMENT_KINDS.length + 1);
     for (const kind of ELEMENT_KINDS) {
-      expect(loaded.elements.some((e) => e.kind === kind)).toBe(true);
+      expect(userElements.some((e) => e.kind === kind)).toBe(true);
     }
-    expect(loaded).toEqual(project);
+    expect({ ...loaded, elements: userElements, libraryRootIds: undefined }).toEqual(project);
   });
 
   it('round-trips every EdgeKind through save/load', async () => {
@@ -320,7 +326,11 @@ describe('InMemorySessionRepository', () => {
 
     const loaded = await repo.load(first.id);
     expect(loaded.name).toBe('renamed');
-    expect(loaded.elements).toEqual([rootPackageElement('renamed')]);
+    // T-14.04: load() seeds the KerML library; filter when asserting user state.
+    const userElements = loaded.elements.filter(
+      (e) => !isLibraryElement(e, loaded.libraryRootIds, loaded.elements),
+    );
+    expect(userElements).toEqual([rootPackageElement('renamed')]);
     expect(loaded.edges).toEqual([]);
     expect(await repo.list()).toHaveLength(1);
   });

@@ -1281,3 +1281,17 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
   the change is correct and load-bearing) over reverting the behavior
   — but verify the *underlying feature* is still covered end-to-end
   before declaring done.
+
+- 2026-05-16 (T-14.04, ADR 0013): **The KerML standard library is
+  merged into every loaded/bootstrapped project.** `project.elements`
+  carries 10 vendored elements rooted at `kerml.core.Base` (a
+  `Package` with `isReadOnly: true`); `project.libraryRootIds`
+  contains its id. Any code that *counts* or *lists user-authored*
+  elements (palette grouping, autoname counters, layout candidates,
+  containment-invariant checks) **must filter library elements** via
+  `isLibraryElement(element, libraryRootIds, elements)` from
+  `@/library`. The containment-root invariant was relaxed from
+  "exactly one ownerId-null element" to "exactly one *project* root
+  plus N *library* roots" (see ADR 0013). Tests that bootstrap and
+  assert on a clean element set should either filter library
+  elements or clear `libraryRootIds` explicitly after bootstrap.

@@ -1,3 +1,5 @@
+import { applyStandardLibrary, stripStandardLibrary } from '@/library';
+
 import { migrateLegacyProject } from './migrate';
 import {
   ProjectNotFoundError,
@@ -65,11 +67,16 @@ export function createInMemorySessionRepository(
     async load(projectId) {
       const project = readProject(projectId);
       if (!project) throw new ProjectNotFoundError(projectId);
-      return project;
+      return applyStandardLibrary(project);
     },
 
     async save(project) {
-      const serialized = JSON.stringify(project);
+      // Persist user content only. Library content is canonical and is
+      // re-merged on load via `applyStandardLibrary`, so saving it would
+      // bloat storage and contaminate JSON exports / round-trips with
+      // bytes that are deterministically derivable.
+      const userOnly = stripStandardLibrary(project);
+      const serialized = JSON.stringify(userOnly);
       try {
         storage.setItem(projectKey(project.id), serialized);
       } catch (err) {

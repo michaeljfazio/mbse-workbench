@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import type { PackageElement } from '@/model';
+import { KERML_CORE_LIBRARY_ROOT_ID } from '@/library';
 import { migrateLegacyProject } from '@/repository/migrate';
 import { createInMemorySessionRepository } from '@/repository';
 
@@ -207,7 +208,12 @@ describe('Phase 14 — library schema hooks (T-14.01)', () => {
     await repo.save(seeded);
     const loaded = await repo.load('p');
 
-    expect(loaded.libraryRootIds).toEqual(['lib-kerml']);
+    // T-14.04: load() now merges the KerML standard library into every
+    // project — the user-set 'lib-kerml' is preserved, KerML is prepended.
+    expect(loaded.libraryRootIds).toEqual([
+      KERML_CORE_LIBRARY_ROOT_ID,
+      'lib-kerml',
+    ]);
     const lib = loaded.elements.find((e) => e.id === 'lib-kerml') as
       | PackageElement
       | undefined;
