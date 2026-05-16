@@ -15,39 +15,52 @@ Score changes require a one-line explanation in the **Score delta log** below (w
 
 | # | Dimension | Score | Score-3 description | Last informed |
 |---|-----------|-------|---------------------|---------------|
-| 1 | Visual fidelity — node shapes | 0 | Every node kind matches SysML/UML convention (use-case ellipses, actor stick figures, action rounded rectangles, state rounded rectangles, initial pseudostate filled disc, final bullseye, decision diamond, fork/join bar, block square corners, etc.). No transparent fills. No clipped labels. | — |
+| 1 | Visual fidelity — node shapes | 2 | Every node kind matches SysML/UML convention (use-case ellipses, actor stick figures, action rounded rectangles, state rounded rectangles, initial pseudostate filled disc, final bullseye, decision diamond, fork/join bar, block square corners, etc.). No transparent fills. No clipped labels. | walk-1 |
 | 2 | Visual fidelity — edges & routing | 0 | Edge endpoints carry correct arrowheads/decorations per relationship type. Routing styles (orthogonal, straight, spline) selectable per diagram and per edge. Composition diamonds filled; aggregation diamonds open; generalization triangles. Item-flow arrows have flow direction notation. | — |
 | 3 | Visual fidelity — ports | 0 | Ports render as small squares on block edges, positioned at user-set locations or sensible defaults. Conjugate ports indicated. Direction (in/out/inout) visible. | — |
-| 4 | Visual fidelity — colors & typography | 0 | Color tokens consistent across diagrams. Text readable in light and dark theme. No accidental transparency. Selection state and hover state distinct. | — |
-| 5 | SysML conformance — BDD | 0 | Composition, aggregation, generalization, association, dependency all supported with correct notation and semantics. Cardinality on associations. Block compartments (properties, operations, ports). | — |
-| 6 | SysML conformance — IBD | 0 | Parts as nested blocks within an enclosing block context. Ports on parts, connected via `ConnectionUsage`. Item flows along connections. Proxy ports vs full ports distinguished where applicable. | — |
+| 4 | Visual fidelity — colors & typography | 2 | Color tokens consistent across diagrams. Text readable in light and dark theme. No accidental transparency. Selection state and hover state distinct. | walk-1 |
+| 5 | SysML conformance — BDD | 2 | Composition, aggregation, generalization, association, dependency all supported with correct notation and semantics. Cardinality on associations. Block compartments (properties, operations, ports). | walk-1 |
+| 6 | SysML conformance — IBD | 1 | Parts as nested blocks within an enclosing block context. Ports on parts, connected via `ConnectionUsage`. Item flows along connections. Proxy ports vs full ports distinguished where applicable. | walk-1 |
 | 7 | SysML conformance — Requirements | 0 | Requirement nodes with ID, text, type. `derive`, `satisfy`, `verify`, `refine`, `containment` all supported. Requirement-to-element linking from any other viewpoint. | — |
-| 8 | SysML conformance — Activity | 0 | Action nodes, control flow, object flow with pins, fork/join, decision/merge with guards, initial/final nodes, send/receive signal actions, swimlanes (partitions). | — |
-| 9 | SysML conformance — State machine | 0 | States with entry/exit/do, internal transitions, transitions with triggers/guards/effects, initial/final/history pseudostates, junction/choice pseudostates, composite states. | — |
+| 8 | SysML conformance — Activity | 1 | Action nodes, control flow, object flow with pins, fork/join, decision/merge with guards, initial/final nodes, send/receive signal actions, swimlanes (partitions). | walk-1 |
+| 9 | SysML conformance — State machine | 1 | States with entry/exit/do, internal transitions, transitions with triggers/guards/effects, initial/final/history pseudostates, junction/choice pseudostates, composite states. | walk-1 |
 | 10 | SysML conformance — Use case | 0 | Use case ellipses, actor stick figures, association, `include`, `extend`, generalization between use cases, generalization between actors, system boundary rectangle with system name. | — |
-| 11 | SysML conformance — Parametric | 0 | Constraint blocks with parameters, parameter bindings, value properties bound to parameters. | — |
+| 11 | SysML conformance — Parametric | 1 | Constraint blocks with parameters, parameter bindings, value properties bound to parameters. | walk-1 |
 | 12 | SysML conformance — Package | 0 | Package containment, namespace organisation, `import` directive visible, package merge if supported. | — |
 | 13 | Cross-diagram coherence | 0 | Same element across viewpoints stays in sync. Cross-diagram navigation (right-click → show in X) works both directions. Renaming in one place reflects everywhere. Element registry integrity holds. | — |
 | 14 | Round-trip integrity | 0 | Project → JSON → project is lossless. Project → SysML v2 text → project is structurally identical modulo IDs. The FBW model survives both. | — |
-| 15 | Palette & creation affordances | 0 | Every element kind creatable from a palette. All palette items behave the same (all draggable to canvas — no click-only mix). Palette grouped by viewpoint applicability. Drag preview during drag. | — |
-| 16 | Direct-manipulation affordances | 0 | Element resize handles on every shape kind. Element position visible during drag. Snap-to-grid optional. Alignment guides on drag. Rubber-band multi-select. Keyboard nudge with arrow keys. | — |
+| 15 | Palette & creation affordances | 1 | Every element kind creatable from a palette. All palette items behave the same (all draggable to canvas — no click-only mix). Palette grouped by viewpoint applicability. Drag preview during drag. | walk-1 |
+| 16 | Direct-manipulation affordances | 1 | Element resize handles on every shape kind. Element position visible during drag. Snap-to-grid optional. Alignment guides on drag. Rubber-band multi-select. Keyboard nudge with arrow keys. | walk-1 |
 | 17 | Edge editing affordances | 0 | Reconnect either endpoint by drag. Add/remove waypoints. Change routing style per edge. Label drag/placement. Edge style selection (line type, color where semantically appropriate). | — |
-| 18 | Project tree / explorer | 0 | Containment hierarchy reflects the metamodel. Representations nest under their owning element. Bidirectional selection sync with canvas. Context menu per node. Filter bar. Drag-drop move semantics for any container. | — |
-| 19 | Inspector | 0 | Reflects current selection in the canvas. All editable properties present. Updates push to the command bus. Inline error feedback on invalid input. | — |
-| 20 | Search & navigation | 0 | Cmd-K palette searches across all elements by name, ID, type. Recent-elements list. Jump-to-element from any context. | — |
+| 18 | Project tree / explorer | 2 | Containment hierarchy reflects the metamodel. Representations nest under their owning element. Bidirectional selection sync with canvas. Context menu per node. Filter bar. Drag-drop move semantics for any container. | walk-1 |
+| 19 | Inspector | 2 | Reflects current selection in the canvas. All editable properties present. Updates push to the command bus. Inline error feedback on invalid input. | walk-1 |
+| 20 | Search & navigation | 2 | Cmd-K palette searches across all elements by name, ID, type. Recent-elements list. Jump-to-element from any context. | walk-1 |
 | 21 | Undo / redo | 0 | Every command undoable. Redo restores exactly. Visible undo stack depth. Keyboard shortcuts. | — |
 | 22 | Import / export | 0 | JSON import/export round-trips. SysML v2 text export pretty-printed. Import of a hand-authored SysML file works. PNG/SVG export per diagram. | — |
 | 23 | LLM integration | 0 | Chat sidebar opens, streams, retains history. API key entry flow obvious. Tool dispatch with diff preview works for create/modify tools. No hallucinated SysML conventions in LLM output (validate against `docs/architect/sysml-conventions.md`). | — |
-| 24 | Empty states & error UX | 0 | Every empty state is intentional. Error boundaries are explanatory. Loading states present where async happens. No raw stack traces. | — |
+| 24 | Empty states & error UX | 2 | Every empty state is intentional. Error boundaries are explanatory. Loading states present where async happens. No raw stack traces. | walk-1 |
 | 25 | Accessibility | 0 | Zero `serious`/`critical` axe violations on every screen. Keyboard-only operation possible for core flows. Focus visible. Screen-reader labels on icon buttons. | — |
 | 26 | Performance | 0 | A 100-block diagram pans/zooms at 60fps. Initial load < 3s on Pages. Auto-layout converges within 1s on representative diagrams. | — |
 | 27 | Persistence | 0 | Reload recovers session state. Multi-project switching preserves state. No data loss on browser refresh. | — |
-| 28 | Help / discoverability | 0 | First-run guidance. Keyboard shortcuts discoverable. Empty-state action affordances. "Load example" entry visible (see A.11). | — |
+| 28 | Help / discoverability | 1 | First-run guidance. Keyboard shortcuts discoverable. Empty-state action affordances. "Load example" entry visible (see A.11). | walk-1 |
 
 ## Score delta log
 
-_(Empty. Each score change adds one row: date, walk-N, dimension #, old → new, one-line rationale.)_
+Each score change records the date, walk, dimension #, old → new score, and a one-line rationale tied to evidence.
 
 | Date | Walk | Dimension # | Old | New | Rationale |
 |------|------|-------------|-----|-----|-----------|
-| — | — | — | — | — | — |
+| 2026-05-16 | walk-1 | 1 | 0 | 2 | BDD block well-formed (`«block»` stereotype + PARTS/PORTS/VALUES/CONSTRAINTS compartments). White fill, no transparency. Other node kinds (use case, action, state, etc.) not yet exercised. |
+| 2026-05-16 | walk-1 | 4 | 0 | 2 | `getComputedStyle(node).backgroundColor === 'rgb(255,255,255)'` — T-13.16 card-token fix holding. Light theme readable; dark theme untested. No accidental transparency observed. |
+| 2026-05-16 | walk-1 | 5 | 0 | 2 | PartDefinition shows correct SysML v1.x-style compartments. Stereotype `«block»` present. Edges not yet created — score withheld at 2 pending composition/generalization/association exercise. |
+| 2026-05-16 | walk-1 | 6 | 0 | 1 | IBD only reachable via inspector "Open Internal Diagram" (#371), not via "Create representation…" submenu. Empty IBD has no toolbar element-creation button — unclear how to add parts. Discoverability/feature gap blocks normal flow. |
+| 2026-05-16 | walk-1 | 8 | 0 | 1 | No UI entry point for Activity diagram (#368). Cannot model any Activity. |
+| 2026-05-16 | walk-1 | 9 | 0 | 1 | No UI entry point for State Machine diagram (#369). Cannot model any State Machine. |
+| 2026-05-16 | walk-1 | 11 | 0 | 1 | No UI entry point for Parametric diagram (#370). Cannot model any Parametric. |
+| 2026-05-16 | walk-1 | 15 | 0 | 1 | Four UI surfaces create a Block (#376); palette omits 5+ kinds until first instance created (#372); Usage categories shown without `+` (#373); label naming inconsistent (#377). Major rubric-dim-15 deficiency. |
+| 2026-05-16 | walk-1 | 16 | 0 | 1 | No resize handles on Block nodes (#374); no coordinate display during drag (#375). Both are direct operator-supplied seeds, both confirmed. |
+| 2026-05-16 | walk-1 | 18 | 0 | 2 | Project tree shows containment (Untitled Project package → New Part Definition → New Part Definition IBD nesting). Per-row `⋯` context menu with Rename / Create child / Create representation. Bidirectional sync and drag-drop move not yet exercised. |
+| 2026-05-16 | walk-1 | 19 | 0 | 2 | Inspector reflects PartDefinition selection: Name, Description, Ports section with `+ Add port`, Open Internal Diagram, Linked requirements, Owner UUID. Inline editing depth not exercised. |
+| 2026-05-16 | walk-1 | 20 | 0 | 2 | Cmd-K opens command palette with Undo/Redo/Save/Delete/Open chat plus search input. Element search depth (search-by-name-ID-type, recent list, jump-to) not yet exercised. |
+| 2026-05-16 | walk-1 | 24 | 0 | 2 | Empty state intentional: four CTA cards (New Block, New Requirement, Import JSON, Open Chat) plus keyboard shortcuts table. Error boundaries not exercised this walk. |
+| 2026-05-16 | walk-1 | 28 | 0 | 1 | Keyboard shortcuts visible in empty-state, but four viewpoints (Activity, State Machine, Parametric, IBD-via-submenu) are non-discoverable from the project tree's representation menu. No first-run guidance. No "Load example" entry (A.11 wires it later). |
