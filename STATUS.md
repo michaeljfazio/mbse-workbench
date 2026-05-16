@@ -1,65 +1,60 @@
 # STATUS
 
 ## Current phase
-phase:14 — Standard library import (RELEASED + smoke-verified) — FINAL PHASE
+phase:15 — Architect-driven UX & feature hardening
 
-All thirteen phases (Phase 0 through Phase 14) closed. `v1.0.0` released
-2026-05-14; `vphase-14` released 2026-05-16 with KerML core standard
-library. Pages live at https://michaeljfazio.github.io/mbse-workbench/.
-
-The AGENT.md halting conditions are satisfied:
-- All phase epics closed (phases 0..14 inclusive).
-- All `type:feature` and `type:bug` issues closed (none `status:needs-human`).
-- `v1.0.0` tag exists with green release workflow and live Pages deploy.
-- Final smoke test passing (iter-791, against the live URL — 18 steps,
-  0 console errors, 17 screenshots uploaded as `vphase-14` release assets).
+The endeavour resumes. v1.0.0 / vphase-14 are the past; Phase 15 reopens
+the workbench against an explicit production-quality rubric (28 dimensions
+in `docs/architect/quality-rubric.md`) and a worked example deliverable
+(`examples/flight-control-system/`). The agent now operates a two-hat
+architect/engineer discipline: architect walks file issues via the live
+deployed app; engineer batches close themed groups of issues via PRs.
+The constitution is Section A of AGENT.md (verbatim from the kickoff
+prompt at `docs/superpowers/specs/2026-05-16-phase-15-architect-kickoff.md`).
 
 ## Current iteration
-- Iteration #: 792
+- Iteration #: 793
 - Started: 2026-05-16
-- Branch: `chore/iter-792-complete`
-- Working on: Declaring **COMPLETE** per AGENT.md.
-
-## Iter-792 narrative
-- **Halting check.** With PR #361 merged to main at 6589520, #359 closed,
-  zero open issues remain. `git tag --list` confirms `v1.0.0`, `vphase-0`
-  through `vphase-14`. Pages reachable HTTP 200. Smoke (iter-791) passed.
-- **Scope decision.** AGENT.md defines phases 0..14 inclusive — Phase 14
-  was the last defined phase. The deferred half of Phase 14's epic goal
-  (SysML core library layered on KerML) is a candidate Phase 15 if
-  scoped, but extending the endeavour beyond AGENT.md's defined scope
-  would be unilateral. Per AGENT.md's literal halting path, iter-792
-  declares COMPLETE.
-- **Forward-readiness preserved.** The Phase-14 infrastructure
-  (`LibraryIndex`, projected-slice persistence, command-bus library
-  guard, explorer `LibrariesSection`) is general-purpose and ready to
-  accept additional library roots if a future operator scopes Phase 15.
-  Reserved hooks (`PackageElement.isReadOnly`, `Project.libraryRootIds`)
-  remain in the metamodel.
+- Branch: `phase-15/bootstrap-architect-kickoff`
+- Working on: #364 — [phase-15] Bootstrap Phase 15 constitution, knowledge tree, and labels
 
 ## Last test run
-- Command: `node scripts/smoke-vphase-14.mjs` (iter-791, against live Pages URL)
-- Result: PASS (18 steps, 0 console errors, 17 screenshots)
-- Pre-COMPLETE main: PR #361 squashed to `6589520`; CI green
-- Release workflow on `vphase-14` (run 25961363730): PASS (all 3 jobs)
-- Pages reachability: HTTP 200
+- Command: `pnpm run check` (last green run on `main` was iter-791's release)
+- Result: PASS (iter-791, against vphase-14 commit `fac60c7`)
+- Phase-13 gate spec and Phase-14 library round-trip spec both pass on `main` head.
+- The bootstrap PR (this iteration) touches AGENT.md, STATUS.md, JOURNAL.md,
+  and the new `docs/architect/` tree only — no `src/` changes — so CI is
+  expected to remain green; result will be confirmed against PR CI.
 
 ## Known issues / blockers
 - (none)
 
 ## Decisions log
+
 The full decisions log is preserved across iter-791's commit history,
-ADRs 0001–0013 under `docs/adr/`, and `docs/CONTEXT.md`. The single
-iter-792 decision:
+ADRs 0001–0013 under `docs/adr/`, and `docs/CONTEXT.md`. Iter-792 +
+iter-793 decisions:
 
 - 2026-05-16 (iter-792): Endeavour declared **COMPLETE** per AGENT.md
-  literal-scope path. AGENT.md defines phases 0..14 inclusive; all phase
-  epics closed; all halting conditions hold. SysML core library layered
-  on KerML (a candidate Phase 15) is **not** scoped here — extending the
-  endeavour beyond AGENT.md would be unilateral scope expansion. The
-  Phase-14 infrastructure is general-purpose and Phase-15-ready.
+  literal-scope path. AGENT.md defined phases 0..14 inclusive; all phase
+  epics closed; all halting conditions held. SysML core library layered
+  on KerML (a candidate Phase 15) was **not** scoped at that point —
+  extending the endeavour beyond AGENT.md would have been unilateral
+  scope expansion. The Phase-14 infrastructure remained Phase-15-ready.
+- 2026-05-16 (iter-793): Phase 15 **opened by operator** via kickoff
+  prompt at `docs/superpowers/specs/2026-05-16-phase-15-architect-kickoff.md`.
+  Section A of that prompt appended verbatim to AGENT.md between the
+  Phase 14 section and `# Ralph loop protocol`. New label taxonomy
+  (`phase:15`, `area:*`) created. `docs/architect/` knowledge tree
+  scaffolded with the rubric (28 dimensions, all scores=0). The iter-792
+  COMPLETE state is intentionally replaced — the kickoff prompt explicitly
+  sanctions this transition (kickoff A.15: "Treating COMPLETE as
+  immutable" is listed as an anti-pattern for Phase 15).
 
 ## Next action
-None. The endeavour is complete.
 
-COMPLETE
+After this bootstrap PR (#364) merges and the post-merge JOURNAL entry
+fast-follows, iter-794 begins. Per A.17 step 8, iter-794 plans and
+executes **Walk 1 — broad sweep: every viewpoint, empty-project
+baseline**. The walk plan is written to `docs/architect/walks/walk-1.md`
+before any browser is opened.
