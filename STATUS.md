@@ -1,85 +1,86 @@
 # STATUS
 
 ## Current phase
-phase:14 — Standard library import (RELEASED)
+phase:14 — Standard library import (RELEASED + smoke-verified)
 
 Phase 14 epic closed at iter-790. All seven children (T-14.01..T-14.07)
 merged to main; CI green on `fac60c7`; tag `vphase-14` pushed; release
-workflow green (build + deploy + github-release all success); Pages live
-at https://michaeljfazio.github.io/mbse-workbench/. Release issue #359
-tracks the deploy + post-release smoke.
+workflow green; Pages live at
+https://michaeljfazio.github.io/mbse-workbench/. Release issue #359
+closed by iter-791 with the post-deploy Playwright smoke evidence.
 
 The next phase is **not** scoped in AGENT.md. Phase 14 was the last
-defined phase. Post-release work for iter-791+:
-1. Post-deploy Playwright smoke against the live Pages URL across every
-   viewpoint + the new Libraries section; save under
-   `artifacts/release-vphase-14/`; comment on #359.
-2. If no further phases are scoped, write `COMPLETE` to STATUS.md and
-   append a `complete` JOURNAL entry per AGENT.md halting conditions.
-3. If a Phase 15 is scoped (SysML core library was deferred from Phase
-   14's epic goal), open the epic and decompose.
+defined phase. Post-release work for iter-792+:
+1. Decide whether to scope **Phase 15** (SysML core library layered on
+   KerML — the deferred half of Phase 14's epic goal) and open the epic,
+   OR declare the endeavour **COMPLETE** per AGENT.md halting conditions
+   (`v1.0.0` tag exists, all phase epics closed, all `type:feature` /
+   `type:bug` issues closed excluding `status:needs-human`).
 
 ## Current iteration
-- Iteration #: 790
+- Iteration #: 791
 - Started: 2026-05-16
-- Branch: `chore/iter-790-phase-14-release`
-- Working on: Phase 14 release shipped — epic #342 closed, release issue
-  #359 opened, tag `vphase-14` pushed and deployed. Bookkeeping PR
-  (this commit: STATUS.md iter-790 narrative + JOURNAL.md release entry).
+- Branch: `chore/iter-791-vphase-14-smoke`
+- Working on: post-deploy Playwright smoke against the live Pages URL —
+  deferred from iter-790, closes #359.
 
-## Iter-790 release narrative (Phase 14)
-- **Pre-release verification.** All seven Phase 14 children merged to
-  main. CI on `fac60c7` (run 25961143276) green: 630 passed, 8.6m.
-  The latest commit (#358) was the stale-chromium-baseline rebaseline
-  for `state-machine-with-pseudostates` — a layout shift introduced by
-  T-14.03 + T-14.04's LibrariesSection that surfaced intermittently
-  (0.02 vs 0.01 maxDiffPixelRatio threshold) on the T-14.05 and T-14.06
-  post-merge main runs but not on the PR runs that auto-merged them.
-- **Tag.** `vphase-14` pushed on `fac60c7` with annotated message
-  citing closing #342 + tracking #359.
-- **Epic close.** #342 closed with summary comment linking to the
-  release issue and CI artifact.
-- **Release workflow.** Run 25961363730 — all three jobs success
-  (build, deploy, github-release). Release URL:
-  https://github.com/michaeljfazio/mbse-workbench/releases/tag/vphase-14.
-  Pages URL HTTP 200: https://michaeljfazio.github.io/mbse-workbench/.
-- **Journal entry.** Appended to `JOURNAL.md` with the Phase 14
-  narrative: ten iterations (iter-781..790), library-as-projected-slice
-  decision (iter-785), visual-baseline cascade lesson (iter-786 + #358),
-  KerML-only scope deferral of SysML core.
-- **Deferred to iter-791.** Post-deploy Playwright smoke against the
-  live Pages URL. Past phase releases (e.g. vphase-13) did not have a
-  smoke artifact committed either; this is a recurring outstanding
-  item across phase releases. Iter-791 should either land the smoke
-  pattern as a reusable script or document why it's been skipped.
-
-## Phase 14 plan-of-record (epic #342, CLOSED iter-790)
-- [x] **T-14.01 (#343 → PR #344, 2cfc23f)** — Foundation schema hooks
-- [x] **T-14.02 (#345 → PR #346, 8b3de56)** — Command-bus seam
-- [x] **T-14.03 (#347 → PR #348, 0f9890d)** — Explorer "Libraries" section
-- [x] **T-14.04 (#349 → PR #350, be2a4e8)** — Vendor KerML core +
-      merge into every project
-- [x] **T-14.05 (#351 → PR #352, 08e2285)** — SysMLv2 text `import Pkg::*;`
-      directive: parser + serializer + standard-library round-trip
-- [x] **T-14.06 (#353 → PR #354, 53e3477)** — `LibraryIndex` generalizes
-      namespace resolution to user-defined library roots and nested
-      Package qualnames
-- [x] **T-14.07 (#355 → PR #356, 2efda0b)** — Phase 14 gate spec:
-      cold-start UI walkthrough + import-directive round-trip
-- [x] **Post-merge cleanup (#357 → PR #358, fac60c7)** — Stale chromium
-      visual baseline rebaselined to fix intermittent main reds
+## Iter-791 smoke narrative
+- **Live Pages URL verified.** HTTP 200 at
+  https://michaeljfazio.github.io/mbse-workbench/, last-modified
+  Sat, 16 May 2026 12:00:17 GMT — corresponds to the vphase-14 deploy.
+- **Smoke script committed.** `scripts/smoke-vphase-14.mjs` — a
+  superset of `smoke-vphase-13.mjs` that adds the two Phase-14-specific
+  assertions before the carry-over viewpoint walkthrough:
+  - Libraries section visible (collapsed) with KerML root row + lock badge.
+  - Expanding the KerML root surfaces ≥2 lock-badged rows (actual: 10
+    rows = Base + 9 children, 10 lock badges).
+- **Smoke result.** 18 steps, zero console errors, 17 PNG screenshots
+  saved locally under `artifacts/release-vphase-14/` (gitignored) and
+  uploaded to the `vphase-14` GitHub Release as assets — the same
+  pattern vphase-13 used. Headless Chromium against the live URL,
+  1920×900 viewport.
+- **Closure on #359.** Smoke summary comment with the gate evidence
+  + release-asset links posted; #359 closed by this PR. Iter-791
+  chose option (a) from the iter-790 STATUS deferral (per-phase
+  smoke script in `scripts/` + GH Release asset upload) rather than
+  option (b) (document as deliberate skip in `docs/CONTEXT.md`).
 
 ## Last test run
-- Command: CI on `fac60c7` (run 25961143276)
-- Result: PASS (630 passed, 8.6m)
+- Command: `node scripts/smoke-vphase-14.mjs` (against live Pages URL)
+- Result: PASS (18 steps, 0 console errors, 17 screenshots)
+- Pre-iter-791 CI on `main` (`fac60c7`): PASS (run 25961143276, 630
+  passed, 8.6m)
+- Bookkeeping CI on `main` (`3925aa2`, PR #360): PASS (run 25961438552)
 - Release workflow on `vphase-14` (run 25961363730): PASS (all 3 jobs)
-- Pages reachability: HTTP 200 at
-  https://michaeljfazio.github.io/mbse-workbench/
+- Pages reachability: HTTP 200
 
 ## Known issues / blockers
 - (none)
 
 ## Decisions log
+- 2026-05-16 (iter-791): Post-deploy smoke ships as a **per-phase
+  script** (`scripts/smoke-vphase-N.mjs`), not a generalised
+  `scripts/deploy-smoke.sh`. Rationale: each release adds new feature
+  surfaces that need bespoke assertions (Phase 13 added the
+  containment tree + Cmd-K palette; Phase 14 added the Libraries
+  section). A single generalised script would either be lowest-common-
+  denominator (cold-start + viewpoints only — missing the new
+  surface that's the whole point of the release) or grow conditional
+  per-phase branching anyway. Per-phase scripts are short (~180
+  lines, mostly carry-over from the prior phase) and read as a
+  changelog of UI surface.
+- 2026-05-16 (iter-791): Smoke screenshots are **uploaded as GitHub
+  Release assets**, not committed to the repo. The `.gitignore` rule
+  `!artifacts/release-*` is dead code: the parent `artifacts` is
+  ignored without a trailing slash, and Git cannot re-include
+  contents of an excluded directory — so the un-ignore never
+  takes effect. Past vphase-13 release also uploaded to GH Release
+  assets (`gh release upload vphase-13 artifacts/release-vphase-13/*.png`)
+  and that's the right durable home: the screenshots travel with the
+  release artifact + are discoverable from the release page, and the
+  repo stays free of binary churn. The `.gitignore` line could be
+  removed but is left as-is (load-bearing zero) to avoid an
+  unrelated diff in this PR.
 - 2026-05-16 (iter-790): Phase 14 ships **KerML core only**. The epic
   goal mentioned "KerML + SysML core" but the plan-of-record locked at
   iter-781 explicitly only included KerML core via T-14.04's "minimal
@@ -95,6 +96,7 @@ defined phase. Post-release work for iter-791+:
   reusable script (`scripts/deploy-smoke.sh` invoking Playwright
   against `https://michaeljfazio.github.io/mbse-workbench/`) or
   documenting as a deliberate skip in `docs/CONTEXT.md`.
+  *Resolved by iter-791 — chose per-phase script.*
 - 2026-05-16 (iter-789): Phase 14 gate is an **e2e-only** spec, not a
   unit + e2e pair. Rationale: the gate's purpose is to lock down the
   user-facing UI behaviour (libraries section read-only + import
@@ -194,17 +196,15 @@ defined phase. Post-release work for iter-791+:
   only surface via `tsc -p tsconfig.app.json` or `tsc -b`.
 
 ## Next action
-1. **Iter-791** lands the post-deploy Playwright smoke against the live
-   Pages URL (`https://michaeljfazio.github.io/mbse-workbench/`).
-   Decide between:
-   - (a) Writing a reusable `scripts/deploy-smoke.sh` that runs
-     Playwright against the live URL with screenshots saved under
-     `artifacts/release-vphase-<N>/`, OR
-   - (b) Documenting the smoke as a deliberate skip in
-     `docs/CONTEXT.md` (the live Pages URL is built from the same
-     CI-tested commit, so the deploy itself is the smoke).
-2. **Iter-792+**: decide whether to scope Phase 15 (SysML core library
-   layered on KerML) or declare the endeavour COMPLETE per AGENT.md
-   halting conditions (`v1.0.0` already exists, all phase epics
-   closed, all `type:feature` / `type:bug` issues closed excluding
-   `status:needs-human`).
+1. **Iter-792**: with #359 closed and the smoke pattern committed, the
+   immediate AGENT.md halting check is satisfied: all phase epics
+   closed, no `type:feature`/`type:bug` issues open, `v1.0.0` tag
+   exists with green release + live Pages. Iter-792 either:
+   - (a) Declares **COMPLETE** — writes `COMPLETE` as the final line
+     of STATUS.md, appends a `complete` JOURNAL entry, exits.
+   - (b) Opens a **Phase 15** epic for SysML core library layered on
+     KerML (the deferred half of Phase 14's epic goal) and proceeds
+     with decomposition.
+   The choice is a scope decision — AGENT.md defines phases 0..14
+   inclusive, so (a) is the literal-AGENT.md path. (b) extends the
+   endeavour beyond the prompt's defined scope.
