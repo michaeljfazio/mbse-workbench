@@ -785,3 +785,20 @@ Phase 13 ships zero library content. Phase 13's design accommodates Phase 14 via
 - Release tag: https://github.com/michaeljfazio/mbse-workbench/releases/tag/vphase-13
 
 ---
+
+## Iteration 790 — 2026-05-16 — Phase 14 release: KerML core standard library shipped
+
+**Event:** release
+
+**Phase:** phase:14 — Standard library import
+
+**Narrative:** Phase 14 tagged and deployed. Ten iterations of work (iter-781..790) turned ADR 0011's reserved hooks into a working standard-library slice. The shape that emerged: schema fields first (T-14.01 — `Package.isReadOnly` and `Project.libraryRootIds`, no enforcement), then the command-bus guard (T-14.02 — pre-apply `LibraryViolationError`, surfaced via the existing `ImportErrorBanner` idiom because no toast primitive existed), then the explorer surface (T-14.03 — a separate `LibrariesSection` component sibling-rendered under the user root, default-collapsed so library content is reveal-on-click rather than always-occupying tree pane), then the actual library content (T-14.04 — KerML core vendored as a TypeScript module under `src/library/kerml/`, merged into every project at `repository.load()`), then SysMLv2 text round-trip for `import Pkg::*;` directives (T-14.05 — tokenizer + 3-token lookahead parser disambiguation + serializer + static qualname tables), then `LibraryIndex` (T-14.06 — runtime interface that generalises namespace resolution to user-defined library roots and nested Package qualnames, replacing T-14.05's static tables), and finally the gate spec (T-14.07 — two Playwright tests covering the library-tree-read-only walkthrough and the import-directive UI round-trip). The load-bearing decision was treating library content as a **projected slice** rather than persisted user content: in-memory the project carries library elements (so the explorer and serializer see them), but sessionStorage and every exported file go through `stripStandardLibrary` and carry "user content only". That decision (iter-785, after CI surfaced it as a regression in 33 functional tests + 54 visual baselines) is what made the canonical-library question tractable: there's exactly one source of library truth (`src/library/kerml/core.ts`), every project gets it on load, and nothing leaks into persistence. The visual-baseline cascade was the other recurring theme — iter-786 lifted 55 baselines from a CI artifact after T-14.04 reshaped the tree pane, then iter-790's predecessor (#358 / `fac60c7`) lifted one more that surfaced only on the second post-merge main run. Two reds on consecutive main commits because a 0.02 maxDiffPixelRatio sat just above the 0.01 threshold and only failed intermittently. Lesson recorded in `docs/CONTEXT.md`: after layout-affecting changes, verify *all* visual baselines, not just those that surface in the first failed CI run. Phase 14 ships **KerML core only**; the epic goal mentioned "KerML + SysML" but the plan-of-record explicitly deferred SysML core. That's a candidate Phase 15 if scoped. Tag `vphase-14` pushed at `fac60c7`; release workflow green (build + deploy + github-release all success); Pages live at https://michaeljfazio.github.io/mbse-workbench/.
+
+**Links:**
+- Final Phase-14 PR (T-14.07 gate): https://github.com/michaeljfazio/mbse-workbench/pull/356
+- Phase-14 epic: https://github.com/michaeljfazio/mbse-workbench/issues/342
+- Release issue: https://github.com/michaeljfazio/mbse-workbench/issues/359
+- Release tag: https://github.com/michaeljfazio/mbse-workbench/releases/tag/vphase-14
+- Pages deploy: https://michaeljfazio.github.io/mbse-workbench/
+
+---
