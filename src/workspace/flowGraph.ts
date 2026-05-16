@@ -39,6 +39,21 @@ export function toFlowNodes(
   const partUsageRects: IbdRect[] = [];
   const elementNodes = elements
     .filter((el) => viewpoint.acceptedElementKinds.includes(el.kind))
+    // Some viewpoints list a "reserved for future" element kind in
+    // `acceptedElementKinds` whose `nodeTypeFor` still throws — e.g. the
+    // Activity viewpoint accepts `ActionDefinition` for an eventual
+    // "called activity" frame (ADR 0005) but its `nodeTypeFor` rejects
+    // it today, and the same for State Machine's `StateDefinition`
+    // (ADR 0006). Skip those silently so the canvas doesn't crash when
+    // such an element exists in the model.
+    .filter((el) => {
+      try {
+        viewpoint.nodeTypeFor(el);
+        return true;
+      } catch {
+        return false;
+      }
+    })
     .map((el) => {
       const pos = diagram.positions[el.id] ?? { x: 0, y: 0 };
       let data: Record<string, unknown>;

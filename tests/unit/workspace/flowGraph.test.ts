@@ -13,11 +13,13 @@ import {
   type ValuePropertyElement,
 } from '@/model';
 import {
+  activityViewpoint,
   bddViewpoint,
   ibdViewpoint,
   IBD_ENCLOSING_FRAME_HEADER_HEIGHT,
   IBD_ENCLOSING_FRAME_NODE_TYPE,
   IBD_ENCLOSING_FRAME_PADDING,
+  stateMachineViewpoint,
 } from '@/viewpoints';
 import type { Diagram, DiagramId } from '@/workspace/diagram';
 import { toFlowNodes, type RegistryLookup } from '@/workspace/flowGraph';
@@ -73,6 +75,94 @@ function ibdDiagram(
     context,
   };
 }
+
+describe('toFlowNodes — defensive skip of unrenderable accepted kinds (T-13.44)', () => {
+  // Activity / State Machine viewpoints list a "reserved for future" element
+  // kind in `acceptedElementKinds` whose `nodeTypeFor` still throws today.
+  // Verify those elements are silently skipped rather than crashing the
+  // canvas. Regression shield for the bug surfaced by the Phase-13 gate
+  // item #1 cold-start walkthrough (PR closing T-13.44).
+
+  it('skips ActionDefinition on Activity viewpoint without throwing', () => {
+    const actionDef: ModelElement = {
+      id: mkElementId('action-def-1'),
+      kind: 'ActionDefinition',
+      ownerId: null,
+      ownerRole: 'member',
+      ownerIndex: 0,
+      name: 'Do Thing',
+    };
+    const actionUsage: ModelElement = {
+      id: mkElementId('action-usage-1'),
+      kind: 'ActionUsage',
+      ownerId: actionDef.id,
+      ownerRole: 'member',
+      ownerIndex: 0,
+      name: 'step1',
+      nodeType: 'action',
+      definitionId: actionDef.id,
+    };
+    const diagram: Diagram = {
+      id: 'd-activity-1' as DiagramId,
+      viewpointId: 'activity',
+      name: 'Activity',
+      positions: { [actionUsage.id]: { x: 0, y: 0 } },
+      context: { kind: 'actionDefinition', id: actionDef.id },
+    };
+    const registry = buildRegistry([actionDef, actionUsage]);
+    const nodes = toFlowNodes(
+      [actionDef, actionUsage],
+      activityViewpoint,
+      diagram,
+      EMPTY,
+      noopRename,
+      registry,
+      EMPTY,
+    );
+    // ActionDefinition is in acceptedElementKinds but nodeTypeFor throws
+    // for it — defensive filter must drop it.
+    expect(nodes.map((n) => n.id)).toEqual([actionUsage.id]);
+  });
+
+  it('skips StateDefinition on State Machine viewpoint without throwing', () => {
+    const stateDef: ModelElement = {
+      id: mkElementId('state-def-1'),
+      kind: 'StateDefinition',
+      ownerId: null,
+      ownerRole: 'member',
+      ownerIndex: 0,
+      name: 'Run',
+    };
+    const stateUsage: ModelElement = {
+      id: mkElementId('state-usage-1'),
+      kind: 'StateUsage',
+      ownerId: stateDef.id,
+      ownerRole: 'member',
+      ownerIndex: 0,
+      name: 's1',
+      stateType: 'state',
+      definitionId: stateDef.id,
+    };
+    const diagram: Diagram = {
+      id: 'd-sm-1' as DiagramId,
+      viewpointId: 'state-machine',
+      name: 'SM',
+      positions: { [stateUsage.id]: { x: 0, y: 0 } },
+      context: { kind: 'stateDefinition', id: stateDef.id },
+    };
+    const registry = buildRegistry([stateDef, stateUsage]);
+    const nodes = toFlowNodes(
+      [stateDef, stateUsage],
+      stateMachineViewpoint,
+      diagram,
+      EMPTY,
+      noopRename,
+      registry,
+      EMPTY,
+    );
+    expect(nodes.map((n) => n.id)).toEqual([stateUsage.id]);
+  });
+});
 
 describe('toFlowNodes — IBD enclosing-frame injection (T-13.20)', () => {
   it('prepends a frame node when context resolves to a PartDefinition with at least one PartUsage', () => {
