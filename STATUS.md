@@ -6,11 +6,13 @@ phase:14 — Standard library import (KerML + SysML)
 T-14.03 merged at 0f9890d (iter-783). T-14.04 in flight this iteration.
 
 ## Current iteration
-- Iteration #: 784
+- Iteration #: 785
 - Started: 2026-05-16
 - Branch: `issue/349-kerml-core-library`
-- Working on: #349 — T-14.04 vendor KerML core library and merge into
-  every loaded/bootstrapped project. PR to be opened with auto-merge.
+- Working on: #349 — PR #350 CI was red (86 failing tests) after iter-784
+  pushed T-14.04. Pushed fix `2ab00b6` to address all 33 functional
+  failures + reduce visual-baseline impact via default-collapse. Awaiting
+  CI green.
 
 ## Phase 14 plan-of-record (epic #342)
 - [x] **T-14.01 (#343 → PR #344, 2cfc23f)** — Foundation schema hooks
@@ -26,6 +28,44 @@ T-14.03 merged at 0f9890d (iter-783). T-14.04 in flight this iteration.
 - [ ] **T-14.07** — Phase 14 gate spec: cold-start UI walkthrough
       exercises the library tree (read-only) + an `import`-using
       model round-trips
+
+## Iter-785 implementation notes (CI fix on PR #350)
+- **Symptom.** CI run 25958133933 was red: 33 distinct functional
+  failures + 54 visual-baseline diffs across both chromium and webkit
+  projects. Auto-merge held the PR open.
+- **Functional root cause.** `state.elements` now includes library
+  content after T-14.04. Consumers that count or assert "user content
+  only" tripped:
+  - `CanvasPane.elementCount` (line 1186) counted *all* non-null-ownerId
+    elements → export menu always enabled, empty-state CTA never shown.
+    Fix: count from `canvasElements` (the already-library-filtered slice).
+  - `repository.save` / `serializeProjectJson` / `downloadProjectSysml`
+    serialized library content into sessionStorage and exported files.
+    Round-trip e2es and final/phase gates failed on element counts.
+    Fix: new `stripStandardLibrary(project)` (inverse of
+    `applyStandardLibrary`, scoped to `KERML_CORE_LIBRARY_ROOT_ID` only
+    so user-defined libraryRootIds and their subtrees are preserved)
+    applied at all three persistence-boundary sites.
+  - `importSysmlText` built its project from parsed elements only (no
+    library). After import, in-memory state lacked KerML, breaking
+    components that filter by `libraryRootIds`. Fix: wrap the project
+    constructor in `applyStandardLibrary(...)` so import mirrors load.
+- **Visual root cause.** `LibrariesSection` default-expanded every
+  library root; KerML's 8 visible descendants reshaped the tree pane
+  across all baselines that captured it. Fix: default-collapse library
+  roots (state flipped from `collapsed` set to `expanded` set, both
+  initialized empty). Section header (lock icon + "Libraries" label)
+  stays visible, so library presence is still surfaced; descendants are
+  reveal-on-click. Three LibrariesSection unit tests adjusted to drive
+  expansion explicitly.
+- **Verification (local).** 1389/1389 unit; tsc clean; lint clean.
+  Functional e2es that were red all green on chromium: empty-state-
+  error-boundary, bdd-export, json-import-export, toolbar-disabled-
+  reasons, phase-{4..9,12}-gate, final-gate. Visual e2es skipped
+  locally (macOS, per `SKIP_VISUAL_LOCALLY` config); CI on Linux will
+  determine whether the default-collapse change brings the baselines
+  back within the 0.01 maxDiffPixelRatio threshold. If some baselines
+  still exceed, next iteration will dispatch a snapshot-update workflow.
 
 ## Iter-784 implementation notes
 - **Fixture as TypeScript module.** `src/library/kerml/core.ts` exports
@@ -81,6 +121,22 @@ T-14.03 merged at 0f9890d (iter-783). T-14.04 in flight this iteration.
 - (none)
 
 ## Decisions log
+- 2026-05-16 (iter-785): Library treated as a *projected* slice. The
+  in-memory project carries library content (applied on `load()` and on
+  parse paths), but sessionStorage + every exported file (JSON, SysMLv2
+  text) is "user content only". `stripStandardLibrary` is the inverse
+  of `applyStandardLibrary` and runs at all three persistence-boundary
+  sites: `repository.save`, `serializeProjectJson`,
+  `downloadProjectSysml`. Library is scoped to `KERML_CORE_LIBRARY_ROOT_ID`
+  only — user-defined library roots in `libraryRootIds` (T-14.01
+  schema) persist normally. Tradeoff: a single canonical-library
+  constant per standard library; SysML core (Phase 14 next steps) adds
+  its root id to the same set.
+- 2026-05-16 (iter-785): `LibrariesSection` default-collapsed. Was
+  default-expanded (iter-783); reverted because KerML core's 8 visible
+  descendants reshape every visual baseline that captures the tree pane.
+  UX-wise, library content is reference material — discoverable on
+  click rather than always-visible.
 - 2026-05-16 (iter-784): Containment-root invariant relaxed. ADR 0013.
   Was "exactly one ownerId-null element"; now "exactly one *project*
   root plus N *library* roots". Library roots are sibling ownerId-null
@@ -137,7 +193,10 @@ T-14.03 merged at 0f9890d (iter-783). T-14.04 in flight this iteration.
   only surface via `tsc -p tsconfig.app.json` or `tsc -b`.
 
 ## Next action
-1. Commit + push branch `issue/349-kerml-core-library`.
-2. Open PR closing #349, enable auto-merge.
-3. Wait for CI green; T-14.05 (SysMLv2 text `import` directive) opens
-   next iteration once #349 merges.
+1. Wait for CI on PR #350's iter-785 commit (`2ab00b6`).
+2. If green, auto-merge fires → T-14.05 opens next iteration.
+3. If a residual set of visual baselines still fails (default-collapse
+   may not bring all 54 within 0.01 threshold), the next iteration
+   dispatches a one-off baseline-update workflow (Linux runner, run
+   playwright with `--update-snapshots --grep @visual`, commit
+   results to the branch).
