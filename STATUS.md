@@ -6,55 +6,70 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 776
+- Iteration #: 777
 - Started: 2026-05-16
-- Branch: issue/334-url-fragment-permalinks (PR pending — about to open)
-- Working on: **T-13.39 — Stable URL fragments: `#/element/<id>`,
-  `#/diagram/<id>`**. T-13.38 shipped via PR #333 (squash-merged at
-  05:18:50Z, commit 9a77b3d); iter-775 archived. Audit of remaining
-  Phase-13 backlog confirmed:
-  - T-13.19 (BDD block compartments) — already shipped PR #298 (iter
-    pre-749, commit 4873e74). Backlog check-box stale.
-  - T-13.26 (Edge style audit) — already shipped PR #306 (iter-753,
-    commit b2b7892). Backlog check-box stale.
-  - T-13.31 (Replace flat-by-kind ProjectTree with containment-driven
-    tree) — soft-completed by the explorer cascade (ContainmentTree
-    serves the explorer role from iter-723; the legacy flat
-    `ProjectTree` was re-purposed as the palette / drag-source for
-    `PROJECT_TREE_DRAG_TYPE` and consumers). Literal "replace" is no
-    longer applicable.
-  - T-13.39 is the only remaining open P1 explorer-features item.
-    P2 tiers (T-13.40+) remain.
+- Branch: issue/336-phase-13-visual-fidelity (PR pending — about to open)
+- Working on: **T-13.43 — Phase-13 gate item #2: visual fidelity
+  invariants spec** (issue #336). T-13.39 shipped via PR #335
+  (squash-merged at 05:35:40Z, commit 1519cf7); iter-776 archived.
+  All P1 explorer-features items are now closed. With containment
+  invariants already covered (`tests/unit/workspace/phase13GateInvariants.test.ts`)
+  the gate's outstanding work is just visual fidelity (#2) and the
+  cold-start UI walkthrough (#1). This iteration lands #2.
 
-  T-13.39 design (locked in this iter):
-  - New `src/workspace/urlFragment.ts` exports pure helpers
-    `parseUrlFragment(hash)` and `formatUrlFragment(state)` over a
-    discriminated `UrlFragment = { element | diagram }` union.
-    Tolerant of leading-slash variants (`#element/X` and `#/element/X`),
-    percent-decoded ids, malformed encodings return `null`.
-  - New `src/workspace/useUrlFragmentSync.ts` hook owns bidirectional
-    sync: URL→store on mount + `hashchange`; store→URL after a
-    hydrated-state gate flips. `history.replaceState` (no history-stack
-    pollution). Unknown ids are no-ops (URL left as-is rather than
-    clobbering).
-  - `Workspace.tsx` calls the hook once at the top level.
+  T-13.43 design:
+  - New `tests/e2e/phase-13-visual-fidelity.spec.ts` codifies the four
+    Phase-13 gate-item-#2 invariants as a single spec:
+    1. **Opaque rectangular node bodies** — for each
+       rectangular-bodied node kind across BDD / IBD / Requirements /
+       Activity / State Machine / Parametric (constraint + value),
+       assert `getComputedStyle(node).backgroundColor !== 'rgba(0, 0, 0, 0)'`.
+       This is the regression shield for T-13.16 (`card` token in
+       tailwind.config.ts + index.css HSL definitions).
+    2. **Square IBD port handles** — assert
+       `getComputedStyle(handle).borderRadius` does NOT contain
+       `9999px`. T-13.17's `!rounded-none` regression shield.
+    3. **Use-Case SVG ellipse** — assert the Use-Case node contains
+       exactly one `<svg> > <ellipse>` descendant (T-13.22).
+    4. **Opaque popover background** — open the containment-tree
+       three-dots row menu and assert its computed `backgroundColor`
+       is non-transparent.
+  - Seed uses canonical post-T-13.29 element shape (every element
+    carries explicit `ownerId` / `ownerRole` / `ownerIndex`; the
+    project carries `rootId`). Activity and State Machine diagrams
+    intentionally use `{ kind: 'package', id: rootId }` contexts
+    rather than `actionDefinition` / `stateDefinition` — the
+    Definition kinds are in those viewpoints' `acceptedElementKinds`
+    list but `nodeTypeFor` throws on them (the "called activity"
+    frame is reserved for a future ADR), so including a Definition
+    in the project would crash the canvas. Gate item #3 (context
+    invariants) is covered separately by
+    `phase13GateInvariants.test.ts`, so the package-context choice
+    here doesn't weaken anything.
+  - The popover assertion uses the root row's "Open row menu"
+    trigger (per `ContainmentTreeRowMenu.tsx` aria-label) and asserts
+    on the Radix `role="menu"` overlay.
 
-  Tests: 14 unit (`urlFragment.test.ts`) covering parse + format +
-  round-trip + malformed + edge cases; 8 hook-integration unit
-  (`useUrlFragmentSync.test.tsx`) covering cold-mount selection,
-  cold-mount diagram, post-hydration writes, multi-selection
-  fallback, hashchange/back-forward, unknown-id no-op, pre-bootstrap
-  no-write. 2 e2e (`url-fragment.spec.ts`): one full round-trip
-  (#/diagram → #/element → #/diagram) and one cold-load with
-  `#/element/<id>` asserting inspector flips to `inspector-single`
-  with the persisted name. 1332/1332 unit pass (was 1311; +21 net),
-  tsc -b clean, eslint 0 errors (3 pre-existing react-refresh
-  warnings unchanged), vite build clean. Both e2e pass on chromium
-  and webkit (2/2 each, ~2s combined).
+  Tests: 4 new e2e (`phase-13-visual-fidelity.spec.ts`). 4/4 pass on
+  chromium (6.1s) AND webkit (9.9s). No new unit tests. 1332/1332
+  unit pass (unchanged from iter-776), tsc -b clean, eslint 0 errors
+  (3 pre-existing react-refresh warnings unchanged), `pnpm run build`
+  clean.
 
-  Expected CI risk: no visual baseline drift (hook renders no DOM).
-  Phase-2-gate + header-saved-indicator e2e sanity-checked locally,
-  no regression.
+  Expected CI risk: no visual baseline drift (no DOM changes; this
+  is a new asserts-only spec). The four assertions exercise the
+  `bg-card` token, the IBD `!rounded-none` glyph class, the SVG
+  ellipse, and the Radix menu overlay — all stable APIs.
+
+## Iter-776 archive
+- Branch: issue/334-url-fragment-permalinks (PR #335 merged 1519cf7 at
+  05:35:40Z on 2026-05-16). Shipped T-13.39 — Stable URL fragments
+  `#/element/<id>` and `#/diagram/<id>`. New
+  `src/workspace/urlFragment.ts` + `useUrlFragmentSync.ts` hook; one
+  call site in `Workspace.tsx`. 14 unit + 8 hook-integration unit + 2
+  e2e (round-trip + cold-load), 1332/1332 pass. All P1 explorer-cascade
+  items now closed. Audit also resolved three stale backlog
+  check-marks: T-13.19, T-13.26, T-13.31.
 
 ## Iter-775 archive
 - Branch: issue/332-tree-stereotype-icons (PR #333 merged 9a77b3d at
@@ -195,13 +210,14 @@ phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Last test run
 - Commands:
-  - `pnpm exec playwright test phase-6-gate --project=chromium
-    --workers=4 --grep "State Machine vertical slice"`
-  - `pnpm exec playwright test state-machine-transitions
-    state-machine-nodes --project=chromium`
-  - `pnpm exec playwright test ibd activity --project=chromium`
-  - `pnpm vitest run`
-  - `pnpm typecheck`
+  - `pnpm exec playwright test phase-13-visual-fidelity --project=chromium`
+    — 4/4 pass in 6.1s
+  - `pnpm exec playwright test phase-13-visual-fidelity --project=webkit`
+    — 4/4 pass in 9.9s
+  - `pnpm exec tsc -b` — clean
+  - `pnpm exec eslint .` — 0 errors (3 pre-existing react-refresh warnings)
+  - `pnpm vitest run` — 1332/1332 pass
+  - `pnpm run build` (tsc -b + vite build) — clean
 - Result: ALL PASS
 - Failures: (none introduced by this iteration)
 
@@ -1433,9 +1449,17 @@ Backlog (P1 — explorer features, JOURNAL iter-530):
   - [x] T-13.36a store action `moveElement` — PR #281 (iter-736).
   - [x] T-13.36b ContainmentTree drag source + drop target + visual
     feedback + e2e — PR #283 (iter-737).
-- T-13.37 Diagrams as representations (⌬ leaves under owning element).
-- T-13.38 Per-kind stereotype icons (lucide-react).
-- T-13.39 Stable URL fragments: #/element/<id>, #/diagram/<id>.
+- [x] T-13.37 Diagrams as representations — repurposed as Diagram tabs strip
+      (PR #331, iter-774, a4c9655).
+- [x] T-13.38 Per-kind stereotype icons (lucide-react) — PR #333 (iter-775).
+- [x] T-13.39 Stable URL fragments: #/element/<id>, #/diagram/<id> — PR
+      #335 (iter-776, 1519cf7).
+
+Backlog (P1 — Phase-13 gate specs):
+- T-13.43 Visual fidelity invariants spec
+  (`tests/e2e/phase-13-visual-fidelity.spec.ts`). In flight iter-777
+  (issue #336, PR #337 pending).
+- T-13.44 Cold-start UI walkthrough spec (gate item #1, not yet filed).
 
 Backlog (P2 — explorer polish):
 - T-13.40 Breadcrumb above the canvas (Project / Package / Element / Diagram).
@@ -1489,14 +1513,19 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
-After PR **#335** (T-13.39 URL-fragment permalinks) merges, the only
-remaining open Phase-13 backlog items are P2 polish (T-13.40+) and
-the explicit Phase-13 gate specs (cold-start UI walkthrough +
-visual fidelity invariants + persisted-schema invariants). Pick
-either the lowest-numbered P2 (T-13.40 Breadcrumb) or — preferred —
-land the Phase-13 gate spec next so the phase can close. Audit
-revealed three stale backlog check-marks resolved this iter: T-13.19,
-T-13.26, T-13.31.
+After PR **#337** (T-13.43 visual fidelity invariants spec) merges,
+gate item #2 is closed. Remaining Phase-13 gate work:
+- **Item #1** — cold-start UI walkthrough spec
+  (`tests/e2e/phase-13-cold-start.spec.ts`) that uses ONLY user-facing
+  affordances to create a diagram per viewpoint, author one element
+  per viewpoint, save, reload, and assert all eight viewpoints persist
+  with content. Largest piece. This is the natural next pick.
+- **Item #3** — already covered by
+  `tests/unit/workspace/phase13GateInvariants.test.ts` (iter-531).
+- **Items #4, #5** — already satisfied; no new specs needed.
+
+P2 polish backlog (T-13.40 Breadcrumb, T-13.41 Multi-select, T-13.42
+Lazy-load) can ship in parallel or after the gate closes.
 
 ## Prior next-action (archived iter-776)
 After **#328** (T-13.29/.30 foundation) merges, pick the next P0
