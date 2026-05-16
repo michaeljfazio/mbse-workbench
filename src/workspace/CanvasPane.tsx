@@ -78,6 +78,7 @@ import { ErrorBoundary } from './ErrorBoundary';
 import { ErrorTestThrower } from './ErrorTestThrower';
 import { ImportMenu } from './ImportMenu';
 import { ImportErrorBanner } from './ImportErrorBanner';
+import { CommandErrorBanner } from './CommandErrorBanner';
 import { PartUsageTypePopover } from './PartUsageTypePopover';
 import { TraceKindPopover } from './TraceKindPopover';
 import { UseCaseEdgeKindPopover } from './UseCaseEdgeKindPopover';
@@ -1350,6 +1351,7 @@ function CanvasInner(): JSX.Element {
         </div>
       </div>
       <ImportErrorBanner />
+      <CommandErrorBanner />
       <ImpactBanner />
       {viewpoint.id === ACTIVITY_VIEWPOINT_ID ? <ActivityPalette /> : null}
       {viewpoint.id === STATE_MACHINE_VIEWPOINT_ID ? <StateMachinePalette /> : null}

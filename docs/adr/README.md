@@ -17,3 +17,4 @@ to the index below in chronological order.
 - [0009 — Package Diagram shape: scope, containment model, import edges, move-between-packages](0009-package-diagram-shape.md)
 - [0010 — LLM architecture: provider, dispatcher, tool registry, diff-preview seam](0010-llm-architecture.md)
 - [0011 — Explorer foundation: ownerId single source of truth + required DiagramContext](0011-explorer-foundation-ownerid-context.md)
+- [0012 — Library seam enforcement: command-bus pre-apply guard + onError surface](0012-library-seam-enforcement.md)
