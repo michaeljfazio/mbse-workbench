@@ -3,62 +3,61 @@
 ## Current phase
 phase:15 — Architect-driven UX & feature hardening
 
-Iter-795 closed. The first Phase-15 engineer batch shipped: BDD
-`NodeResizer` vertical slice (closes #374). Tagged `v1.1.0` (minor
-SemVer; first outward-facing feature since v1.0.0) and `vphase-15.1`
-(Phase-15 release marker). Both release workflows succeeded and
-deployed to Pages at https://michaeljfazio.github.io/mbse-workbench/.
-Smoke probe confirms 8 resize handles (4 corner + 4 edge) on a
-selected BDD block.
+Iter-796 walk-2 closed. Regression walk against `vphase-15.1`
+confirmed the #374 resize fix works end-to-end on the live app
+(8 handles, drag enlarges, size persists across reload). All 8
+viewpoints reachable via the corrected testid pattern — iter-795
+errata fully validated. Activity and State Machine diagrams expose
+drag-from-palette affordances (Walk-1's "all click-only" claim
+was BDD-specific).
 
-Rubric advanced this iteration: dim 16 (Direct-manipulation
-affordances) from 1 → 2. Remaining at score 1: dims 15 (Palette &
-creation), 28 (Help / discoverability). Eight dimensions at score 2;
-fourteen still unmeasured.
+Rubric advanced: dim 21 (undo/redo) 0 → 1, dim 26 (performance)
+0 → 2, dim 27 (persistence) 0 → 2. Now 10 × score-2, 7 × score-1,
+11 × unmeasured.
+
+Two new issues filed: #385 (IBD canvas has no element-add
+affordance), #386 (Cmd-Z may not undo from non-canvas focus
+context).
 
 ## Current iteration
-- Iteration #: 795 (close-out)
+- Iteration #: 796 (close-out)
 - Started: 2026-05-17
-- Branch: `chore/iter-795-closeout`
-- Working on: this close-out PR
+- Branch: `phase-15/walk-2-log`
+- Working on: walk-2 close-out PR
 
 ## Last test run
-- Main green at `7b47b3a` (#382 BDD resize merge).
-- Release workflow `vphase-15.1` (run 25967763436): SUCCESS.
-- Release workflow `v1.1.0` (run 25967763482): SUCCESS.
-- Pages reachability: HTTP 200, last-modified 2026-05-16T17:01:59Z.
-- Smoke probe: 8 resize handles visible on a selected BDD block.
+- Main green at `6729d2b`.
+- Walk-2 doc-only PR: `pnpm run check` expected pass.
 
 ## Known issues / blockers
 - (none)
 
-## Open phase:15 issues — distribution at iter-795 close
+## Open phase:15 issues — distribution at iter-796 close
 
 | Severity | Count | Issues |
 |----------|-------|--------|
 | p1 | 2 | #375 (drag-coord display), #376 (4-way Block creation — design) |
-| p2 | 5 | #368 / #369 / #370 / #371 (discoverability), #372 (palette dynamic growth) |
+| p2 | 7 | #368/#369/#370/#371 (discoverability), #372 (palette dynamic growth), #385 (IBD canvas), #386 (Cmd-Z focus) |
 | p3 | 2 | #373 (usage no `+`), #377 (palette labels) |
 
-Nine open `phase:15` issues. Closed this iteration: #364 (bootstrap),
-#366 (JOURNAL append), #378 (walk-1 close-out), #374 (resize), #380
-(errata).
+11 open `phase:15` issues.
 
 ## Decisions log
 
-Carrying forward iter-792..iter-794 entries (preserved in commit
-history). Iter-795 entries:
-
-- 2026-05-17 (iter-795 a): walk-1 self-correction. Three p0 reframed to p2 after Explore subagent surfaced the `containment-tree-element-menu-trigger-${elementId}` testid pattern and the buggy `open_row_menu_for` ancestor check in the original walk-1 script. Rubric dims 6/8/9/11 raised 1 → 2.
-- 2026-05-17 (iter-795 b): Pivoted engineer batch from missing-viewpoint to interaction. Closed #374 via BDD-only vertical slice (`NodeResizer` + `setNodeSize` store action + `width?/height?` on `NodePosition`). Other viewpoints adopt the same pattern in follow-up PRs.
-- 2026-05-17 (iter-795 c): Three CI visual baselines lifted from the failed-run artifact per JOURNAL iter-786's playbook. Two were macOS-vs-Linux subpixel font diffs on the new baseline; one was the pre-existing `bdd-two-blocks-linked` baseline reflecting a deselected end-state-of-drag-edge change introduced by NodeResizer DOM presence. Functional assertions in `bdd-canvas.spec.ts:189` still pass.
-- 2026-05-17 (iter-795 d): Tagged `v1.1.0` (SemVer minor; outward-facing resize feature shipped) and `vphase-15.1` (Phase-15 release N=1; conditions per A.8 met — rubric advanced + 6 batches since vphase-14).
+- 2026-05-17 (iter-796): Walk-2 regression walk confirms #374 resize
+  works end-to-end on vphase-15.1 (including reload-persistence).
+  All 8 viewpoints reachable via the corrected
+  `containment-tree-element-menu-trigger-${elementId}` testid pattern.
+  Activity and State Machine diagrams have drag-from-palette;
+  walk-1's "all click-only" claim was BDD-specific. Two new findings:
+  IBD canvas has no element-add affordance (#385); Cmd-Z may not
+  undo from non-canvas focus (#386).
 
 ## Next action
 
-Iter-796: **walk-2 — regression walk on the vphase-15.1 deploy**, focused on:
-1. Verifying BDD resize works end-to-end on the live Pages (smoke already passed; walk does a fuller exercise including persistence across reload).
-2. Re-running the corrected discoverability probe to verify viewpoint reachability per `representationAcceptance.ts`'s map, exercising one diagram per viewpoint (BDD, IBD, Requirements, Activity, State Machine, Use Case, Parametric, Package).
-3. Filing additional rubric-advancing findings (likely on dim 2 edges, dim 3 ports, dim 5 BDD edges, dim 17 edge editing).
-
-After the walk: pick the next engineer batch — strong candidates are #375 (drag-coord display, shares React Flow node-event surface with #374's pattern) or #368/#369/#370/#371 as a "discoverability" batch (surface IBD/Activity/State Machine/Parametric on the Package row menu with implicit owner creation).
+Iter-797: **engineer batch on #375 (drag-coord display)**. BDD
+vertical slice mirroring #374's pattern — render an `(x, y)`
+indicator near the dragged block via React Flow's `onNodeDrag`.
+Tests + visual baselines + pre-PR review per the established
+iter-795 playbook. Open a chore close-out for the rubric+STATUS
+afterward.
