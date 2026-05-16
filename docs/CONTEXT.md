@@ -8,6 +8,26 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
 
 ## Discovered facts
 
+- **2026-05-16 (iter-788, T-14.06)** — Library namespace seeding for the
+  SysMLv2 text parser/serializer now routes through the `LibraryIndex`
+  interface in `src/library/libraryIndex.ts` (replaces the two static
+  tables `STANDARD_LIBRARY_ID_TO_NAME` + `STANDARD_LIBRARY_NAMES_BY_QUALNAME`
+  retired in this iteration). Two callable builders: `buildLibraryIndex`
+  (low-level, takes `{libraryRootIds, elements}`) and
+  `buildLibraryIndexForProject` (folds in canonical KerML regardless of
+  whether the project has it). The `STANDARD_LIBRARY_INDEX` singleton is
+  the parser's default. The serializer always builds the index *for the
+  project* so refs survive `stripStandardLibrary` at the persistence
+  boundary. **Library-root self-registration** is preserved from T-14.05:
+  for a root Package named `Foo`, `resolveImport('Foo')` includes
+  `Foo → rootId` in addition to its members — without it, `: Foo` would
+  not round-trip. `enclosingPackageQualifiedName(rootId)` returns the
+  root's *own name*, not its parent's qn, for the same reason. The
+  serializer's top-level rendering filters `libraryIndex.isLibraryElement(e.id)`
+  to keep user-defined library subtrees out of the exported `*.sysml`
+  text (user libraries are conceptually vendored separately and declared
+  via `import`, not embedded — matches how T-14.04 vendors KerML).
+
 - **2026-05-16 (iter-781, T-14.01)** — ADR 0011 §Consequences names two
   Phase-14 reservations: `PackageElement.isReadOnly?: boolean` and
   `Project.libraryRootIds?: ElementId[]`. STATUS.md ("already in place

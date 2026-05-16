@@ -2,11 +2,13 @@ import type { ElementId, ModelElement } from '@/model';
 import type { Project } from '@/repository/types';
 
 import {
-  KERML_CORE_ELEMENT_IDS,
   KERML_CORE_LIBRARY_ROOT_ID,
-  KERML_CORE_QUALIFIED_NAME,
   kermlCoreElements,
 } from './kerml/core';
+import {
+  buildLibraryIndexForProject,
+  type LibraryIndex,
+} from './libraryIndex';
 
 export {
   KERML_CORE_LIBRARY_ROOT_ID,
@@ -14,59 +16,13 @@ export {
   KERML_CORE_QUALIFIED_NAME,
 } from './kerml/core';
 
-/**
- * Map of every standard-library element id → the qualified name that an
- * `import …::*;` directive should use to bring the containing library
- * namespace into scope. Populated from each library's exported id table.
- *
- * Today only KerML core; SysML core joins in a later T-14.* task by adding
- * its own block to this initializer.
- */
-const STANDARD_LIBRARY_ID_TO_QUALNAME: ReadonlyMap<ElementId, string> = (() => {
-  const m = new Map<ElementId, string>();
-  for (const id of Object.values(KERML_CORE_ELEMENT_IDS)) {
-    m.set(id, KERML_CORE_QUALIFIED_NAME);
-  }
-  return m;
-})();
-
-/**
- * Standard-library element id → short name (the `name` field on the
- * vendored element). Lets serializers resolve cross-library references
- * to their short name when the library has been stripped from the
- * persisted project (T-14.05).
- */
-export const STANDARD_LIBRARY_ID_TO_NAME: ReadonlyMap<ElementId, string> = (() => {
-  const m = new Map<ElementId, string>();
-  for (const el of kermlCoreElements()) {
-    m.set(el.id, el.name);
-  }
-  return m;
-})();
-
-/**
- * Standard-library qualified name → (short name → element id). Lets a
- * parser, on seeing `import <qn>::*;`, register library short names so
- * subsequent unqualified references (e.g. `: Part`) resolve to the
- * library element id (T-14.05).
- */
-export const STANDARD_LIBRARY_NAMES_BY_QUALNAME: ReadonlyMap<
-  string,
-  ReadonlyMap<string, ElementId>
-> = (() => {
-  const outer = new Map<string, Map<string, ElementId>>();
-  for (const el of kermlCoreElements()) {
-    const qn = STANDARD_LIBRARY_ID_TO_QUALNAME.get(el.id);
-    if (qn === undefined) continue;
-    let inner = outer.get(qn);
-    if (!inner) {
-      inner = new Map<string, ElementId>();
-      outer.set(qn, inner);
-    }
-    inner.set(el.name, el.id);
-  }
-  return outer;
-})();
+export {
+  buildLibraryIndex,
+  buildLibraryIndexForProject,
+  EMPTY_LIBRARY_INDEX,
+  STANDARD_LIBRARY_INDEX,
+  type LibraryIndex,
+} from './libraryIndex';
 
 /**
  * True iff `element` lives inside a library subtree — i.e. walking `ownerId`
@@ -143,48 +99,37 @@ export function stripStandardLibrary(project: Project): Project {
 }
 
 /**
- * Returns a project with the KerML standard library merged in. Idempotent —
- * if the library root is already in `libraryRootIds` and every library
- * element is already present in `elements`, the input project is returned
- * unchanged (reference-equal). Otherwise, a new project is returned with:
- *
- *   - any missing library elements appended to `elements`
- *   - the library root id prepended to `libraryRootIds` if absent
- *
- * Existing user-set library roots are preserved.
- */
-/**
- * Returns the sorted, unique qualified names of standard-library packages
- * referenced by `project`'s non-library elements + edges. Used by the
- * SysMLv2 text serializer to emit `import <qn>::*;` directives so the
- * exported text declares its library dependencies (T-14.05).
+ * Returns the sorted, unique qualified names of library packages referenced
+ * by `project`'s non-library elements + edges. Used by the SysMLv2 text
+ * serializer to emit `import <qn>::*;` directives so the exported text
+ * declares its library dependencies (T-14.05 for standard, T-14.06 for
+ * user-defined).
  *
  * A "reference" is any id-valued field on a non-library element/edge whose
- * value is a known standard-library element id (`definitionId`,
- * `interfaceId`, edge `sourceId`/`targetId`, etc.). `ownerId` is excluded
- * because library elements own only library elements — a user element's
- * `ownerId` never points into a library subtree.
+ * value is a known library element id (`definitionId`, `interfaceId`,
+ * edge `sourceId`/`targetId`, etc.). `ownerId` is excluded because library
+ * elements own only library elements — a user element's `ownerId` never
+ * points into a library subtree.
+ *
+ * The {@link LibraryIndex} parameter, if omitted, is derived from
+ * `project` via {@link buildLibraryIndexForProject} (which always folds in
+ * the canonical standard library so refs survive stripping).
  */
-export function findLibraryReferences(project: Project): readonly string[] {
-  const libraryRootIds = project.libraryRootIds;
-  const byId = new Map(project.elements.map((e) => [e.id, e]));
-
-  const isLibrary = (id: ElementId): boolean => {
-    if (STANDARD_LIBRARY_ID_TO_QUALNAME.has(id)) return true;
-    const el = byId.get(id);
-    if (!el) return false;
-    return isLibraryElement(el, libraryRootIds, project.elements);
-  };
+export function findLibraryReferences(
+  project: Project,
+  libraryIndex?: LibraryIndex,
+): readonly string[] {
+  const idx = libraryIndex ?? buildLibraryIndexForProject(project);
 
   const qualnames = new Set<string>();
   const consider = (id: ElementId | undefined): void => {
     if (!id) return;
-    const qn = STANDARD_LIBRARY_ID_TO_QUALNAME.get(id);
+    const qn = idx.enclosingPackageQualifiedName(id);
     if (qn !== undefined) qualnames.add(qn);
   };
 
   for (const el of project.elements) {
-    if (isLibrary(el.id)) continue;
+    if (idx.isLibraryElement(el.id)) continue;
     switch (el.kind) {
       case 'PartUsage':
       case 'PortUsage':

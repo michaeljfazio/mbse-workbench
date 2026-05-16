@@ -10,8 +10,9 @@ import type {
 } from '@/model';
 import { ELEMENT_KINDS } from '@/model';
 import {
+  buildLibraryIndexForProject,
   findLibraryReferences,
-  STANDARD_LIBRARY_ID_TO_NAME,
+  type LibraryIndex,
 } from '@/library';
 
 const INDENT = '  ';
@@ -62,7 +63,15 @@ export function serializeProject(
   for (const e of project.elements) byId.set(e.id, e);
   const index = buildChildIndex(project.elements);
 
-  const topLevel = project.elements.filter((e) => e.ownerId === null);
+  // Library index always folds in the canonical standard library, so refs
+  // survive even when the caller has stripped library content from
+  // `project.elements` before serialising. User-defined library roots in
+  // `project.libraryRootIds` are added on top (T-14.06).
+  const libraryIndex = buildLibraryIndexForProject(project);
+
+  const topLevel = project.elements
+    .filter((e) => e.ownerId === null)
+    .filter((e) => !libraryIndex.isLibraryElement(e.id));
   const sortedTop = sortElements(topLevel);
 
   const blocks: string[] = [];
@@ -72,7 +81,7 @@ export function serializeProject(
     : options.header;
   if (header !== null) blocks.push(header);
 
-  const importQualnames = findLibraryReferences(project);
+  const importQualnames = findLibraryReferences(project, libraryIndex);
   if (importQualnames.length > 0) {
     blocks.push(
       importQualnames.map((qn) => `import ${qn}::*;`).join('\n'),
@@ -80,7 +89,7 @@ export function serializeProject(
   }
 
   for (const element of sortedTop) {
-    blocks.push(renderElement(element, byId, index, 0));
+    blocks.push(renderElement(element, byId, index, libraryIndex, 0));
   }
 
   const edgeBlock = renderEdges(project.edges);
@@ -110,21 +119,22 @@ function renderElement(
   element: ModelElement,
   byId: Map<ElementId, ModelElement>,
   index: ChildIndex,
+  libraryIndex: LibraryIndex,
   depth: number,
 ): string {
   switch (element.kind) {
     case 'Package':
-      return renderPackage(element, byId, index, depth);
+      return renderPackage(element, byId, index, libraryIndex, depth);
     case 'PartDefinition':
-      return renderPartDefinition(element, byId, index, depth);
+      return renderPartDefinition(element, byId, index, libraryIndex, depth);
     case 'PartUsage':
-      return renderPartUsage(element, byId, index, depth);
+      return renderPartUsage(element, byId, index, libraryIndex, depth);
     case 'PortDefinition':
-      return renderPortDefinition(element, byId, depth);
+      return renderPortDefinition(element, byId, libraryIndex, depth);
     case 'PortUsage':
-      return renderPortUsage(element, byId, depth);
+      return renderPortUsage(element, byId, libraryIndex, depth);
     case 'InterfaceDefinition':
-      return renderInterfaceDefinition(element, byId, index, depth);
+      return renderInterfaceDefinition(element, byId, index, libraryIndex, depth);
     case 'ConnectionUsage':
       return renderConnectionUsage(element, depth);
     case 'ItemFlow':
@@ -132,13 +142,13 @@ function renderElement(
     case 'Requirement':
       return renderRequirement(element, depth);
     case 'ActionDefinition':
-      return renderActionDefinition(element, byId, index, depth);
+      return renderActionDefinition(element, byId, index, libraryIndex, depth);
     case 'ActionUsage':
-      return renderActionUsage(element, byId, depth);
+      return renderActionUsage(element, byId, libraryIndex, depth);
     case 'StateDefinition':
       return renderStateDefinition(element, depth);
     case 'StateUsage':
-      return renderStateUsage(element, byId, depth);
+      return renderStateUsage(element, byId, libraryIndex, depth);
     case 'Transition':
       return renderTransition(element, depth);
     case 'UseCase':
@@ -146,17 +156,21 @@ function renderElement(
     case 'Actor':
       return renderActor(element, depth);
     case 'ConstraintDefinition':
-      return renderConstraintDefinition(element, byId, index, depth);
+      return renderConstraintDefinition(element, byId, index, libraryIndex, depth);
     case 'ConstraintUsage':
-      return renderConstraintUsage(element, byId, depth);
+      return renderConstraintUsage(element, byId, libraryIndex, depth);
     case 'ValueProperty':
       return renderValueProperty(element, depth);
   }
 }
 
-function refName(id: ElementId, byId: Map<ElementId, ModelElement>): string {
+function refName(
+  id: ElementId,
+  byId: Map<ElementId, ModelElement>,
+  libraryIndex: LibraryIndex,
+): string {
   return (
-    byId.get(id)?.name ?? STANDARD_LIBRARY_ID_TO_NAME.get(id) ?? '<missing>'
+    byId.get(id)?.name ?? libraryIndex.shortNameOf(id) ?? '<missing>'
   );
 }
 
@@ -173,6 +187,7 @@ function renderPackage(
   el: PackageElement,
   byId: Map<ElementId, ModelElement>,
   index: ChildIndex,
+  libraryIndex: LibraryIndex,
   depth: number,
 ): string {
   const lines: string[] = [];
@@ -180,7 +195,7 @@ function renderPackage(
   lines.push(...renderDoc(el.documentation, depth + 1));
   const members = sortElements(index.children(el.id, 'member'));
   for (const m of members) {
-    lines.push(renderElement(m, byId, index, depth + 1));
+    lines.push(renderElement(m, byId, index, libraryIndex, depth + 1));
   }
   lines.push(`${pad(depth)}}`);
   return lines.join('\n');
@@ -190,6 +205,7 @@ function renderPartDefinition(
   el: Extract<ModelElement, { kind: 'PartDefinition' }>,
   byId: Map<ElementId, ModelElement>,
   index: ChildIndex,
+  libraryIndex: LibraryIndex,
   depth: number,
 ): string {
   const abstract = el.isAbstract ? 'abstract ' : '';
@@ -201,7 +217,7 @@ function renderPartDefinition(
     ...index.children(el.id, 'property'),
   ];
   for (const m of sortElements(inner)) {
-    lines.push(renderElement(m, byId, index, depth + 1));
+    lines.push(renderElement(m, byId, index, libraryIndex, depth + 1));
   }
   lines.push(`${pad(depth)}}`);
   return lines.join('\n');
@@ -211,9 +227,10 @@ function renderPartUsage(
   el: Extract<ModelElement, { kind: 'PartUsage' }>,
   byId: Map<ElementId, ModelElement>,
   index: ChildIndex,
+  libraryIndex: LibraryIndex,
   depth: number,
 ): string {
-  const defName = refName(el.definitionId, byId);
+  const defName = refName(el.definitionId, byId, libraryIndex);
   const mult = el.multiplicity ? `[${el.multiplicity}]` : '';
   const lines: string[] = [];
   lines.push(
@@ -222,7 +239,7 @@ function renderPartUsage(
   lines.push(...renderDoc(el.documentation, depth + 1));
   const ports = sortElements(index.children(el.id, 'port'));
   for (const m of ports) {
-    lines.push(renderElement(m, byId, index, depth + 1));
+    lines.push(renderElement(m, byId, index, libraryIndex, depth + 1));
   }
   lines.push(`${pad(depth)}}`);
   return lines.join('\n');
@@ -231,18 +248,22 @@ function renderPartUsage(
 function renderPortDefinition(
   el: Extract<ModelElement, { kind: 'PortDefinition' }>,
   byId: Map<ElementId, ModelElement>,
+  libraryIndex: LibraryIndex,
   depth: number,
 ): string {
-  const iface = el.interfaceId ? ` : ${refName(el.interfaceId, byId)}` : '';
+  const iface = el.interfaceId
+    ? ` : ${refName(el.interfaceId, byId, libraryIndex)}`
+    : '';
   return `${pad(depth)}port def ${el.direction} ${el.name}${iface};${idTail(el.id)}`;
 }
 
 function renderPortUsage(
   el: Extract<ModelElement, { kind: 'PortUsage' }>,
   byId: Map<ElementId, ModelElement>,
+  libraryIndex: LibraryIndex,
   depth: number,
 ): string {
-  const def = refName(el.definitionId, byId);
+  const def = refName(el.definitionId, byId, libraryIndex);
   return `${pad(depth)}port ${el.name} : ${def};${idTail(el.id)}`;
 }
 
@@ -250,6 +271,7 @@ function renderInterfaceDefinition(
   el: Extract<ModelElement, { kind: 'InterfaceDefinition' }>,
   byId: Map<ElementId, ModelElement>,
   index: ChildIndex,
+  libraryIndex: LibraryIndex,
   depth: number,
 ): string {
   const lines: string[] = [];
@@ -257,7 +279,7 @@ function renderInterfaceDefinition(
   lines.push(...renderDoc(el.documentation, depth + 1));
   const ports = sortElements(index.children(el.id, 'portDefinition'));
   for (const m of ports) {
-    lines.push(renderElement(m, byId, index, depth + 1));
+    lines.push(renderElement(m, byId, index, libraryIndex, depth + 1));
   }
   lines.push(`${pad(depth)}}`);
   return lines.join('\n');
@@ -302,6 +324,7 @@ function renderActionDefinition(
   el: Extract<ModelElement, { kind: 'ActionDefinition' }>,
   byId: Map<ElementId, ModelElement>,
   index: ChildIndex,
+  libraryIndex: LibraryIndex,
   depth: number,
 ): string {
   const lines: string[] = [];
@@ -309,7 +332,7 @@ function renderActionDefinition(
   lines.push(...renderDoc(el.documentation, depth + 1));
   const params = sortElements(index.children(el.id, 'parameter'));
   for (const m of params) {
-    lines.push(renderElement(m, byId, index, depth + 1));
+    lines.push(renderElement(m, byId, index, libraryIndex, depth + 1));
   }
   lines.push(`${pad(depth)}}`);
   return lines.join('\n');
@@ -318,10 +341,11 @@ function renderActionDefinition(
 function renderActionUsage(
   el: Extract<ModelElement, { kind: 'ActionUsage' }>,
   byId: Map<ElementId, ModelElement>,
+  libraryIndex: LibraryIndex,
   depth: number,
 ): string {
   const defClause = el.definitionId
-    ? ` : ${refName(el.definitionId, byId)}`
+    ? ` : ${refName(el.definitionId, byId, libraryIndex)}`
     : '';
   return `${pad(depth)}action ${el.nodeType} ${el.name}${defClause};${idTail(el.id)}`;
 }
@@ -337,9 +361,12 @@ function renderStateDefinition(
 function renderStateUsage(
   el: Extract<ModelElement, { kind: 'StateUsage' }>,
   byId: Map<ElementId, ModelElement>,
+  libraryIndex: LibraryIndex,
   depth: number,
 ): string {
-  const def = el.definitionId ? ` : ${refName(el.definitionId, byId)}` : '';
+  const def = el.definitionId
+    ? ` : ${refName(el.definitionId, byId, libraryIndex)}`
+    : '';
   const body: string[] = [];
   if (el.entryAction) body.push(`entry ${quote(el.entryAction)};`);
   if (el.doAction) body.push(`do ${quote(el.doAction)};`);
@@ -391,6 +418,7 @@ function renderConstraintDefinition(
   el: Extract<ModelElement, { kind: 'ConstraintDefinition' }>,
   byId: Map<ElementId, ModelElement>,
   index: ChildIndex,
+  libraryIndex: LibraryIndex,
   depth: number,
 ): string {
   const lines: string[] = [];
@@ -398,7 +426,7 @@ function renderConstraintDefinition(
   lines.push(`${pad(depth + 1)}expr ${quote(el.expression)};`);
   const params = sortElements(index.children(el.id, 'parameter'));
   for (const m of params) {
-    lines.push(renderElement(m, byId, index, depth + 1));
+    lines.push(renderElement(m, byId, index, libraryIndex, depth + 1));
   }
   lines.push(`${pad(depth)}}`);
   return lines.join('\n');
@@ -407,9 +435,10 @@ function renderConstraintDefinition(
 function renderConstraintUsage(
   el: Extract<ModelElement, { kind: 'ConstraintUsage' }>,
   byId: Map<ElementId, ModelElement>,
+  libraryIndex: LibraryIndex,
   depth: number,
 ): string {
-  const def = refName(el.definitionId, byId);
+  const def = refName(el.definitionId, byId, libraryIndex);
   return `${pad(depth)}constraint ${el.name} : ${def};${idTail(el.id)}`;
 }
 

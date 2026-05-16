@@ -53,7 +53,11 @@ import type { Command, CommandBus, DiagramPositionStore } from '@/commands';
 import { createCommandBus, LibraryViolationError } from '@/commands';
 import type { CollaborationProvider, User } from '@/collab';
 import { NoopCollaborationProvider } from '@/collab';
-import { applyStandardLibrary, isLibraryElement } from '@/library';
+import {
+  applyStandardLibrary,
+  buildLibraryIndexForProject,
+  isLibraryElement,
+} from '@/library';
 import type { ModelRepository, Project } from '@/repository';
 import { EMPTY_COMMAND_HISTORY } from '@/repository';
 import {
@@ -2895,7 +2899,19 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   },
 
   async importSysmlText(text) {
-    const parsed = parseSysmlText(text);
+    // Seed the parser with the workspace's current library namespace so
+    // `import …::*;` directives resolve user-defined library roots in
+    // addition to the standard library (T-14.06). The current project
+    // always has KerML core merged in (applyStandardLibrary on load),
+    // so the index covers both standard and any user-defined roots.
+    const currentProject = get().project;
+    const libraryIndex = currentProject
+      ? buildLibraryIndexForProject(currentProject)
+      : undefined;
+    const parsed = parseSysmlText(
+      text,
+      libraryIndex ? { libraryIndex } : undefined,
+    );
     if (!parsed.ok) {
       const first = parsed.errors[0] ?? { line: 1, col: 1, message: 'parse failed' };
       set({ importError: first });
