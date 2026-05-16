@@ -97,6 +97,13 @@ export type ValueLiteral = string | number | boolean;
 
 export interface PackageElement extends ElementBase {
   readonly kind: 'Package';
+  /**
+   * Phase 14 hook. When true, the command bus rejects destructive
+   * operations on this subtree (standard library packages). Undefined
+   * is equivalent to `false`. ADR 0011 §Consequences reserved the
+   * field name; T-14.01 lands the schema; T-14.02 lands enforcement.
+   */
+  isReadOnly?: boolean;
 }
 
 export interface PartDefinitionElement extends ElementBase {

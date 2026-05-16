@@ -8,6 +8,22 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
 
 ## Discovered facts
 
+- **2026-05-16 (iter-781, T-14.01)** — ADR 0011 §Consequences names two
+  Phase-14 reservations: `PackageElement.isReadOnly?: boolean` and
+  `Project.libraryRootIds?: ElementId[]`. STATUS.md ("already in place
+  per iter-531 / ADR 0011") and the iter-779 JOURNAL entry ("hooks
+  already in place per iter-531's decisions") both claimed these fields
+  were implemented during the Phase-13 explorer rewrite. They were
+  **not**. ADR 0011 reserved the names as a *design commitment*, but no
+  TypeScript change landed — `grep -r 'isReadOnly\|libraryRootIds' src/`
+  returned zero hits prior to iter-781. T-14.01 lands the actual schema
+  additions plus migration tolerance; T-14.02 lands command-bus
+  enforcement; T-14.03 lands explorer surfacing. Lesson: ADR
+  §Consequences sometimes describes *future intent* rather than
+  *current state* — when memory says a field exists, grep before
+  building on it. (AGENT.md "Before recommending from memory" rule
+  caught this one cleanly.)
+
 - **2026-05-16 (iter-774, #161 root cause)** — When `onConnect` in
   `CanvasPane.tsx` creates an edge-element (Transition / ConnectionUsage /
   ItemFlow / ControlFlow / ObjectFlow / RequirementTrace) and immediately
