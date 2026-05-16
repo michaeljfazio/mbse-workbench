@@ -6,15 +6,65 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 775
+- Iteration #: 776
 - Started: 2026-05-16
-- Branch: issue/332-tree-stereotype-icons (PR pending — about to open)
-- Working on: **T-13.38 — Per-kind stereotype icons in containment tree
-  (lucide-react)**. PR #331 merged a4c9655 at 04:47:34Z; post-merge CI
-  on main (run 25953111151) was in_progress at iteration start. #161
-  fix (iter-774 CanvasPane onEdgesChange isConnectingRef guard +
-  100→250ms onConnectEnd cooldown) rode in on PR #331 and is now on
-  main; pending post-merge CI confirmation before closing #161.
+- Branch: issue/334-url-fragment-permalinks (PR pending — about to open)
+- Working on: **T-13.39 — Stable URL fragments: `#/element/<id>`,
+  `#/diagram/<id>`**. T-13.38 shipped via PR #333 (squash-merged at
+  05:18:50Z, commit 9a77b3d); iter-775 archived. Audit of remaining
+  Phase-13 backlog confirmed:
+  - T-13.19 (BDD block compartments) — already shipped PR #298 (iter
+    pre-749, commit 4873e74). Backlog check-box stale.
+  - T-13.26 (Edge style audit) — already shipped PR #306 (iter-753,
+    commit b2b7892). Backlog check-box stale.
+  - T-13.31 (Replace flat-by-kind ProjectTree with containment-driven
+    tree) — soft-completed by the explorer cascade (ContainmentTree
+    serves the explorer role from iter-723; the legacy flat
+    `ProjectTree` was re-purposed as the palette / drag-source for
+    `PROJECT_TREE_DRAG_TYPE` and consumers). Literal "replace" is no
+    longer applicable.
+  - T-13.39 is the only remaining open P1 explorer-features item.
+    P2 tiers (T-13.40+) remain.
+
+  T-13.39 design (locked in this iter):
+  - New `src/workspace/urlFragment.ts` exports pure helpers
+    `parseUrlFragment(hash)` and `formatUrlFragment(state)` over a
+    discriminated `UrlFragment = { element | diagram }` union.
+    Tolerant of leading-slash variants (`#element/X` and `#/element/X`),
+    percent-decoded ids, malformed encodings return `null`.
+  - New `src/workspace/useUrlFragmentSync.ts` hook owns bidirectional
+    sync: URL→store on mount + `hashchange`; store→URL after a
+    hydrated-state gate flips. `history.replaceState` (no history-stack
+    pollution). Unknown ids are no-ops (URL left as-is rather than
+    clobbering).
+  - `Workspace.tsx` calls the hook once at the top level.
+
+  Tests: 14 unit (`urlFragment.test.ts`) covering parse + format +
+  round-trip + malformed + edge cases; 8 hook-integration unit
+  (`useUrlFragmentSync.test.tsx`) covering cold-mount selection,
+  cold-mount diagram, post-hydration writes, multi-selection
+  fallback, hashchange/back-forward, unknown-id no-op, pre-bootstrap
+  no-write. 2 e2e (`url-fragment.spec.ts`): one full round-trip
+  (#/diagram → #/element → #/diagram) and one cold-load with
+  `#/element/<id>` asserting inspector flips to `inspector-single`
+  with the persisted name. 1332/1332 unit pass (was 1311; +21 net),
+  tsc -b clean, eslint 0 errors (3 pre-existing react-refresh
+  warnings unchanged), vite build clean. Both e2e pass on chromium
+  and webkit (2/2 each, ~2s combined).
+
+  Expected CI risk: no visual baseline drift (hook renders no DOM).
+  Phase-2-gate + header-saved-indicator e2e sanity-checked locally,
+  no regression.
+
+## Iter-775 archive
+- Branch: issue/332-tree-stereotype-icons (PR #333 merged 9a77b3d at
+  05:18:50Z on 2026-05-16). Shipped T-13.38 — Per-kind stereotype
+  icons in containment tree (lucide-react). 19-kind icon mapping in
+  `src/workspace/tree/kindIcons.ts`; ContainmentTree element rows
+  render the icon between the disclosure caret and the element name
+  with `aria-hidden` + `data-kind-icon=<kind>`. 4 new unit + 5
+  visual-baseline refreshes for trees that the +14px icon column
+  shifted in `fullPage: false` viewport captures.
 
   Picked the lowest-numbered open P1 explorer-cascade item per the
   STATUS backlog (T-13.35/.36/.37 shipped → T-13.38 next; T-13.39 stays
@@ -220,7 +270,8 @@ Backlog (P0 — visual rendering / transparency, JOURNAL iter-529):
 
 Backlog (P1 — SysMLv2 notation conformance, JOURNAL iter-529):
 - [x] T-13.18 Port direction glyphs (in/out/inout). Shipped iter-741 (#291).
-- T-13.19 BDD block compartments (parts/ports/values/constraints).
+- [x] T-13.19 BDD block compartments (parts/ports/values/constraints).
+      Shipped pre-iter-749 (PR #298, commit 4873e74).
 - [x] T-13.20 IBD enclosing-block frame — shipped iter-747 (PR #294).
 - [x] T-13.21 Requirement compartments (reqId/text/priority/status rows). Shipped iter-744 (#293).
 - [x] T-13.22 Use-case true ellipse shape (SVG, not rectangle). Shipped iter-739 (#288).
@@ -236,8 +287,9 @@ Backlog (P1 — SysMLv2 notation conformance, JOURNAL iter-529):
       gate's uniform DOM query.
 - [x] T-13.25 Parametric: constraint-expression + value-property `: type = value`.
       In flight — PR #300 (iter-749), auto-merge enabled, awaiting CI.
-- T-13.26 Edge style audit (Gen hollow-triangle, Comp filled-diamond,
-  Trace family dashed + stereotype, ItemFlow open-arrow + item-type label).
+- [x] T-13.26 Edge style audit (Gen hollow-triangle, Comp filled-diamond,
+      Trace family dashed + stereotype, ItemFlow open-arrow + item-type label).
+      Shipped iter-753 (PR #306, commit b2b7892).
 
 Backlog (P0 — hierarchical Project Explorer foundations, decisions locked iter-531):
 - T-13.29 Make `ownerId` + `ownerRole` + `ownerIndex` the SINGLE source of
@@ -252,8 +304,14 @@ Backlog (P0 — hierarchical Project Explorer foundations, decisions locked iter
   make it REQUIRED on every Diagram. Each viewpoint declares accepted
   context kinds; the "Create representation…" menu reads from that table.
   Migrate orphan diagrams to { kind: 'package', id: rootId }.
-- T-13.31 Replace flat-by-kind ProjectTree with containment-driven tree
-  rooted at the project package, with representations nested under owners.
+- [x] T-13.31 Replace flat-by-kind ProjectTree with containment-driven tree
+      rooted at the project package, with representations nested under owners.
+      Soft-completed by the explorer cascade — `ContainmentTree` (iter-723)
+      now serves the explorer role; the legacy flat `ProjectTree` was
+      re-purposed as the palette / drag-source carrier for
+      `PROJECT_TREE_DRAG_TYPE` and consumers (CanvasPane, Activity /
+      State / UseCase / Parametric palettes). No literal "replace"
+      remaining.
 
 ## Iter-768 archive (one-line)
 - Misdiagnosed PR-#331 CI cancellation as visual-baseline drift; spent
@@ -1309,7 +1367,8 @@ Backlog (P0 — visual rendering / transparency, JOURNAL iter-529):
 
 Backlog (P1 — SysMLv2 notation conformance, JOURNAL iter-529):
 - [x] T-13.18 Port direction glyphs (in/out/inout). Shipped iter-741 (#291).
-- T-13.19 BDD block compartments (parts/ports/values/constraints).
+- [x] T-13.19 BDD block compartments (parts/ports/values/constraints).
+      Shipped pre-iter-749 (PR #298, commit 4873e74).
 - [x] T-13.20 IBD enclosing-block frame — shipped iter-747 (PR #294).
 - [x] T-13.21 Requirement compartments (reqId/text/priority/status rows). Shipped iter-744 (#293).
 - [x] T-13.22 Use-case true ellipse shape (SVG, not rectangle). Shipped iter-739 (#288).
@@ -1325,8 +1384,9 @@ Backlog (P1 — SysMLv2 notation conformance, JOURNAL iter-529):
       gate's uniform DOM query.
 - [x] T-13.25 Parametric: constraint-expression + value-property `: type = value`.
       In flight — PR #300 (iter-749), auto-merge enabled, awaiting CI.
-- T-13.26 Edge style audit (Gen hollow-triangle, Comp filled-diamond,
-  Trace family dashed + stereotype, ItemFlow open-arrow + item-type label).
+- [x] T-13.26 Edge style audit (Gen hollow-triangle, Comp filled-diamond,
+      Trace family dashed + stereotype, ItemFlow open-arrow + item-type label).
+      Shipped iter-753 (PR #306, commit b2b7892).
 
 Backlog (P0 — hierarchical Project Explorer foundations, decisions locked iter-531):
 - T-13.29 Make `ownerId` + `ownerRole` + `ownerIndex` the SINGLE source of
@@ -1341,8 +1401,14 @@ Backlog (P0 — hierarchical Project Explorer foundations, decisions locked iter
   make it REQUIRED on every Diagram. Each viewpoint declares accepted
   context kinds; the "Create representation…" menu reads from that table.
   Migrate orphan diagrams to { kind: 'package', id: rootId }.
-- T-13.31 Replace flat-by-kind ProjectTree with containment-driven tree
-  rooted at the project package, with representations nested under owners.
+- [x] T-13.31 Replace flat-by-kind ProjectTree with containment-driven tree
+      rooted at the project package, with representations nested under owners.
+      Soft-completed by the explorer cascade — `ContainmentTree` (iter-723)
+      now serves the explorer role; the legacy flat `ProjectTree` was
+      re-purposed as the palette / drag-source carrier for
+      `PROJECT_TREE_DRAG_TYPE` and consumers (CanvasPane, Activity /
+      State / UseCase / Parametric palettes). No literal "replace"
+      remaining.
 - T-13.32 Bidirectional tree↔canvas selection sync + reveal-in-tree action.
 - T-13.33 Three-dots context menu per node (Rename / Delete / Create child /
   Create representation / Expand-all / Move to package / Duplicate). Split:
@@ -1423,6 +1489,16 @@ Phase 14 (deferred from Phase 13, iter-531):
   scripts/regen-chat-baselines.sh and docs/CONTEXT.md.
 
 ## Next action
+After PR **#335** (T-13.39 URL-fragment permalinks) merges, the only
+remaining open Phase-13 backlog items are P2 polish (T-13.40+) and
+the explicit Phase-13 gate specs (cold-start UI walkthrough +
+visual fidelity invariants + persisted-schema invariants). Pick
+either the lowest-numbered P2 (T-13.40 Breadcrumb) or — preferred —
+land the Phase-13 gate spec next so the phase can close. Audit
+revealed three stale backlog check-marks resolved this iter: T-13.19,
+T-13.26, T-13.31.
+
+## Prior next-action (archived iter-776)
 After **#328** (T-13.29/.30 foundation) merges, pick the next P0
 explorer-cascade item that's still open. Per the Backlog (P0)
 section, T-13.29/.30 closes the foundation; T-13.31 (ContainmentTree
