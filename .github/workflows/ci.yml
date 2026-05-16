@@ -76,3 +76,18 @@ jobs:
           path: playwright-report
           if-no-files-found: ignore
           retention-days: 14
+
+      # `playwright-report/` is only flushed when the run completes — on a
+      # job-cancelled timeout the upload step finds no files (see run
+      # 25937962140). `test-results/` is written incrementally per test
+      # and contains the per-test `<arg>-actual.png` for every failing
+      # `toHaveScreenshot` assertion, so it survives cancellation and is
+      # the input the lift-from-trace rebaseline procedure actually needs.
+      - name: Upload Playwright test-results (per-test actuals/diffs)
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-test-results
+          path: test-results
+          if-no-files-found: ignore
+          retention-days: 14

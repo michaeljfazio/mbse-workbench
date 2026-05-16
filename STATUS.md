@@ -6,48 +6,81 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 767
+- Iteration #: 768
 - Started: 2026-05-16
 - Branch: issue/330-diagram-tabs-open-close (PR #331 still open)
-- Working on: fix CI timeout root cause — split visual specs into their
-  own Playwright projects with `retries: 0` so a baseline-drift storm no
-  longer triples the visual-spec wallclock. Iter-766's 60-min cap bump
-  alone wasn't enough: run 25935089963 also cancelled at exactly 60 min,
-  again before the playwright-report flushed (artifacts list empty).
-  Root cause: with `retries: 2` global and many baselines drifting, each
-  failing visual spec runs 3× sequentially; that pushes total e2e
-  wallclock past whatever ceiling we set. Visual diffs are
-  deterministic — a real regression diffs identically on every retry —
-  so the right fix is to skip retries entirely for visual specs and let
-  them fail-fast.
+- Working on: unblock the visual-baseline rebaseline procedure for PR
+  #331 by making CI complete AND making the actuals survive
+  cancellation. Iter-767's split-visual-into-retries:0 change was
+  worth keeping (real regressions still fail fast; functional flakes
+  still get 2 retries), but it wasn't enough on its own — run
+  25937962140 cancelled at exactly 60 min with 412/612 specs done.
+  Two independent gaps caused the lift-from-trace procedure to be
+  blocked:
 
-  Change in this iteration (single commit on the same branch):
-  1. `playwright.config.ts` — split each browser into two projects:
-     - `chromium` + `webkit`: `grepInvert: /@visual/`, keep global
-       `retries: 2`.
-     - `chromium-visual` + `webkit-visual`: `grep: /@visual/`,
-       `retries: 0`, and override `snapshotPathTemplate` so baseline
-       file names stay `{arg}-chromium.png` / `{arg}-webkit.png`
-       (otherwise the new project name would invalidate every committed
-       baseline).
-  2. `.github/workflows/ci.yml` — refresh the timeout comment to point
-     at the new retries policy (the 60-min cap stays as a safety net,
-     not the primary fix).
-  3. `docs/CONTEXT.md` — record the split + rationale so the next
-     baseline-drift iteration finds the pattern.
+  (a) **Wallclock cap not yet under the 60-min budget.** With
+      `workers: 2` (Playwright's conservative `cores/2` default for
+      a 4-vCPU runner) and 612 specs, the run cannot complete in
+      time. The dot-progress timestamps in CI run 25937962140 show
+      ~10.5 specs/min globally, i.e. ~58 min for all 612 with the
+      retries that fire — right at the cap, and over it under any
+      flake load.
 
-  Verification: `CI=1 pnpm exec playwright test --list` reports 249
-  functional + 57 visual specs per browser (612 total). Functional
-  tests stay on chromium/webkit projects; visual on -visual projects.
-  Snapshot template overrides keep baseline filenames stable. `tsc -b`
-  clean.
+  (b) **`playwright-report/` does not survive cancellation.** The
+      HTML reporter only flushes at end-of-run, so the upload step
+      logged `No files were found with the provided path:
+      playwright-report` on 25937962140. The artifact list is
+      empty, and the iter-767 plan ("download the playwright-report
+      from the next CI run") was unrunnable as a result.
 
-  Next iteration: download the fresh playwright-report from the next
-  CI run on this branch; lift per-browser `*-actual.png` from
-  `data/<trace-hash>.zip` for each failing baseline; commit and push.
-  Procedure: docs/CONTEXT.md lines 542-568. Recent precedent:
-  iter-759 (30 baselines for toolbar undo/redo growth), iter-762 (3
-  baselines for header chip drift).
+  Changes shipped this iteration (single commit on the same
+  branch):
+  1. `playwright.config.ts` — bumped `workers` from 2 → 4 in CI.
+     ubuntu-latest has 4 vCPU / 16 GB; each worker drives one
+     browser process at a time so peak memory stays well under
+     the 16 GB ceiling. Inline comment explains the trade-off and
+     calls out the fallback to 3 if flake-from-contention appears.
+  2. `.github/workflows/ci.yml` — added a second upload-artifact
+     step for `test-results/` (named `playwright-test-results`).
+     `test-results/` is written incrementally per test and
+     contains `<arg>-actual.png` for every failing
+     `toHaveScreenshot` assertion, so it survives cancellation and
+     is the input the rebaseline procedure actually needs. The
+     existing `playwright-report` upload stays for the
+     happy-path-complete case.
+  3. `docs/CONTEXT.md` — recorded the cancellation/upload gap and
+     the workers bump, so the next iteration that hits a
+     baseline-drift storm finds the pattern.
+
+  Verification:
+  - `pnpm exec tsc -b` clean (no output).
+  - `CI=1 pnpm exec playwright test --list` reports 612 specs in
+    60 files (unchanged from iter-767), confirming the workers
+    change didn't accidentally drop any project.
+  - No production code touched; risk surface is purely CI
+    infrastructure.
+
+  Next iteration: download `playwright-test-results` from the next
+  CI run on this branch; lift the `<arg>-actual.png` files
+  out of each failing-spec subdirectory; copy into
+  `tests/e2e/__screenshots__/...` under the matching baseline
+  filenames; commit and push. If the run actually completes
+  green/red under the new workers count, the
+  `playwright-report` artifact will also be available and the
+  `data/<trace-hash>.zip` procedure works too — either path is
+  fine. Procedure: docs/CONTEXT.md (latest entry + earlier
+  lift-from-trace section). Recent precedent: iter-759 (30
+  baselines for toolbar undo/redo growth), iter-762 (3 baselines
+  for header chip drift).
+
+  ## Prior iteration (archived — iter-767)
+
+  Iter-767 split each browser into separate visual / non-visual
+  Playwright projects so `@visual` specs run with `retries: 0`
+  (functional kept `retries: 2`). `snapshotPathTemplate` was
+  overridden per visual project to keep baseline filenames stable
+  as `<arg>-chromium.png` / `<arg>-webkit.png`. The split is
+  preserved by iter-768.
 - Previously working on (iter-765): #330 — T-13.37 Diagram tabs strip tracks "open" diagrams
   separately from the full diagram list. The containment tree is the
   authoritative master list of every diagram (rendered as `⌬`

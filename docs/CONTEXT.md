@@ -1182,3 +1182,23 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
   + webkit) when the toolbar grows, which is *expected* and refreshed
   via the lift-from-CI procedure — but split-view failures are
   *functional* regressions and not OK to ride out via baseline regen.
+
+- 2026-05-16 (iter-767, PR #331): **`playwright-report/` does NOT survive
+  a job-cancelled timeout — `test-results/` does.** Iter-766 split visual
+  specs into `retries:0` projects (worth keeping) and bumped the job cap
+  to 60min, but run 25937962140 still cancelled at exactly 60min with
+  ~412/612 specs done; the upload step then logged
+  `No files were found with the provided path: playwright-report` and
+  produced an empty artifact list. The HTML reporter only flushes
+  `playwright-report/` once the run completes, so cancellation eats it.
+  Two fixes shipped together in this iter: (1) bumped Playwright
+  `workers` from 2 → 4 in `playwright.config.ts` — ubuntu-latest has
+  4 vCPU/16 GB and the conservative `cores/2` default was the bottleneck;
+  (2) added a second `upload-artifact` step for `test-results/` in
+  `.github/workflows/ci.yml`. `test-results/` is written incrementally
+  per test and contains `<arg>-actual.png` for every failing
+  `toHaveScreenshot` assertion — that's the actual input the lift-from-
+  trace rebaseline procedure needs, and it survives cancellation. The
+  procedure documented earlier (lift from `data/<trace-hash>.zip` in the
+  HTML report) still works when the report does flush; otherwise lift
+  from the `playwright-test-results` artifact's per-test subdirectory.

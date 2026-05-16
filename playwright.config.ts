@@ -16,7 +16,14 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 2 : undefined,
+  // CI runner is ubuntu-latest (4 vCPU / 16 GB). Playwright's
+  // conservative default is workers = cores/2 = 2, but at 612 specs the
+  // serial pace pushes wallclock past the 60-min job cap (iter-766/.767
+  // both cancelled around 412/612 specs). 4 workers ≈ 1 per core; each
+  // worker drives one browser process at a time so peak memory stays
+  // well under the 16 GB ceiling. If this regresses to flake-from-
+  // contention, drop to 3.
+  workers: process.env.CI ? 4 : undefined,
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
   grepInvert: SKIP_VISUAL_LOCALLY ? /@visual/ : undefined,
   expect: {
