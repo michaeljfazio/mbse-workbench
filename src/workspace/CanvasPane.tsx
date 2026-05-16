@@ -12,7 +12,7 @@ import {
   type EdgeChange,
   type Node,
   type NodeChange,
-  type NodeDragHandler,
+  type OnNodeDrag,
 } from '@xyflow/react';
 
 import type {
@@ -953,14 +953,14 @@ function CanvasInner(): JSX.Element {
   );
 
   // Show the drag-coord overlay while dragging; clear it on drag-stop.
-  const onNodeDrag = useCallback<NodeDragHandler>(
+  const onNodeDrag = useCallback<OnNodeDrag>(
     (_event, node) => {
       setDragPos({ x: node.position.x, y: node.position.y });
     },
     [],
   );
 
-  const onNodeDragStop = useCallback<NodeDragHandler>(
+  const onNodeDragStop = useCallback<OnNodeDrag>(
     () => {
       setDragPos(null);
     },
