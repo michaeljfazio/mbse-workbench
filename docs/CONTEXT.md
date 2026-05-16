@@ -1332,3 +1332,21 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
   `project.elements`, because exports (`downloadProjectSysml`,
   `serializeProjectJson`) and `repository.save` all strip the
   library out at the persistence boundary (see ADR 0013 §iter-785).
+
+- **2026-05-16 (iter-790, incident #357):** Visual-baseline rebaseline
+  after a tree-pane layout change must cover **every** spec that
+  screenshots the tree, not only the ones that surface in the first
+  failed CI run. The pattern: a layout-affecting change is at the
+  pixel-diff threshold (~0.02 vs the 0.01 `maxDiffPixelRatio`); some
+  specs fail outright, some flake right at the threshold. Iter-786
+  lifted 55 actuals from the first failed run, but
+  `state-machine-with-pseudostates-chromium` was not in that batch — it
+  passed that one run by chance — and then failed deterministically on
+  every subsequent post-merge `main` run (T-14.05, T-14.06). **Rule:**
+  after a layout change touching the tree pane (or any other persistent
+  chrome), grep `tests/e2e/__screenshots__/**` for every spec that
+  captures `fullPage: false` from a screen that *could* include the tree,
+  and verify each baseline against a current local actual — don't trust
+  "the failing CI run names them all". Alternative if unsure: dispatch
+  a Playwright snapshot-update workflow that regenerates all visual
+  baselines from a single CI environment in one shot.
