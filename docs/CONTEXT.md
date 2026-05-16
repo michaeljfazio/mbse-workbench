@@ -1295,3 +1295,20 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
   plus N *library* roots" (see ADR 0013). Tests that bootstrap and
   assert on a clean element set should either filter library
   elements or clear `libraryRootIds` explicitly after bootstrap.
+
+- 2026-05-16 (T-14.05): **Library short names resolve through two
+  static tables in `@/library`** — `STANDARD_LIBRARY_ID_TO_NAME`
+  (used by the SysMLv2 serializer's `refName` fallback so stripped
+  library refs print as `Part` instead of `<missing>`) and
+  `STANDARD_LIBRARY_NAMES_BY_QUALNAME` (used by the parser when it
+  sees `import <qn>::*;` — it seeds `nameToId` with library short
+  names so subsequent unqualified references resolve to library
+  element ids). Both maps are pure functions of the library fixture;
+  no per-project plumbing is needed. T-14.06 will generalize this
+  for nested packages + user-defined library hierarchies. **Rule:**
+  any reference to a library element id (from the serializer or any
+  name-resolving consumer) should look it up via these static maps
+  rather than expecting the library to be present in
+  `project.elements`, because exports (`downloadProjectSysml`,
+  `serializeProjectJson`) and `repository.save` all strip the
+  library out at the persistence boundary (see ADR 0013 §iter-785).

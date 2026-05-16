@@ -9,6 +9,10 @@ import type {
   ValueLiteral,
 } from '@/model';
 import { ELEMENT_KINDS } from '@/model';
+import {
+  findLibraryReferences,
+  STANDARD_LIBRARY_ID_TO_NAME,
+} from '@/library';
 
 const INDENT = '  ';
 
@@ -67,6 +71,13 @@ export function serializeProject(
     ? `// SysMLv2 textual notation — project: ${project.name} // id: ${project.id}`
     : options.header;
   if (header !== null) blocks.push(header);
+
+  const importQualnames = findLibraryReferences(project);
+  if (importQualnames.length > 0) {
+    blocks.push(
+      importQualnames.map((qn) => `import ${qn}::*;`).join('\n'),
+    );
+  }
 
   for (const element of sortedTop) {
     blocks.push(renderElement(element, byId, index, 0));
@@ -144,7 +155,9 @@ function renderElement(
 }
 
 function refName(id: ElementId, byId: Map<ElementId, ModelElement>): string {
-  return byId.get(id)?.name ?? '<missing>';
+  return (
+    byId.get(id)?.name ?? STANDARD_LIBRARY_ID_TO_NAME.get(id) ?? '<missing>'
+  );
 }
 
 function quote(s: string): string {

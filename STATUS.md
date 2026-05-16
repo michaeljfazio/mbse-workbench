@@ -3,34 +3,81 @@
 ## Current phase
 phase:14 — Standard library import (KerML + SysML)
 
-T-14.03 merged at 0f9890d (iter-783). T-14.04 in flight this iteration.
+T-14.04 merged at be2a4e8 (PR #350). T-14.05 PR #352 open this iteration,
+auto-merge enabled, awaiting CI.
 
 ## Current iteration
-- Iteration #: 786
+- Iteration #: 787
 - Started: 2026-05-16
-- Branch: `issue/349-kerml-core-library`
-- Working on: #349 — PR #350 CI on `bb7a274` finished red with **55 visual
-  baseline failures and 0 functional failures** (one webkit command-palette
-  flake passed on retry). All 55 are deliberate UI-shift due to T-14.03's
-  "Libraries" section header now occupying space in the explorer tree
-  pane. Lifted the 55 `*-actual.png` files from the
-  `playwright-test-results` artifact (amd64 Linux, identical renderer to
-  CI) and copied them over the baselines. Awaiting fresh CI.
+- Branch: `issue/351-sysml-import-directive`
+- Working on: #351 — T-14.05 SysMLv2 text `import Pkg::*;` directive
+  landed (parser + serializer + round-trip preservation for projects
+  that reference standard-library content). PR #352 opened with
+  1408/1408 unit tests, tsc clean, lint clean, build clean. Awaiting
+  CI to confirm e2e + visual baselines unaffected.
 
 ## Phase 14 plan-of-record (epic #342)
 - [x] **T-14.01 (#343 → PR #344, 2cfc23f)** — Foundation schema hooks
 - [x] **T-14.02 (#345 → PR #346, 8b3de56)** — Command-bus seam
 - [x] **T-14.03 (#347 → PR #348, 0f9890d)** — Explorer "Libraries" section
-- [ ] **T-14.04 (#349)** — Vendor KerML core + load into libraryRootIds
-      (this iteration)
-- [ ] **T-14.05** — SysMLv2 text `import` directive: parser accepts
-      `import Pkg::*`; serializer emits when project references
-      library elements; round-trip preserved
+- [x] **T-14.04 (#349 → PR #350, be2a4e8)** — Vendor KerML core +
+      merge into every project
+- [~] **T-14.05 (#351 → PR #352)** — SysMLv2 text `import Pkg::*;`
+      directive: parser accepts; serializer emits when project
+      references library elements; round-trip preserved (in flight)
 - [ ] **T-14.06** — Namespace resolution for unqualified names
-      against imported packages: precedence local → imported → root
+      against user-defined imported packages (T-14.05 already seeds
+      *standard-library* names via two static tables in `@/library`;
+      T-14.06 generalizes to user libraries + nested qualnames)
 - [ ] **T-14.07** — Phase 14 gate spec: cold-start UI walkthrough
       exercises the library tree (read-only) + an `import`-using
       model round-trips
+
+## Iter-787 implementation notes (T-14.05 PR #352)
+- **Scope.** Parser + serializer + round-trip preservation for projects
+  that reference standard-library content. Namespace resolution for
+  arbitrary user-defined imports is T-14.06; this iteration ships the
+  minimum needed for KerML-referencing projects to survive
+  `serialize → parse` cleanly.
+- **Tokenizer.** `::` emitted as a single 2-char punct (before single-`:`
+  check, so `::` wins). `*` added to `PUNCT_CHARS` explicitly (already
+  was a single-char punct via the catch-all — same behavior, now
+  declared). No multiplicity (`[0..*]`) regression because the
+  multiplicity parser concatenates token values inside `[...]` without
+  caring about punct vs ident.
+- **Parser.** `parseFile` top-level loop checks `isImportDirective()` —
+  `import ident ::` lookahead — before falling through to edge keyword
+  handling. Disambiguates from the PackageImport edge form
+  (`import a -> b;`). Parsed import qualnames surface as
+  `ParsedProject.imports: readonly string[]` (source order, undefined
+  when none). On each parsed directive, `seedLibraryNames(qn)` populates
+  `nameToId` from `STANDARD_LIBRARY_NAMES_BY_QUALNAME` so the body's
+  unqualified `: Part` resolves to `kerml.core.Base.Part`. Library
+  bindings never overwrite user names (precedence: user > library).
+- **Serializer.** `serializeProject` calls `findLibraryReferences(project)`
+  between header and first element; emits one `import <qn>::*;` line per
+  detected qualname. `refName(id, byId)` falls back to
+  `STANDARD_LIBRARY_ID_TO_NAME` so stripped library refs print as
+  `Part` instead of `<missing>` (necessary because `downloadProjectSysml`
+  / `serializeProjectJson` / `repository.save` strip the library at
+  the persistence boundary per ADR 0013).
+- **Library reference detection.** `findLibraryReferences(project)`
+  walks every id-valued field on non-library elements + edges
+  (`definitionId`, `interfaceId`, edge `sourceId/targetId`) and returns
+  the sorted unique qualified names of library packages referenced.
+  `ownerId` is excluded — library elements only own library elements.
+- **Two new static tables in `@/library`.** `STANDARD_LIBRARY_ID_TO_NAME`
+  (id → short name; used by serializer fallback) and
+  `STANDARD_LIBRARY_NAMES_BY_QUALNAME` (qn → short name → id; used by
+  parser seeding). Pure functions of the library fixture; no per-project
+  plumbing. T-14.06 will generalize for user libraries + nested qualnames.
+- **Tests.** +8 findLibraryReferences, +6 parser import directive,
+  +3 serializer, +2 end-to-end round-trip = +19. 1408/1408 unit pass.
+  Typecheck clean, lint clean (3 pre-existing react-refresh warnings
+  unchanged), build clean (897 kB main, +~3 kB for static tables).
+- **Verification (local).** `pnpm vitest run`, `pnpm exec tsc -b`,
+  `pnpm run lint`, `pnpm build` all green on macOS. E2E + visual
+  deferred to CI (no UI touches in this PR; expected to pass cleanly).
 
 ## Iter-786 implementation notes (visual baseline refresh on PR #350)
 - **Diagnosis.** CI run 25958746408 (commit `bb7a274`) summary: 55 failed,
@@ -141,19 +188,35 @@ T-14.03 merged at 0f9890d (iter-783). T-14.04 in flight this iteration.
 
 ## Last test run
 - Command: `pnpm vitest run` + `pnpm exec tsc -b` + `pnpm run lint` +
-  `pnpm build` (local)
+  `pnpm build` (local, iter-787)
 - Result: PASS
-- Unit: 1389/1389 (was 1372; +17 new across kermlCore + applyStandardLibrary)
+- Unit: 1408/1408 (was 1389; +19 new across findLibraryReferences +
+  parser import directive + serializer + round-trip)
 - Typecheck: `tsc -b` clean
 - Lint: 0 errors, 3 pre-existing react-refresh warnings unchanged
-- Build: 895 kB main chunk (+4 kB vs 891 kB baseline — library
-  fixture + helpers)
+- Build: 897 kB main chunk (+~3 kB vs 895 kB — two static library tables)
 - E2E: deferred to CI
 
 ## Known issues / blockers
 - (none)
 
 ## Decisions log
+- 2026-05-16 (iter-787): T-14.05 ships the **minimum namespace-seeding
+  needed for standard-library round-trip**, not full T-14.06 resolution.
+  Two static tables in `@/library` (id→name, qn→(name→id)) suffice for
+  the canonical library because every standard-library element id is
+  known at compile time. T-14.06 will generalize for user-defined
+  imported packages (which require runtime traversal of project
+  elements under each listed `libraryRootId`). Rationale: lands a
+  useful, round-trip-safe slice now; defers the per-project plumbing
+  cost until there's a second consumer that justifies it.
+- 2026-05-16 (iter-787): Parser disambiguates `import` directive from
+  PackageImport edge by **3-token lookahead** (`import ident ::` →
+  directive; `import ident ->` → edge). Cleaner than registering
+  `import` differently in `isEdgeKeyword`, and keeps the existing
+  edge form parsing untouched. The directive-vs-edge ambiguity exists
+  *only* on the `import` keyword; all other edge keywords have no
+  directive form.
 - 2026-05-16 (iter-786): Rebaseline by lifting CI artifact actuals, not
   by running `scripts/regen-baselines.sh` locally. Rationale: the
   CI-uploaded `playwright-test-results` artifact contains the exact
@@ -235,8 +298,13 @@ T-14.03 merged at 0f9890d (iter-783). T-14.04 in flight this iteration.
   only surface via `tsc -p tsconfig.app.json` or `tsc -b`.
 
 ## Next action
-1. Wait for CI on PR #350's iter-786 baseline-refresh commit.
-2. If green, auto-merge fires → T-14.05 (SysMLv2 `import` directive)
-   opens next iteration.
-3. If any residual visual baseline still fails, that is unexpected
-   — investigate as a genuine regression rather than another refresh.
+1. Wait for CI on PR #352 (T-14.05). Auto-merge enabled — green CI
+   triggers squash merge.
+2. If green, T-14.06 (namespace resolution for user-defined imports)
+   opens next iteration. Scope hooks: generalize the `seedLibraryNames`
+   parser path to also walk `project.libraryRootIds` and seed names
+   from every library subtree; teach `findLibraryReferences` to bucket
+   refs by user-defined library root (not just the standard set).
+3. If red, diagnose: most likely surface is an existing snapshot
+   test that captured the old `<missing>` rendering — but I grep'd
+   the snapshot files and saw none, so this is unlikely.
