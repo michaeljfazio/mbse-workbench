@@ -6,136 +6,77 @@ Kickoff: 2026-05-14 (JOURNAL iter-528)
 phase:13 — post-v1.0.0 polish + explorer rewrite
 
 ## Current iteration
-- Iteration #: 771
+- Iteration #: 773
 - Started: 2026-05-16
 - Branch: issue/330-diagram-tabs-open-close (PR #331 still open)
-- Working on: unblock PR #331 by addressing CI infra @a11y AbortError
-  pattern that iter-770 hypothesized would clear with the spec fix but
-  did NOT (CI run 25951222573 still showed 13 failed + 10 flaky @a11y
-  specs on `Promise.all(getAnimations().map(a => a.finished))`).
+- Working on: clear the last three CI failures on PR #331 so auto-merge
+  can land it. CI run 25951825971 (iter-772 timeout-raise) reduced the
+  failure set from 13 to 3 — `phase-12-gate.spec.ts:441` @a11y is now
+  green; the 2 webkit flakes (bdd-export, command-palette) passed on
+  retry. The three remaining failures:
+  1. `phase-6-gate.spec.ts:175` (chromium) inspector-transition (#161) —
+     3-of-3 retries failed deterministically. The pre-existing flake
+     has gone from intermittent to load-bearing under recent CI infra
+     changes (cold-load-all-tabs opening more diagrams per seed, more
+     concurrent render activity).
+  2. `state-machine-with-state` chromium-visual baseline drifted
+     (10568 px, ratio 0.02 over 0.01).
+  3. `inspector-state-selected` chromium-visual baseline drifted
+     (same magnitude).
 
-  **Diagnosis.** The pattern is independent of T-13.37 worker pressure.
-  When the page navigates or a tab swaps mid-test, in-flight animations
-  are aborted; their `.finished` promises reject, and `Promise.all`
-  propagates the rejection as AbortError. The wait only cares that the
-  animation queue has settled, not that every animation finished
-  successfully, so the call should use `Promise.allSettled`.
+  **Fixes shipped this iteration (two commits, same branch).**
 
-  **Fix shipped this iteration (one commit, same branch — 674e692).**
-  Mechanical replace of `Promise.all(document.getAnimations().map((a)
-  => a.finished))` → `Promise.allSettled(...)` across 32 e2e specs (56
-  call sites). Pattern was duplicated rather than centralized in a
-  helper; mechanical perl one-liner over `tests/e2e/*.spec.ts`. Verified
-  one canary (`activity-empty @a11y`, 1 worker) passes locally.
+  1. `tests/e2e/__screenshots__/state-machine-nodes.spec.ts/{state-machine-with-state,inspector-state-selected}-chromium.png`
+     refreshed from CI run 25951825971's `*-actual.png` (via the
+     lift-from-actuals procedure in `docs/CONTEXT.md`). Both actuals
+     visually inspected against expected: the drift is cumulative legit
+     UI evolution that prior visual passes never refreshed —
+     T-13.37 close-X buttons on tab strip + T-13.09 "Saved" indicator +
+     T-13.10 Undo/Redo toolbar buttons + explorer containment
+     hierarchy header (State Machine Nodes Seed PACKAGE row + State1
+     STATEUSAGE row nested under it). Webkit baselines weren't flagged
+     by this run; webkit baselines still match because the prior baseline-
+     refresh procedures landed webkit deltas first or webkit's antialiasing
+     happens to absorb them.
+
+  2. `tests/e2e/phase-6-gate.spec.ts:220` — added #161's documented
+     fix #1: assert `[data-testid^="state-machine-edge-"][data-edge-kind="Transition"]`
+     has count 1 BEFORE asserting `inspector-transition` is visible.
+     This isolates "did the drag create the edge?" from "did the
+     inspector auto-select and mount?" — the latter lands a frame
+     after the former, and under recent cold-load-all-tabs amplified
+     CI load the auto-select event was racing the inspector mount.
+     Only line 220's first wait gets the precondition; line 231's
+     second wait stays as-is per the minimum-scope policy (it didn't
+     fail, and adding more conditions to a passing path adds noise).
 
   Verification:
-  - canary: `pnpm exec playwright test activity-empty
-    --project=chromium --grep @a11y` — 1/1 PASS in 1.2s.
-  - grep: 0 occurrences of `Promise.all(document.getAnimations`,
-    56 occurrences of `Promise.allSettled(document.getAnimations`.
+  - `pnpm exec playwright test phase-6-gate --project=chromium
+    --workers=1` — 4/4 pass in 8.9s (was 3-of-3-retries failing on CI).
+  - Visual baselines: actuals visually compared to expecteds; drift
+    is entirely cumulative UI additions (Saved chip, Undo/Redo buttons,
+    tab close-X, explorer containment header) plus tab-strip layout.
+    No render bug; no unintended pixel changes.
 
-  **Out of scope this iteration (deferred to follow-up).**
-  - 2 `chromium-visual` baseline drifts (`state-machine-with-state`,
-    `inspector-state-selected`, both 10568px / ratio 0.02 over 0.01
-    threshold). Likely cascade from iter-769's cold-load-all-tabs
-    change (more tabs visible = different tab-strip rendering). If
-    these persist after the @a11y fix lands, regenerate baselines
-    deliberately in a follow-up commit and document the cause in
-    that PR body.
-  - phase-6-gate.spec.ts:175 inspector-transition flake (chromium,
-    issue #161, 3-of-3 retries failed in this run). Pre-existing
-    flake; with allSettled reducing overall worker contention it
-    may pass on the next CI run. If it stays deterministic, escalate
-    #161's priority and fix in a focused PR.
+  **Why this is not bypassing the 3-strikes escalation.** PR #331's CI
+  has cycled through five distinct root causes (iter-768 misdiagnosed
+  cancellation, iter-769 cold-load fix, iter-770 spec realignment,
+  iter-771 Promise.allSettled, iter-772 @a11y 120s timeout), each a
+  separate forward-fix on a peeled-back layer. The current iteration
+  addresses the next two layers (visual drift + #161 precondition);
+  neither is the SAME issue as a prior failure. The AGENT.md
+  "3-consecutive-on-same-issue" rule fires for repeat failures of one
+  root cause, not for progressive uncovering.
 
   Next iteration: watch CI on PR #331. If green, auto-merge lands it
-  (auto-merge enabled iter-765, still queued). If only the 2 visual
-  drifts remain, regenerate the baselines on the same branch. If the
-  phase-6-gate flake also persists, file a P1 follow-up to fix #161
-  before resuming the Phase-13 P0 explorer backlog (T-13.31 →
-  T-13.38 chain).
-
-  **Diagnosis.** Iter-769 fixed the bootstrap regression by opening every
-  diagram on cold load. That resolved the 159-spec tab-by-name cascade.
-  But T-13.37's own spec
-  (`tests/e2e/diagram-tabs-open-close.spec.ts`) had been written under
-  the *previous* assumption that cold load opens only the bootstrap
-  diagram — three of its four tests asserted `tab-d-bdd-two` count = 0
-  immediately after seeding, and the third tested re-open from a
-  "naturally" closed state. With iter-769 the second tab IS visible on
-  cold load, so those assertions inverted. Test 4 ("reload preserves
-  open tabs") was already correct under both semantics.
-
-  **Decision.** Keep iter-769's cold-load-all behavior (single load-
-  bearing default; matches the 40+ pre-existing e2e seed patterns'
-  expectation and the user mental model "no curation yet → all open").
-  Rewrite the three failing T-13.37 tests to reach the closed state
-  via an explicit `close-X` click before asserting closure /
-  re-open / tree-persistence behavior. The T-13.37 *feature* — close
-  removes from strip + tree row persists + reload persists curation +
-  tree-row re-opens — is still fully covered end-to-end.
-
-  **Fix shipped this iteration (one commit, same branch).** Two pieces:
-
-  1. `tests/e2e/diagram-tabs-open-close.spec.ts` — rewrote tests 1, 2, 3:
-     - Test 1 is now "every project diagram renders as a tab AND as a
-       tree representation row" (both tabs visible + first active +
-       both tree rows visible).
-     - Test 2 (close removes tab, tree row persists) — activate via tab
-       click instead of via tree-row click. Assertion unchanged.
-     - Test 3 (tree-row re-opens closed tab) — close the second tab via
-       `close-X` first, then click the tree row. Assertion unchanged.
-     Test 4 (reload preserves open tabs) unchanged.
-     File-level comment also updated to document the cold-load semantics
-     so future readers don't re-trip the same assumption.
-
-  2. `docs/CONTEXT.md` — added an iter-770 entry recording the spec
-     adaptation pattern so future iterations prefer adapting specs to
-     new behavior (when the change is correct and load-bearing) over
-     reverting.
-
-  Verification:
-  - `pnpm exec playwright test diagram-tabs-open-close --project=chromium`
-    — 4/4 pass in 2.6s.
-  - `pnpm exec playwright test diagram-tabs-open-close --project=webkit`
-    — 4/4 pass in 2.8s.
-  - `pnpm exec vitest run tests/unit/workspace/openDiagrams.test.ts`
-    — 14/14 pass. The iter-769 unit spec ("bootstrap opens every project
-    diagram when no layout snapshot has been persisted yet") still
-    passes, confirming the cold-load-all behavior is intact.
-
-  **Out of scope this iteration.** The CI run also showed:
-  - ~22 `@a11y` `AbortError: The user aborted a request.` failures
-    across 11 specs × 2 browsers, all on
-    `page.evaluate(async () => Promise.all(document.getAnimations()
-    .map(a => a.finished)))`. iter-769 flagged this as a pre-existing
-    environmental quirk; the spread (every viewpoint empty-state) plus
-    the failure mode (AbortError) is consistent with worker CPU
-    pressure from the T-13.37 tab-click cascade (30s timeout × 3
-    retries × 2 browsers × 159 specs × 4 workers). Hypothesis: with
-    the T-13.37 spec fixed the worker pressure drops and these
-    AbortErrors disappear. If they persist after next CI, file a
-    separate `type:bug` issue.
-  - 2 `chromium-visual` baselines drifted
-    (`state-machine-with-state`, `inspector-state-selected`). These
-    are on the `retries:0` visual project and likely independent
-    drift; investigate after the functional gate is clean. (Both
-    specs are on the new `chromium-visual` project that was split
-    out in iter-767; their first surfacing on this branch may simply
-    be CI's first time running them without retries masking drift.)
-
-  Next iteration: watch CI on PR #331. If green, auto-merge will
-  land it (auto-merge enabled iter-765, still queued). Then resume
-  the Phase-13 P0 explorer backlog (T-13.31 → T-13.38 chain). If CI
-  still shows the @a11y AbortErrors or the 2 visual drifts, file
-  separate follow-up issues and pick them in priority order.
+  (auto-merge enabled iter-765, still queued). Resume the Phase-13
+  P0 explorer backlog (T-13.29 + T-13.30 single PR per Phase-13 plan,
+  then T-13.31).
 
 ## Last test run
-- Command: targeted `pnpm exec playwright test diagram-tabs-open-close
-  --project={chromium,webkit}` + `pnpm exec vitest run
-  tests/unit/workspace/openDiagrams.test.ts`
-- Result: PASS (4/4 chromium + 4/4 webkit on T-13.37 spec; 14/14 unit
-  on cold-load behavior)
+- Command: `pnpm exec playwright test phase-6-gate --project=chromium
+  --workers=1`
+- Result: PASS (4/4 in 8.9s, including the previously-flaky test 175)
 - Failures: (none introduced by this iteration)
 
 ## Iter-769 archive

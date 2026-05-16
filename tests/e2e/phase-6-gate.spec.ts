@@ -217,6 +217,15 @@ test.describe('Phase 6 gate (issue #107)', () => {
       bottomHandleOf(page, `state-machine-initial-${initialId}`),
       topHandleOf(page, `state-machine-state-${idleId}`),
     );
+    // Precondition (#161): isolate "did the drag create the edge?" from
+    // "did the inspector auto-select and mount?" — the latter lands a
+    // frame after the former and the auto-merge wait can race the render
+    // tick under CI load (see iter-769+ cold-load-all amplifying tabs).
+    await expect(
+      page.locator(
+        '[data-testid^="state-machine-edge-"][data-edge-kind="Transition"]',
+      ),
+    ).toHaveCount(1);
     await expect(page.getByTestId('inspector-transition')).toBeVisible();
 
     // Step 3 — wire Idle → Running. The auto-selected Transition's inspector
