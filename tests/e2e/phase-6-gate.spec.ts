@@ -217,16 +217,24 @@ test.describe('Phase 6 gate (issue #107)', () => {
       bottomHandleOf(page, `state-machine-initial-${initialId}`),
       topHandleOf(page, `state-machine-state-${idleId}`),
     );
-    // Precondition (#161): isolate "did the drag create the edge?" from
-    // "did the inspector auto-select and mount?" — the latter lands a
-    // frame after the former and the auto-merge wait can race the render
-    // tick under CI load (see iter-769+ cold-load-all amplifying tabs).
+    // Precondition (#161 fix 1): isolate "did the drag create the edge?"
+    // from "did the inspector auto-select and mount?" — the latter lands
+    // a frame after the former and can race the render tick under CI
+    // load (cold-load-all-tabs amplifies concurrent render activity).
     await expect(
       page.locator(
         '[data-testid^="state-machine-edge-"][data-edge-kind="Transition"]',
       ),
     ).toHaveCount(1);
-    await expect(page.getByTestId('inspector-transition')).toBeVisible();
+    // #161 fix 2: raise the auto-select-and-mount wait at this seam
+    // specifically. Under amplified CI load the default 5s race-wins
+    // before the inspector subscribes to the freshly-selected edge.
+    // Line 240's second wait still uses the default — it follows a
+    // user-initiated drag from an already-rendered canvas and has
+    // never been observed flaking.
+    await expect(page.getByTestId('inspector-transition')).toBeVisible({
+      timeout: 15_000,
+    });
 
     // Step 3 — wire Idle → Running. The auto-selected Transition's inspector
     // exposes trigger / guard / effect; fill them now to avoid re-selecting
