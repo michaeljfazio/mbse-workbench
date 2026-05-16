@@ -21,9 +21,14 @@ export type {
   CommandBus,
   CommandHistory,
   CreateCommandBusOptions,
+  DestructiveCommandKind,
   UndoEntry,
 } from './bus';
 
-export { createCommandBus } from './bus';
+export {
+  createCommandBus,
+  DESTRUCTIVE_COMMAND_KINDS,
+  EXEMPT_COMMAND_KINDS,
+} from './bus';
 
-export { PermissionDeniedError } from './errors';
+export { LibraryViolationError, PermissionDeniedError } from './errors';

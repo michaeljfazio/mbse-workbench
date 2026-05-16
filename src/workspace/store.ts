@@ -50,7 +50,7 @@ import {
   createProjectId,
 } from '@/model';
 import type { Command, CommandBus, DiagramPositionStore } from '@/commands';
-import { createCommandBus } from '@/commands';
+import { createCommandBus, LibraryViolationError } from '@/commands';
 import type { CollaborationProvider, User } from '@/collab';
 import { NoopCollaborationProvider } from '@/collab';
 import type { ModelRepository, Project } from '@/repository';
@@ -257,6 +257,11 @@ export interface WorkspaceState {
   readonly activeConversationId: string | null;
   readonly pendingProposals: readonly ProposedChange[];
   readonly importError: ParseError | null;
+  /** Most recent command-bus rejection surfaced to the UI as a dismissable
+   * banner. Set by the bus `onError` callback wired in the bootstrap; the
+   * payload is the user-facing message (not the raw Error). Null when no
+   * unread rejection exists. See ADR 0012. */
+  readonly commandError: { readonly message: string } | null;
   /** Element queued to enter inline rename in the Containment Tree on its
    * next render. Set by tree-external flows (e.g. the empty-state CTAs)
    * after creating a new child; the tree consumes it and clears via
@@ -515,6 +520,7 @@ export interface WorkspaceActions {
     | { readonly ok: false; readonly message: string }
   >;
   clearImportError(): void;
+  clearCommandError(): void;
   setPendingRename(id: ElementId | null): void;
   /** Record that a palette command was used. Dedupes prior occurrences,
    * prepends to recentCommandIds, and caps the list at
@@ -557,6 +563,7 @@ const INITIAL_STATE: WorkspaceState = {
   activeConversationId: null,
   pendingProposals: [],
   importError: null,
+  commandError: null,
   pendingRenameElementId: null,
   recentCommandIds: [],
 };
@@ -1015,6 +1022,15 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       positions: positionStore,
       initialUndoStack: project.history.undo,
       initialRedoStack: project.history.redo,
+      onError: (err) => {
+        if (err instanceof LibraryViolationError) {
+          set({
+            commandError: {
+              message: 'Cannot modify read-only library element',
+            },
+          });
+        }
+      },
     });
 
     bus.subscribe(() => {
@@ -3047,6 +3063,10 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
 
   clearImportError() {
     if (get().importError !== null) set({ importError: null });
+  },
+
+  clearCommandError() {
+    if (get().commandError !== null) set({ commandError: null });
   },
 }));
 

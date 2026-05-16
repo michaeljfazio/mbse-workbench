@@ -2,10 +2,12 @@ import {
   createElementId,
   type EdgeKind,
   type EdgePatch,
+  type ElementId,
   type ElementKind,
   type ElementPatch,
   type ElementRegistry,
   type ModelEdge,
+  type ModelElement,
 } from '@/model';
 import {
   can as defaultCan,
@@ -15,15 +17,46 @@ import {
   type User,
 } from '@/collab';
 import type { DiagramPositionStore } from './diagramPositions';
-import { PermissionDeniedError } from './errors';
+import { LibraryViolationError, PermissionDeniedError } from './errors';
 import type {
   Command,
+  CommandKind,
   CompoundCommand,
   UpdateDiagramPositionCommand,
   UpdateEdgeCommand,
   UpdateElementCommand,
 } from './types';
 import type { ModelEvent, Unsubscribe } from './events';
+
+/**
+ * Command kinds that mutate the element registry or edge graph and are
+ * therefore subject to the `isReadOnly` pre-apply guard. See ADR 0012.
+ *
+ * Adding a new mutating command kind without adding it here will fail
+ * `src/commands/__tests__/destructiveCoverage.test.ts`, which asserts
+ * every `CommandKind` is partitioned into either this set or
+ * `EXEMPT_COMMAND_KINDS`.
+ */
+export const DESTRUCTIVE_COMMAND_KINDS = [
+  'create-element',
+  'update-element',
+  'delete-element',
+  'link',
+  'unlink',
+  'update-edge',
+] as const satisfies readonly CommandKind[];
+
+/**
+ * Command kinds NOT subject to the library guard.
+ * - `update-diagram-position` is pure presentation.
+ * - `compound` is a gateway; its subcommands are guarded individually.
+ */
+export const EXEMPT_COMMAND_KINDS = [
+  'update-diagram-position',
+  'compound',
+] as const satisfies readonly CommandKind[];
+
+export type DestructiveCommandKind = (typeof DESTRUCTIVE_COMMAND_KINDS)[number];
 
 export interface CommandBus {
   dispatch(command: Command, actor: User): ModelEvent;
@@ -50,6 +83,14 @@ export interface CreateCommandBusOptions {
   // bootstrap to rehydrate operation history across page reloads.
   readonly initialUndoStack?: readonly UndoEntry[];
   readonly initialRedoStack?: readonly UndoEntry[];
+  /**
+   * Invoked when a dispatched command is rejected by a synchronous guard
+   * (`LibraryViolationError`, `PermissionDeniedError`). The error is also
+   * re-thrown to the caller; this hook is the surface the workspace uses
+   * to convert rejections into a UI banner without wrapping all 60+ store
+   * dispatch sites in try/catch. See ADR 0012.
+   */
+  readonly onError?: (error: Error, command: Command) => void;
 }
 
 export interface UndoEntry {
@@ -70,6 +111,112 @@ export function createCommandBus(options: CreateCommandBusOptions): CommandBus {
   const now = options.now ?? (() => Date.now());
   const eventIdFactory = options.eventIdFactory ?? (() => createElementId());
   const positions = options.positions;
+  const onError = options.onError;
+
+  /**
+   * Walk from `element` up the `ownerId` chain. Returns the id of the
+   * first `PackageElement` whose `isReadOnly` is `true`, or `undefined`
+   * if no ancestor (or the element itself) is a read-only Package.
+   * O(depth). Skipping `element === undefined` makes this safe to call
+   * on commands whose target is being newly created (e.g. `link` whose
+   * endpoint is freshly added in the same compound — the guard then
+   * uses the to-be-added element's owner).
+   */
+  function readOnlyAncestorId(element: ModelElement | undefined): ElementId | undefined {
+    let current = element;
+    while (current) {
+      if (current.kind === 'Package' && current.isReadOnly === true) {
+        return current.id;
+      }
+      if (current.ownerId === null) break;
+      current = registry.get(current.ownerId);
+    }
+    return undefined;
+  }
+
+  /**
+   * Same walk, but starting from an element id rather than a ModelElement.
+   * Returns `undefined` if the id is not in the registry — this matches
+   * the existing "missing target" error path in `applyAndInvert`, which
+   * surfaces a separate Error after the guard short-circuits as a pass.
+   */
+  function readOnlyAncestorOfId(id: ElementId): ElementId | undefined {
+    return readOnlyAncestorId(registry.get(id));
+  }
+
+  function checkLibraryGuard(command: Command): void {
+    switch (command.kind) {
+      case 'create-element': {
+        // Newly created elements aren't in the registry yet; walk from the
+        // declared owner instead. Root (ownerId === null) is never guarded.
+        if (command.element.ownerId === null) return;
+        const blocker = readOnlyAncestorOfId(command.element.ownerId);
+        if (blocker !== undefined) {
+          throw new LibraryViolationError(command, blocker);
+        }
+        return;
+      }
+      case 'update-element': {
+        const blocker = readOnlyAncestorOfId(command.id);
+        if (blocker !== undefined) {
+          throw new LibraryViolationError(command, blocker);
+        }
+        return;
+      }
+      case 'delete-element': {
+        const blocker = readOnlyAncestorOfId(command.id);
+        if (blocker !== undefined) {
+          throw new LibraryViolationError(command, blocker);
+        }
+        return;
+      }
+      case 'link': {
+        // An edge is destructive against both endpoints; either being in a
+        // read-only subtree rejects the link.
+        const sourceBlocker = readOnlyAncestorOfId(command.edge.sourceId);
+        if (sourceBlocker !== undefined) {
+          throw new LibraryViolationError(command, sourceBlocker);
+        }
+        const targetBlocker = readOnlyAncestorOfId(command.edge.targetId);
+        if (targetBlocker !== undefined) {
+          throw new LibraryViolationError(command, targetBlocker);
+        }
+        return;
+      }
+      case 'unlink': {
+        const edge = registry.getEdge(command.id);
+        if (!edge) return;
+        const sourceBlocker = readOnlyAncestorOfId(edge.sourceId);
+        if (sourceBlocker !== undefined) {
+          throw new LibraryViolationError(command, sourceBlocker);
+        }
+        const targetBlocker = readOnlyAncestorOfId(edge.targetId);
+        if (targetBlocker !== undefined) {
+          throw new LibraryViolationError(command, targetBlocker);
+        }
+        return;
+      }
+      case 'update-edge': {
+        const edge = registry.getEdge(command.id);
+        if (!edge) return;
+        const sourceBlocker = readOnlyAncestorOfId(edge.sourceId);
+        if (sourceBlocker !== undefined) {
+          throw new LibraryViolationError(command, sourceBlocker);
+        }
+        const targetBlocker = readOnlyAncestorOfId(edge.targetId);
+        if (targetBlocker !== undefined) {
+          throw new LibraryViolationError(command, targetBlocker);
+        }
+        return;
+      }
+      case 'update-diagram-position':
+        // Presentation, not model. Exempt by definition (ADR 0012).
+        return;
+      case 'compound':
+        for (const sub of command.commands) checkLibraryGuard(sub);
+        return;
+    }
+  }
 
   const eventLog: ModelEvent[] = [];
   const undoStack: UndoEntry[] = options.initialUndoStack
@@ -300,7 +447,19 @@ export function createCommandBus(options: CreateCommandBusOptions): CommandBus {
 
   return {
     dispatch(command, actor) {
-      checkPermissions(actor, command);
+      try {
+        checkPermissions(actor, command);
+        checkLibraryGuard(command);
+      } catch (err) {
+        if (
+          onError &&
+          (err instanceof LibraryViolationError ||
+            err instanceof PermissionDeniedError)
+        ) {
+          onError(err, command);
+        }
+        throw err;
+      }
       const inverse = applyAndInvert(command);
       undoStack.push({ actor, forward: command, inverse });
       redoStack.length = 0;
