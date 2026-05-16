@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Handle, Position, type Node, type NodeProps } from '@xyflow/react';
+import {
+  Handle,
+  NodeResizer,
+  Position,
+  type Node,
+  type NodeProps,
+  type ResizeParamsWithDirection,
+  type ResizeDragEvent,
+} from '@xyflow/react';
 
 import type { ElementId } from '@/model';
 
@@ -10,12 +18,18 @@ import {
 } from './blockCompartments';
 
 export type BlockRenameCallback = (id: ElementId, name: string) => void;
+export type BlockResizeCallback = (
+  id: ElementId,
+  width: number,
+  height: number,
+) => void;
 
 export interface BddBlockData extends Record<string, unknown> {
   readonly elementId: ElementId;
   readonly name: string;
   readonly compartments: BddBlockCompartments;
   readonly onRename: BlockRenameCallback;
+  readonly onResize: BlockResizeCallback;
 }
 
 export type BddBlockNode = Node<BddBlockData, 'bdd-block'>;
@@ -128,6 +142,13 @@ export function BlockNode({ data, selected }: NodeProps<BddBlockNode>): JSX.Elem
     setEditing(false);
   }, [data.name]);
 
+  const handleResizeEnd = useCallback(
+    (_event: ResizeDragEvent, params: ResizeParamsWithDirection) => {
+      data.onResize(data.elementId, params.width, params.height);
+    },
+    [data],
+  );
+
   const compartments = data.compartments ?? bddBlockEmptyCompartments();
 
   return (
@@ -139,8 +160,13 @@ export function BlockNode({ data, selected }: NodeProps<BddBlockNode>): JSX.Elem
           ? 'border-primary ring-2 ring-primary/30'
           : 'border-border'
       }`}
-      style={{ width: BDD_BLOCK_WIDTH, height: BDD_BLOCK_HEIGHT }}
     >
+      <NodeResizer
+        isVisible={selected}
+        minWidth={BDD_BLOCK_WIDTH}
+        minHeight={BDD_BLOCK_HEIGHT}
+        onResizeEnd={handleResizeEnd}
+      />
       <Handle
         type="target"
         position={Position.Top}
