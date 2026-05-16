@@ -15,6 +15,7 @@ import {
   MIN_PANE_WIDTH,
   useWorkspaceStore,
 } from './store';
+import { useUrlFragmentSync } from './useUrlFragmentSync';
 
 function isTextInputTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
@@ -42,6 +43,8 @@ export function Workspace(): JSX.Element {
     () => setCommandPaletteOpen(false),
     [],
   );
+
+  useUrlFragmentSync();
 
   useEffect(() => {
     return subscribeApiKeyModal(() => setApiKeyModalOpen(true));
