@@ -217,8 +217,10 @@ describe('toFlowNodes — persisted size overrides viewpoint default', () => {
     );
 
     expect(nodes).toHaveLength(1);
-    expect(nodes[0].width).toBe(BDD_BLOCK_WIDTH);
-    expect(nodes[0].height).toBe(BDD_BLOCK_HEIGHT);
+    const node = nodes[0];
+    expect(node).toBeDefined();
+    expect(node?.width).toBe(BDD_BLOCK_WIDTH);
+    expect(node?.height).toBe(BDD_BLOCK_HEIGHT);
   });
 
   it('uses the persisted size when width and height are stored', () => {
@@ -248,7 +250,9 @@ describe('toFlowNodes — persisted size overrides viewpoint default', () => {
     );
 
     expect(nodes).toHaveLength(1);
-    expect(nodes[0].width).toBe(400);
-    expect(nodes[0].height).toBe(320);
+    const node = nodes[0];
+    expect(node).toBeDefined();
+    expect(node?.width).toBe(400);
+    expect(node?.height).toBe(320);
   });
 });

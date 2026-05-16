@@ -5,8 +5,7 @@ import {
   Position,
   type Node,
   type NodeProps,
-  type ResizeParamsWithDirection,
-  type ResizeDragEvent,
+  type OnResizeEnd,
 } from '@xyflow/react';
 
 import type { ElementId } from '@/model';
@@ -142,8 +141,8 @@ export function BlockNode({ data, selected }: NodeProps<BddBlockNode>): JSX.Elem
     setEditing(false);
   }, [data.name]);
 
-  const handleResizeEnd = useCallback(
-    (_event: ResizeDragEvent, params: ResizeParamsWithDirection) => {
+  const handleResizeEnd = useCallback<OnResizeEnd>(
+    (_event, params) => {
       data.onResize(data.elementId, params.width, params.height);
     },
     [data],
