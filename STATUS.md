@@ -3,18 +3,22 @@
 ## Current phase
 phase:14 — Standard library import (KerML + SysML)
 
-T-14.04 merged at be2a4e8 (PR #350). T-14.05 PR #352 open this iteration,
+T-14.05 merged at 08e2285 (PR #352). T-14.06 PR opened this iteration,
 auto-merge enabled, awaiting CI.
 
 ## Current iteration
-- Iteration #: 787
+- Iteration #: 788
 - Started: 2026-05-16
-- Branch: `issue/351-sysml-import-directive`
-- Working on: #351 — T-14.05 SysMLv2 text `import Pkg::*;` directive
-  landed (parser + serializer + round-trip preservation for projects
-  that reference standard-library content). PR #352 opened with
-  1408/1408 unit tests, tsc clean, lint clean, build clean. Awaiting
-  CI to confirm e2e + visual baselines unaffected.
+- Branch: `issue/353-library-index-user-libs`
+- Working on: #353 — T-14.06 Namespace resolution for user-defined
+  library imports. Introduces `LibraryIndex` abstraction
+  (`src/library/libraryIndex.ts`); parser + serializer +
+  `findLibraryReferences` route every name/qn lookup through it.
+  Static tables `STANDARD_LIBRARY_ID_TO_NAME` /
+  `STANDARD_LIBRARY_NAMES_BY_QUALNAME` retired. Workspace
+  `importSysmlText` passes a project-derived index so user-defined
+  library roots resolve. 1420/1420 unit (+12 new), tsc clean, lint
+  clean, build clean. Awaiting CI.
 
 ## Phase 14 plan-of-record (epic #342)
 - [x] **T-14.01 (#343 → PR #344, 2cfc23f)** — Foundation schema hooks
@@ -22,16 +26,61 @@ auto-merge enabled, awaiting CI.
 - [x] **T-14.03 (#347 → PR #348, 0f9890d)** — Explorer "Libraries" section
 - [x] **T-14.04 (#349 → PR #350, be2a4e8)** — Vendor KerML core +
       merge into every project
-- [~] **T-14.05 (#351 → PR #352)** — SysMLv2 text `import Pkg::*;`
-      directive: parser accepts; serializer emits when project
-      references library elements; round-trip preserved (in flight)
-- [ ] **T-14.06** — Namespace resolution for unqualified names
-      against user-defined imported packages (T-14.05 already seeds
-      *standard-library* names via two static tables in `@/library`;
-      T-14.06 generalizes to user libraries + nested qualnames)
+- [x] **T-14.05 (#351 → PR #352, 08e2285)** — SysMLv2 text `import Pkg::*;`
+      directive: parser + serializer + standard-library round-trip
+- [~] **T-14.06 (#353 → PR open)** — `LibraryIndex` generalizes
+      namespace resolution to user-defined library roots and nested
+      Package qualnames (in flight)
 - [ ] **T-14.07** — Phase 14 gate spec: cold-start UI walkthrough
       exercises the library tree (read-only) + an `import`-using
       model round-trips
+
+## Iter-788 implementation notes (T-14.06 PR #353-branch)
+- **Scope.** Replace the two static `@/library` tables shipped in T-14.05
+  with a runtime `LibraryIndex` keyed off `project.libraryRootIds`.
+  Parser + serializer + `findLibraryReferences` route every name/qn
+  lookup through `LibraryIndex`. Workspace `importSysmlText` builds a
+  project-derived index so user-defined library content resolves on
+  parse. Nested Package qualnames (`Foo::Bar::*;`) work as a side
+  effect of the BFS-and-`::`-join builder.
+- **`LibraryIndex` interface.** Four methods: `isLibraryElement(id)`,
+  `shortNameOf(id)` (replaces `STANDARD_LIBRARY_ID_TO_NAME`),
+  `enclosingPackageQualifiedName(id)` (returns the qn whose
+  `import qn::*;` brings the element into scope), `resolveImport(qn)`
+  (replaces `STANDARD_LIBRARY_NAMES_BY_QUALNAME`).
+- **Two builders.** `buildLibraryIndex({libraryRootIds, elements})` is
+  low-level (used by `STANDARD_LIBRARY_INDEX` singleton).
+  `buildLibraryIndexForProject(project)` folds in canonical KerML
+  regardless of whether `project.elements` currently carries the
+  library subtree — keeps serializer correct after
+  `stripStandardLibrary` at the persistence boundary.
+- **Root self-registration preserved.** A library root Package `Foo`
+  registers `Foo → rootId` in its own `resolveImport('Foo')` bucket
+  alongside its members. Mirrors T-14.05 semantics so `: Foo`
+  references continue to round-trip.
+- **Direct-member rule.** Only direct children of a Package land in
+  `resolveImport` buckets. Elements nested inside non-Package library
+  elements (e.g. a port owned by a library PartDefinition) are still
+  tracked by `isLibraryElement` / `shortNameOf` but are not
+  importable by any wildcard directive — matches SysMLv2 semantics
+  and the existing implicit behavior of the static table.
+- **Serializer changes.** `serializeProject` builds the index once,
+  threads it through every renderer that calls `refName`, and filters
+  library roots out of the top-level rendering (user-defined libraries
+  are not embedded in exported text — declared by `import` instead).
+- **Parser changes.** `parseSysmlText(input, { libraryIndex })` accepts
+  an optional library index; default is `STANDARD_LIBRARY_INDEX` so
+  every existing call site keeps working. `seedLibraryNames(qn)` calls
+  `libraryIndex.resolveImport(qn)` instead of the static map.
+- **Workspace store.** `importSysmlText` builds the index from the
+  current project (which already includes KerML after
+  `applyStandardLibrary` on load) and passes it to the parser.
+- **Tests.** `tests/unit/library/libraryIndex.test.ts` (+8 covering the
+  builder/singleton/nested-qn/strip-survival cases),
+  `tests/unit/library/userLibraryRoundTrip.test.ts` (+4 covering
+  full strip → serialize → parse with a synthetic `MyLib::Widget` user
+  library alongside KerML `Base::Part`). Existing T-14.05 round-trip
+  tests unchanged and green.
 
 ## Iter-787 implementation notes (T-14.05 PR #352)
 - **Scope.** Parser + serializer + round-trip preservation for projects
@@ -188,19 +237,47 @@ auto-merge enabled, awaiting CI.
 
 ## Last test run
 - Command: `pnpm vitest run` + `pnpm exec tsc -b` + `pnpm run lint` +
-  `pnpm build` (local, iter-787)
+  `pnpm build` (local, iter-788)
 - Result: PASS
-- Unit: 1408/1408 (was 1389; +19 new across findLibraryReferences +
-  parser import directive + serializer + round-trip)
+- Unit: 1420/1420 (was 1408; +12 new across `libraryIndex` builder/
+  singleton/strip-survival + user-defined library round-trip)
 - Typecheck: `tsc -b` clean
 - Lint: 0 errors, 3 pre-existing react-refresh warnings unchanged
-- Build: 897 kB main chunk (+~3 kB vs 895 kB — two static library tables)
+- Build: 899 kB main chunk (~+2 kB vs 897 kB; index runtime + builder)
 - E2E: deferred to CI
 
 ## Known issues / blockers
 - (none)
 
 ## Decisions log
+- 2026-05-16 (iter-788): `LibraryIndex` is a **runtime interface built
+  per call**, not a singleton + plus-overlay. Considered keeping the
+  standard-library singleton and merging a per-project overlay at lookup
+  time; rejected because the merge semantics for `resolveImport` (which
+  layer wins on name collision?) get awkward and the workspace already
+  has a clean point to rebuild (`importSysmlText`,
+  `serializeProject`). Build cost is O(library size), in practice
+  ~10–20 elements; the parsing path already touches every token.
+- 2026-05-16 (iter-788): `buildLibraryIndexForProject` **always** folds
+  in canonical KerML, even when `project.libraryRootIds` already lists
+  it. Rationale: at the serializer entry, the caller has typically
+  passed `stripStandardLibrary(project)` so `project.elements` no
+  longer contains the KerML subtree — but `refName(KERML_CORE_ID, ...)`
+  must still render `Part`, not `<missing>`. Re-merging library elements
+  inside the index builder makes this transparent to callers.
+- 2026-05-16 (iter-788): Library roots **self-register** in their own
+  `resolveImport` bucket (a root Package `Foo` adds `Foo → rootId` to
+  `resolveImport('Foo')` alongside its members). Preserved from T-14.05
+  to keep `: Foo` references round-trip-safe. Without it,
+  `import Foo::*;` would fail to bring `Foo` itself into scope.
+- 2026-05-16 (iter-788): Top-level rendering filters
+  `libraryIndex.isLibraryElement(e.id)` — user-defined libraries are
+  declared by `import` in exported text, not embedded as `package Foo {…}`
+  blocks. Mirrors how T-14.04 vendors KerML separately from the user
+  project. User-library re-vendoring on parse is the consumer's
+  responsibility (workspace already does it via the project carrying
+  KerML in `libraryRootIds`; arbitrary user libraries would need an
+  analogous vendoring mechanism — out of scope for T-14.06).
 - 2026-05-16 (iter-787): T-14.05 ships the **minimum namespace-seeding
   needed for standard-library round-trip**, not full T-14.06 resolution.
   Two static tables in `@/library` (id→name, qn→(name→id)) suffice for
@@ -298,13 +375,11 @@ auto-merge enabled, awaiting CI.
   only surface via `tsc -p tsconfig.app.json` or `tsc -b`.
 
 ## Next action
-1. Wait for CI on PR #352 (T-14.05). Auto-merge enabled — green CI
-   triggers squash merge.
-2. If green, T-14.06 (namespace resolution for user-defined imports)
-   opens next iteration. Scope hooks: generalize the `seedLibraryNames`
-   parser path to also walk `project.libraryRootIds` and seed names
-   from every library subtree; teach `findLibraryReferences` to bucket
-   refs by user-defined library root (not just the standard set).
-3. If red, diagnose: most likely surface is an existing snapshot
-   test that captured the old `<missing>` rendering — but I grep'd
-   the snapshot files and saw none, so this is unlikely.
+1. Wait for CI on the T-14.06 PR (this iteration's branch). Auto-merge
+   enabled — green CI triggers squash merge.
+2. If green, T-14.07 (Phase 14 gate spec) opens next iteration:
+   cold-start UI walkthrough that exercises the Libraries explorer
+   section (read-only, T-14.03) + an `import`-using model round-trip
+   through the workspace (uses T-14.05 + T-14.06).
+3. If red, diagnose via the same artifact-lift workflow as iter-786
+   (CI uploads `playwright-test-results` with `*-actual.png`).

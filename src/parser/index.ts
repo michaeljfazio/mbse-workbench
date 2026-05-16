@@ -1,2 +1,7 @@
 export { parseSysmlText } from './sysml';
-export type { ParseError, ParseResult, ParsedProject } from './sysml';
+export type {
+  ParseError,
+  ParseOptions,
+  ParseResult,
+  ParsedProject,
+} from './sysml';

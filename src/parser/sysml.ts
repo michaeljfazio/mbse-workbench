@@ -17,7 +17,7 @@ import type {
   ValueType,
 } from '@/model';
 import { ACTION_NODE_TYPE_VALUES, STATE_NODE_TYPE_VALUES } from '@/model';
-import { STANDARD_LIBRARY_NAMES_BY_QUALNAME } from '@/library';
+import { STANDARD_LIBRARY_INDEX, type LibraryIndex } from '@/library';
 
 export interface ParseError {
   readonly line: number;
@@ -42,10 +42,25 @@ export type ParseResult =
   | { readonly ok: true; readonly value: ParsedProject }
   | { readonly ok: false; readonly errors: ParseError[] };
 
-export function parseSysmlText(input: string): ParseResult {
+export interface ParseOptions {
+  /**
+   * Library namespace to seed when parsing `import …::*;` directives.
+   * Defaults to {@link STANDARD_LIBRARY_INDEX} — i.e. KerML core only — for
+   * fresh standalone parses. The workspace `importSysmlText` action passes
+   * an index built from the current project so user-defined library roots
+   * also resolve (T-14.06).
+   */
+  readonly libraryIndex?: LibraryIndex;
+}
+
+export function parseSysmlText(
+  input: string,
+  options: ParseOptions = {},
+): ParseResult {
   try {
     const tokens = tokenize(input);
-    const p = new Parser(tokens);
+    const libraryIndex = options.libraryIndex ?? STANDARD_LIBRARY_INDEX;
+    const p = new Parser(tokens, libraryIndex);
     const result = p.parseFile();
     return { ok: true, value: result };
   } catch (e) {
@@ -270,6 +285,7 @@ function stamp(loose: LooseElement, owner: OwnerInfo): ModelElement {
 
 class Parser {
   private readonly tokens: Token[];
+  private readonly libraryIndex: LibraryIndex;
   private pos = 0;
   private readonly nameToId = new Map<string, ElementId>();
   private readonly pendingRefs: Array<{ name: string; apply: (id: ElementId) => void }> = [];
@@ -277,8 +293,9 @@ class Parser {
   private projectName?: string;
   private readonly elements: ModelElement[] = [];
 
-  constructor(tokens: Token[]) {
+  constructor(tokens: Token[], libraryIndex: LibraryIndex) {
     this.tokens = tokens;
+    this.libraryIndex = libraryIndex;
   }
 
   parseFile(): ParsedProject {
@@ -347,12 +364,14 @@ class Parser {
     return t2.type === 'punct' && t2.value === '::';
   }
 
-  /** Seeds `nameToId` with the short names of standard-library elements
-   * under `qn`, so unqualified references in the body resolve to library
-   * element ids. No-op for unknown qualnames (the directive is then
-   * decorative — full namespace resolution lands in T-14.06). */
+  /** Seeds `nameToId` with the short names of library elements under
+   * `qn`, so unqualified references in the body resolve to library
+   * element ids. Resolution goes through the supplied `LibraryIndex`,
+   * which covers the standard library by default and additionally any
+   * user-defined library roots when the workspace passes a project-
+   * derived index (T-14.06). No-op for unknown qualnames. */
   private seedLibraryNames(qn: string): void {
-    const inner = STANDARD_LIBRARY_NAMES_BY_QUALNAME.get(qn);
+    const inner = this.libraryIndex.resolveImport(qn);
     if (!inner) return;
     for (const [shortName, id] of inner) {
       // Don't overwrite a user-defined name with a library binding.
