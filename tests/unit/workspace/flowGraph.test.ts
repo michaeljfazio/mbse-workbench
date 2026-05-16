@@ -132,6 +132,7 @@ describe('toFlowNodes — defensive skip of unrenderable accepted kinds (T-13.44
       ownerRole: 'member',
       ownerIndex: 0,
       name: 'Run',
+      isComposite: false,
     };
     const stateUsage: ModelElement = {
       id: mkElementId('state-usage-1'),
