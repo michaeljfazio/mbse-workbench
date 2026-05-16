@@ -273,7 +273,7 @@ test.describe('RequirementTrace edges (issue #72)', () => {
     await createTrace(page, REQ_A, REQ_B, 'satisfy');
     await page.locator('body').click({ position: { x: 4, y: 4 } });
     await page.evaluate(async () => {
-      await Promise.all(document.getAnimations().map((a) => a.finished));
+      await Promise.allSettled(document.getAnimations().map((a) => a.finished));
     });
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
@@ -317,7 +317,7 @@ test.describe('RequirementTrace edges (issue #72)', () => {
     await page.getByTestId('inspector-trace-label').fill('covers spec');
     await page.getByTestId('inspector-trace-label').blur();
     await page.evaluate(async () => {
-      await Promise.all(document.getAnimations().map((a) => a.finished));
+      await Promise.allSettled(document.getAnimations().map((a) => a.finished));
     });
     await expect(page).toHaveScreenshot('inspector-trace-edge-selected.png', {
       fullPage: false,

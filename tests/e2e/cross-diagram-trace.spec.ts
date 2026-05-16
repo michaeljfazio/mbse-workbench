@@ -246,7 +246,7 @@ test.describe('Cross-diagram traceability (issue #73)', () => {
     await selectBlock(page);
     await page.getByTestId('inspector-add-trace-link').click();
     await page.evaluate(async () => {
-      await Promise.all(document.getAnimations().map((a) => a.finished));
+      await Promise.allSettled(document.getAnimations().map((a) => a.finished));
     });
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
@@ -266,7 +266,7 @@ test.describe('Cross-diagram traceability (issue #73)', () => {
     await expect(page.getByTestId('inspector-trace-link-list')).toBeVisible();
     await page.mouse.move(0, 0);
     await page.evaluate(async () => {
-      await Promise.all(document.getAnimations().map((a) => a.finished));
+      await Promise.allSettled(document.getAnimations().map((a) => a.finished));
     });
     await expect(page).toHaveScreenshot('inspector-block-with-trace-link.png', {
       fullPage: false,
@@ -282,7 +282,7 @@ test.describe('Cross-diagram traceability (issue #73)', () => {
     ).toBeVisible();
     await page.mouse.move(0, 0);
     await page.evaluate(async () => {
-      await Promise.all(document.getAnimations().map((a) => a.finished));
+      await Promise.allSettled(document.getAnimations().map((a) => a.finished));
     });
     await expect(page).toHaveScreenshot('trace-link-popover.png', {
       fullPage: false,

@@ -324,7 +324,7 @@ test.describe('Use Case edges — Include + Extend + Generalization (#119)', () 
       page.getByTestId('use-case-edge-kind-popover'),
     ).toBeVisible();
     await page.evaluate(async () => {
-      await Promise.all(document.getAnimations().map((a) => a.finished));
+      await Promise.allSettled(document.getAnimations().map((a) => a.finished));
     });
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])

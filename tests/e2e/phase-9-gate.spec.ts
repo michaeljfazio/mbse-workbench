@@ -308,7 +308,7 @@ test.describe('Phase 9 gate (issue #157)', () => {
   }) => {
     await gotoPackage(page);
     await page.evaluate(async () => {
-      await Promise.all(document.getAnimations().map((a) => a.finished));
+      await Promise.allSettled(document.getAnimations().map((a) => a.finished));
     });
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
@@ -345,7 +345,7 @@ test.describe('Phase 9 gate (issue #157)', () => {
     // Clear selection so focus rings don't dominate the axe sample.
     await page.locator('body').click({ position: { x: 4, y: 4 } });
     await page.evaluate(async () => {
-      await Promise.all(document.getAnimations().map((a) => a.finished));
+      await Promise.allSettled(document.getAnimations().map((a) => a.finished));
     });
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
@@ -373,7 +373,7 @@ test.describe('Phase 9 gate (issue #157)', () => {
     ).toBeVisible();
 
     await page.evaluate(async () => {
-      await Promise.all(document.getAnimations().map((a) => a.finished));
+      await Promise.allSettled(document.getAnimations().map((a) => a.finished));
     });
     // Scope axe to the inspector panel — this scan is about the
     // PackageExtras subtree, not the canvas chrome (selected Package nodes

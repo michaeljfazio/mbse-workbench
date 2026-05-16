@@ -344,7 +344,7 @@ test.describe('State Machine transitions (issue #106)', () => {
     // Wait for any in-flight CSS transitions before running axe; otherwise
     // color-contrast can sample mid-transition styles (CONTEXT.md 2026-05-12).
     await page.evaluate(async () => {
-      await Promise.all(document.getAnimations().map((a) => a.finished));
+      await Promise.allSettled(document.getAnimations().map((a) => a.finished));
     });
 
     const results = await new AxeBuilder({ page })

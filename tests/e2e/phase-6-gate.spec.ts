@@ -540,7 +540,7 @@ test.describe('Phase 6 gate (issue #107)', () => {
   }) => {
     await gotoStateMachine(page);
     await page.evaluate(async () => {
-      await Promise.all(document.getAnimations().map((a) => a.finished));
+      await Promise.allSettled(document.getAnimations().map((a) => a.finished));
     });
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
@@ -579,7 +579,7 @@ test.describe('Phase 6 gate (issue #107)', () => {
     // Clear selection so focus rings don't dominate the axe sample.
     await page.locator('body').click({ position: { x: 4, y: 4 } });
     await page.evaluate(async () => {
-      await Promise.all(document.getAnimations().map((a) => a.finished));
+      await Promise.allSettled(document.getAnimations().map((a) => a.finished));
     });
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
@@ -619,7 +619,7 @@ test.describe('Phase 6 gate (issue #107)', () => {
     await page.getByTestId('inspector-transition-effect').press('Enter');
 
     await page.evaluate(async () => {
-      await Promise.all(document.getAnimations().map((a) => a.finished));
+      await Promise.allSettled(document.getAnimations().map((a) => a.finished));
     });
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])

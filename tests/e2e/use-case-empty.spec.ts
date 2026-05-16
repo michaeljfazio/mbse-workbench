@@ -89,7 +89,7 @@ test.describe('Use Case viewpoint (issue #117)', () => {
     // computed styles directly and otherwise catches the active tab mid-
     // transition (see docs/CONTEXT.md 2026-05-12 entry).
     await page.evaluate(async () => {
-      await Promise.all(document.getAnimations().map((a) => a.finished));
+      await Promise.allSettled(document.getAnimations().map((a) => a.finished));
     });
 
     const results = await new AxeBuilder({ page })

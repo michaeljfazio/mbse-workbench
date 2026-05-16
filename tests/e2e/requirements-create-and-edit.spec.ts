@@ -231,7 +231,7 @@ test.describe('Requirements create + edit (issue #71)', () => {
     await page.getByTestId('inspector-req-text').fill('shall do X');
     await page.getByTestId('inspector-req-text').blur();
     await page.evaluate(async () => {
-      await Promise.all(document.getAnimations().map((a) => a.finished));
+      await Promise.allSettled(document.getAnimations().map((a) => a.finished));
     });
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
@@ -282,7 +282,7 @@ test.describe('Requirements create + edit (issue #71)', () => {
       .fill('Required by EN-50128 §6.4.');
     await page.getByTestId('inspector-req-rationale').blur();
     await page.evaluate(async () => {
-      await Promise.all(document.getAnimations().map((a) => a.finished));
+      await Promise.allSettled(document.getAnimations().map((a) => a.finished));
     });
     await expect(page).toHaveScreenshot('inspector-requirement-selected.png', {
       fullPage: false,

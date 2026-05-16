@@ -468,7 +468,7 @@ test.describe('IBD ItemFlow (issue #52)', () => {
     await page.getByTestId('inspector-item-type').press('Enter');
 
     await page.evaluate(async () => {
-      await Promise.all(document.getAnimations().map((a) => a.finished));
+      await Promise.allSettled(document.getAnimations().map((a) => a.finished));
     });
 
     const results = await new AxeBuilder({ page })

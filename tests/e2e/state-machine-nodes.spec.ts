@@ -247,7 +247,7 @@ test.describe('State Machine nodes + palette + inspector (issue #105)', () => {
     await dragChipOntoCanvas(page, 'state', { x: 280, y: 120 });
     await dragChipOntoCanvas(page, 'final', { x: 460, y: 120 });
     await page.evaluate(async () => {
-      await Promise.all(document.getAnimations().map((a) => a.finished));
+      await Promise.allSettled(document.getAnimations().map((a) => a.finished));
     });
     const results = await new AxeBuilder({ page })
       .withTags(['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'])
@@ -294,7 +294,7 @@ test.describe('State Machine nodes + palette + inspector (issue #105)', () => {
     await page.getByTestId('inspector-state-exit').fill('turnOff()');
     await page.getByTestId('inspector-state-exit').press('Tab');
     await page.evaluate(async () => {
-      await Promise.all(document.getAnimations().map((a) => a.finished));
+      await Promise.allSettled(document.getAnimations().map((a) => a.finished));
     });
     await expect(page).toHaveScreenshot('inspector-state-selected.png', {
       fullPage: false,
