@@ -34,4 +34,42 @@ Per A.9, every claim recorded here cites at least one source by URL or document 
 
 ## Label taxonomy colour mapping
 
-_TBD — populated in the `chore(labels)` commit of the bootstrap PR._
+Per A.13, the bootstrap agent chooses colours per semantic category and records the mapping here. Created via `gh label create` during the bootstrap iteration (iter-793).
+
+**Category palette** — colour family signals what kind of work a label tags:
+
+- **Meta — violet (`#7057ff`)**: phase markers.
+- **Visual / interaction — warm (oranges, golds, peaches)**: visual fidelity, routing, ports, palette, interaction.
+- **Viewpoints — cool (greens, blues, teals)**: one shade per viewpoint, eight total.
+- **Workspace surfaces — purples**: explorer, inspector, search, undo.
+- **Infrastructure & cross-cutting — greys / slate / soft violet**: import/export, LLM, empty state, accessibility, performance, persistence, cross-cutting.
+
+**Concrete mapping:**
+
+| Label | Colour | Category |
+|-------|--------|----------|
+| `phase:15` | `#7057ff` | meta — medium violet |
+| `area:visual-fidelity` | `#ff8c00` | visual — dark orange |
+| `area:routing` | `#ffa500` | visual — orange |
+| `area:ports` | `#ffd700` | visual — gold |
+| `area:palette` | `#fad8c7` | visual — peach |
+| `area:interaction` | `#f9d0c4` | visual — light pink-peach |
+| `area:viewpoint:bdd` | `#006b3c` | viewpoint — dark green |
+| `area:viewpoint:ibd` | `#0052cc` | viewpoint — deep blue |
+| `area:viewpoint:req` | `#4682b4` | viewpoint — steel blue |
+| `area:viewpoint:act` | `#006b75` | viewpoint — teal (darker) |
+| `area:viewpoint:stm` | `#008080` | viewpoint — teal |
+| `area:viewpoint:uc` | `#4a90a4` | viewpoint — medium teal |
+| `area:viewpoint:par` | `#6495ed` | viewpoint — cornflower blue |
+| `area:viewpoint:pkg` | `#87ceeb` | viewpoint — sky blue |
+| `area:explorer` | `#8a2be2` | workspace — blue-violet |
+| `area:inspector` | `#9b59b6` | workspace — purple |
+| `area:search` | `#ba55d3` | workspace — medium orchid |
+| `area:undo` | `#c084d2` | workspace — light orchid |
+| `area:import-export` | `#808080` | infrastructure — grey |
+| `area:llm` | `#696969` | infrastructure — dim grey |
+| `area:empty-state` | `#c0c0c0` | infrastructure — silver |
+| `area:a11y` | `#b4a7d6` | infrastructure — light violet |
+| `area:perf` | `#a9a9a9` | infrastructure — dark grey |
+| `area:persistence` | `#778899` | infrastructure — light slate grey |
+| `area:cross-cutting` | `#4f4f4f` | infrastructure — very dark grey |
