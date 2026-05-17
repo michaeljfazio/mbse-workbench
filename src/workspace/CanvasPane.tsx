@@ -97,6 +97,7 @@ import {
   useWorkspaceStore,
 } from './store';
 import { ActivityPalette } from './ActivityPalette';
+import { IbdPalette } from './IbdPalette';
 import { ImpactBanner } from './ImpactBanner';
 import { ParametricPalette } from './ParametricPalette';
 import type { DragPos } from './dragCoord';
@@ -1402,6 +1403,7 @@ function CanvasInner(): JSX.Element {
       {viewpoint.id === STATE_MACHINE_VIEWPOINT_ID ? <StateMachinePalette /> : null}
       {viewpoint.id === USE_CASE_VIEWPOINT_ID ? <UseCasePalette /> : null}
       {viewpoint.id === PARAMETRIC_VIEWPOINT_ID ? <ParametricPalette /> : null}
+      {viewpoint.id === IBD_VIEWPOINT_ID ? <IbdPalette /> : null}
       <div
         ref={canvasRef}
         data-testid="canvas-drop-target"
