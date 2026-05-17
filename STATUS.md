@@ -3,69 +3,68 @@
 ## Current phase
 phase:15 — Architect-driven UX & feature hardening
 
-Iter-801 walk-4 closed. **Convergence walk #2 of 3.** Three earlier
-fixes (#374, #375, #386) re-verified live on `vphase-15.2`. Six new
-rubric dimensions scored:
-- dim 2 (edges) 0→2, dim 3 (ports) 0→2, dim 12 (Package) 0→2,
-  dim 17 (edge editing) 0→1, dim 22 (import/export) 0→2,
-  dim 25 (a11y) 0→2 (zero axe violations on empty-state).
+Iter-802 closed. Fifth Phase-15 engineer batch shipped: palette
+label consistency (closes #377). Tiny fix: `'Blocks'` →
+`'Part definitions'`, `'Interfaces'` → `'Interface definitions'`
+in `src/workspace/tree/kindLabels.ts`. Visual baseline cascade
+across 8 (chromium) + 1 (webkit lagger) = 9 baselines lifted.
+Two webkit functional tests reported FLAKY (passed on retry); no
+new defect.
 
-**Zero new GitHub issues filed.** Walk-3 + walk-4 form 2 of 3
-required convergence walks per A.12 #3.
+A.8 release conditions met: 5 batches since `vphase-15.2`
+(#396, #397, #399, #401, #402) + rubric advances. Tagging
+`v1.2.1` (patch — palette label rename is fix-only, no new
+outward-facing feature) and `vphase-15.3`.
 
-Rubric now: **20 × score-2, 4 × score-1, 4 × unmeasured**, no dim
-at 3 yet. Dimensions still unmeasured: 13 (cross-diagram coherence),
-14 (round-trip integrity), 23 (LLM integration), 26 sub-requirements,
-plus 17 (edge editing) at score 1 needs a deeper walk.
+Rubric unchanged: no dim score moves this iteration. Still 20 ×
+score-2, 4 × score-1, 4 × unmeasured.
 
 ## Current iteration
-- Iteration #: 801 (close-out)
+- Iteration #: 802 (close-out)
 - Started: 2026-05-17
-- Branch: `phase-15/walk-4-log`
-- Working on: walk-4 close-out PR
+- Branch: `chore/iter-802-closeout`
+- Working on: this close-out PR
 
 ## Last test run
-- Main green at `b7cd115` (iter-800 close-out).
-- Walk-4 close-out: doc-only, `pnpm run check` expected to pass.
+- Main green at `1025896` (PR #402).
+- Close-out PR: doc-only, expected pass.
 
 ## Known issues / blockers
 - (none)
 
-## Open phase:15 issues — distribution at iter-801 close
+## Open phase:15 issues — distribution at iter-802 close
 
 | Severity | Count | Issues |
 |----------|-------|--------|
 | p1 | 1 | #376 (4-way Block creation — design) |
 | p2 | 5 | #368/#369/#370/#371 (discoverability), #385 (IBD canvas) |
-| p3 | 2 | #373 (usage no `+`), #377 (palette labels) |
+| p3 | 1 | #373 (usage no `+`) |
 
-8 open `phase:15` issues. No closures this iteration (walk-only).
+7 open `phase:15` issues. Closed in iter-802: #377 (palette labels).
 
 ## Convergence chain progress
 
-| Walk | New issues filed | Counts toward convergence? |
-|------|------------------|----------------------------|
+| Walk | New issues filed | Status |
+|------|------------------|--------|
 | walk-3 | 0 | **convergence walk #1 of 3** |
-| **walk-4** | **0** | **convergence walk #2 of 3** |
-| walk-5 | TBD | needs 0 for #3 |
-
-If walk-5 also files no issues, A.12 #3 closes. Phase 15 termination
-still requires every dim at 3 (currently many at 2; 4 still at 1, 4
-at 0); all open `phase:15` issues closed; and the FBW example shipped
-under `examples/flight-control-system/`.
+| walk-4 | 0 | **convergence walk #2 of 3** |
+| walk-5 | TBD | needs 0 for chain to close |
 
 ## Decisions log
 
-Iter-792..iter-800 entries preserved in commit history. Iter-801 entry:
+Iter-792..iter-801 entries preserved in commit history. Iter-802:
 
-- 2026-05-17 (iter-801): Walk-4 — six new dimensions measured (2/3/12/17/22/25), all three earlier engineer batches re-verified, zero new issues filed. Convergence chain at 2 of 3. Notable: axe scan on empty-state returned 0 violations on the first measurement (no fix needed for dim 25 to reach score 2). JSON export confirmed working via Cmd-K.
+- 2026-05-17 (iter-802 a): Engineer batch on #377. Inline (no subagent). Two label rewrites + two unit-test assertion updates.
+- 2026-05-17 (iter-802 b): Visual baseline cascade (9 baselines across two CI cycles); 2 webkit functional tests marked FLAKY on second run — not regressions.
 
 ## Next action
 
-Iter-802: pick the next engineer batch. Strong candidates:
-1. **#385 — IBD canvas element-add affordance** (palette-drag wiring; moderate scope).
-2. **#368/#369/#370/#371 — discoverability batch** (surface descendant viewpoints on Package row; needs ADR for implicit owner creation).
-3. **#373 / #377** (p3 polish).
-4. **#376 — 4-way Block creation** (design issue; ADR-driven).
+After this close-out merges and the release tags push:
+1. Iter-803: **walk-5 — regression walk on `vphase-15.3`**, verifying #372 (palette show-all-kinds) and #377 (palette labels) end-to-end on the live deploy. Walk-5 is **convergence walk #3 of 3** if it files no new issues. If so, A.12 #3 is satisfied (one of four Phase 15 termination conditions).
+2. Remaining termination work for Phase 15:
+   - Engineer batches to close the 7 open issues (the discoverability batch, IBD canvas, design issue #376, usage `+` polish).
+   - Advance remaining rubric dims to 3 (currently many at 2, four at 0/1 — needs deeper exercise / additional features for snap-to-grid, alignment guides, rubber-band multi-select, full SysML text round-trip, LLM integration).
+   - Build and commit the FBW example model under `examples/flight-control-system/`, wire the "Load example" entry, ship the example.
+   - Final `v1.X.Y` + `vphase-15.N` tags.
 
-Walk-5 (after iter-802 deploys) is convergence walk #3. If walk-5 files no findings, A.12 #3 closes.
+   This is many more iterations of work — the current session's progress is one chunk of that broader programme.
