@@ -60,7 +60,6 @@ export function CommandPalette({ onClose }: CommandPaletteProps): JSX.Element {
   const setInspectorTab = useWorkspaceStore((s) => s.setInspectorTab);
   const setPendingRename = useWorkspaceStore((s) => s.setPendingRename);
   const createDiagram = useWorkspaceStore((s) => s.createDiagram);
-  const createChildElement = useWorkspaceStore((s) => s.createChildElement);
   const createRepresentationWithImplicitOwner = useWorkspaceStore(
     (s) => s.createRepresentationWithImplicitOwner,
   );
@@ -172,7 +171,6 @@ export function CommandPalette({ onClose }: CommandPaletteProps): JSX.Element {
     deleteSelection,
     setInspectorTab,
     setPendingRename,
-    createChildElement,
     createDiagram,
     createRepresentationWithImplicitOwner,
     setActiveDiagram,
