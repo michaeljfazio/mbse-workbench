@@ -1,5 +1,12 @@
 import { useCallback } from 'react';
+import { useReactFlow } from '@xyflow/react';
 
+import {
+  REQUIREMENT_NODE_HEIGHT,
+  REQUIREMENT_NODE_WIDTH,
+  REQUIREMENTS_VIEWPOINT_ID,
+} from '@/viewpoints';
+import { BDD_BLOCK_HEIGHT, BDD_BLOCK_WIDTH } from '@/viewpoints/bdd/BlockNode';
 import { useWorkspaceStore } from './store';
 
 interface CardProps {
@@ -41,11 +48,20 @@ const SHORTCUTS: ReadonlyArray<{ readonly keys: string; readonly action: string 
 
 /**
  * Shown over the canvas when a project has zero authored elements. Acts as
- * a guided entry point that teaches the explorer affordances: New Block
- * and New Requirement run the same Containment-Tree create-child flow as
- * the explorer kebab menu (create as a child of the root Package, select
- * it, enter inline rename). Import JSON and Open Chat are kept as
- * non-create flows. Also surfaces the keyboard-shortcut crib.
+ * a guided entry point that teaches the explorer affordances.
+ *
+ * ADR 0015 step 2 (#376): the "New Part Definition" and "New Requirement"
+ * cards are click-shortcuts that dispatch the same `create-element`
+ * compound command the palette drag uses (`createBlock` for BDD,
+ * `createRequirement` for the Requirements surface), placed at canvas
+ * centre in flow coordinates. The auto-name comes from the shared
+ * `nextBlockName` / `nextRequirementName` helpers — "Block 1", "Req1",
+ * etc. — so empty-state click and palette drag emit indistinguishable
+ * elements. Post-create behaviour (auto-select + inline rename) stays.
+ *
+ * The vocabulary on the cards follows ADR 0015 §"Vocabulary": the
+ * metamodel name "Part Definition" replaces the SysML-1.x "Block" alias.
+ * Import JSON and Open Chat stay as non-create flows.
  */
 export function EmptyState({
   onImportJson,
@@ -53,40 +69,85 @@ export function EmptyState({
   readonly onImportJson: () => void;
 }): JSX.Element {
   const rootId = useWorkspaceStore((s) => s.project?.rootId ?? null);
-  const createChildElement = useWorkspaceStore((s) => s.createChildElement);
+  const createBlock = useWorkspaceStore((s) => s.createBlock);
+  const createRequirement = useWorkspaceStore((s) => s.createRequirement);
+  const createDiagram = useWorkspaceStore((s) => s.createDiagram);
+  const diagrams = useWorkspaceStore((s) => s.diagrams);
   const setSelection = useWorkspaceStore((s) => s.setSelection);
   const setPendingRename = useWorkspaceStore((s) => s.setPendingRename);
   const setActiveSurface = useWorkspaceStore((s) => s.setActiveSurface);
   const setInspectorTab = useWorkspaceStore((s) => s.setInspectorTab);
 
-  const handleNewBlock = useCallback(() => {
-    if (!rootId) return;
-    const id = createChildElement(
-      rootId,
-      'PartDefinition',
-      'member',
-      'New Part Definition',
+  // EmptyState is mounted inside <ReactFlowProvider> (see CanvasPane), so
+  // `useReactFlow()` is available. We use it to compute canvas centre in
+  // flow coordinates — the same coordinate space CanvasPane.handleDrop
+  // resolves the drop cursor into — so empty-state click and palette
+  // drag agree on what "create at canvas centre" means.
+  const reactFlow = useReactFlow();
+
+  const canvasCenterFlow = useCallback((): { x: number; y: number } => {
+    // The canvas-drop-target element wraps both EmptyState and ReactFlow;
+    // its centre in screen coords is the canvas centre. Fall back to the
+    // flow origin if the element isn't measurable yet (e.g. during the
+    // first render before layout).
+    const root = document.querySelector<HTMLElement>(
+      '[data-testid="canvas-drop-target"]',
     );
+    if (!root) return { x: 0, y: 0 };
+    const rect = root.getBoundingClientRect();
+    return reactFlow.screenToFlowPosition({
+      x: rect.left + rect.width / 2,
+      y: rect.top + rect.height / 2,
+    });
+  }, [reactFlow]);
+
+  const handleNewPartDefinition = useCallback(() => {
+    if (!rootId) return;
+    const center = canvasCenterFlow();
+    const id = createBlock({
+      x: center.x - BDD_BLOCK_WIDTH / 2,
+      y: center.y - BDD_BLOCK_HEIGHT / 2,
+    });
     if (!id) return;
     setSelection([id]);
     setPendingRename(id);
-  }, [rootId, createChildElement, setSelection, setPendingRename]);
+  }, [
+    rootId,
+    canvasCenterFlow,
+    createBlock,
+    setSelection,
+    setPendingRename,
+  ]);
 
   const handleNewRequirement = useCallback(() => {
     if (!rootId) return;
-    const id = createChildElement(
-      rootId,
-      'Requirement',
-      'member',
-      'New Requirement',
-    );
+    // The Requirements diagram isn't seeded by `bootstrap` — it's
+    // lazy-created the first time the surface is opened. Cold-start
+    // empty-state click hits that case, so we have to create the diagram
+    // before dispatching `createRequirement` (which requires a diagramId
+    // to attach the initial position to). Subsequent clicks reuse the
+    // existing diagram.
+    const existingDiagramId =
+      diagrams.find((d) => d.viewpointId === REQUIREMENTS_VIEWPOINT_ID)?.id ??
+      null;
+    const requirementsDiagramId =
+      existingDiagramId ?? createDiagram(REQUIREMENTS_VIEWPOINT_ID, {});
+    if (!requirementsDiagramId) return;
+    const center = canvasCenterFlow();
+    const id = createRequirement(requirementsDiagramId, {
+      x: center.x - REQUIREMENT_NODE_WIDTH / 2,
+      y: center.y - REQUIREMENT_NODE_HEIGHT / 2,
+    });
     if (!id) return;
     setActiveSurface('requirements');
     setSelection([id]);
     setPendingRename(id);
   }, [
     rootId,
-    createChildElement,
+    diagrams,
+    canvasCenterFlow,
+    createRequirement,
+    createDiagram,
     setActiveSurface,
     setSelection,
     setPendingRename,
@@ -107,16 +168,16 @@ export function EmptyState({
       </div>
       <div className="grid w-full max-w-xl grid-cols-1 gap-2 sm:grid-cols-2">
         <Card
-          testId="empty-state-new-block"
-          title="New Block"
-          description="Adds a Part Definition under the project root."
+          testId="empty-state-new-part-definition"
+          title="New Part Definition"
+          description="Adds a Part Definition at the centre of the canvas."
           disabled={noProject}
-          onClick={handleNewBlock}
+          onClick={handleNewPartDefinition}
         />
         <Card
           testId="empty-state-new-requirement"
           title="New Requirement"
-          description="Adds a Requirement under the project root."
+          description="Adds a Requirement on the Requirements surface."
           disabled={noProject}
           onClick={handleNewRequirement}
         />
