@@ -1,5 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
+import { addAndSelectBlockViaPalette } from './_palette-drag-helpers';
+
 // ADR 0015 step 4 — when an element is selected on the inspector, the
 // inspector exposes a contextual "+ New <child kind>" panel whose buttons
 // create the child as a member of the *currently-selected parent*, NOT
@@ -9,22 +11,12 @@ import { expect, test, type Page } from '@playwright/test';
 // place.
 
 async function addAndSelectPartDefinition(page: Page): Promise<string> {
-  // The default bootstrap viewpoint is BDD, which exposes the
-  // `toolbar-add-block` shortcut. Clicking it creates a PartDefinition on
-  // the canvas; clicking the resulting block selects it so the inspector
-  // flips to single-selection mode.
-  const before = page.locator('[data-testid^="bdd-block-"][data-element-id]');
-  const beforeCount = await before.count();
-  await page.getByTestId('toolbar-add-block').click();
-  await expect(before).toHaveCount(beforeCount + 1);
-  const block = page
-    .locator('[data-testid^="bdd-block-"][data-element-id]')
-    .nth(beforeCount);
-  await block.click();
+  // ADR 0015 step 3 retired `toolbar-add-block`; seed via the canonical
+  // palette-drag helper that step 1 established.
+  const elementId = await addAndSelectBlockViaPalette(page);
   const inspector = page.getByTestId('inspector-single');
   await expect(inspector).toBeVisible();
-  const elementId = await inspector.getAttribute('data-element-id');
-  if (!elementId) throw new Error('selected element id missing');
+  await expect(inspector).toHaveAttribute('data-element-id', elementId);
   return elementId;
 }
 
@@ -124,14 +116,8 @@ test.describe('Inspector contextual create panel (ADR 0015 step 4)', () => {
     // existing `inspector-add-port` affordance). PortDefinition is not in
     // the `acceptedChildKinds` switch, so it accepts no authoring children
     // — the contextual create panel must be suppressed for that selection.
-    const before = page.locator('[data-testid^="bdd-block-"][data-element-id]');
-    const beforeCount = await before.count();
-    await page.getByTestId('toolbar-add-block').click();
-    await expect(before).toHaveCount(beforeCount + 1);
-    const block = page
-      .locator('[data-testid^="bdd-block-"][data-element-id]')
-      .nth(beforeCount);
-    await block.click();
+    // Step 3 retired `toolbar-add-block`; use the canonical palette-drag.
+    await addAndSelectPartDefinition(page);
     await expect(page.getByTestId('inspector-single')).toBeVisible();
     await expect(
       page.getByTestId('inspector-contextual-create'),

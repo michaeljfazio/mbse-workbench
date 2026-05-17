@@ -97,9 +97,17 @@ async function dropRequirementOntoCanvas(
 }
 
 async function addBlockNamed(page: Page, name: string): Promise<string> {
+  // ADR 0015 step 3 (#376): `toolbar-add-block` retired. Palette drag is
+  // now the canonical creation path.
   const blocks = page.locator('[data-testid^="bdd-block-"][data-element-id]');
   const before = await blocks.count();
-  await page.getByTestId('toolbar-add-block').click();
+  const group = page.getByTestId('project-tree-group-PartDefinition');
+  const canvas = page.getByTestId('canvas-drop-target');
+  const xOffset = 180 + (before % 2) * 260;
+  const yOffset = 160 + Math.floor(before / 2) * 280;
+  await group.dragTo(canvas, {
+    targetPosition: { x: xOffset, y: yOffset },
+  });
   await expect(blocks).toHaveCount(before + 1);
   const id = (await blocks.nth(before).getAttribute('data-element-id'))!;
   await page.getByTestId(`project-tree-leaf-${id}`).click();
@@ -113,11 +121,20 @@ async function addBlockNamed(page: Page, name: string): Promise<string> {
 }
 
 async function addActionNamed(page: Page, name: string): Promise<string> {
+  // ADR 0015 step 3 (#376): `toolbar-add-action` retired. Palette chip
+  // drag (`activity-palette-action`) is the canonical creation path on
+  // the Activity viewpoint.
   const actions = page.locator(
     '[data-testid^="activity-action-"][data-element-id]',
   );
   const before = await actions.count();
-  await page.getByTestId('toolbar-add-action').click();
+  const chip = page.getByTestId('activity-palette-action');
+  const canvas = page.getByTestId('canvas-drop-target');
+  const xOffset = 180 + (before % 2) * 260;
+  const yOffset = 160 + Math.floor(before / 2) * 280;
+  await chip.dragTo(canvas, {
+    targetPosition: { x: xOffset, y: yOffset },
+  });
   await expect(actions).toHaveCount(before + 1);
   const id = (await actions.nth(before).getAttribute('data-element-id'))!;
   await page.getByTestId(`project-tree-leaf-${id}`).click();

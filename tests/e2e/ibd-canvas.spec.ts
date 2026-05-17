@@ -63,9 +63,13 @@ test.describe('IBD viewpoint (issue #49)', () => {
       'Internal Block Diagram',
     );
 
-    // The IBD viewpoint has no palette yet (#50 adds Part), so the BDD-only
-    // "+ Block" button is hidden when IBD is the active diagram.
-    await expect(page.getByTestId('toolbar-add-block')).toHaveCount(0);
+    // ADR 0015 step 3 (#376): the diagram-toolbar `+ X` buttons retired.
+    // Creation is canonical via project-tree palette drag — assert the
+    // PartUsage group header is draggable as a positive cross-viewpoint
+    // affordance check (IBD's `acceptedElementKinds` is `['PartUsage']`).
+    await expect(
+      page.getByTestId('project-tree-group-PartUsage'),
+    ).toHaveAttribute('draggable', 'true');
 
     // Canvas mounts with the IBD viewpoint id.
     await expect(page.getByTestId('diagram-panel')).toHaveAttribute(

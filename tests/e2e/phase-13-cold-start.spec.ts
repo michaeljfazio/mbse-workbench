@@ -215,25 +215,38 @@ test.describe('Phase-13 gate item #1 — cold-start UI walkthrough', () => {
     // ------------------------------------------------------------------
 
     // Authoring strategy: prefer affordances that don't depend on the
-    // current selection. Toolbar buttons (`toolbar-add-…`) and tree
-    // row-menu "Create child" both create + auto-select an element
-    // regardless of prior selection. The inspector empty-state CTA
-    // (T-13.07) only renders when nothing is selected, so it's used
+    // current selection. Post-ADR-0015 (#376) creation is canonical via
+    // drag-from-palette onto the canvas — every group header in the
+    // project tree is `draggable`, and the per-viewpoint palette strips
+    // (e.g. `use-case-palette-actor`, `activity-palette-action`,
+    // `state-machine-palette-state`) drop a default node at the drop
+    // position and auto-select it. Tree row-menu "Create child"
+    // (`createChild` helper) is used for kinds where the spec wants the
+    // child to land under a specific parent. The inspector empty-state
+    // CTA (T-13.07) only renders when nothing is selected, so it's used
     // only on the initial fresh-load BDD step (Step 2) where selection
     // is guaranteed empty.
 
-    // Requirements: toolbar + Requirement.
+    // Requirements: drag the Requirement project-tree group onto canvas.
     await activateDiagram(page, 'Untitled Project Requirements');
     expect(await activeDiagramViewpoint(page)).toBe('requirements');
-    await page.getByTestId('toolbar-add-requirement').click();
+    await page
+      .getByTestId('project-tree-group-Requirement')
+      .dragTo(page.getByTestId('canvas-drop-target'), {
+        targetPosition: { x: 280, y: 180 },
+      });
     await expect(
       page.locator('[data-testid^="requirements-req-"][data-element-id]'),
     ).toHaveCount(1);
 
-    // Use Case: toolbar + Actor.
+    // Use Case: drag the Actor palette chip onto canvas.
     await activateDiagram(page, 'Untitled Project Use Case');
     expect(await activeDiagramViewpoint(page)).toBe('use-case');
-    await page.getByTestId('toolbar-add-actor').click();
+    await page
+      .getByTestId('use-case-palette-actor')
+      .dragTo(page.getByTestId('canvas-drop-target'), {
+        targetPosition: { x: 200, y: 180 },
+      });
     await expect(
       page.locator('[data-testid^="use-case-actor-"][data-element-id]'),
     ).toHaveCount(1);
@@ -280,18 +293,26 @@ test.describe('Phase-13 gate item #1 — cold-start UI walkthrough', () => {
       page.locator('[data-testid^="parametric-value-"][data-element-id]'),
     ).toHaveCount(1);
 
-    // Activity: toolbar + Action.
+    // Activity: drag the Action palette chip onto canvas.
     await activateDiagram(page, 'New Action Definition Activity');
     expect(await activeDiagramViewpoint(page)).toBe('activity');
-    await page.getByTestId('toolbar-add-action').click();
+    await page
+      .getByTestId('activity-palette-action')
+      .dragTo(page.getByTestId('canvas-drop-target'), {
+        targetPosition: { x: 240, y: 180 },
+      });
     await expect(
       page.locator('[data-testid^="activity-action-"][data-element-id]'),
     ).toHaveCount(1);
 
-    // State Machine: toolbar + State.
+    // State Machine: drag the State palette chip onto canvas.
     await activateDiagram(page, 'New State Definition State Machine');
     expect(await activeDiagramViewpoint(page)).toBe('state-machine');
-    await page.getByTestId('toolbar-add-state').click();
+    await page
+      .getByTestId('state-machine-palette-state')
+      .dragTo(page.getByTestId('canvas-drop-target'), {
+        targetPosition: { x: 240, y: 180 },
+      });
     await expect(
       page.locator('[data-testid^="state-machine-state-"][data-element-id]'),
     ).toHaveCount(1);

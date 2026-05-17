@@ -69,9 +69,13 @@ test.describe('State Machine viewpoint (issue #104)', () => {
       'State Machine Diagram',
     );
 
-    // The State Machine viewpoint has no node renderers yet (#105 adds
-    // them), so the BDD-only "+ Block" button is hidden on this canvas.
-    await expect(page.getByTestId('toolbar-add-block')).toHaveCount(0);
+    // ADR 0015 step 3 (#376): the diagram-toolbar `+ X` buttons retired.
+    // Creation is now canonical via project-tree palette drag — assert the
+    // PartDefinition group header is draggable as a positive cross-viewpoint
+    // affordance check.
+    await expect(
+      page.getByTestId('project-tree-group-PartDefinition'),
+    ).toHaveAttribute('draggable', 'true');
 
     // Canvas mounts with the State Machine viewpoint id.
     await expect(page.getByTestId('diagram-panel')).toHaveAttribute(

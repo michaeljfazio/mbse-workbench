@@ -156,9 +156,17 @@ async function dropRequirementOntoCanvas(
 }
 
 async function addBlockNamed(page: Page, name: string): Promise<string> {
+  // ADR 0015 step 3 (#376): `toolbar-add-block` retired. Palette drag is
+  // now the canonical creation path.
   const blocks = page.locator('[data-testid^="bdd-block-"][data-element-id]');
   const before = await blocks.count();
-  await page.getByTestId('toolbar-add-block').click();
+  const group = page.getByTestId('project-tree-group-PartDefinition');
+  const canvas = page.getByTestId('canvas-drop-target');
+  const xOffset = 180 + (before % 2) * 260;
+  const yOffset = 160 + Math.floor(before / 2) * 280;
+  await group.dragTo(canvas, {
+    targetPosition: { x: xOffset, y: yOffset },
+  });
   await expect(blocks).toHaveCount(before + 1);
   const block = blocks.nth(before);
   const id = (await block.getAttribute('data-element-id'))!;

@@ -147,10 +147,16 @@ test.describe('Phase 12 slice E — Split view (issue #235)', () => {
     await expect(primaryBlocks).toHaveCount(2);
     await expect(secondaryBlocks).toHaveCount(2);
 
-    // Add a new block via the primary toolbar. The new element is added to
-    // the model, so it renders on both panes (the secondary diagram has no
-    // explicit position for it; toFlowNodes places it at the default 0,0).
-    await page.getByTestId('toolbar-add-block').click();
+    // Add a new block via the canonical palette drag onto the primary canvas
+    // (ADR 0015 step 3 retired the `+ Block` toolbar button). The new element
+    // is added to the shared model, so it renders on both panes (the secondary
+    // diagram has no explicit position for it; toFlowNodes places it at the
+    // default 0,0).
+    const group = page.getByTestId('project-tree-group-PartDefinition');
+    const primaryCanvas = page
+      .getByTestId('diagram-panel')
+      .getByTestId('canvas-drop-target');
+    await group.dragTo(primaryCanvas, { targetPosition: { x: 240, y: 200 } });
 
     await expect(primaryBlocks).toHaveCount(3);
     await expect(secondaryBlocks).toHaveCount(3);

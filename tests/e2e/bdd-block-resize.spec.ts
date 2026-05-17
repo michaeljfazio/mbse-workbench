@@ -15,9 +15,19 @@ import AxeBuilder from '@axe-core/playwright';
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
 async function addBlock(page: Page): Promise<Locator> {
+  // ADR 0015 step 3 (#376): `toolbar-add-block` retired. Create via the
+  // canonical palette drag (PartDefinition group → BDD canvas).
   const before = page.locator('[data-testid^="bdd-block-"][data-element-id]');
   const beforeCount = await before.count();
-  await page.getByTestId('toolbar-add-block').click();
+  const group = page.getByTestId('project-tree-group-PartDefinition');
+  const canvas = page.getByTestId('canvas-drop-target');
+  // Cascade drop positions on a 2×N grid with step sizes larger than a
+  // Block's bounding box so sequential blocks don't overlap.
+  const xOffset = 180 + (beforeCount % 2) * 260;
+  const yOffset = 160 + Math.floor(beforeCount / 2) * 280;
+  await group.dragTo(canvas, {
+    targetPosition: { x: xOffset, y: yOffset },
+  });
   await expect(before).toHaveCount(beforeCount + 1);
   return page.locator('[data-testid^="bdd-block-"][data-element-id]').nth(beforeCount);
 }

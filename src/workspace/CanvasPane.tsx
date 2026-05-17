@@ -729,96 +729,15 @@ function CanvasInner(): JSX.Element {
     [],
   );
 
-  const handleAddBlock = useCallback(() => {
-    if (!diagram) return;
-    const cascadeIndex = Object.keys(diagram.positions).length;
-    const columns = 2;
-    const col = cascadeIndex % columns;
-    const row = Math.floor(cascadeIndex / columns);
-    const stepX = BDD_BLOCK_WIDTH + 40;
-    const stepY = BDD_BLOCK_HEIGHT + 60;
-    createBlock({
-      x: 60 + col * stepX,
-      y: 60 + row * stepY,
-    });
-  }, [createBlock, diagram]);
-
-  const handleAddAction = useCallback(() => {
-    if (!diagram) return;
-    const cascadeIndex = Object.keys(diagram.positions).length;
-    const columns = 2;
-    const col = cascadeIndex % columns;
-    const row = Math.floor(cascadeIndex / columns);
-    const stepX = ACTIVITY_ACTION_WIDTH + 40;
-    const stepY = ACTIVITY_ACTION_HEIGHT + 40;
-    const id = createActionUsage(
-      diagram.id,
-      { x: 60 + col * stepX, y: 60 + row * stepY },
-      'action',
-    );
-    if (id) setSelection([id]);
-  }, [createActionUsage, diagram, setSelection]);
-
-  const handleAddRequirement = useCallback(() => {
-    if (!diagram) return;
-    const cascadeIndex = Object.keys(diagram.positions).length;
-    const columns = 2;
-    const col = cascadeIndex % columns;
-    const row = Math.floor(cascadeIndex / columns);
-    const stepX = REQUIREMENT_NODE_WIDTH + 40;
-    const stepY = REQUIREMENT_NODE_HEIGHT + 40;
-    const id = createRequirement(diagram.id, {
-      x: 60 + col * stepX,
-      y: 60 + row * stepY,
-    });
-    if (id) setSelection([id]);
-  }, [createRequirement, diagram, setSelection]);
-
-  const handleAddState = useCallback(() => {
-    if (!diagram) return;
-    const cascadeIndex = Object.keys(diagram.positions).length;
-    const columns = 2;
-    const col = cascadeIndex % columns;
-    const row = Math.floor(cascadeIndex / columns);
-    const stepX = STATE_MACHINE_STATE_WIDTH + 40;
-    const stepY = STATE_MACHINE_STATE_HEIGHT + 40;
-    const id = createStateUsage(
-      diagram.id,
-      { x: 60 + col * stepX, y: 60 + row * stepY },
-      'state',
-    );
-    if (id) setSelection([id]);
-  }, [createStateUsage, diagram, setSelection]);
-
-  const handleAddActor = useCallback(() => {
-    if (!diagram) return;
-    const cascadeIndex = Object.keys(diagram.positions).length;
-    const columns = 2;
-    const col = cascadeIndex % columns;
-    const row = Math.floor(cascadeIndex / columns);
-    const stepX = USE_CASE_ACTOR_WIDTH + 40;
-    const stepY = USE_CASE_ACTOR_HEIGHT + 40;
-    const id = createActor(diagram.id, {
-      x: 60 + col * stepX,
-      y: 60 + row * stepY,
-    });
-    if (id) setSelection([id]);
-  }, [createActor, diagram, setSelection]);
-
-  const handleAddUseCase = useCallback(() => {
-    if (!diagram) return;
-    const cascadeIndex = Object.keys(diagram.positions).length;
-    const columns = 2;
-    const col = cascadeIndex % columns;
-    const row = Math.floor(cascadeIndex / columns);
-    const stepX = USE_CASE_USE_CASE_WIDTH + 40;
-    const stepY = USE_CASE_USE_CASE_HEIGHT + 40;
-    const id = createUseCase(diagram.id, {
-      x: 60 + col * stepX,
-      y: 60 + row * stepY,
-    });
-    if (id) setSelection([id]);
-  }, [createUseCase, diagram, setSelection]);
+  // ADR 0015 step 3 (#376): the `handleAdd{Block,Action,Requirement,State,
+  // Actor,UseCase}` cascade-placement handlers retired alongside their
+  // toolbar buttons. The `createBlock` / `createActionUsage` / etc. store
+  // hooks above remain — they are still called from the drop handler
+  // (handleDrop, below), the empty-state cards (PR #421, EmptyState.tsx),
+  // and the inspector contextual create flow (PR #420, Inspector.tsx).
+  // None of those surfaces needs the cascade-placement helper: the drop
+  // handler places at the drop position, and the shortcut surfaces place
+  // at canvas centre.
 
   const handleAutoLayout = useCallback(() => {
     if (!diagram) return;
@@ -1288,66 +1207,15 @@ function CanvasInner(): JSX.Element {
           {viewpoint.label}
         </span>
         <span aria-hidden="true" className="h-4 w-px bg-border" />
-        {viewpoint.id === BDD_VIEWPOINT_ID ? (
-          <button
-            type="button"
-            data-testid="toolbar-add-block"
-            onClick={handleAddBlock}
-            className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-foreground shadow-sm transition hover:bg-accent"
-          >
-            + Block
-          </button>
-        ) : null}
-        {viewpoint.id === REQUIREMENTS_VIEWPOINT_ID ? (
-          <button
-            type="button"
-            data-testid="toolbar-add-requirement"
-            onClick={handleAddRequirement}
-            className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-foreground shadow-sm transition hover:bg-accent"
-          >
-            + Requirement
-          </button>
-        ) : null}
-        {viewpoint.id === ACTIVITY_VIEWPOINT_ID ? (
-          <button
-            type="button"
-            data-testid="toolbar-add-action"
-            onClick={handleAddAction}
-            className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-foreground shadow-sm transition hover:bg-accent"
-          >
-            + Action
-          </button>
-        ) : null}
-        {viewpoint.id === STATE_MACHINE_VIEWPOINT_ID ? (
-          <button
-            type="button"
-            data-testid="toolbar-add-state"
-            onClick={handleAddState}
-            className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-foreground shadow-sm transition hover:bg-accent"
-          >
-            + State
-          </button>
-        ) : null}
-        {viewpoint.id === USE_CASE_VIEWPOINT_ID ? (
-          <>
-            <button
-              type="button"
-              data-testid="toolbar-add-actor"
-              onClick={handleAddActor}
-              className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-foreground shadow-sm transition hover:bg-accent"
-            >
-              + Actor
-            </button>
-            <button
-              type="button"
-              data-testid="toolbar-add-usecase"
-              onClick={handleAddUseCase}
-              className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-xs font-medium text-foreground shadow-sm transition hover:bg-accent"
-            >
-              + Use case
-            </button>
-          </>
-        ) : null}
+        {/*
+          ADR 0015 step 3 (#376): the per-viewpoint `+ X` toolbar buttons
+          (`toolbar-add-block`, `-requirement`, `-action`, `-state`, `-actor`,
+          `-usecase`) retired. Creation is now canonical from the project-tree
+          palette via drag-onto-canvas (step 1, PR #419) plus the empty-state
+          card shortcut (step 2, PR #421) and the inspector contextual shortcut
+          (step 4, PR #420). Removing the buttons closes the affordance
+          asymmetry that rubric dim 15 flagged.
+        */}
         <button
           type="button"
           data-testid="toolbar-undo"

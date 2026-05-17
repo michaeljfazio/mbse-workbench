@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 
+import { addBlockViaPalette } from './_palette-drag-helpers';
+
 test.describe('URL fragment permalinks (T-13.39)', () => {
   test('selecting an element writes #/element/<id>; clearing falls back to #/diagram/<id>', async ({
     page,
@@ -13,10 +15,13 @@ test.describe('URL fragment permalinks (T-13.39)', () => {
       .poll(() => page.evaluate(() => window.location.hash))
       .toMatch(/^#\/diagram\//);
 
-    // Create a block via the canvas-toolbar Add affordance, then click it to
-    // select — `createBlock` itself does not change selection. URL should
-    // flip from the diagram-form to the element-form fragment.
-    await page.getByTestId('toolbar-add-block').click();
+    // Create a block via the canonical palette-drag affordance
+    // (ADR 0015 step 3 retired the `+ Block` toolbar button), then click
+    // it to flip the URL from the diagram-form to the element-form
+    // fragment. The drop handler auto-selects, but the existing assertion
+    // contract here was "create → click → element selected" — keep the
+    // explicit click to mirror the original behaviour.
+    await addBlockViaPalette(page);
     const block = page
       .locator('[data-testid^="bdd-block-"][data-element-id]')
       .first();
@@ -41,8 +46,10 @@ test.describe('URL fragment permalinks (T-13.39)', () => {
     await page.goto('/');
     await expect(page.getByTestId('workspace-project-name')).toBeEnabled();
 
-    // Create a block, then capture its element id from the DOM.
-    await page.getByTestId('toolbar-add-block').click();
+    // Create a block via the canonical palette-drag affordance
+    // (ADR 0015 step 3 retired the `+ Block` toolbar button), then capture
+    // its element id from the DOM.
+    await addBlockViaPalette(page);
     const block = page
       .locator('[data-testid^="bdd-block-"][data-element-id]')
       .first();

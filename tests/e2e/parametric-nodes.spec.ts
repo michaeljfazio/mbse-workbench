@@ -64,8 +64,10 @@ test.describe('Parametric nodes + palette + inspector (issue #136)', () => {
       page.getByTestId('parametric-palette-constraint'),
     ).toBeVisible();
     await expect(page.getByTestId('parametric-palette-value')).toBeVisible();
-    // BDD-only "+ Block" must NOT appear on the Parametric viewpoint.
-    await expect(page.getByTestId('toolbar-add-block')).toHaveCount(0);
+    // ADR 0015 step 3 (#376): the diagram-toolbar `+ X` buttons retired
+    // entirely. The Parametric-specific palette chips (asserted above) plus
+    // the project-tree palette-drag affordance cover creation on this
+    // viewpoint.
   });
 
   test('dragging Constraint + Value chips renders both nodes', async ({

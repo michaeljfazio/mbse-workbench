@@ -61,9 +61,12 @@ test.describe('Package viewpoint (issue #154)', () => {
       'Package Diagram',
     );
 
-    // The Package viewpoint has no palette yet (#155 adds the node),
-    // so the BDD-only "+ Block" button is hidden.
-    await expect(page.getByTestId('toolbar-add-block')).toHaveCount(0);
+    // ADR 0015 step 3 (#376): the diagram-toolbar `+ X` buttons retired.
+    // Assert the canonical palette-drag affordance instead — the Package
+    // group header is `draggable` on this viewpoint.
+    await expect(
+      page.getByTestId('project-tree-group-Package'),
+    ).toHaveAttribute('draggable', 'true');
 
     await expect(page.getByTestId('diagram-panel')).toHaveAttribute(
       'data-viewpoint-id',

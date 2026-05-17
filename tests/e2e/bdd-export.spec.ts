@@ -1,9 +1,17 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
 async function addBlock(page: Page): Promise<Locator> {
+  // ADR 0015 step 3 (#376): `toolbar-add-block` retired. Palette drag is
+  // now the canonical creation path.
   const before = page.locator('[data-testid^="bdd-block-"][data-element-id]');
   const beforeCount = await before.count();
-  await page.getByTestId('toolbar-add-block').click();
+  const group = page.getByTestId('project-tree-group-PartDefinition');
+  const canvas = page.getByTestId('canvas-drop-target');
+  const xOffset = 180 + (beforeCount % 2) * 260;
+  const yOffset = 160 + Math.floor(beforeCount / 2) * 280;
+  await group.dragTo(canvas, {
+    targetPosition: { x: xOffset, y: yOffset },
+  });
   await expect(before).toHaveCount(beforeCount + 1);
   return page.locator('[data-testid^="bdd-block-"][data-element-id]').nth(beforeCount);
 }
@@ -64,7 +72,7 @@ test.describe('BDD export (issue #35)', () => {
   }) => {
     await page.goto('/');
     await expect(page.getByTestId('toolbar-export')).toBeDisabled();
-    await page.getByTestId('toolbar-add-block').click();
+    await addBlock(page);
     await expect(page.getByTestId('toolbar-export')).toBeEnabled();
   });
 
