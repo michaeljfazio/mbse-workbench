@@ -66,9 +66,12 @@ test.describe('Activity viewpoint (issue #87)', () => {
       'Activity Diagram',
     );
 
-    // The Activity viewpoint has no node renderers yet (#88 adds them), so
-    // the BDD-only "+ Block" button is hidden on this canvas.
-    await expect(page.getByTestId('toolbar-add-block')).toHaveCount(0);
+    // ADR 0015 step 3 (#376): the diagram-toolbar `+ X` buttons retired.
+    // Assert the canonical palette-drag affordance instead — the
+    // ActionUsage group header is `draggable` on this viewpoint.
+    await expect(
+      page.getByTestId('project-tree-group-ActionUsage'),
+    ).toHaveAttribute('draggable', 'true');
 
     // Canvas mounts with the Activity viewpoint id.
     await expect(page.getByTestId('diagram-panel')).toHaveAttribute(

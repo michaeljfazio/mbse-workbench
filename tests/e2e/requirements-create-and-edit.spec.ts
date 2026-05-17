@@ -44,10 +44,13 @@ async function gotoRequirements(page: Page): Promise<void> {
   );
 }
 
-async function dragRequirementOntoCanvas(page: Page): Promise<void> {
+async function dragRequirementOntoCanvas(
+  page: Page,
+  targetPosition: { x: number; y: number } = { x: 280, y: 180 },
+): Promise<void> {
   const group = page.getByTestId('project-tree-group-Requirement');
   const canvas = page.getByTestId('canvas-drop-target');
-  await group.dragTo(canvas, { targetPosition: { x: 280, y: 180 } });
+  await group.dragTo(canvas, { targetPosition });
 }
 
 test.describe('Requirements create + edit (issue #71)', () => {
@@ -55,15 +58,19 @@ test.describe('Requirements create + edit (issue #71)', () => {
     await seedEmptyRequirementsProject(page);
   });
 
-  test('shows + Requirement toolbar button + palette item on the Requirements viewpoint', async ({
+  test('shows Requirement palette group on the Requirements viewpoint', async ({
     page,
   }) => {
+    // ADR 0015 step 3 (#376): the `+ Requirement` toolbar button retired.
+    // The project-tree Requirement group remains as the canonical
+    // drag-creatable surface for this viewpoint.
     await gotoRequirements(page);
-    await expect(page.getByTestId('toolbar-add-requirement')).toBeVisible();
-    await expect(page.getByTestId('toolbar-add-block')).toHaveCount(0);
     await expect(
       page.getByTestId('project-tree-group-Requirement'),
     ).toBeVisible();
+    await expect(
+      page.getByTestId('project-tree-group-Requirement'),
+    ).toHaveAttribute('draggable', 'true');
   });
 
   test('drag Requirement from palette → drop on canvas → renders with default reqId, name, badges', async ({
@@ -95,12 +102,15 @@ test.describe('Requirements create + edit (issue #71)', () => {
     await expect(page.getByTestId('inspector-req-id')).toHaveValue('R-001');
   });
 
-  test('clicking + Requirement creates a Requirement; second click cascades id and name', async ({
+  test('dragging Requirement twice cascades id and name (R-001/Req1, R-002/Req2)', async ({
     page,
   }) => {
+    // Post-ADR-0015-step-3 (#376): replaces the `+ Requirement` toolbar
+    // click with the canonical palette-drag. Drops at slightly different
+    // positions so the two nodes don't stack.
     await gotoRequirements(page);
-    await page.getByTestId('toolbar-add-requirement').click();
-    await page.getByTestId('toolbar-add-requirement').click();
+    await dragRequirementOntoCanvas(page, { x: 220, y: 160 });
+    await dragRequirementOntoCanvas(page, { x: 420, y: 260 });
 
     const reqs = page.locator(
       '[data-testid^="requirements-req-"][data-element-id]',
@@ -126,7 +136,7 @@ test.describe('Requirements create + edit (issue #71)', () => {
     page,
   }) => {
     await gotoRequirements(page);
-    await page.getByTestId('toolbar-add-requirement').click();
+    await dragRequirementOntoCanvas(page);
     const reqs = page.locator(
       '[data-testid^="requirements-req-"][data-element-id]',
     );
@@ -193,7 +203,7 @@ test.describe('Requirements create + edit (issue #71)', () => {
     page,
   }) => {
     await gotoRequirements(page);
-    await page.getByTestId('toolbar-add-requirement').click();
+    await dragRequirementOntoCanvas(page);
     const reqs = page.locator(
       '[data-testid^="requirements-req-"][data-element-id]',
     );
@@ -212,7 +222,7 @@ test.describe('Requirements create + edit (issue #71)', () => {
     page,
   }) => {
     await gotoRequirements(page);
-    await page.getByTestId('toolbar-add-requirement').click();
+    await dragRequirementOntoCanvas(page);
     const reqs = page.locator(
       '[data-testid^="requirements-req-"][data-element-id]',
     );
@@ -227,7 +237,7 @@ test.describe('Requirements create + edit (issue #71)', () => {
     page,
   }) => {
     await gotoRequirements(page);
-    await page.getByTestId('toolbar-add-requirement').click();
+    await dragRequirementOntoCanvas(page);
     await page.getByTestId('inspector-req-text').fill('shall do X');
     await page.getByTestId('inspector-req-text').blur();
     await page.evaluate(async () => {
@@ -244,7 +254,7 @@ test.describe('Requirements create + edit (issue #71)', () => {
 
   test('@visual requirements-one-requirement baseline', async ({ page }) => {
     await gotoRequirements(page);
-    await page.getByTestId('toolbar-add-requirement').click();
+    await dragRequirementOntoCanvas(page);
     // Clear selection so the node-selected ring is not in the baseline.
     await page.locator('body').click({ position: { x: 4, y: 4 } });
     await page.mouse.move(0, 0);
@@ -257,9 +267,12 @@ test.describe('Requirements create + edit (issue #71)', () => {
     page,
   }) => {
     await gotoRequirements(page);
-    await page.getByTestId('toolbar-add-requirement').click();
-    await page.getByTestId('toolbar-add-requirement').click();
-    await page.getByTestId('toolbar-add-requirement').click();
+    // Three sequential drops with offset positions so dagre auto-layout
+    // has distinct starting positions; auto-layout immediately repositions
+    // them, so the exact drop coords only matter for the pre-layout state.
+    await dragRequirementOntoCanvas(page, { x: 200, y: 160 });
+    await dragRequirementOntoCanvas(page, { x: 360, y: 240 });
+    await dragRequirementOntoCanvas(page, { x: 520, y: 320 });
     await page.getByTestId('toolbar-auto-layout').click();
     await page.locator('body').click({ position: { x: 4, y: 4 } });
     await page.mouse.move(0, 0);
@@ -270,7 +283,7 @@ test.describe('Requirements create + edit (issue #71)', () => {
 
   test('@visual inspector-requirement-selected baseline', async ({ page }) => {
     await gotoRequirements(page);
-    await page.getByTestId('toolbar-add-requirement').click();
+    await dragRequirementOntoCanvas(page);
     await page.getByTestId('inspector-req-priority').selectOption('high');
     await page.getByTestId('inspector-req-status').selectOption('approved');
     await page

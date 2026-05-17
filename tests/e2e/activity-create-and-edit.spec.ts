@@ -57,13 +57,13 @@ test.describe('Activity drop + inspector (issue #88)', () => {
     await seedActivityProject(page);
   });
 
-  test('shows + Action toolbar button + the seven palette chips on the Activity viewpoint', async ({
+  test('shows the seven palette chips on the Activity viewpoint', async ({
     page,
   }) => {
+    // ADR 0015 step 3 (#376): the `+ Action` toolbar button retired. The
+    // Activity-specific palette chips remain as the canonical creation
+    // path for the seven Action/pseudostate kinds on this viewpoint.
     await gotoActivity(page);
-    await expect(page.getByTestId('toolbar-add-action')).toBeVisible();
-    await expect(page.getByTestId('toolbar-add-block')).toHaveCount(0);
-    await expect(page.getByTestId('toolbar-add-requirement')).toHaveCount(0);
     for (const nodeType of [
       'action',
       'initial',
@@ -79,11 +79,13 @@ test.describe('Activity drop + inspector (issue #88)', () => {
     }
   });
 
-  test('clicking + Action drops a default Action node, names it, and selects it', async ({
+  test('dragging the Action palette chip drops a default Action node, names it, and selects it', async ({
     page,
   }) => {
+    // Post-ADR-0015-step-3 (#376): replaces the `+ Action` toolbar click
+    // with the canonical `activity-palette-action` chip drag.
     await gotoActivity(page);
-    await page.getByTestId('toolbar-add-action').click();
+    await dragChipOntoCanvas(page, 'action', { x: 240, y: 180 });
     const actions = page.locator('[data-testid^="activity-action-"][data-element-id]');
     await expect(actions).toHaveCount(1);
     const id = (await actions.first().getAttribute('data-element-id'))!;
@@ -123,7 +125,7 @@ test.describe('Activity drop + inspector (issue #88)', () => {
     page,
   }) => {
     await gotoActivity(page);
-    await page.getByTestId('toolbar-add-action').click();
+    await dragChipOntoCanvas(page, 'action', { x: 240, y: 180 });
     const actions = page.locator('[data-testid^="activity-action-"][data-element-id]');
     await expect(actions).toHaveCount(1);
     await page.keyboard.press('Control+z');
@@ -194,7 +196,7 @@ test.describe('Activity drop + inspector (issue #88)', () => {
     page,
   }) => {
     await gotoActivity(page);
-    await page.getByTestId('toolbar-add-action').click();
+    await dragChipOntoCanvas(page, 'action', { x: 240, y: 180 });
     await page.evaluate(async () => {
       await Promise.allSettled(document.getAnimations().map((a) => a.finished));
     });
@@ -209,7 +211,7 @@ test.describe('Activity drop + inspector (issue #88)', () => {
 
   test('@visual activity-with-action baseline', async ({ page }) => {
     await gotoActivity(page);
-    await page.getByTestId('toolbar-add-action').click();
+    await dragChipOntoCanvas(page, 'action', { x: 240, y: 180 });
     // Clear selection so the node-selected ring is not in the baseline.
     await page.locator('body').click({ position: { x: 4, y: 4 } });
     await page.mouse.move(0, 0);

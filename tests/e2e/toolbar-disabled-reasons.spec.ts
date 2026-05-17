@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 
+import { addBlockViaPalette } from './_palette-drag-helpers';
+
 test.describe('toolbar disabled-reason tooltips', () => {
   test('Auto-layout, Delete, and Export surface their disabled reasons', async ({
     page,
@@ -23,9 +25,14 @@ test.describe('toolbar disabled-reason tooltips', () => {
     await expect(exportTrigger).toHaveAttribute('title', 'No elements to export');
 
     // Add a block: Auto-layout + Export enable; Auto-layout title flips to its
-    // action label; Export trigger title goes away; Delete is still disabled
-    // because nothing is selected.
-    await page.getByTestId('toolbar-add-block').click();
+    // action label; Export trigger title goes away. Post-ADR-0015-step-3
+    // (#376) creation is canonical via palette drag — the drop handler
+    // auto-selects the new block (it calls setSelection on the created id),
+    // so press Escape inside the React Flow viewport to clear the selection
+    // and recover the original "block exists, nothing selected" precondition
+    // that the next two assertions depend on.
+    await addBlockViaPalette(page);
+    await page.locator('.react-flow').click({ position: { x: 5, y: 5 } });
     await expect(autoLayout).toBeEnabled();
     await expect(autoLayout).toHaveAttribute(
       'title',

@@ -1,5 +1,7 @@
 import { expect, test } from '@playwright/test';
 
+import { addBlockViaPalette } from './_palette-drag-helpers';
+
 test.describe('toolbar Undo/Redo buttons', () => {
   test('Undo/Redo enable, click, and round-trip a block create', async ({
     page,
@@ -18,8 +20,9 @@ test.describe('toolbar Undo/Redo buttons', () => {
     await expect(redo).toHaveAttribute('title', 'Nothing to redo');
 
     // Create a block: Undo enables and flips to its action label; Redo stays
-    // disabled because a fresh dispatch clears the redo stack.
-    await page.getByTestId('toolbar-add-block').click();
+    // disabled because a fresh dispatch clears the redo stack. Post-ADR-0015
+    // step 3 (#376), creation is canonical via palette drag.
+    await addBlockViaPalette(page);
     await expect(blocks).toHaveCount(1);
     await expect(undo).toBeEnabled();
     await expect(undo).toHaveAttribute('title', 'Undo last action (Cmd-Z)');

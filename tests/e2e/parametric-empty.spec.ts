@@ -64,9 +64,12 @@ test.describe('Parametric viewpoint (issue #135)', () => {
       'Parametric Diagram',
     );
 
-    // The Parametric viewpoint has no palette yet (#136 adds nodes),
-    // so the BDD-only "+ Block" button is hidden.
-    await expect(page.getByTestId('toolbar-add-block')).toHaveCount(0);
+    // ADR 0015 step 3 (#376): the diagram-toolbar `+ X` buttons retired.
+    // Assert the canonical palette-drag affordance instead — the
+    // ConstraintUsage group header is `draggable` on this viewpoint.
+    await expect(
+      page.getByTestId('project-tree-group-ConstraintUsage'),
+    ).toHaveAttribute('draggable', 'true');
 
     // Canvas mounts with the Parametric viewpoint id.
     await expect(page.getByTestId('diagram-panel')).toHaveAttribute(

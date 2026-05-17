@@ -1,5 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
+import { addBlockViaPalette } from './_palette-drag-helpers';
+
 // Phase 12 slice C (issue #233) — global keyboard shortcuts:
 //   Cmd/Ctrl-Z      → undo
 //   Cmd/Ctrl-Shift-Z → redo
@@ -118,7 +120,9 @@ test.describe('Phase 12 slice C — global keyboard shortcuts (issue #233)', () 
   }) => {
     const blocks = page.locator('[data-testid^="bdd-block-"][data-element-id]');
     const before = await blocks.count();
-    await page.getByTestId('toolbar-add-block').click();
+    // ADR 0015 step 3 (#376): `toolbar-add-block` retired. Create via the
+    // canonical palette-drag affordance.
+    await addBlockViaPalette(page);
     await expect(blocks).toHaveCount(before + 1);
 
     await page.keyboard.press('ControlOrMeta+z');

@@ -57,30 +57,31 @@ test.describe('Use Case nodes + palette + inspector (issue #118)', () => {
     await seedUseCaseProject(page);
   });
 
-  test('shows + Actor / + Use case toolbar buttons + palette chips on the Use Case viewpoint', async ({
+  test('shows Actor + Use case palette chips on the Use Case viewpoint', async ({
     page,
   }) => {
+    // ADR 0015 step 3 (#376): the diagram-toolbar `+ Actor` /
+    // `+ Use case` buttons retired. The Use-Case-specific palette chips
+    // remain as the canonical creation path on this viewpoint.
     await gotoUseCase(page);
-    await expect(page.getByTestId('toolbar-add-actor')).toBeVisible();
-    await expect(page.getByTestId('toolbar-add-usecase')).toBeVisible();
-    await expect(page.getByTestId('toolbar-add-block')).toHaveCount(0);
-    await expect(page.getByTestId('toolbar-add-state')).toHaveCount(0);
     await expect(page.getByTestId('use-case-palette-actor')).toBeVisible();
     await expect(page.getByTestId('use-case-palette-usecase')).toBeVisible();
   });
 
-  test('clicking + Actor adds an Actor with cascading default names and selects it', async ({
+  test('dragging the Actor chip adds Actors with cascading default names and selects each one', async ({
     page,
   }) => {
+    // Post-ADR-0015-step-3 (#376): replaces the `+ Actor` toolbar click with
+    // the canonical `use-case-palette-actor` chip drag.
     await gotoUseCase(page);
-    await page.getByTestId('toolbar-add-actor').click();
+    await dragChipOntoCanvas(page, 'actor', { x: 160, y: 200 });
     const actors = page.locator('[data-use-case-node-kind="actor"]');
     await expect(actors).toHaveCount(1);
     const firstId = (await actors.first().getAttribute('data-element-id'))!;
     await expect(
       page.getByTestId(`use-case-actor-label-${firstId}`),
     ).toHaveText('Actor1');
-    await page.getByTestId('toolbar-add-actor').click();
+    await dragChipOntoCanvas(page, 'actor', { x: 320, y: 200 });
     await expect(actors).toHaveCount(2);
     const secondId = (await actors.nth(1).getAttribute('data-element-id'))!;
     await expect(
@@ -88,12 +89,12 @@ test.describe('Use Case nodes + palette + inspector (issue #118)', () => {
     ).toHaveText('Actor2');
   });
 
-  test('clicking + Use case adds a UseCase with cascading default UC1, UC2, …', async ({
+  test('dragging the Use case chip adds UseCases with cascading default UC1, UC2, …', async ({
     page,
   }) => {
     await gotoUseCase(page);
-    await page.getByTestId('toolbar-add-usecase').click();
-    await page.getByTestId('toolbar-add-usecase').click();
+    await dragChipOntoCanvas(page, 'usecase', { x: 160, y: 200 });
+    await dragChipOntoCanvas(page, 'usecase', { x: 320, y: 200 });
     const useCases = page.locator('[data-use-case-node-kind="usecase"]');
     await expect(useCases).toHaveCount(2);
     const idA = (await useCases.first().getAttribute('data-element-id'))!;
@@ -122,7 +123,7 @@ test.describe('Use Case nodes + palette + inspector (issue #118)', () => {
 
   test('inline rename via double-click commits on Enter', async ({ page }) => {
     await gotoUseCase(page);
-    await page.getByTestId('toolbar-add-actor').click();
+    await dragChipOntoCanvas(page, 'actor', { x: 160, y: 200 });
     const actor = page.locator('[data-use-case-node-kind="actor"]').first();
     const id = (await actor.getAttribute('data-element-id'))!;
     await page.getByTestId(`use-case-actor-label-${id}`).dblclick();
@@ -134,11 +135,11 @@ test.describe('Use Case nodes + palette + inspector (issue #118)', () => {
     );
   });
 
-  test('Cmd-Z reverts a + Actor click in one step (compound command)', async ({
+  test('Cmd-Z reverts an Actor palette drop in one step (compound command)', async ({
     page,
   }) => {
     await gotoUseCase(page);
-    await page.getByTestId('toolbar-add-actor').click();
+    await dragChipOntoCanvas(page, 'actor', { x: 160, y: 200 });
     const actors = page.locator('[data-use-case-node-kind="actor"]');
     await expect(actors).toHaveCount(1);
     await page.keyboard.press('Control+z');
@@ -149,7 +150,7 @@ test.describe('Use Case nodes + palette + inspector (issue #118)', () => {
     page,
   }) => {
     await gotoUseCase(page);
-    await page.getByTestId('toolbar-add-usecase').click();
+    await dragChipOntoCanvas(page, 'usecase', { x: 160, y: 200 });
     await expect(page.getByTestId('inspector-name')).toHaveValue('UC1');
     await expect(page.getByTestId('inspector-description')).toBeVisible();
     await expect(page.getByTestId('inspector-usecase-text')).toBeVisible();
@@ -164,7 +165,7 @@ test.describe('Use Case nodes + palette + inspector (issue #118)', () => {
     );
 
     // Switch to Actor — no text field.
-    await page.getByTestId('toolbar-add-actor').click();
+    await dragChipOntoCanvas(page, 'actor', { x: 360, y: 200 });
     await expect(page.getByTestId('inspector-name')).toHaveValue('Actor1');
     await expect(page.getByTestId('inspector-usecase-text')).toHaveCount(0);
   });
@@ -179,8 +180,8 @@ test.describe('Use Case nodes + palette + inspector (issue #118)', () => {
     await expect(
       page.getByTestId('project-tree-group-UseCase'),
     ).toBeVisible();
-    await page.getByTestId('toolbar-add-actor').click();
-    await page.getByTestId('toolbar-add-usecase').click();
+    await dragChipOntoCanvas(page, 'actor', { x: 160, y: 200 });
+    await dragChipOntoCanvas(page, 'usecase', { x: 360, y: 200 });
     const actorId = await page
       .locator('[data-use-case-node-kind="actor"]')
       .first()
@@ -219,7 +220,7 @@ test.describe('Use Case nodes + palette + inspector (issue #118)', () => {
     page,
   }) => {
     await gotoUseCase(page);
-    await page.getByTestId('toolbar-add-usecase').click();
+    await dragChipOntoCanvas(page, 'usecase', { x: 160, y: 200 });
     const useCaseNode = page.locator('[data-use-case-node-kind="usecase"]').first();
     await expect(useCaseNode).toBeVisible();
     const ellipse = useCaseNode.locator('svg ellipse').first();

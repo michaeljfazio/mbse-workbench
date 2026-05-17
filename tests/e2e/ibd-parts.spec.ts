@@ -4,9 +4,20 @@ import { expect, test, type Page } from '@playwright/test';
 // Helpers ---------------------------------------------------------------------
 
 async function addAndSelectBlock(page: Page): Promise<string> {
+  // ADR 0015 step 3 (#376): `toolbar-add-block` retired. Drag the
+  // PartDefinition group from the project tree onto the BDD canvas to
+  // create a block, then explicitly click to mirror the original
+  // helper's "create + select" contract (the drop handler already
+  // selects, but downstream code may have raced selection updates).
   const before = page.locator('[data-testid^="bdd-block-"][data-element-id]');
   const beforeCount = await before.count();
-  await page.getByTestId('toolbar-add-block').click();
+  const group = page.getByTestId('project-tree-group-PartDefinition');
+  const canvas = page.getByTestId('canvas-drop-target');
+  const xOffset = 180 + (beforeCount % 2) * 260;
+  const yOffset = 160 + Math.floor(beforeCount / 2) * 280;
+  await group.dragTo(canvas, {
+    targetPosition: { x: xOffset, y: yOffset },
+  });
   await expect(before).toHaveCount(beforeCount + 1);
   const block = before.nth(beforeCount);
   await block.click();

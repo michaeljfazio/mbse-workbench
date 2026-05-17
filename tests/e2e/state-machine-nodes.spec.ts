@@ -57,13 +57,15 @@ test.describe('State Machine nodes + palette + inspector (issue #105)', () => {
     await seedStateMachineProject(page);
   });
 
-  test('shows + State toolbar button + the three palette chips on the State Machine viewpoint', async ({
+  test('shows the three palette chips on the State Machine viewpoint', async ({
     page,
   }) => {
+    // ADR 0015 step 3 (#376): the per-viewpoint `+ X` toolbar buttons
+    // (including `toolbar-add-state`) retired in favour of the canonical
+    // palette-drag affordance. The three state-machine palette chips remain;
+    // they are the State-Machine-specific palette that drops the State /
+    // Initial / Final variants.
     await gotoStateMachine(page);
-    await expect(page.getByTestId('toolbar-add-state')).toBeVisible();
-    await expect(page.getByTestId('toolbar-add-block')).toHaveCount(0);
-    await expect(page.getByTestId('toolbar-add-action')).toHaveCount(0);
     for (const stateType of ['state', 'initial', 'final']) {
       await expect(
         page.getByTestId(`state-machine-palette-${stateType}`),
@@ -71,11 +73,14 @@ test.describe('State Machine nodes + palette + inspector (issue #105)', () => {
     }
   });
 
-  test('clicking + State drops a default State node, names it, and selects it', async ({
+  test('dragging the State palette chip drops a default State node, names it, and selects it', async ({
     page,
   }) => {
+    // Post-ADR-0015-step-3 (#376): the `+ State` toolbar button is gone;
+    // dragging the `state` palette chip onto the canvas is the canonical
+    // creation path that replaces it.
     await gotoStateMachine(page);
-    await page.getByTestId('toolbar-add-state').click();
+    await dragChipOntoCanvas(page, 'state', { x: 240, y: 140 });
     const states = page.locator(
       '[data-testid^="state-machine-state-"][data-element-id]',
     );
@@ -84,6 +89,8 @@ test.describe('State Machine nodes + palette + inspector (issue #105)', () => {
     await expect(page.getByTestId(`state-machine-state-label-${id}`)).toHaveText(
       'State1',
     );
+    // Drop auto-selects the new node (CanvasPane.handleDrop calls
+    // setSelection on the created element).
     await expect(page.getByTestId('inspector-state-type')).toHaveText('state');
   });
 
@@ -126,7 +133,7 @@ test.describe('State Machine nodes + palette + inspector (issue #105)', () => {
     page,
   }) => {
     await gotoStateMachine(page);
-    await page.getByTestId('toolbar-add-state').click();
+    await dragChipOntoCanvas(page, 'state', { x: 240, y: 140 });
     const states = page.locator(
       '[data-testid^="state-machine-state-"][data-element-id]',
     );
@@ -163,7 +170,7 @@ test.describe('State Machine nodes + palette + inspector (issue #105)', () => {
     page,
   }) => {
     await gotoStateMachine(page);
-    await page.getByTestId('toolbar-add-state').click();
+    await dragChipOntoCanvas(page, 'state', { x: 240, y: 140 });
     const states = page.locator(
       '[data-testid^="state-machine-state-"][data-element-id]',
     );
@@ -209,7 +216,7 @@ test.describe('State Machine nodes + palette + inspector (issue #105)', () => {
 
   test('Cmd-Z reverts an action-field edit', async ({ page }) => {
     await gotoStateMachine(page);
-    await page.getByTestId('toolbar-add-state').click();
+    await dragChipOntoCanvas(page, 'state', { x: 240, y: 140 });
     await page.getByTestId('inspector-state-entry').fill('turnOn()');
     // Press Enter to commit + blur the input. Tab would move focus to the
     // next inspector input, which would route Cmd-Z to the browser's native
@@ -260,7 +267,7 @@ test.describe('State Machine nodes + palette + inspector (issue #105)', () => {
 
   test('@visual state-machine-with-state baseline', async ({ page }) => {
     await gotoStateMachine(page);
-    await page.getByTestId('toolbar-add-state').click();
+    await dragChipOntoCanvas(page, 'state', { x: 240, y: 140 });
     // Clear selection so the node-selected ring is not in the baseline.
     await page.locator('body').click({ position: { x: 4, y: 4 } });
     await page.mouse.move(0, 0);
@@ -285,7 +292,7 @@ test.describe('State Machine nodes + palette + inspector (issue #105)', () => {
 
   test('@visual inspector-state-selected baseline', async ({ page }) => {
     await gotoStateMachine(page);
-    await page.getByTestId('toolbar-add-state').click();
+    await dragChipOntoCanvas(page, 'state', { x: 240, y: 140 });
     // Populate all three action fields so the inspector shows the full panel.
     await page.getByTestId('inspector-state-entry').fill('turnOn()');
     await page.getByTestId('inspector-state-entry').press('Tab');
