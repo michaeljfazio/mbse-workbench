@@ -3,50 +3,52 @@
 ## Current phase
 phase:15 — Architect-driven UX & feature hardening
 
-🎯 **Iter-805 engineer batch: #373 closed — usage categories now carry an explanatory "?" hint pointing the architect at the actual creation surface.**
+🎯 **Iter-806 + iter-807: ADR 0014 + implementation landed — Package row "Create representation…" submenu now offers Activity / State Machine / IBD / Parametric with implicit-owner creation. Five issues closed in one batch (#368/#369/#370/#371/#411).**
 
-Project-tree palette categories previously fell into two visually identical groups: definitions had a `+` button, usages had nothing. The asymmetry was real (usages live inside a parent diagram / owning element), but it read as a missing feature. The fix renders a small non-interactive `?` in the slot where the `+` would otherwise appear, with a per-kind `title` that points at the actual creation surface ("Created inside an Internal Block Diagram by dragging from the IBD palette onto the canvas", etc.). The `?` is keyed off `USAGE_CREATION_HINTS` in `src/workspace/tree/ProjectTree.tsx` and covers all nine usage kinds the project tree can surface — not only the five categories the original walk-1 finding called out.
+The four walk-1 discoverability findings (Activity / State Machine / Parametric / IBD not on the Package row menu) shared one design question. ADR 0014 resolved it by adopting the long-standing Cameo / MagicDraw auto-create-the-context pattern for the three diagrams whose owner kind is unambiguous, and prompting once for Parametric (where `PartDefinition` vs `ConstraintDefinition` is semantically loaded enough to warrant the extra click). PR #412 committed the ADR + appended SysML v2 ownership-rule research to `docs/architect/diagram-types/{act,stm,par,ibd}.md`. PR #414 shipped the implementation with 6 new e2e tests, 3 updated unit tests, and 2 updated assertions in `selectionScopedCommands` for the Cmd-K palette path.
 
-No visual baselines drifted across threshold this iteration: the extra `?` glyph adds ≈16 px to the right side of 5 always-visible usage-category headers, well inside the 0.01 ratio budget.
+Known partial-undo limitation: `createDiagram` mutates Zustand state directly rather than dispatching a bus command, so Cmd-Z reverses only the implicit-owner `create-element` and the diagram outlives the owner as an orphan. Tracked in **#413** (`type:chore`, p3) which proposes promoting diagram lifecycle to the command bus for atomic compound undo.
 
 ## Phase 15 termination conditions
 
 | # | Condition | Status |
 |---|-----------|--------|
-| A.12 #1 | Every rubric dim at 3 | 0 of 28 at 3; 20 at 2, 4 at 1, 4 at 0 |
-| A.12 #2 | Zero open phase:15 issues | 5 open (1 p1, 4 p2) |
-| **A.12 #3** | **Three consecutive convergence walks** | **✓ SATISFIED (walks 3, 4, 5)** |
+| A.12 #1 | Every rubric dim at 3 | 0 of 28 at 3; 21 at 2 (+1 from dim 28), 3 at 1, 4 at 0 |
+| A.12 #2 | Zero open phase:15 issues | 2 open (1 p1, 1 p3) |
+| **A.12 #3** | **Three consecutive convergence walks** | **✓ SATISFIED (walks 3, 4, 5)** — needs revalidation if a fresh walk files any new issues |
 | A.12 #4 | FBW example shipped + loadable | not started |
 
 ## Current iteration
-- Iteration #: 805 (close-out)
+- Iteration #: 807 (close-out)
 - Started: 2026-05-17
-- Branch: `phase-15/iter-805-closeout`
-- Working on: STATUS update for the iter-805 engineer batch
+- Branch: `phase-15/iter-807-closeout`
+- Working on: STATUS + rubric for iter-806 + iter-807 engineer batches
 
 ## Last test run
-- Main green at `548cbc0` (PR #409 — usage-category `?` hints).
-- No new release tag — still only 2 of the 5 batches required since `vphase-15.3` (per A.8 cadence). Next tag bundles the discoverability batch (#368-371) and any sibling polish landed in iter-806+.
+- Main green at `4db485d` (PR #414 — discoverability implementation).
+- Release cadence (per A.8): 4 of 5 batches merged since `vphase-15.3` — one more meaningful batch and the next `vphase-15.4` tag bundles them.
 
 ## Known issues / blockers
 - (none)
 
-## Open phase:15 issues at iter-805 close
+## Open phase:15 issues at iter-807 close
 
 | Severity | Count | Issues |
 |----------|-------|--------|
 | p1 | 1 | #376 (4-way Block creation — design) |
-| p2 | 4 | #368/#369/#370/#371 (discoverability — Activity / State Machine / Parametric / IBD not on Package row's "Create representation…" submenu) |
+| p3 | 1 | #413 (createDiagram should be bus-dispatched for compound undo) |
 
 ## Decisions log
 
-Iter-792..iter-804 entries preserved in commit history. Iter-805:
+Iter-792..iter-805 entries preserved in commit history. Iter-806 + iter-807:
 
-- 2026-05-17 (iter-805): Picked #373 ahead of the discoverability batch because it was the only remaining single-PR-with-no-ADR ticket — the discoverability cluster needs a `type:design` issue to settle implicit-owner creation semantics, and #376 is also design-flavoured. Resolution chose option (b) from the issue body's sketch: explanatory tooltip + accessible aria-label, rendered as a "?" indicator in the affordance slot. Options (a) "hide unpopulated usage categories" was rejected — it would worsen discoverability (the architect would not know the category exists). Option (c) "generic context-prompting usage creation flow" was deferred to a future design ADR — it overlaps with #376's "single canonical creation surface" theme. No rubric score change — dim 15 is still 2; full score-3 requires drag-from-palette + viewpoint-applicability grouping + drag-preview, none of which #373 addresses. Issue #373 closed via PR #409. Five phase:15 issues remain (1 p1, 4 p2).
+- 2026-05-17 (iter-806): Filed design issue #411 reframing #368/#369/#370/#371 as one design question (implicit-owner creation on the Package row), dispatched a research subagent to populate `docs/architect/diagram-types/{act,stm,par,ibd}.md` with the SysML v2 spec + comparable-tool findings (Cameo / SysON / Eclipse Papyrus), and committed ADR 0014 via PR #412. The ADR adopts Cameo's auto-create-the-context pattern for Activity / State Machine / IBD (unambiguous owner kind) and a one-click popover prompt for Parametric (semantically loaded `PartDefinition` vs `ConstraintDefinition` choice).
+
+- 2026-05-17 (iter-807): Implemented the ADR. Extended `RepresentationOption` with `implicitOwnerKind` (auto-pick) and `implicitOwnerPromptKinds` (popover prompt). Added the four new entries to `PACKAGE_REPRESENTATIONS`. New `CreateParametricOwnerPopover` mirrors `PartUsageTypePopover`'s shape. Threaded click coordinates through `onCreateRepresentation` so the popover can anchor at the cursor. Cmd-K's palette handler also gained the implicit-owner branch (defaults to first prompt kind there, since Cmd-K has no popover affordance). One CI rebake cycle: a webkit-visual baseline (`state-machine-with-transition`) crossed the 0.01 ratio threshold at 13908 px / ratio 0.02 — unrelated to this PR's code; lifted from the trace per the documented procedure. Discovered + filed #413 because `createDiagram` is Zustand-side, not bus-dispatched, so Cmd-Z reverses only the owner half of the compound flow. Closed #368/#369/#370/#371/#411 in one PR. Rubric dim 28 (Help / discoverability) advances **1 → 2**: the four discoverability blockers are gone; full score-3 awaits first-run guidance + Cmd-shortcut surface + "Load example" entry.
 
 ## Session checkpoint summary
 
-This session (iter-793 → iter-805) executed 13 iterations spanning bootstrap, 3 architect walks (with 1 buggy probe self-corrected via errata), 7 engineer batches, 3 release tags. Cumulative delivery:
+This session (iter-793 → iter-807) executed 15 iterations spanning bootstrap, 3 architect walks (with 1 buggy probe self-corrected via errata), 9 engineer batches, 3 release tags, 1 ADR. Cumulative delivery:
 
 | Tag | Date | What |
 |-----|------|------|
@@ -54,16 +56,14 @@ This session (iter-793 → iter-805) executed 13 iterations spanning bootstrap, 
 | vphase-15.2 / v1.2.0 | 2026-05-17 07:13Z | Drag-coord overlay + Cmd-Z rename fix |
 | vphase-15.3 / v1.2.1 | 2026-05-17 10:56Z | Palette show-all-kinds + label consistency |
 
-Rubric: 0 → 20 × score-2 + 4 × score-1; 0 dims at 3 yet.
+Rubric: 0 → 21 × score-2 + 3 × score-1 + 4 × score-0; 0 dims at 3 yet (dim 28 advanced this iteration).
 
 ## Next action
 
-Iter-806: open the design ADR for the discoverability batch (#368-371). The four issues all share one design question: when the architect picks "Create representation… > Activity Diagram" (or StateMachine / Parametric / IBD) from a Package's row menu, does the system (a) auto-create the owning Definition under the Package and the diagram under that, (b) prompt for an existing Definition or "create one", or (c) decline and direct the architect to first create the Definition manually?
+Iter-808: queue is down to two issues — both require non-trivial work:
 
-Workflow per A.9:
+1. **#376 — 4-way Block creation** (`p1`, `type:design`). The architect's walk-1 finding that "Block creation is exposed via four distinct UI surfaces" needs an ADR (likely 0015) deciding which surfaces stay, which retire, and what the single canonical drag-from-palette contract looks like. Aligned with rubric dim 15 — fully resolving #376 should advance dim 15 from 2 toward 3. Research subagent first (per A.9), then design issue, then ADR, then implementation. Multi-iteration.
 
-1. Dispatch research subagent(s) to populate `docs/architect/diagram-types/{act,stm,par,ibd}.md` with the SysML v2 ownership conventions (which kinds can own which diagrams) and the conventions of comparable tools (Cameo, Capella, MagicDraw, Eclipse Papyrus).
-2. Open a `type:design`, `phase:15`, `area:cross-cutting` issue summarising the question + the three options + the research findings.
-3. Resolve via ADR — `docs/adr/00NN-package-row-create-representation.md`. The ADR's PR also implements the chosen flow and closes #368/#369/#370/#371 (and #371 already has the IBD inspector entry as a partial workaround — the ADR sets whether to keep that or replace).
+2. **#413 — createDiagram bus-dispatched** (`p3`, `type:chore`). Promotes `CreateDiagramCommand` / `DeleteDiagramCommand` to the command bus so the implicit-owner flow gets atomic compound undo, and so future commands (rename diagram, set context, etc.) can also be undoable. Schema-level work that other future PRs would build on. Per A.8 grouping heuristic #1 ("foundational/schema work first"), this could sequence ahead of #376.
 
-If the ADR turns out to be quick (chosen option doesn't fan out), it can land as a single batch closing all four issues + bumping rubric dims 6 / 8 / 9 / 11 / 28 simultaneously. If it fans out (e.g., requires schema changes for implicit owners), the discoverability fix may land first as a temporary "Create representation… > Activity" entry that prompts the user, with the implicit-owner branch following.
+If neither is started, the immediate alternative is the **FBW example model build** (A.6 / A.12 #4): the workbench is now feature-complete enough that an architect can probably start authoring real content. The first FBW deep-dive walk would tell whether the missing 4-way-Block-creation rationalisation actually blocks a real architect's flow — if it doesn't, #376 can land later. Recommendation: start the FBW model on the **00 — Context** package (per A.6 skeleton) as the next iteration; the build itself surfaces fresh walk findings that re-validate the convergence chain.
