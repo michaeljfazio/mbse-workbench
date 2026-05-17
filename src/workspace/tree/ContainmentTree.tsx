@@ -31,6 +31,7 @@ import {
 } from './representationAcceptance';
 import { ContainmentTreeRowMenu } from './ContainmentTreeRowMenu';
 import { ContainmentTreeDiagramRowMenu } from './ContainmentTreeDiagramRowMenu';
+import { CreateParametricOwnerPopover } from './CreateParametricOwnerPopover';
 import {
   computeFilteredKeys,
   tokenizeFilter,
@@ -113,6 +114,16 @@ export function ContainmentTree(): JSX.Element {
   const [contextMenuOpenKey, setContextMenuOpenKey] = useState<FocusKey | null>(
     null,
   );
+  // Per ADR 0014, the Parametric branch of the Package-row "Create
+  // representation…" submenu opens a small popover prompting the architect
+  // for the owner kind to create. Stored here so the popover renders in the
+  // tree pane's stacking context.
+  const [parametricOwnerPrompt, setParametricOwnerPrompt] = useState<{
+    readonly ownerRowId: ElementId;
+    readonly option: RepresentationOption;
+    readonly kinds: readonly ElementKind[];
+    readonly anchor: { readonly x: number; readonly y: number };
+  } | null>(null);
 
   const beginRename = useCallback((id: ElementId) => {
     setRenamingId(id);
@@ -218,27 +229,92 @@ export function ContainmentTree(): JSX.Element {
     [moveElementAction],
   );
 
-  const requestCreateRepresentation = useCallback(
-    (ownerId: ElementId, option: RepresentationOption) => {
-      const owner = elementsById.get(ownerId);
-      if (!owner) return;
-      const ownerName = owner.name.length > 0 ? owner.name : owner.kind;
-      const name = `${ownerName} ${option.label}`;
-      const newId = createDiagramAction(option.viewpointId, {
+  // Per ADR 0014: when a `RepresentationOption` carries an `implicitOwnerKind`,
+  // create that owner under the row first (bus-dispatched, undoable), then
+  // anchor the new diagram to it. When it carries `implicitOwnerPromptKinds`,
+  // open a popover so the architect can pick the owner kind explicitly.
+  // Note: `createDiagram` mutates Zustand state directly and is NOT yet a
+  // bus command, so Cmd-Z reverses only the implicit owner; the diagram
+  // stays as an orphan until the follow-up tracked in #413 makes diagram
+  // creation/deletion bus-dispatched.
+  const performCreateRepresentation = useCallback(
+    (
+      ownerRowId: ElementId,
+      option: RepresentationOption,
+      resolvedOwnerKind: ElementKind | null,
+    ) => {
+      let diagramContextOwnerId: ElementId | null = ownerRowId;
+      if (resolvedOwnerKind !== null) {
+        const ownerChildOption = acceptedChildKinds('Package').find(
+          (opt) => opt.kind === resolvedOwnerKind,
+        );
+        if (!ownerChildOption) return;
+        const newOwnerId = createChildElementAction(
+          ownerRowId,
+          ownerChildOption.kind,
+          ownerChildOption.ownerRole,
+          `New ${ownerChildOption.label}`,
+        );
+        if (!newOwnerId) return;
+        diagramContextOwnerId = newOwnerId;
+      }
+      if (diagramContextOwnerId === null) return;
+      const owner = elementsById.get(diagramContextOwnerId);
+      const ownerName =
+        owner && owner.name.length > 0
+          ? owner.name
+          : owner?.kind ?? resolvedOwnerKind ?? 'Package';
+      const name = `${ownerName} ${option.label.split(' (')[0]}`;
+      const newDiagramId = createDiagramAction(option.viewpointId, {
         name,
-        context: { kind: option.contextKind, id: ownerId },
+        context: { kind: option.contextKind, id: diagramContextOwnerId },
       });
-      if (!newId) return;
-      setActiveDiagramAction(newId);
+      if (!newDiagramId) return;
+      setActiveDiagramAction(newDiagramId);
       setCollapsed((prev) => {
-        const key = elKey(ownerId);
+        const key = elKey(ownerRowId);
         if (!prev.has(key)) return prev;
         const next = new Set(prev);
         next.delete(key);
         return next;
       });
+      if (resolvedOwnerKind !== null) {
+        setSelection([diagramContextOwnerId]);
+      }
     },
-    [createDiagramAction, elementsById, setActiveDiagramAction],
+    [
+      createChildElementAction,
+      createDiagramAction,
+      elementsById,
+      setActiveDiagramAction,
+      setSelection,
+    ],
+  );
+
+  const requestCreateRepresentation = useCallback(
+    (
+      ownerId: ElementId,
+      option: RepresentationOption,
+      anchor: { readonly x: number; readonly y: number },
+    ) => {
+      const owner = elementsById.get(ownerId);
+      if (!owner) return;
+      if (option.implicitOwnerPromptKinds && option.implicitOwnerPromptKinds.length > 0) {
+        setParametricOwnerPrompt({
+          ownerRowId: ownerId,
+          option,
+          kinds: option.implicitOwnerPromptKinds,
+          anchor,
+        });
+        return;
+      }
+      performCreateRepresentation(
+        ownerId,
+        option,
+        option.implicitOwnerKind ?? null,
+      );
+    },
+    [elementsById, performCreateRepresentation],
   );
 
   const ancestorsOfElement = useCallback(
@@ -676,6 +752,19 @@ export function ContainmentTree(): JSX.Element {
             }),
       )}
       </div>
+      {parametricOwnerPrompt ? (
+        <CreateParametricOwnerPopover
+          x={parametricOwnerPrompt.anchor.x}
+          y={parametricOwnerPrompt.anchor.y}
+          kinds={parametricOwnerPrompt.kinds}
+          onPick={(kind) => {
+            const prompt = parametricOwnerPrompt;
+            setParametricOwnerPrompt(null);
+            performCreateRepresentation(prompt.ownerRowId, prompt.option, kind);
+          }}
+          onCancel={() => setParametricOwnerPrompt(null)}
+        />
+      ) : null}
     </div>
   );
 }
@@ -698,6 +787,7 @@ interface ElementRowContext {
   readonly requestCreateRepresentation: (
     ownerId: ElementId,
     option: RepresentationOption,
+    anchor: { readonly x: number; readonly y: number },
   ) => void;
   readonly requestDuplicate: (id: ElementId) => void;
   readonly requestMoveToPackage: (id: ElementId, packageId: ElementId) => void;
@@ -822,8 +912,8 @@ function renderElementRow(
           onRename={() => ctx.beginRename(element.id)}
           onDelete={() => ctx.requestDelete(element.id)}
           onCreateChild={(option) => ctx.requestCreateChild(element.id, option)}
-          onCreateRepresentation={(option) =>
-            ctx.requestCreateRepresentation(element.id, option)
+          onCreateRepresentation={(option, anchor) =>
+            ctx.requestCreateRepresentation(element.id, option, anchor)
           }
           onDuplicate={() => ctx.requestDuplicate(element.id)}
           onMoveToPackage={(packageId) =>
