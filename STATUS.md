@@ -3,79 +3,59 @@
 ## Current phase
 phase:15 — Architect-driven UX & feature hardening
 
-Iter-797 closed. Second Phase-15 engineer batch shipped: BDD
-drag-coord overlay (closes #375). Pattern mirrors iter-795 #374
-(BDD vertical slice; new viewpoint-agnostic component
-`DragCoordOverlay` + `dragCoord.ts` helper). Pre-PR review
-caught three minor issues (ARIA conflict, missing mid-drag axe,
-lint warning) — all addressed before merge. CI required two
-fixup cycles (type error `NodeDragHandler` vs `OnNodeDrag` not
-caught by local `tsc --noEmit`; visual baseline rebaseline from
-CI artifact per JOURNAL iter-786 playbook).
+Iter-798 closed. Third Phase-15 engineer batch shipped: Cmd-Z fix
+on the inline-rename input (closes #386, walk-2's discovery).
+Walk-2 reported Cmd-Z NO-OP after a palette `+ New Part Definition`
+click; iter-798's probe traced it to the rename input's
+`onKeyDown` stopping propagation + the global handler skipping
+text-input focus. Fix: special-case Cmd-Z on the UNTOUCHED rename
+input (`value === initialValue`) to cancel + dispatch model undo.
+Three Playwright tests cover the path.
 
-No release tag this iteration — only 3 batches merged since
-`vphase-15.1` (#388, #389, and this close-out); A.8 requires ≥5.
-Next release tag (`vphase-15.2`) will fire when threshold met.
+Rubric advanced: dim 21 (Undo/redo) 1 → 2. Now 11 × score-2,
+6 × score-1, 11 × unmeasured.
 
-Rubric unchanged: dim 16 stays at 2. Score 3 needs every-shape-
-kind resize + snap-to-grid + alignment guides + rubber-band
-multi-select + keyboard nudge (5 outstanding sub-requirements).
+Five batches merged since `vphase-15.1` (#388, #389, #391, #392,
+this close-out) AND rubric advanced → A.8 release conditions met
+for `vphase-15.2`. Tagging after this close-out merges.
+
+SemVer: `v1.2.0` (minor) — #389 (drag-coord overlay) is the
+outward-facing feature; #392 (Cmd-Z) is a bug fix.
 
 ## Current iteration
-- Iteration #: 797 (close-out)
+- Iteration #: 798 (close-out)
 - Started: 2026-05-17
-- Branch: `chore/iter-797-closeout`
+- Branch: `chore/iter-798-closeout`
 - Working on: this close-out PR
 
 ## Last test run
-- Main green at `529e98e` (#389 merge).
+- Main green at `b8e7b12` (PR #391 iter-797 close-out merge).
 - Close-out PR: doc-only, `pnpm run check` expected to pass.
 
 ## Known issues / blockers
 - (none)
 
-## Open phase:15 issues — distribution at iter-797 close
+## Open phase:15 issues — distribution at iter-798 close
 
 | Severity | Count | Issues |
 |----------|-------|--------|
 | p1 | 1 | #376 (4-way Block creation — design) |
-| p2 | 7 | #368/#369/#370/#371 (discoverability), #372 (palette dynamic growth), #385 (IBD canvas), #386 (Cmd-Z focus) |
+| p2 | 6 | #368/#369/#370/#371 (discoverability), #372 (palette dynamic growth), #385 (IBD canvas) |
 | p3 | 2 | #373 (usage no `+`), #377 (palette labels) |
 
-10 open `phase:15` issues. Closed in iter-797: #375 (drag-coord).
+9 open `phase:15` issues. Closed in iter-798: #386 (Cmd-Z fix).
 
 ## Decisions log
 
-Carrying forward iter-792..iter-796 (preserved in commit history).
-Iter-797 entries:
+Iter-792..iter-797 entries preserved in commit history. Iter-798 entries:
 
-- 2026-05-17 (iter-797 a): Engineer batch on #375. BDD vertical slice
-  mirroring #374's pattern. Pre-PR review caught 3 minor issues —
-  ARIA conflict (`role="status"` + `aria-live="off"` → `aria-hidden`),
-  missing mid-drag axe scan, and a `react-refresh/only-export-
-  components` warning resolved by moving `formatDragCoord` to a
-  `.ts` sibling.
-- 2026-05-17 (iter-797 b): CI failure on first push — `NodeDragHandler`
-  not exported from `@xyflow/react` (caught by `tsc -b` but not local
-  `tsc --noEmit`; the implementer's working tree had `OnNodeDrag`
-  uncommitted). Fixed via 3 in-place substitutions.
-- 2026-05-17 (iter-797 c): CI failure on second push — 2 visual
-  baselines diffed at 0.02 ratio (macOS-vs-Linux font rendering).
-  Lifted from CI artifact per JOURNAL iter-786 playbook.
+- 2026-05-17 (iter-798 a): Engineer batch on #386. Probe (`/tmp/probe-cmdz.py`) reproduced walk-2's Cmd-Z NO-OP under controlled conditions and traced the root cause to the inline-rename input's `onKeyDown` (`e.stopPropagation()` for all keys except Enter/Escape) + the global Workspace handler's `isTextInputTarget()` exclusion. Fix: special-case Cmd-Z on UNTOUCHED rename input.
+- 2026-05-17 (iter-798 b): PR #391 rebased on top of #392 — `docs/architect/in-flight.md` conflict (PR #392 added the cmd-z row; PR #391 wanted empty). Resolved by taking PR #391's empty version (which is correct now that #392 is merged).
+- 2026-05-17 (iter-798 c): One additional visual baseline rebaseline rode on PR #391: `bdd-two-blocks-linked-webkit.png` (cascade from #382 — chromium version was rebaselined in iter-795; webkit lagged and surfaced now per JOURNAL iter-790's lesson).
 
 ## Next action
 
-Iter-798: pick the next engineer batch. Candidates ranked:
-1. **#386 — Cmd-Z focus-context investigation** (small, focused;
-   likely a one-line listener-promotion to document level).
-2. **#368/#369/#370/#371 — discoverability batch** (surface
-   IBD/Activity/State Machine/Parametric on the Package row's
-   submenu — moderate; may need ADR for implicit owner creation).
-3. **#385 — IBD canvas element-add affordance** (medium; needs
-   palette wiring on IBD canvas mirroring the Activity/State
-   Machine pattern).
-4. **#376 — 4-way Block creation** (design issue requiring ADR;
-   slow but right; defers further engineering until decided).
-
-Default: iter-798 picks **#386** for a quick win, then iter-799 is a
-walk-3 regression walk over the cumulative changes since walk-2.
+After this close-out merges:
+1. Tag `v1.2.0` (SemVer minor — drag-coord overlay outward-facing feature) and `vphase-15.2` (Phase-15 release marker — conditions met) on the new main HEAD.
+2. Watch release workflows; verify Pages deploy.
+3. Iter-799: **walk-3 — regression walk on the vphase-15.2 deploy**, verifying #386 Cmd-Z fix end-to-end and scoring more rubric dimensions (likely 7 Requirements, 10 Use Case, 12 Package, 17 Edge editing, 22 Import/export).
