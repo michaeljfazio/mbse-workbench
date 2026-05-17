@@ -50,6 +50,19 @@ function leafKey(id: ElementId): FocusKey {
   return `leaf:${id}`;
 }
 
+// Kinds that are always shown in the palette even when their count is zero.
+// This union of (a) all viewpoint palette kinds and (b) all kinds creatable
+// directly under the project-root Package ensures every element kind a
+// first-time architect can create is discoverable from app load. See #372.
+function computeAlwaysVisibleKinds(viewpoints: readonly Viewpoint[]): ReadonlySet<ElementKind> {
+  const kinds = new Set<ElementKind>();
+  for (const vp of viewpoints) {
+    for (const item of vp.paletteItems) kinds.add(item.elementKind);
+  }
+  for (const kind of ROOT_CREATE_BY_KIND.keys()) kinds.add(kind);
+  return kinds;
+}
+
 function computeGroups(
   elements: readonly ModelElement[],
   viewpoints: readonly Viewpoint[],
@@ -62,10 +75,7 @@ function computeGroups(
     elementsByKind.set(el.kind, bucket);
   }
 
-  const paletteKinds = new Set<ElementKind>();
-  for (const vp of viewpoints) {
-    for (const item of vp.paletteItems) paletteKinds.add(item.elementKind);
-  }
+  const alwaysVisibleKinds = computeAlwaysVisibleKinds(viewpoints);
 
   const activePaletteKinds = new Set<ElementKind>();
   if (activeViewpoint) {
@@ -78,7 +88,7 @@ function computeGroups(
   for (const kind of ELEMENT_KINDS) {
     const bucket = elementsByKind.get(kind);
     const hasElements = bucket !== undefined && bucket.length > 0;
-    if (!hasElements && !paletteKinds.has(kind)) continue;
+    if (!hasElements && !alwaysVisibleKinds.has(kind)) continue;
     const sorted = (bucket ?? []).slice().sort((a, b) => a.name.localeCompare(b.name));
     groups.push({
       kind,

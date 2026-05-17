@@ -48,24 +48,46 @@ describe('<ProjectTree />', () => {
     expect(group).toHaveAttribute('aria-label', expect.stringMatching(/Blocks \(0\)/));
   });
 
-  it('does not render groups for kinds with no elements and no palette item', async () => {
+  it('renders all root-Package-creatable kind groups from empty state (no elements needed)', async () => {
+    // Fixes #372: definition kinds (ActionDefinition, StateDefinition,
+    // ConstraintDefinition, InterfaceDefinition, PortDefinition) must be visible
+    // from app load so a first-time architect can discover them via the palette.
     await bootstrap();
     render(<ProjectTree />);
 
-    // Constraint definitions have no palette item in any viewpoint yet, so
-    // the group stays hidden until one is created.
-    expect(
-      screen.queryByTestId('project-tree-group-ConstraintDefinition'),
-    ).toBeNull();
-    // Requirement and UseCase both have palette items now (Requirements and
-    // Use Case viewpoints respectively), so their groups are always shown —
-    // see the dedicated tests below.
-    expect(
-      screen.getByTestId('project-tree-group-Requirement'),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByTestId('project-tree-group-UseCase'),
-    ).toBeInTheDocument();
+    const alwaysVisible: string[] = [
+      'Package',
+      'PartDefinition',
+      'InterfaceDefinition',
+      'PortDefinition',
+      'ActionDefinition',
+      'StateDefinition',
+      'ConstraintDefinition',
+      'Requirement',
+      'Actor',
+      'UseCase',
+    ];
+    for (const kind of alwaysVisible) {
+      expect(
+        screen.getByTestId(`project-tree-group-${kind}`),
+        `expected ${kind} group to be visible from empty state`,
+      ).toBeInTheDocument();
+    }
+  });
+
+  it('does not render groups for kinds that are neither creatable under root nor in any viewpoint palette', async () => {
+    await bootstrap();
+    render(<ProjectTree />);
+
+    // Transition, ConnectionUsage, ItemFlow, PortUsage — none are in
+    // ROOT_CREATE_BY_KIND (Package children) nor in any viewpoint paletteItems,
+    // so they remain hidden until an element of that kind exists.
+    for (const kind of ['Transition', 'ConnectionUsage', 'ItemFlow']) {
+      expect(
+        screen.queryByTestId(`project-tree-group-${kind}`),
+        `expected ${kind} group to be absent from empty state`,
+      ).toBeNull();
+    }
   });
 
   it('renders the Requirements group from the Requirements viewpoint palette even when empty', async () => {
