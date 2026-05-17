@@ -42,7 +42,7 @@ Score changes require a one-line explanation in the **Score delta log** below (w
 | 25 | Accessibility | 2 | Zero `serious`/`critical` axe violations on every screen. Keyboard-only operation possible for core flows. Focus visible. Screen-reader labels on icon buttons. | walk-4 |
 | 26 | Performance | 2 | A 100-block diagram pans/zooms at 60fps. Initial load < 3s on Pages. Auto-layout converges within 1s on representative diagrams. | walk-2 |
 | 27 | Persistence | 2 | Reload recovers session state. Multi-project switching preserves state. No data loss on browser refresh. | walk-2 |
-| 28 | Help / discoverability | 1 | First-run guidance. Keyboard shortcuts discoverable. Empty-state action affordances. "Load example" entry visible (see A.11). | walk-1 |
+| 28 | Help / discoverability | 2 | First-run guidance. Keyboard shortcuts discoverable. Empty-state action affordances. "Load example" entry visible (see A.11). | iter-807 |
 
 ## Score delta log
 
@@ -82,3 +82,4 @@ Each score change records the date, walk, dimension #, old → new score, and a 
 | 2026-05-17 | walk-4 | 17 | 0 | 1 | Edge-kind chooser surfaced on handle drag but didn't conclude in this run; reconnect/restyle not yet exercised. Conservative score 1 until a dedicated edge-editing walk verifies. |
 | 2026-05-17 | walk-4 | 22 | 0 | 2 | Cmd-K → "Save project as JSON" triggered a download with filename `untitled-project.json`. Score 3 needs SysML v2 text export + PNG/SVG diagram export + round-trip-import verification. |
 | 2026-05-17 | walk-4 | 25 | 0 | 2 | Axe scan (axe-core 4.10.0) on the empty-state app: 0 violations (0 serious/critical). Score 3 needs axe scans on every interactive screen + keyboard-only operation verification + screen-reader-label audit on icon buttons. |
+| 2026-05-17 | iter-807 | 28 | 1 | 2 | PR #414 (ADR 0014 implementation) added Activity / State Machine / IBD / Parametric entries to the Package row's `Create representation…` submenu with implicit-owner creation, closing the four discoverability blockers (#368/#369/#370/#371). An architect at the project root now reaches every viewpoint's entry point in one click. Score 3 still requires first-run guidance, keyboard-shortcut discoverability surface, and the "Load example" entry (A.11 wires it later). |
