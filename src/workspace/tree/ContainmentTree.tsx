@@ -97,6 +97,9 @@ export function ContainmentTree(): JSX.Element {
   const deleteElementAction = useWorkspaceStore((s) => s.deleteElement);
   const createChildElementAction = useWorkspaceStore((s) => s.createChildElement);
   const createDiagramAction = useWorkspaceStore((s) => s.createDiagram);
+  const createRepresentationWithImplicitOwnerAction = useWorkspaceStore(
+    (s) => s.createRepresentationWithImplicitOwner,
+  );
   const setActiveDiagramAction = useWorkspaceStore((s) => s.setActiveDiagram);
   const renameDiagramAction = useWorkspaceStore((s) => s.renameDiagram);
   const deleteDiagramAction = useWorkspaceStore((s) => s.deleteDiagram);
@@ -229,45 +232,58 @@ export function ContainmentTree(): JSX.Element {
     [moveElementAction],
   );
 
-  // Per ADR 0014: when a `RepresentationOption` carries an `implicitOwnerKind`,
-  // create that owner under the row first (bus-dispatched, undoable), then
-  // anchor the new diagram to it. When it carries `implicitOwnerPromptKinds`,
-  // open a popover so the architect can pick the owner kind explicitly.
-  // Note: `createDiagram` mutates Zustand state directly and is NOT yet a
-  // bus command, so Cmd-Z reverses only the implicit owner; the diagram
-  // stays as an orphan until the follow-up tracked in #413 makes diagram
-  // creation/deletion bus-dispatched.
+  // Per ADR 0014 / #413: when a `RepresentationOption` carries an
+  // `implicitOwnerKind`, dispatch ONE `compound` bus command containing the
+  // implicit owner's `create-element` and the new diagram's `create-diagram`
+  // so a single Cmd-Z reverses both atomically. When the option carries
+  // `implicitOwnerPromptKinds`, a popover prompts the architect to pick the
+  // owner kind; the same compound dispatch fires once they confirm.
   const performCreateRepresentation = useCallback(
     (
       ownerRowId: ElementId,
       option: RepresentationOption,
       resolvedOwnerKind: ElementKind | null,
     ) => {
-      let diagramContextOwnerId: ElementId | null = ownerRowId;
       if (resolvedOwnerKind !== null) {
+        // Compound path: create owner + diagram in one bus dispatch.
         const ownerChildOption = acceptedChildKinds('Package').find(
           (opt) => opt.kind === resolvedOwnerKind,
         );
         if (!ownerChildOption) return;
-        const newOwnerId = createChildElementAction(
+        const ownerName = `New ${ownerChildOption.label}`;
+        const diagramName = `${ownerName} ${option.label.split(' (')[0]}`;
+        const result = createRepresentationWithImplicitOwnerAction(
           ownerRowId,
           ownerChildOption.kind,
           ownerChildOption.ownerRole,
-          `New ${ownerChildOption.label}`,
+          ownerName,
+          option.viewpointId,
+          diagramName,
+          option.contextKind,
         );
-        if (!newOwnerId) return;
-        diagramContextOwnerId = newOwnerId;
+        if (!result) return;
+        setActiveDiagramAction(result.diagramId);
+        setCollapsed((prev) => {
+          const key = elKey(ownerRowId);
+          if (!prev.has(key)) return prev;
+          const next = new Set(prev);
+          next.delete(key);
+          return next;
+        });
+        setSelection([result.ownerId]);
+        return;
       }
-      if (diagramContextOwnerId === null) return;
-      const owner = elementsById.get(diagramContextOwnerId);
+      // Single-step path: no implicit owner. The diagram anchors directly to
+      // the clicked tree row. Goes through the existing `createDiagram`
+      // entry point (which now is itself bus-dispatched per #413, but as a
+      // single command — no compound needed because there's only one effect).
+      const owner = elementsById.get(ownerRowId);
       const ownerName =
-        owner && owner.name.length > 0
-          ? owner.name
-          : owner?.kind ?? resolvedOwnerKind ?? 'Package';
+        owner && owner.name.length > 0 ? owner.name : owner?.kind ?? 'Package';
       const name = `${ownerName} ${option.label.split(' (')[0]}`;
       const newDiagramId = createDiagramAction(option.viewpointId, {
         name,
-        context: { kind: option.contextKind, id: diagramContextOwnerId },
+        context: { kind: option.contextKind, id: ownerRowId },
       });
       if (!newDiagramId) return;
       setActiveDiagramAction(newDiagramId);
@@ -278,13 +294,10 @@ export function ContainmentTree(): JSX.Element {
         next.delete(key);
         return next;
       });
-      if (resolvedOwnerKind !== null) {
-        setSelection([diagramContextOwnerId]);
-      }
     },
     [
-      createChildElementAction,
       createDiagramAction,
+      createRepresentationWithImplicitOwnerAction,
       elementsById,
       setActiveDiagramAction,
       setSelection,
