@@ -22,6 +22,33 @@ const ROOT_CREATE_BY_KIND: ReadonlyMap<ElementKind, ChildKindOption> = new Map(
   acceptedChildKinds('Package').map((opt) => [opt.kind, opt] as const),
 );
 
+// Where a category header has no `+` because the kind is context-dependent
+// (palette-based, edge-drag-based, or owned-by-another-element), the header
+// instead shows a non-interactive "?" indicator with this title text — so the
+// asymmetry between definition categories (which do have `+`) and usage
+// categories (which don't) reads as intentional rather than as a missing
+// feature. Closes #373.
+const USAGE_CREATION_HINTS: Partial<Record<ElementKind, string>> = {
+  PartUsage:
+    'Created inside an Internal Block Diagram by dragging from the IBD palette onto the canvas.',
+  PortUsage:
+    "Created on a Part Definition via the inspector's '+ Add port' button.",
+  ConnectionUsage:
+    'Created inside an Internal Block Diagram by dragging from one port handle to another.',
+  ItemFlow:
+    'Created inside an Internal Block Diagram by Shift-dragging from one port handle to another.',
+  ActionUsage:
+    'Created inside an Activity diagram by dragging from the Activity palette onto the canvas.',
+  StateUsage:
+    'Created inside a State Machine diagram by dragging from the State Machine palette onto the canvas.',
+  Transition:
+    'Created inside a State Machine diagram by dragging from one state handle to another.',
+  ConstraintUsage:
+    'Created inside a Parametric diagram by dragging from the Parametric palette onto the canvas.',
+  ValueProperty:
+    'Created inside a Parametric diagram by dragging from the Parametric palette onto the canvas.',
+};
+
 export const PROJECT_TREE_DRAG_TYPE = 'application/x-mbse-element-kind';
 // Optional second MIME slot carried by viewpoint-specific palettes (Activity
 // pseudostates) that need to discriminate which sub-variant of an
@@ -403,6 +430,15 @@ export function ProjectTree(): JSX.Element {
                   >
                     +
                   </button>
+                ) : USAGE_CREATION_HINTS[group.kind] ? (
+                  <span
+                    data-testid={`project-tree-group-hint-${group.kind}`}
+                    aria-label={`How to create ${group.label}: ${USAGE_CREATION_HINTS[group.kind]!}`}
+                    title={USAGE_CREATION_HINTS[group.kind]!}
+                    className="cursor-help rounded px-1 text-[11px] font-normal leading-none text-muted-foreground/70"
+                  >
+                    ?
+                  </span>
                 ) : null}
                 <span className="text-[10px] font-normal text-muted-foreground/80">
                   {group.elements.length}
