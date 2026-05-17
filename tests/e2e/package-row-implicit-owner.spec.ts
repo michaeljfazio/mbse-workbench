@@ -181,20 +181,22 @@ test.describe('Package row "Create representation…" implicit-owner entries (AD
     // without an orphan diagram referencing a deleted owner.
     await page.goto('/');
     await expect(page.getByTestId('containment-tree')).toBeVisible();
+    // Wait until the BDD bootstrap has settled.
+    expect(await activeViewpoint(page)).toBe('bdd');
 
-    // Capture baseline diagram-tab count on a fresh project (the bootstrap
-    // BDD tab). After the Activity click, an additional Activity tab should
-    // appear; after Cmd-Z, we expect it to be gone again.
-    const diagramTabs = page.locator('[data-testid^="diagram-tab-"]');
-    const baselineTabCount = await diagramTabs.count();
-    // Also count diagram rows under the tree to assert atomic undo there.
-    const diagramRows = page.locator(`${TREE_ROW}[data-kind*="diagram"]`);
-    // Diagram rows in the tree use a distinct testid pattern; rather than
-    // probing the structure, snapshot the page's diagram count via the tab
-    // strip — the test-strip and the project state are kept in sync by the
-    // store, so the tab count is the cheaper proxy for the regression #413
-    // fixes (orphan diagram persistence).
-    void diagramRows;
+    // Capture the bootstrap diagram-tab ids so we can isolate the
+    // newly-created Activity tab from any pre-existing ones (the seed
+    // project ships with several diagrams). After the click, exactly one
+    // new tab id should appear; after Cmd-Z, that new id should be gone.
+    // The `role="tab"` filter excludes the per-tab close-affordance span
+    // which also carries a `data-testid="diagram-tab-close-…"`.
+    const diagramTabs = page.locator(
+      'button[role="tab"][data-testid^="diagram-tab-"]',
+    );
+    await expect(diagramTabs.first()).toBeVisible();
+    const initialIds = await diagramTabs.evaluateAll((els) =>
+      els.map((e) => (e as HTMLElement).dataset.testid ?? ''),
+    );
 
     // Sanity check the precondition.
     await expect(
@@ -203,12 +205,20 @@ test.describe('Package row "Create representation…" implicit-owner entries (AD
 
     await clickPackageRepresentation(page, 'activity');
 
-    // After: ActionDefinition + new Activity tab.
+    // After: ActionDefinition appears in the tree and the active viewpoint
+    // is Activity. Exactly one brand-new diagram-tab id should have been
+    // added since the baseline snapshot.
     await expect(
       page.locator(`${TREE_ROW}[data-kind="ActionDefinition"]`),
     ).toHaveCount(1);
     expect(await activeViewpoint(page)).toBe('activity');
-    await expect(diagramTabs).toHaveCount(baselineTabCount + 1);
+
+    const idsAfterCreate = await diagramTabs.evaluateAll((els) =>
+      els.map((e) => (e as HTMLElement).dataset.testid ?? ''),
+    );
+    const newIds = idsAfterCreate.filter((id) => !initialIds.includes(id));
+    expect(newIds).toHaveLength(1);
+    const activityTabId = newIds[0]!;
 
     // ONE Cmd-Z. The compound undo must reverse both creates atomically.
     await page.keyboard.press(
@@ -220,9 +230,11 @@ test.describe('Package row "Create representation…" implicit-owner entries (AD
     await expect(
       page.locator(`${TREE_ROW}[data-kind="ActionDefinition"]`),
     ).toHaveCount(0);
-    // The Activity diagram is also gone — this is the regression #413 fixes.
-    // The tab count returns to baseline; no orphan tab survives.
-    await expect(diagramTabs).toHaveCount(baselineTabCount);
+    // The Activity diagram tab is also gone — this is the regression #413
+    // fixes. The previously-new id no longer exists in the strip.
+    await expect(page.locator(`[data-testid="${activityTabId}"]`)).toHaveCount(
+      0,
+    );
     // The active viewpoint falls back to the project's bootstrap BDD.
     expect(await activeViewpoint(page)).toBe('bdd');
   });
