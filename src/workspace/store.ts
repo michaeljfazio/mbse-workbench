@@ -49,7 +49,12 @@ import {
   createElementRegistry,
   createProjectId,
 } from '@/model';
-import type { Command, CommandBus, DiagramPositionStore } from '@/commands';
+import type {
+  Command,
+  CommandBus,
+  DiagramPositionStore,
+  DiagramStore,
+} from '@/commands';
 import { createCommandBus, LibraryViolationError } from '@/commands';
 import type { CollaborationProvider, User } from '@/collab';
 import { NoopCollaborationProvider } from '@/collab';
@@ -322,6 +327,27 @@ export interface WorkspaceActions {
     ownerRole: OwnerRole,
     name: string,
   ): ElementId | null;
+  /**
+   * Per ADR 0014 / #413: create an implicit-owner Definition AND its
+   * representation diagram as a single bus-dispatched `compound` so a single
+   * Cmd-Z reverses both atomically. The diagram's context targets the
+   * newly-created owner element. Returns the new diagram's id.
+   *
+   * `ownerRowId` is the tree row's element id — the new owner is created
+   * under `ownerRowId`. `ownerKind` / `ownerRole` / `ownerName` build the
+   * implicit Definition the same way `createChildElement` would.
+   * `diagramName` / `diagramContextKind` build the diagram payload.
+   * The diagram's context anchors to the newly-created owner.
+   */
+  createRepresentationWithImplicitOwner(
+    ownerRowId: ElementId,
+    ownerKind: ElementKind,
+    ownerRole: OwnerRole,
+    ownerName: string,
+    viewpointId: ViewpointId,
+    diagramName: string,
+    diagramContextKind: DiagramContext['kind'],
+  ): { ownerId: ElementId; diagramId: DiagramId } | null;
   renameElement(id: ElementId, name: string): void;
   setElementDescription(id: ElementId, description: string): void;
   deleteElement(id: ElementId): void;
@@ -625,6 +651,49 @@ function newDefaultDiagram(rootId: ElementId): Diagram {
     // BDD accepts 'package' context (see bddViewpoint.acceptedContextKinds);
     // default the root BDD to the project's root Package per ADR 0011.
     context: { kind: 'package', id: rootId },
+  };
+}
+
+/**
+ * Pure builder for a new `Diagram`: resolves the viewpoint, validates that
+ * the requested context kind is accepted by that viewpoint, generates a
+ * fresh id, and applies the default name. Returns `null` if the viewpoint
+ * doesn't exist or the context fails the acceptedContextKinds check.
+ *
+ * Pure on purpose (no `set`, no `bus.dispatch`): the implicit-owner flow in
+ * `ContainmentTree.requestCreateRepresentation` and the parallel site in
+ * `CommandPalette.createRepresentation` call this helper to assemble the
+ * `create-diagram` payload, then bundle it into a `compound` command with
+ * the `create-element` for the implicit owner so both creations share one
+ * undo step (ADR 0014, #413). The store's `createDiagram` action wraps this
+ * with a single-step `bus.dispatch`, preserving the existing single-call
+ * call sites (BDD / Requirements / Use Case / Package).
+ */
+export function buildDiagram(
+  viewpoints: ViewpointRegistry,
+  rootId: ElementId,
+  viewpointId: ViewpointId,
+  options?: CreateDiagramOptions,
+): Diagram | null {
+  const viewpoint = viewpoints.get(viewpointId);
+  if (!viewpoint) return null;
+  let context: DiagramContext;
+  if (options?.context !== undefined) {
+    if (!viewpoint.acceptedContextKinds.includes(options.context.kind)) {
+      return null;
+    }
+    context = options.context;
+  } else if (viewpoint.acceptedContextKinds.includes('package')) {
+    context = { kind: 'package', id: rootId };
+  } else {
+    return null;
+  }
+  return {
+    id: createDiagramId(),
+    viewpointId,
+    name: options?.name ?? viewpoint.label,
+    positions: {},
+    context,
   };
 }
 
@@ -1043,10 +1112,67 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       },
     };
 
+    // Diagram lifecycle store wired to the workspace state. The bus calls into
+    // this port for `create-diagram` / `delete-diagram` so diagram add/remove
+    // is first-class on the undo stack (atomic with element creates via
+    // `compound`). See #413.
+    //
+    // `removeDiagram` reconciles `openDiagramIds` and `secondaryDiagramId`
+    // alongside the diagrams array — UI tab state has to stay coherent across
+    // undo/redo, and the bus is the single funnel for diagram removals.
+    const diagramStore: DiagramStore = {
+      getDiagram(id) {
+        return get().diagrams.find((d) => d.id === id);
+      },
+      addDiagram(diagram) {
+        set({ diagrams: [...get().diagrams, diagram] });
+      },
+      removeDiagram(id) {
+        const { diagrams, openDiagramIds, secondaryDiagramId } = get();
+        const nextDiagrams = diagrams.filter((d) => d.id !== id);
+        const nextOpen = openDiagramIds.filter((openId) => openId !== id);
+        const patch: {
+          -readonly [K in keyof WorkspaceState]?: WorkspaceState[K];
+        } = {
+          diagrams: nextDiagrams,
+          openDiagramIds: nextOpen,
+        };
+        if (secondaryDiagramId === id) {
+          patch.secondaryDiagramId = null;
+          patch.secondarySelectedElementIds = [];
+        }
+        set(patch);
+      },
+      clearActiveDiagramIfMatches(id) {
+        const { activeDiagramId } = get();
+        if (activeDiagramId !== id) return;
+        // Fall back to another open tab; otherwise pull any remaining
+        // diagram into the open set so the tab strip stays non-empty
+        // whenever diagrams exist. Mirrors the pre-#413 ordering in the
+        // legacy `deleteDiagram` setter exactly.
+        const nextOpen = get().openDiagramIds.filter((openId) => openId !== id);
+        const openFallback = nextOpen[0];
+        if (openFallback !== undefined) {
+          set({ activeDiagramId: openFallback });
+          return;
+        }
+        const survivor = get().diagrams.find((d) => d.id !== id);
+        if (survivor) {
+          set({
+            activeDiagramId: survivor.id,
+            openDiagramIds: [...nextOpen, survivor.id],
+          });
+          return;
+        }
+        set({ activeDiagramId: null });
+      },
+    };
+
     const bus = createCommandBus({
       registry,
       provider: collaborationProvider,
       positions: positionStore,
+      diagrams: diagramStore,
       initialUndoStack: project.history.undo,
       initialRedoStack: project.history.redo,
       onError: (err) => {
@@ -1199,41 +1325,24 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   },
 
   createDiagram(viewpointId, options) {
-    const { viewpoints, diagrams, project } = get();
-    const viewpoint = viewpoints.get(viewpointId);
-    if (!viewpoint) return null;
-    if (!project) return null;
-    let context: DiagramContext;
-    if (options?.context !== undefined) {
-      // Reject any context whose kind is not in this viewpoint's accepted set.
-      // ADR 0011 / JOURNAL iter-531 — every diagram's context kind must be in
-      // the active viewpoint's acceptedContextKinds.
-      if (!viewpoint.acceptedContextKinds.includes(options.context.kind)) {
-        return null;
-      }
-      context = options.context;
-    } else if (viewpoint.acceptedContextKinds.includes('package')) {
-      // Default: anchor to the project's root Package. Applies to viewpoints
-      // whose accepted set contains 'package' (BDD, Requirements, UseCase,
-      // Package). The other four (IBD, Activity, StateMachine, Parametric)
-      // require an explicit context per JOURNAL iter-531.
-      context = { kind: 'package', id: project.rootId };
-    } else {
-      return null;
-    }
-    const id = createDiagramId();
-    const diagram: Diagram = {
-      id,
-      viewpointId,
-      name: options?.name ?? viewpoint.label,
-      positions: {},
-      context,
-    };
-    set({ diagrams: [...diagrams, diagram] });
-    void get().saveProject();
-    return id;
+    // Per #413: diagram lifecycle is bus-dispatched so the implicit-owner
+    // flow (ADR 0014) can wrap create-element + create-diagram in a single
+    // compound. Caller sites that don't need a compound still go through
+    // this single-step entry point. `buildDiagram` is the pure half — sites
+    // that need to combine with `create-element` call it directly and
+    // dispatch a `compound` themselves.
+    const { bus, user, viewpoints, project } = get();
+    if (!bus || !user || !project) return null;
+    const diagram = buildDiagram(viewpoints, project.rootId, viewpointId, options);
+    if (!diagram) return null;
+    bus.dispatch({ kind: 'create-diagram', diagram }, user);
+    return diagram.id;
   },
 
+  // NOTE: `renameDiagram` is intentionally NOT bus-dispatched yet — the
+  // diagram-name patch isn't part of any compound flow today, and the
+  // existing non-undoable behavior has shipped. Promoting it to the bus is
+  // tracked separately (see #413 close-out / future ticket).
   renameDiagram(id, name) {
     const trimmed = name.trim();
     if (trimmed.length === 0) return;
@@ -1260,38 +1369,21 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   },
 
   deleteDiagram(id) {
-    const { diagrams, activeDiagramId, secondaryDiagramId, openDiagramIds } =
+    // Per #413: route through the bus so undo restores the diagram verbatim
+    // (the inverse `create-diagram` command carries the full Diagram).
+    // The DiagramStore wired in `bootstrap` handles the `openDiagramIds` /
+    // `secondaryDiagramId` reconciliation and re-points `activeDiagramId`
+    // to a surviving tab — matching the legacy behavior here.
+    const { bus, user, diagrams, openDiagramIds, secondaryDiagramId, storage } =
       get();
+    if (!bus || !user) return;
     if (!diagrams.some((d) => d.id === id)) return;
-    const nextDiagrams = diagrams.filter((d) => d.id !== id);
-    const nextOpenIds = openDiagramIds.filter((openId) => openId !== id);
-    const layoutChanged =
-      nextOpenIds.length !== openDiagramIds.length ||
-      secondaryDiagramId === id;
-    set({ diagrams: nextDiagrams, openDiagramIds: nextOpenIds });
-    if (activeDiagramId === id) {
-      // Prefer activating another already-open tab; otherwise fall back to
-      // any remaining diagram (and pull it into the open set so the tab strip
-      // is non-empty whenever diagrams exist).
-      const nextActive =
-        nextOpenIds[0] ?? nextDiagrams[0]?.id ?? null;
-      if (nextActive !== null && !nextOpenIds.includes(nextActive)) {
-        set({
-          activeDiagramId: nextActive,
-          openDiagramIds: [...nextOpenIds, nextActive],
-        });
-      } else {
-        set({ activeDiagramId: nextActive });
-      }
-    }
-    if (secondaryDiagramId === id) {
-      set({ secondaryDiagramId: null, secondarySelectedElementIds: [] });
-    }
-    const { storage } = get();
-    if (storage && layoutChanged) {
+    const layoutWillChange =
+      openDiagramIds.includes(id) || secondaryDiagramId === id;
+    bus.dispatch({ kind: 'delete-diagram', id }, user);
+    if (storage && layoutWillChange) {
       writeLayout(storage, snapshotLayout(get()));
     }
-    void get().saveProject();
   },
 
   setSelection(ids) {
@@ -1436,6 +1528,56 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
     if (!element) return null;
     bus.dispatch({ kind: 'create-element', element }, user);
     return id;
+  },
+
+  createRepresentationWithImplicitOwner(
+    ownerRowId,
+    ownerKind,
+    ownerRole,
+    ownerName,
+    viewpointId,
+    diagramName,
+    diagramContextKind,
+  ) {
+    // Per ADR 0014 / #413: one `compound` command wrapping the implicit
+    // owner's `create-element` AND the new diagram's `create-diagram`, so
+    // Cmd-Z reverses BOTH atomically. This is the only path with two
+    // bus-dispatched effects in the implicit-owner flow; all other
+    // representation entries (BDD / Requirements / Use Case / Package) go
+    // through the single-step `createDiagram` above.
+    const { bus, user, registry, elements, viewpoints, project } = get();
+    if (!bus || !user || !registry || !project) return null;
+    const parent = registry.get(ownerRowId);
+    if (!parent) return null;
+    const newOwnerId = createElementId();
+    const ownerElement = buildDefaultChildElement(
+      ownerKind,
+      {
+        id: newOwnerId,
+        ownerId: ownerRowId,
+        ownerRole,
+        ownerIndex: nextOwnerIndex(elements, ownerRowId, ownerRole),
+        name: ownerName,
+      },
+      elements,
+    );
+    if (!ownerElement) return null;
+    const diagram = buildDiagram(viewpoints, project.rootId, viewpointId, {
+      name: diagramName,
+      context: { kind: diagramContextKind, id: newOwnerId },
+    });
+    if (!diagram) return null;
+    bus.dispatch(
+      {
+        kind: 'compound',
+        commands: [
+          { kind: 'create-element', element: ownerElement },
+          { kind: 'create-diagram', diagram },
+        ],
+      },
+      user,
+    );
+    return { ownerId: newOwnerId, diagramId: diagram.id };
   },
 
   renameElement(id, name) {

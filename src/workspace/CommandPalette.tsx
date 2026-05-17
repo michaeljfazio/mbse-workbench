@@ -60,7 +60,9 @@ export function CommandPalette({ onClose }: CommandPaletteProps): JSX.Element {
   const setInspectorTab = useWorkspaceStore((s) => s.setInspectorTab);
   const setPendingRename = useWorkspaceStore((s) => s.setPendingRename);
   const createDiagram = useWorkspaceStore((s) => s.createDiagram);
-  const createChildElement = useWorkspaceStore((s) => s.createChildElement);
+  const createRepresentationWithImplicitOwner = useWorkspaceStore(
+    (s) => s.createRepresentationWithImplicitOwner,
+  );
   const setSelection = useWorkspaceStore((s) => s.setSelection);
   const setActiveDiagram = useWorkspaceStore((s) => s.setActiveDiagram);
   const recentCommandIds = useWorkspaceStore((s) => s.recentCommandIds);
@@ -116,37 +118,43 @@ export function CommandPalette({ onClose }: CommandPaletteProps): JSX.Element {
       createRepresentation: (option) => {
         const owner = selectionTarget;
         if (!owner) return;
-        // Per ADR 0014: if the option carries an `implicitOwnerKind` (or the
-        // prompt variant, which we satisfy by defaulting to the first
-        // candidate — Cmd-K has no popover affordance), create that
-        // implicit owner under the selected element first, then anchor the
-        // diagram to it.
+        // Per ADR 0014 / #413: if the option carries an `implicitOwnerKind`
+        // (or the prompt variant — Cmd-K has no popover affordance, so we
+        // default to the first candidate), dispatch ONE compound command
+        // wrapping the implicit owner's `create-element` and the new
+        // diagram's `create-diagram` so Cmd-Z reverses both atomically.
         const resolvedOwnerKind =
           option.implicitOwnerKind ??
           option.implicitOwnerPromptKinds?.[0] ??
           null;
-        let diagramOwnerId = owner.id;
         if (resolvedOwnerKind !== null) {
           const childOpt = acceptedChildKinds('Package').find(
             (o) => o.kind === resolvedOwnerKind,
           );
           if (!childOpt) return;
-          const newOwnerId = createChildElement(
+          const ownerName = `New ${childOpt.label}`;
+          const diagramName = `${ownerName} ${option.label.split(' (')[0]}`;
+          const result = createRepresentationWithImplicitOwner(
             owner.id,
             childOpt.kind,
             childOpt.ownerRole,
-            `New ${childOpt.label}`,
+            ownerName,
+            option.viewpointId,
+            diagramName,
+            option.contextKind,
           );
-          if (!newOwnerId) return;
-          diagramOwnerId = newOwnerId;
-          setSelection([newOwnerId]);
+          if (!result) return;
+          setSelection([result.ownerId]);
+          setActiveDiagram(result.diagramId);
+          return;
         }
+        // Single-step path: no implicit owner.
         const ownerName =
           owner.name.length > 0 ? owner.name : owner.kind;
         const name = `${ownerName} ${option.label.split(' (')[0]}`;
         const newId = createDiagram(option.viewpointId, {
           name,
-          context: { kind: option.contextKind, id: diagramOwnerId },
+          context: { kind: option.contextKind, id: owner.id },
         });
         if (newId) setActiveDiagram(newId);
       },
@@ -163,8 +171,8 @@ export function CommandPalette({ onClose }: CommandPaletteProps): JSX.Element {
     deleteSelection,
     setInspectorTab,
     setPendingRename,
-    createChildElement,
     createDiagram,
+    createRepresentationWithImplicitOwner,
     setActiveDiagram,
     setSelection,
   ]);

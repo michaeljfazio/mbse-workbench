@@ -8,12 +8,16 @@ export type {
   UnlinkCommand,
   UpdateEdgeCommand,
   UpdateDiagramPositionCommand,
+  CreateDiagramCommand,
+  DeleteDiagramCommand,
   CompoundCommand,
 } from './types';
 
 export type { DiagramPositionStore } from './diagramPositions';
+export type { DiagramStore } from './diagramStore';
 
 export { createInMemoryDiagramPositionStore } from './diagramPositions';
+export { createInMemoryDiagramStore } from './diagramStore';
 
 export type { ModelEvent, Unsubscribe } from './events';
 

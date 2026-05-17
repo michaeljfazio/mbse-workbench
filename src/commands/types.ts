@@ -9,7 +9,7 @@ import type {
   ModelElement,
 } from '@/model';
 
-import type { DiagramId, NodePosition } from '@/workspace/diagram';
+import type { Diagram, DiagramId, NodePosition } from '@/workspace/diagram';
 
 export interface CreateElementCommand {
   readonly kind: 'create-element';
@@ -52,6 +52,20 @@ export interface UpdateDiagramPositionCommand {
   readonly position: NodePosition | undefined;
 }
 
+// Per #413: diagram lifecycle is now bus-dispatched so the implicit-owner
+// flow (ADR 0014) gets atomic compound undo. The inverse of `create-diagram`
+// is `delete-diagram` by id; the inverse of `delete-diagram` carries the
+// diagram object verbatim so it can be restored on undo.
+export interface CreateDiagramCommand {
+  readonly kind: 'create-diagram';
+  readonly diagram: Diagram;
+}
+
+export interface DeleteDiagramCommand {
+  readonly kind: 'delete-diagram';
+  readonly id: DiagramId;
+}
+
 export interface CompoundCommand {
   readonly kind: 'compound';
   readonly commands: readonly Command[];
@@ -65,6 +79,8 @@ export type Command =
   | UnlinkCommand
   | UpdateEdgeCommand
   | UpdateDiagramPositionCommand
+  | CreateDiagramCommand
+  | DeleteDiagramCommand
   | CompoundCommand;
 
 export type CommandKind = Command['kind'];

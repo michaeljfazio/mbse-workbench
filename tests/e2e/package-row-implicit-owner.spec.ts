@@ -171,6 +171,74 @@ test.describe('Package row "Create representation…" implicit-owner entries (AD
     expect(await activeViewpoint(page)).toBe('bdd');
   });
 
+  test('Cmd-Z atomically reverses BOTH the implicit owner AND the new diagram (closes #413)', async ({
+    page,
+  }) => {
+    // Per ADR 0014 / #413: the Activity entry compounds `create-element`
+    // (the implicit ActionDefinition) and `create-diagram` (the Activity
+    // diagram) into a single bus dispatch. A single Cmd-Z must reverse
+    // both so the user sees the project return to its pre-click state
+    // without an orphan diagram referencing a deleted owner.
+    await page.goto('/');
+    await expect(page.getByTestId('containment-tree')).toBeVisible();
+    // Wait until the BDD bootstrap has settled.
+    expect(await activeViewpoint(page)).toBe('bdd');
+
+    // Capture the bootstrap diagram-tab ids so we can isolate the
+    // newly-created Activity tab from any pre-existing ones (the seed
+    // project ships with several diagrams). After the click, exactly one
+    // new tab id should appear; after Cmd-Z, that new id should be gone.
+    // The `role="tab"` filter excludes the per-tab close-affordance span
+    // which also carries a `data-testid="diagram-tab-close-…"`.
+    const diagramTabs = page.locator(
+      'button[role="tab"][data-testid^="diagram-tab-"]',
+    );
+    await expect(diagramTabs.first()).toBeVisible();
+    const initialIds = await diagramTabs.evaluateAll((els) =>
+      els.map((e) => (e as HTMLElement).dataset.testid ?? ''),
+    );
+
+    // Sanity check the precondition.
+    await expect(
+      page.locator(`${TREE_ROW}[data-kind="ActionDefinition"]`),
+    ).toHaveCount(0);
+
+    await clickPackageRepresentation(page, 'activity');
+
+    // After: ActionDefinition appears in the tree and the active viewpoint
+    // is Activity. Exactly one brand-new diagram-tab id should have been
+    // added since the baseline snapshot.
+    await expect(
+      page.locator(`${TREE_ROW}[data-kind="ActionDefinition"]`),
+    ).toHaveCount(1);
+    expect(await activeViewpoint(page)).toBe('activity');
+
+    const idsAfterCreate = await diagramTabs.evaluateAll((els) =>
+      els.map((e) => (e as HTMLElement).dataset.testid ?? ''),
+    );
+    const newIds = idsAfterCreate.filter((id) => !initialIds.includes(id));
+    expect(newIds).toHaveLength(1);
+    const activityTabId = newIds[0]!;
+
+    // ONE Cmd-Z. The compound undo must reverse both creates atomically.
+    await page.keyboard.press(
+      process.platform === 'darwin' ? 'Meta+z' : 'Control+z',
+    );
+
+    // The ActionDefinition is gone from the tree (already worked pre-#413,
+    // since it was the only bus-dispatched effect).
+    await expect(
+      page.locator(`${TREE_ROW}[data-kind="ActionDefinition"]`),
+    ).toHaveCount(0);
+    // The Activity diagram tab is also gone — this is the regression #413
+    // fixes. The previously-new id no longer exists in the strip.
+    await expect(page.locator(`[data-testid="${activityTabId}"]`)).toHaveCount(
+      0,
+    );
+    // The active viewpoint falls back to the project's bootstrap BDD.
+    expect(await activeViewpoint(page)).toBe('bdd');
+  });
+
   test('Per-Definition row menu still creates representations without the implicit-owner suffix in the label', async ({
     page,
   }) => {
