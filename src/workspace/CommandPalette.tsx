@@ -19,6 +19,7 @@ import {
   type PaletteCommandContext,
 } from './paletteCommands';
 import { useWorkspaceStore } from './store';
+import { acceptedChildKinds } from './tree/childAcceptance';
 
 export interface CommandPaletteProps {
   readonly onClose: () => void;
@@ -59,6 +60,8 @@ export function CommandPalette({ onClose }: CommandPaletteProps): JSX.Element {
   const setInspectorTab = useWorkspaceStore((s) => s.setInspectorTab);
   const setPendingRename = useWorkspaceStore((s) => s.setPendingRename);
   const createDiagram = useWorkspaceStore((s) => s.createDiagram);
+  const createChildElement = useWorkspaceStore((s) => s.createChildElement);
+  const setSelection = useWorkspaceStore((s) => s.setSelection);
   const setActiveDiagram = useWorkspaceStore((s) => s.setActiveDiagram);
   const recentCommandIds = useWorkspaceStore((s) => s.recentCommandIds);
   const recordCommandUse = useWorkspaceStore((s) => s.recordCommandUse);
@@ -113,11 +116,37 @@ export function CommandPalette({ onClose }: CommandPaletteProps): JSX.Element {
       createRepresentation: (option) => {
         const owner = selectionTarget;
         if (!owner) return;
-        const ownerName = owner.name.length > 0 ? owner.name : owner.kind;
-        const name = `${ownerName} ${option.label}`;
+        // Per ADR 0014: if the option carries an `implicitOwnerKind` (or the
+        // prompt variant, which we satisfy by defaulting to the first
+        // candidate — Cmd-K has no popover affordance), create that
+        // implicit owner under the selected element first, then anchor the
+        // diagram to it.
+        const resolvedOwnerKind =
+          option.implicitOwnerKind ??
+          option.implicitOwnerPromptKinds?.[0] ??
+          null;
+        let diagramOwnerId = owner.id;
+        if (resolvedOwnerKind !== null) {
+          const childOpt = acceptedChildKinds('Package').find(
+            (o) => o.kind === resolvedOwnerKind,
+          );
+          if (!childOpt) return;
+          const newOwnerId = createChildElement(
+            owner.id,
+            childOpt.kind,
+            childOpt.ownerRole,
+            `New ${childOpt.label}`,
+          );
+          if (!newOwnerId) return;
+          diagramOwnerId = newOwnerId;
+          setSelection([newOwnerId]);
+        }
+        const ownerName =
+          owner.name.length > 0 ? owner.name : owner.kind;
+        const name = `${ownerName} ${option.label.split(' (')[0]}`;
         const newId = createDiagram(option.viewpointId, {
           name,
-          context: { kind: option.contextKind, id: owner.id },
+          context: { kind: option.contextKind, id: diagramOwnerId },
         });
         if (newId) setActiveDiagram(newId);
       },
@@ -134,8 +163,10 @@ export function CommandPalette({ onClose }: CommandPaletteProps): JSX.Element {
     deleteSelection,
     setInspectorTab,
     setPendingRename,
+    createChildElement,
     createDiagram,
     setActiveDiagram,
+    setSelection,
   ]);
 
   const allCommands = useMemo<readonly PaletteCommand[]>(

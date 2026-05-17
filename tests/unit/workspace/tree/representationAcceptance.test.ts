@@ -4,8 +4,12 @@ import { ELEMENT_KINDS } from '@/model';
 import { acceptedRepresentations } from '@/workspace/tree/representationAcceptance';
 
 describe('acceptedRepresentations', () => {
-  it('Package accepts BDD, Requirements, Use Case, Package (all with context kind "package")', () => {
-    const opts = acceptedRepresentations('Package');
+  it('Package accepts BDD, Requirements, Use Case, Package as native entries (all with context kind "package")', () => {
+    const opts = acceptedRepresentations('Package').filter(
+      (o) =>
+        o.implicitOwnerKind === undefined &&
+        o.implicitOwnerPromptKinds === undefined,
+    );
     expect(opts.map((o) => o.viewpointId)).toEqual([
       'bdd',
       'requirements',
@@ -13,6 +17,37 @@ describe('acceptedRepresentations', () => {
       'package',
     ]);
     for (const o of opts) expect(o.contextKind).toBe('package');
+  });
+
+  it('Package additionally exposes Activity / State Machine / IBD with implicit-owner creation (ADR 0014)', () => {
+    const implicit = acceptedRepresentations('Package').filter(
+      (o) => o.implicitOwnerKind !== undefined,
+    );
+    expect(
+      implicit.map((o) => ({
+        viewpointId: o.viewpointId,
+        contextKind: o.contextKind,
+        implicitOwnerKind: o.implicitOwnerKind,
+      })),
+    ).toEqual([
+      { viewpointId: 'ibd', contextKind: 'partDefinition', implicitOwnerKind: 'PartDefinition' },
+      { viewpointId: 'activity', contextKind: 'actionDefinition', implicitOwnerKind: 'ActionDefinition' },
+      {
+        viewpointId: 'state-machine',
+        contextKind: 'stateDefinition',
+        implicitOwnerKind: 'StateDefinition',
+      },
+    ]);
+  });
+
+  it('Package additionally exposes Parametric with an implicit-owner-kind prompt (ADR 0014)', () => {
+    const prompt = acceptedRepresentations('Package').filter(
+      (o) => o.implicitOwnerPromptKinds !== undefined,
+    );
+    expect(prompt).toHaveLength(1);
+    expect(prompt[0]?.viewpointId).toBe('parametric');
+    expect(prompt[0]?.contextKind).toBe('partDefinition');
+    expect(prompt[0]?.implicitOwnerPromptKinds).toEqual(['PartDefinition']);
   });
 
   it('PartDefinition accepts BDD, IBD, Parametric (all with context kind "partDefinition")', () => {

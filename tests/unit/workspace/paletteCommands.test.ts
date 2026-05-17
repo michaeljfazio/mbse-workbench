@@ -343,7 +343,7 @@ describe('selectionScopedCommands (T-13.05c)', () => {
     ]);
   });
 
-  it('returns the four package representations for a Package', () => {
+  it('returns the four native package representations plus the four implicit-owner representations for a Package (ADR 0014)', () => {
     const cmds = selectionScopedCommands(
       ctx({ selectionTargetElement: PACKAGE_FIXTURE }),
     );
@@ -352,6 +352,10 @@ describe('selectionScopedCommands (T-13.05c)', () => {
       'selection.create-representation.requirements',
       'selection.create-representation.use-case',
       'selection.create-representation.package',
+      'selection.create-representation.ibd',
+      'selection.create-representation.activity',
+      'selection.create-representation.state-machine',
+      'selection.create-representation.parametric',
     ]);
   });
 

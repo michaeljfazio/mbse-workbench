@@ -18,7 +18,10 @@ export interface ContainmentTreeRowMenuProps {
   readonly onRename: () => void;
   readonly onDelete: () => void;
   readonly onCreateChild: (option: ChildKindOption) => void;
-  readonly onCreateRepresentation: (option: RepresentationOption) => void;
+  readonly onCreateRepresentation: (
+    option: RepresentationOption,
+    anchor: { readonly x: number; readonly y: number },
+  ) => void;
   readonly onDuplicate: () => void;
   readonly onMoveToPackage: (packageId: ElementId) => void;
   readonly open?: boolean;
@@ -229,8 +232,9 @@ export function ContainmentTreeRowMenu({
                   data-testid={`containment-tree-element-menu-representation-${option.viewpointId}-${elementId}`}
                   onClick={(e) => {
                     e.stopPropagation();
+                    const anchor = { x: e.clientX, y: e.clientY };
                     closeAll();
-                    onCreateRepresentation(option);
+                    onCreateRepresentation(option, anchor);
                   }}
                   className="block w-full px-3 py-2 text-left text-foreground transition hover:bg-accent"
                 >
