@@ -6,4 +6,4 @@ When a branch merges (or is abandoned), remove its row.
 
 | Branch | Lead engineer (subagent) | Theme | Issues | Files touched (paths) | Started | Status |
 |--------|--------------------------|-------|--------|-----------------------|---------|--------|
-| _(none)_ | — | — | — | — | — | — |
+| phase-15/palette-label-consistency | iter-802 (inline) | Palette labels | #377 | `src/workspace/tree/kindLabels.ts`, `tests/unit/workspace/tree/ProjectTree.test.tsx` | 2026-05-17 | in-flight |

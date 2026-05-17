@@ -7,11 +7,11 @@ export interface KindLabel {
 
 const LABELS: Record<ElementKind, KindLabel> = {
   Package: { group: 'Packages', singular: 'Package' },
-  PartDefinition: { group: 'Blocks', singular: 'Block' },
+  PartDefinition: { group: 'Part definitions', singular: 'Part definition' },
   PartUsage: { group: 'Parts', singular: 'Part' },
   PortDefinition: { group: 'Port definitions', singular: 'Port definition' },
   PortUsage: { group: 'Ports', singular: 'Port' },
-  InterfaceDefinition: { group: 'Interfaces', singular: 'Interface' },
+  InterfaceDefinition: { group: 'Interface definitions', singular: 'Interface definition' },
   ConnectionUsage: { group: 'Connections', singular: 'Connection' },
   ItemFlow: { group: 'Item flows', singular: 'Item flow' },
   Requirement: { group: 'Requirements', singular: 'Requirement' },

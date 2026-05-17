@@ -38,14 +38,14 @@ describe('<ProjectTree />', () => {
   beforeEach(() => resetWorkspaceStoreForTests());
   afterEach(() => resetWorkspaceStoreForTests());
 
-  it('renders the Blocks kind group from the active viewpoint palette even when empty', async () => {
+  it('renders the Part Definitions kind group from the active viewpoint palette even when empty', async () => {
     await bootstrap();
     render(<ProjectTree />);
 
     const group = screen.getByTestId('project-tree-group-PartDefinition');
     expect(group).toHaveAttribute('aria-expanded', 'true');
     expect(group).toHaveAttribute('aria-level', '1');
-    expect(group).toHaveAttribute('aria-label', expect.stringMatching(/Blocks \(0\)/));
+    expect(group).toHaveAttribute('aria-label', expect.stringMatching(/Part definitions \(0\)/));
   });
 
   it('renders all root-Package-creatable kind groups from empty state (no elements needed)', async () => {
@@ -112,7 +112,7 @@ describe('<ProjectTree />', () => {
 
     render(<ProjectTree />);
     const group = screen.getByTestId('project-tree-group-PartDefinition');
-    expect(group).toHaveAttribute('aria-label', expect.stringMatching(/Blocks \(2\)/));
+    expect(group).toHaveAttribute('aria-label', expect.stringMatching(/Part definitions \(2\)/));
 
     const leaves = screen.getAllByTestId(/^project-tree-leaf-/);
     expect(leaves).toHaveLength(2);
