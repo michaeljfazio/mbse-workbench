@@ -892,6 +892,28 @@ function ContainmentTreeRenameInput({
           e.preventDefault();
           e.stopPropagation();
           onCancel();
+        } else if (
+          (e.metaKey || e.ctrlKey) &&
+          e.key.toLowerCase() === 'z' &&
+          value === initialValue
+        ) {
+          // Cmd-Z (or Ctrl-Z) on the untouched inline-rename input — the user
+          // just created an element via the palette/Create-child and wants to
+          // undo the create. The default `e.stopPropagation()` below would
+          // prevent the global Workspace-level keyboard handler from seeing
+          // this event; but even if it bubbled, the handler skips text-input
+          // targets to preserve in-place text undo. So we route the model
+          // undo (or redo, with Shift) explicitly from here AFTER cancelling
+          // the rename, restoring the user's intuition that Cmd-Z reverts
+          // their last action regardless of focus context (#386).
+          e.preventDefault();
+          e.stopPropagation();
+          onCancel();
+          if (e.shiftKey) {
+            useWorkspaceStore.getState().redo();
+          } else {
+            useWorkspaceStore.getState().undo();
+          }
         } else {
           e.stopPropagation();
         }
