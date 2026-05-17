@@ -46,6 +46,8 @@ describe('command bus — destructive/exempt partition covers every CommandKind'
       'unlink',
       'update-edge',
       'update-diagram-position',
+      'create-diagram',
+      'delete-diagram',
       'compound',
     ]);
     const actual = new Set<string>([

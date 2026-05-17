@@ -17,6 +17,7 @@ import {
   type User,
 } from '@/collab';
 import type { DiagramPositionStore } from './diagramPositions';
+import type { DiagramStore } from './diagramStore';
 import { LibraryViolationError, PermissionDeniedError } from './errors';
 import type {
   Command,
@@ -49,10 +50,15 @@ export const DESTRUCTIVE_COMMAND_KINDS = [
 /**
  * Command kinds NOT subject to the library guard.
  * - `update-diagram-position` is pure presentation.
+ * - `create-diagram` / `delete-diagram` mutate the diagrams slice, not the
+ *   element registry; diagrams may show library elements without modifying
+ *   them, so the library guard does not apply (see #413).
  * - `compound` is a gateway; its subcommands are guarded individually.
  */
 export const EXEMPT_COMMAND_KINDS = [
   'update-diagram-position',
+  'create-diagram',
+  'delete-diagram',
   'compound',
 ] as const satisfies readonly CommandKind[];
 
@@ -79,6 +85,10 @@ export interface CreateCommandBusOptions {
   // Required only for `update-diagram-position` commands. Bus throws if such
   // a command is dispatched without a positions store wired in.
   readonly positions?: DiagramPositionStore;
+  // Required only for `create-diagram` / `delete-diagram` commands. Bus
+  // throws if such a command is dispatched without a diagram store wired
+  // in. See #413.
+  readonly diagrams?: DiagramStore;
   // Seed the undo/redo stacks from a persisted history. Used by the workspace
   // bootstrap to rehydrate operation history across page reloads.
   readonly initialUndoStack?: readonly UndoEntry[];
@@ -111,6 +121,7 @@ export function createCommandBus(options: CreateCommandBusOptions): CommandBus {
   const now = options.now ?? (() => Date.now());
   const eventIdFactory = options.eventIdFactory ?? (() => createElementId());
   const positions = options.positions;
+  const diagrams = options.diagrams;
   const onError = options.onError;
 
   /**
@@ -212,6 +223,12 @@ export function createCommandBus(options: CreateCommandBusOptions): CommandBus {
       case 'update-diagram-position':
         // Presentation, not model. Exempt by definition (ADR 0012).
         return;
+      case 'create-diagram':
+      case 'delete-diagram':
+        // Diagram lifecycle mutates the diagrams slice, not the element
+        // registry. Diagrams may reference library elements without
+        // modifying them; the read-only guard does not apply (see #413).
+        return;
       case 'compound':
         for (const sub of command.commands) checkLibraryGuard(sub);
         return;
@@ -290,6 +307,13 @@ export function createCommandBus(options: CreateCommandBusOptions): CommandBus {
       }
       case 'update-diagram-position':
         // Position changes are presentation, not model: not permission-gated.
+        return;
+      case 'create-diagram':
+      case 'delete-diagram':
+        // Diagram lifecycle is a project-level structural change. Today's
+        // permission model is "any actor may dispatch"; if/when we add
+        // per-diagram ownership we can route through `can(actor, 'edit-project')`
+        // here. Mirrors `update-diagram-position`'s exemption — see #413.
         return;
       case 'compound':
         for (const sub of command.commands) checkPermissions(actor, sub);
@@ -393,6 +417,33 @@ export function createCommandBus(options: CreateCommandBusOptions): CommandBus {
         };
         return inverse;
       }
+      case 'create-diagram': {
+        if (!diagrams) {
+          throw new Error(
+            'create-diagram dispatched without a DiagramStore wired into the bus',
+          );
+        }
+        diagrams.addDiagram(command.diagram);
+        return { kind: 'delete-diagram', id: command.diagram.id };
+      }
+      case 'delete-diagram': {
+        if (!diagrams) {
+          throw new Error(
+            'delete-diagram dispatched without a DiagramStore wired into the bus',
+          );
+        }
+        const existing = diagrams.getDiagram(command.id);
+        if (!existing) {
+          throw new Error(`delete-diagram target not found: ${command.id}`);
+        }
+        // Clear the active-tab pointer if it referenced the diagram about to
+        // be removed. The workspace store's DiagramStore implementation
+        // handles tab/secondary-pane reconciliation; the bus only needs to
+        // make the call. See #413.
+        diagrams.clearActiveDiagramIfMatches(command.id);
+        diagrams.removeDiagram(command.id);
+        return { kind: 'create-diagram', diagram: existing };
+      }
       case 'compound': {
         const inverses: Command[] = [];
         for (const sub of command.commands) {
@@ -438,6 +489,23 @@ export function createCommandBus(options: CreateCommandBusOptions): CommandBus {
           command.elementId,
           command.position,
         );
+        return;
+      case 'create-diagram':
+        if (!diagrams) {
+          throw new Error(
+            'create-diagram replay without a DiagramStore wired into the bus',
+          );
+        }
+        diagrams.addDiagram(command.diagram);
+        return;
+      case 'delete-diagram':
+        if (!diagrams) {
+          throw new Error(
+            'delete-diagram replay without a DiagramStore wired into the bus',
+          );
+        }
+        diagrams.clearActiveDiagramIfMatches(command.id);
+        diagrams.removeDiagram(command.id);
         return;
       case 'compound':
         for (const sub of command.commands) applyOnly(sub);
