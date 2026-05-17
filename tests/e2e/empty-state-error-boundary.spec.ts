@@ -14,7 +14,15 @@ test.describe('empty-state UX (issue #232)', () => {
     await page.goto('/');
     const empty = page.getByTestId('workspace-empty-state');
     await expect(empty).toBeVisible();
-    await expect(page.getByTestId('empty-state-new-block')).toBeVisible();
+    // ADR 0015 §"Vocabulary": the SysML-1.x "Block" alias is dropped from
+    // creation surfaces — the card label aligns to the metamodel name
+    // "Part Definition".
+    await expect(
+      page.getByTestId('empty-state-new-part-definition'),
+    ).toBeVisible();
+    await expect(
+      page.getByTestId('empty-state-new-part-definition'),
+    ).toContainText('New Part Definition');
     await expect(page.getByTestId('empty-state-new-requirement')).toBeVisible();
     await expect(page.getByTestId('empty-state-import-json')).toBeVisible();
     await expect(page.getByTestId('empty-state-open-chat')).toBeVisible();
@@ -22,9 +30,11 @@ test.describe('empty-state UX (issue #232)', () => {
     await expect(page.getByTestId('empty-state-shortcuts')).toContainText('Cmd-Z');
   });
 
-  test('clicking New Block dismisses the empty state', async ({ page }) => {
+  test('clicking New Part Definition dismisses the empty state', async ({
+    page,
+  }) => {
     await page.goto('/');
-    await page.getByTestId('empty-state-new-block').click();
+    await page.getByTestId('empty-state-new-part-definition').click();
     await expect(page.getByTestId('workspace-empty-state')).toHaveCount(0);
   });
 
