@@ -116,14 +116,8 @@ test.describe('Inspector contextual create panel (ADR 0015 step 4)', () => {
     // existing `inspector-add-port` affordance). PortDefinition is not in
     // the `acceptedChildKinds` switch, so it accepts no authoring children
     // — the contextual create panel must be suppressed for that selection.
-    const before = page.locator('[data-testid^="bdd-block-"][data-element-id]');
-    const beforeCount = await before.count();
-    await page.getByTestId('toolbar-add-block').click();
-    await expect(before).toHaveCount(beforeCount + 1);
-    const block = page
-      .locator('[data-testid^="bdd-block-"][data-element-id]')
-      .nth(beforeCount);
-    await block.click();
+    // Step 3 retired `toolbar-add-block`; use the canonical palette-drag.
+    await addAndSelectPartDefinition(page);
     await expect(page.getByTestId('inspector-single')).toBeVisible();
     await expect(
       page.getByTestId('inspector-contextual-create'),
