@@ -115,15 +115,21 @@ async function gotoIbd(page: Page): Promise<void> {
 // Tests -----------------------------------------------------------------------
 
 test.describe('IBD parts (issue #50)', () => {
-  test('renders "Part" in the palette only on IBD; hidden when active diagram is BDD', async ({
+  test('Part group header is draggable from any viewpoint; drop is viewpoint-gated', async ({
     page,
   }) => {
+    // Per ADR 0015 step 1 every visible project-tree group header is
+    // `draggable`. The viewpoint-specificity moved from the drag affordance
+    // to the drop-side `acceptedElementKinds` guard in CanvasPane.handleDrop:
+    // dropping PartUsage on a BDD canvas still no-ops because BDD's accepted
+    // kinds is just `PartDefinition`.
     await page.goto('/');
     await expect(
       page.getByTestId('project-tree-group-PartUsage'),
-    ).toHaveAttribute('draggable', 'false');
+    ).toHaveAttribute('draggable', 'true');
 
-    // Switch to IBD via the PartDefinition inspector.
+    // Switch to IBD via the PartDefinition inspector — PartUsage stays
+    // draggable here too (consistent affordance across viewpoints).
     await addAndSelectBlock(page);
     await page.getByTestId('inspector-open-internal-diagram').click();
     await expect(page.getByTestId('canvas-toolbar')).toContainText(

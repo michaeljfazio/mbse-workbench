@@ -1173,12 +1173,22 @@ function CanvasInner(): JSX.Element {
         if (id) setSelection([id]);
         return;
       }
-      // BDD: drop creates a Block (PartDefinition) directly.
-      const id = createBlock({
-        x: flowPos.x - BDD_BLOCK_WIDTH / 2,
-        y: flowPos.y - BDD_BLOCK_HEIGHT / 2,
-      });
-      if (id) setSelection([id]);
+      // BDD: drop creates a Block (PartDefinition) directly. ADR 0015 step 1
+      // makes every project-tree group header draggable, so the fallthrough
+      // is now explicitly gated on (viewpoint, kind) — any other combination
+      // that slipped past the `acceptedElementKinds` guard above (e.g.
+      // Activity's `ActionDefinition`, schema-accepted but not yet
+      // renderable per the viewpoint's `nodeTypeFor`) no-ops here rather
+      // than silently mis-creating a PartDefinition under the BDD createBlock
+      // helper.
+      if (viewpoint.id === BDD_VIEWPOINT_ID && kind === 'PartDefinition') {
+        const id = createBlock({
+          x: flowPos.x - BDD_BLOCK_WIDTH / 2,
+          y: flowPos.y - BDD_BLOCK_HEIGHT / 2,
+        });
+        if (id) setSelection([id]);
+        return;
+      }
     },
     [
       viewpoint,

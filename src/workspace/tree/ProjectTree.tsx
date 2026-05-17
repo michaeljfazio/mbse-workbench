@@ -8,7 +8,7 @@ import {
   type ModelElement,
 } from '@/model';
 import type { Viewpoint } from '@/viewpoints';
-import { getActiveViewpoint, useWorkspaceStore } from '../store';
+import { useWorkspaceStore } from '../store';
 
 import { acceptedChildKinds, type ChildKindOption } from './childAcceptance';
 import { kindLabel } from './kindLabels';
@@ -93,7 +93,6 @@ function computeAlwaysVisibleKinds(viewpoints: readonly Viewpoint[]): ReadonlySe
 function computeGroups(
   elements: readonly ModelElement[],
   viewpoints: readonly Viewpoint[],
-  activeViewpoint: Viewpoint | undefined,
 ): TreeGroup[] {
   const elementsByKind = new Map<ElementKind, ModelElement[]>();
   for (const el of elements) {
@@ -104,24 +103,24 @@ function computeGroups(
 
   const alwaysVisibleKinds = computeAlwaysVisibleKinds(viewpoints);
 
-  const activePaletteKinds = new Set<ElementKind>();
-  if (activeViewpoint) {
-    for (const item of activeViewpoint.paletteItems) {
-      activePaletteKinds.add(item.elementKind);
-    }
-  }
-
   const groups: TreeGroup[] = [];
   for (const kind of ELEMENT_KINDS) {
     const bucket = elementsByKind.get(kind);
     const hasElements = bucket !== undefined && bucket.length > 0;
     if (!hasElements && !alwaysVisibleKinds.has(kind)) continue;
     const sorted = (bucket ?? []).slice().sort((a, b) => a.name.localeCompare(b.name));
+    // ADR 0015 step 1 — every visible group header is `draggable` regardless
+    // of the active viewpoint. The drop is gated downstream by the
+    // viewpoint's `acceptedElementKinds`, so dragging an
+    // ActionDefinition row onto a BDD canvas still no-ops (the guard at
+    // CanvasPane.handleDrop catches it). Pre-ADR-0015 only the active
+    // viewpoint's palette kinds were draggable, which left an
+    // affordance asymmetry the rubric (dim 15) called out.
     groups.push({
       kind,
       label: kindLabel(kind).group,
       elements: sorted,
-      draggable: activePaletteKinds.has(kind),
+      draggable: true,
     });
   }
   return groups;
@@ -146,7 +145,6 @@ export function ProjectTree(): JSX.Element {
   const projectRootId = useWorkspaceStore((s) => s.project?.rootId ?? null);
   const libraryRootIds = useWorkspaceStore((s) => s.project?.libraryRootIds);
   const viewpoints = useWorkspaceStore((s) => s.viewpoints);
-  const activeViewpoint = useWorkspaceStore(getActiveViewpoint);
   const selectedElementIds = useWorkspaceStore((s) => s.selectedElementIds);
   const setSelection = useWorkspaceStore((s) => s.setSelection);
   const createChildElement = useWorkspaceStore((s) => s.createChildElement);
@@ -174,8 +172,8 @@ export function ProjectTree(): JSX.Element {
   const [explicitFocusKey, setExplicitFocusKey] = useState<FocusKey | null>(null);
 
   const groups = useMemo(
-    () => computeGroups(elements, viewpoints.list(), activeViewpoint),
-    [elements, viewpoints, activeViewpoint],
+    () => computeGroups(elements, viewpoints.list()),
+    [elements, viewpoints],
   );
 
   const visibleKeys = useMemo(() => flattenVisible(groups, collapsed), [groups, collapsed]);
@@ -246,6 +244,17 @@ export function ProjectTree(): JSX.Element {
   const handleGroupDragStart = useCallback(
     (event: React.DragEvent<HTMLDivElement>, kind: ElementKind) => {
       event.dataTransfer.setData(PROJECT_TREE_DRAG_TYPE, kind);
+      // ADR 0015 step 1 — kinds with a sub-discriminator (ActionUsage's
+      // nodeType, StateUsage's stateType) need the second MIME slot so the
+      // CanvasPane drop handler knows which sub-variant to create. From a
+      // tree-row drag (no viewpoint palette context) we default to the
+      // primary value; the viewpoint palette strips override this with the
+      // chip-specific discriminator.
+      if (kind === 'ActionUsage') {
+        event.dataTransfer.setData(PROJECT_TREE_DRAG_NODE_TYPE, 'action');
+      } else if (kind === 'StateUsage') {
+        event.dataTransfer.setData(PROJECT_TREE_DRAG_STATE_TYPE, 'state');
+      }
       event.dataTransfer.effectAllowed = 'copy';
     },
     [],
