@@ -3,33 +3,35 @@
 ## Current phase
 phase:15 — Architect-driven UX & feature hardening
 
-Iter-800 closed. Fourth Phase-15 engineer batch shipped: palette
-now renders every root-Package-creatable element kind from the
-empty state with its `+` button (closes #372). 22 + 1 visual
-baselines lifted from CI artifacts in two cascade-resolution
-cycles per JOURNAL iter-790's lesson (intermittent surfacing of
-0.01-0.02-ratio diffs).
+Iter-801 walk-4 closed. **Convergence walk #2 of 3.** Three earlier
+fixes (#374, #375, #386) re-verified live on `vphase-15.2`. Six new
+rubric dimensions scored:
+- dim 2 (edges) 0→2, dim 3 (ports) 0→2, dim 12 (Package) 0→2,
+  dim 17 (edge editing) 0→1, dim 22 (import/export) 0→2,
+  dim 25 (a11y) 0→2 (zero axe violations on empty-state).
 
-Rubric advanced: dim 15 (Palette & creation affordances) 1 → 2.
-Now 14 × score-2, 4 × score-1, 10 × unmeasured. No dim at 3 yet.
+**Zero new GitHub issues filed.** Walk-3 + walk-4 form 2 of 3
+required convergence walks per A.12 #3.
 
-Two batches merged since `vphase-15.2` (#396, #397); A.8 requires
-≥5 for a `vphase-15.3` tag. Tag deferred until threshold met.
+Rubric now: **20 × score-2, 4 × score-1, 4 × unmeasured**, no dim
+at 3 yet. Dimensions still unmeasured: 13 (cross-diagram coherence),
+14 (round-trip integrity), 23 (LLM integration), 26 sub-requirements,
+plus 17 (edge editing) at score 1 needs a deeper walk.
 
 ## Current iteration
-- Iteration #: 800 (close-out)
+- Iteration #: 801 (close-out)
 - Started: 2026-05-17
-- Branch: `chore/iter-800-closeout`
-- Working on: this close-out PR
+- Branch: `phase-15/walk-4-log`
+- Working on: walk-4 close-out PR
 
 ## Last test run
-- Main green at `6a73e78` (PR #397 palette show-all-kinds merge).
-- Close-out PR: doc-only, `pnpm run check` expected to pass.
+- Main green at `b7cd115` (iter-800 close-out).
+- Walk-4 close-out: doc-only, `pnpm run check` expected to pass.
 
 ## Known issues / blockers
 - (none)
 
-## Open phase:15 issues — distribution at iter-800 close
+## Open phase:15 issues — distribution at iter-801 close
 
 | Severity | Count | Issues |
 |----------|-------|--------|
@@ -37,24 +39,33 @@ Two batches merged since `vphase-15.2` (#396, #397); A.8 requires
 | p2 | 5 | #368/#369/#370/#371 (discoverability), #385 (IBD canvas) |
 | p3 | 2 | #373 (usage no `+`), #377 (palette labels) |
 
-8 open `phase:15` issues. Closed in iter-800: #372 (palette dynamic growth).
+8 open `phase:15` issues. No closures this iteration (walk-only).
 
 ## Convergence chain progress
 
 | Walk | New issues filed | Counts toward convergence? |
 |------|------------------|----------------------------|
 | walk-3 | 0 | **convergence walk #1 of 3** |
-| walk-4 | TBD | need 0 issues for #2 |
-| walk-5 | TBD | need 0 issues for #3 |
+| **walk-4** | **0** | **convergence walk #2 of 3** |
+| walk-5 | TBD | needs 0 for #3 |
+
+If walk-5 also files no issues, A.12 #3 closes. Phase 15 termination
+still requires every dim at 3 (currently many at 2; 4 still at 1, 4
+at 0); all open `phase:15` issues closed; and the FBW example shipped
+under `examples/flight-control-system/`.
 
 ## Decisions log
 
-Iter-792..iter-799 entries preserved in commit history. Iter-800 entry:
+Iter-792..iter-800 entries preserved in commit history. Iter-801 entry:
 
-- 2026-05-17 (iter-800): Engineer batch on #372 (palette dynamic growth). Sonnet subagent implemented `computeAlwaysVisibleKinds` in `ProjectTree.tsx`. Pre-PR review verdict: LOOKS GOOD. CI required two baseline-cascade resolution cycles (22 baselines then 1 lagger lifted from CI artifact per JOURNAL iter-786 + iter-790 playbooks). Net visual delta: 23 baselines updated reflecting the 5-row palette expansion.
+- 2026-05-17 (iter-801): Walk-4 — six new dimensions measured (2/3/12/17/22/25), all three earlier engineer batches re-verified, zero new issues filed. Convergence chain at 2 of 3. Notable: axe scan on empty-state returned 0 violations on the first measurement (no fix needed for dim 25 to reach score 2). JSON export confirmed working via Cmd-K.
 
 ## Next action
 
-Iter-801: walk-4 regression — verify #372 fix on the vphase-15.2 deploy (no new release tag yet; Pages still serves vphase-15.2; #372 fix will land in vphase-15.3 when threshold met). Walk-4 also scores remaining unmeasured dimensions: 2 (edges), 3 (ports), 12 (Package), 13 (cross-diagram), 17 (edge editing), 22 (import/export), 25 (a11y).
+Iter-802: pick the next engineer batch. Strong candidates:
+1. **#385 — IBD canvas element-add affordance** (palette-drag wiring; moderate scope).
+2. **#368/#369/#370/#371 — discoverability batch** (surface descendant viewpoints on Package row; needs ADR for implicit owner creation).
+3. **#373 / #377** (p3 polish).
+4. **#376 — 4-way Block creation** (design issue; ADR-driven).
 
-Walk-4 is **convergence walk #2 of 3** if it files no new findings. Convergence reaches at walk-5 if walks-4 and walks-5 both file no findings.
+Walk-5 (after iter-802 deploys) is convergence walk #3. If walk-5 files no findings, A.12 #3 closes.
