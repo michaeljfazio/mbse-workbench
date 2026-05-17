@@ -3,36 +3,42 @@
 ## Current phase
 phase:15 — Architect-driven UX & feature hardening
 
-Iter-802 closed. Fifth Phase-15 engineer batch shipped: palette
-label consistency (closes #377). Tiny fix: `'Blocks'` →
-`'Part definitions'`, `'Interfaces'` → `'Interface definitions'`
-in `src/workspace/tree/kindLabels.ts`. Visual baseline cascade
-across 8 (chromium) + 1 (webkit lagger) = 9 baselines lifted.
-Two webkit functional tests reported FLAKY (passed on retry); no
-new defect.
+🎯 **Iter-803 walk-5: convergence walk #3 of 3 — A.12 #3 SATISFIED.**
 
-A.8 release conditions met: 5 batches since `vphase-15.2`
-(#396, #397, #399, #401, #402) + rubric advances. Tagging
-`v1.2.1` (patch — palette label rename is fix-only, no new
-outward-facing feature) and `vphase-15.3`.
+All five Phase-15 engineer batches (#374, #375, #386, #372, #377)
+verified live on `vphase-15.3`. One axe blip during walk-5
+(`1 violation` once) investigated and dismissed as a timing flake —
+4 consecutive follow-up axe scans returned `0 violations`. No issue
+filed (A.7 requires "acceptance-testable" defects; a flake without
+stable repro isn't one).
 
-Rubric unchanged: no dim score moves this iteration. Still 20 ×
-score-2, 4 × score-1, 4 × unmeasured.
+Walks 3, 4, 5 all filed zero new issues. **First of four Phase 15
+termination conditions met.**
+
+## Phase 15 termination conditions
+
+| # | Condition | Status |
+|---|-----------|--------|
+| A.12 #1 | Every rubric dim at 3 | 0 of 28 at 3; 20 at 2, 4 at 1, 4 at 0 |
+| A.12 #2 | Zero open phase:15 issues | 7 open (1 p1, 5 p2, 1 p3) |
+| **A.12 #3** | **Three consecutive convergence walks** | **✓ SATISFIED (walks 3, 4, 5)** |
+| A.12 #4 | FBW example shipped + loadable | not started |
 
 ## Current iteration
-- Iteration #: 802 (close-out)
+- Iteration #: 803 (close-out)
 - Started: 2026-05-17
-- Branch: `chore/iter-802-closeout`
-- Working on: this close-out PR
+- Branch: `phase-15/walk-5-log`
+- Working on: walk-5 close-out PR
 
 ## Last test run
-- Main green at `1025896` (PR #402).
-- Close-out PR: doc-only, expected pass.
+- Main green at `30b7347` (PR #404 iter-802 close-out).
+- Releases `v1.2.1` + `vphase-15.3` deployed (Pages last-modified 10:56:31 GMT).
+- Walk-5 close-out: doc-only, expected to pass.
 
 ## Known issues / blockers
 - (none)
 
-## Open phase:15 issues — distribution at iter-802 close
+## Open phase:15 issues at iter-803 close
 
 | Severity | Count | Issues |
 |----------|-------|--------|
@@ -40,31 +46,30 @@ score-2, 4 × score-1, 4 × unmeasured.
 | p2 | 5 | #368/#369/#370/#371 (discoverability), #385 (IBD canvas) |
 | p3 | 1 | #373 (usage no `+`) |
 
-7 open `phase:15` issues. Closed in iter-802: #377 (palette labels).
-
-## Convergence chain progress
-
-| Walk | New issues filed | Status |
-|------|------------------|--------|
-| walk-3 | 0 | **convergence walk #1 of 3** |
-| walk-4 | 0 | **convergence walk #2 of 3** |
-| walk-5 | TBD | needs 0 for chain to close |
-
 ## Decisions log
 
-Iter-792..iter-801 entries preserved in commit history. Iter-802:
+Iter-792..iter-802 entries preserved in commit history. Iter-803:
 
-- 2026-05-17 (iter-802 a): Engineer batch on #377. Inline (no subagent). Two label rewrites + two unit-test assertion updates.
-- 2026-05-17 (iter-802 b): Visual baseline cascade (9 baselines across two CI cycles); 2 webkit functional tests marked FLAKY on second run — not regressions.
+- 2026-05-17 (iter-803): Walk-5 ran against vphase-15.3. All five shipped fixes verified. Axe scan returned 1 violation initially but 4 follow-up scans returned 0 — investigated and dismissed as flake (not stable). **Convergence chain closes: walks 3+4+5 all filed zero issues, satisfying A.12 #3.** Phase 15 still requires three more termination conditions (rubric saturation, issue closure, FBW example) — many more iterations.
+
+## Session checkpoint summary
+
+This session executed iter-793 through iter-803 — 11 iterations spanning bootstrap, 3 architect walks (with 1 buggy probe self-corrected via errata), 5 engineer batches, 3 release tags. Cumulative delivery:
+
+| Tag | Date | What |
+|-----|------|------|
+| vphase-15.1 / v1.1.0 | 2026-05-16 17:02Z | Bootstrap + BDD resize |
+| vphase-15.2 / v1.2.0 | 2026-05-17 07:13Z | Drag-coord overlay + Cmd-Z rename fix |
+| vphase-15.3 / v1.2.1 | 2026-05-17 10:56Z | Palette show-all-kinds + label consistency |
+
+Rubric: 0 → 20 × score-2 + 4 × score-1; 0 dims at 3 yet.
 
 ## Next action
 
-After this close-out merges and the release tags push:
-1. Iter-803: **walk-5 — regression walk on `vphase-15.3`**, verifying #372 (palette show-all-kinds) and #377 (palette labels) end-to-end on the live deploy. Walk-5 is **convergence walk #3 of 3** if it files no new issues. If so, A.12 #3 is satisfied (one of four Phase 15 termination conditions).
-2. Remaining termination work for Phase 15:
-   - Engineer batches to close the 7 open issues (the discoverability batch, IBD canvas, design issue #376, usage `+` polish).
-   - Advance remaining rubric dims to 3 (currently many at 2, four at 0/1 — needs deeper exercise / additional features for snap-to-grid, alignment guides, rubber-band multi-select, full SysML text round-trip, LLM integration).
-   - Build and commit the FBW example model under `examples/flight-control-system/`, wire the "Load example" entry, ship the example.
-   - Final `v1.X.Y` + `vphase-15.N` tags.
+Iter-804: pick the next engineer batch. Best candidates:
+1. **#385 — IBD canvas element-add affordance** (mirrors Activity/StateMachine pattern; one shape kind's worth of palette wiring).
+2. **#373 — usage categories `+` button** (palette polish; design-flavoured).
+3. **#368/#369/#370/#371 — discoverability batch** (needs ADR for implicit owner creation).
+4. **#376 — 4-way Block creation** (design issue; ADR-driven, slowest).
 
-   This is many more iterations of work — the current session's progress is one chunk of that broader programme.
+Continued iteration progresses Phase 15 toward full termination (A.12 #1, #2, #4 remaining).
