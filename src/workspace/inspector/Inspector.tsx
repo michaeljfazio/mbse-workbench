@@ -36,11 +36,37 @@ import type {
 import { isTraceTargetKind } from '@/viewpoints';
 import { getActiveDiagram, getActiveViewpoint, useWorkspaceStore } from '../store';
 import {
+  acceptedChildKinds,
+  type ChildKindOption,
+} from '../tree/childAcceptance';
+import { kindLabel } from '../tree/kindLabels';
+import {
   dispatchInspectorCreate,
   inspectorCreatePanel,
   type InspectorCreateAction,
 } from './inspectorCreatePanel';
 import { LinkRequirementPopover } from './LinkRequirementPopover';
+
+// ADR 0015 step 4 — when an element is selected, the inspector exposes a
+// contextual "+ New X" panel whose buttons create X as a *child of the
+// selected element* (rather than under the project root). The kinds come
+// from the same `acceptedChildKinds(parentKind)` table that drives the
+// containment-tree "Create child…" submenu, so authoring rules stay in
+// one place.
+
+const CONTEXTUAL_CREATE_NAME_MAX = 30;
+
+function truncateForLabel(name: string): string {
+  if (name.length <= CONTEXTUAL_CREATE_NAME_MAX) return name;
+  return `${name.slice(0, CONTEXTUAL_CREATE_NAME_MAX - 1)}…`;
+}
+
+function contextualParentDisplayName(element: ModelElement): string {
+  if (element.name.length > 0) return element.name;
+  if (element.kind === 'ActionUsage') return `«${element.nodeType}»`;
+  if (element.kind === 'StateUsage') return `«${element.stateType}»`;
+  return `(untitled ${element.kind})`;
+}
 
 function findElement(
   elements: readonly ModelElement[],
@@ -320,7 +346,86 @@ function InspectorSingle({ element }: InspectorSingleProps): JSX.Element {
         <TraceLinksExtras element={element} />
       ) : null}
 
+      <InspectorContextualCreate element={element} />
+
       <OwnerField element={element} />
+    </div>
+  );
+}
+
+interface InspectorContextualCreateProps {
+  readonly element: ModelElement;
+}
+
+/**
+ * ADR 0015 step 4 — contextual creation affordance for the inspector's
+ * single-selection view. Renders a `+ New <kind>` button per option
+ * returned by `acceptedChildKinds(element.kind)`; each button dispatches
+ * `createChildElement(element.id, …)` so the new element lands as a
+ * child of the currently-selected parent (NOT under the project root).
+ * Hidden entirely when the selected element accepts no children — kinds
+ * like `PartUsage` or `ConnectionUsage` are not authoring parents.
+ *
+ * Label format: `Add to <truncated parent name>: + New <kind>` — discloses
+ * the parent up-front so the operator never wonders where the new element
+ * lands. The label uses `kindLabel(kind).singular` (canonical metamodel
+ * vocabulary), matching the ADR 0015 vocabulary cleanup.
+ */
+function InspectorContextualCreate({
+  element,
+}: InspectorContextualCreateProps): JSX.Element | null {
+  const createChildElement = useWorkspaceStore((s) => s.createChildElement);
+  const setSelection = useWorkspaceStore((s) => s.setSelection);
+
+  const options = acceptedChildKinds(element.kind);
+  if (options.length === 0) return null;
+
+  const parentLabel = truncateForLabel(contextualParentDisplayName(element));
+
+  const handleCreate = (option: ChildKindOption): void => {
+    const childKindLabel = kindLabel(option.kind).singular;
+    const defaultName = `New ${childKindLabel}`;
+    const newId = createChildElement(
+      element.id,
+      option.kind,
+      option.ownerRole,
+      defaultName,
+    );
+    if (!newId) return;
+    setSelection([newId]);
+  };
+
+  return (
+    <div
+      data-testid="inspector-contextual-create"
+      data-parent-id={element.id}
+      data-parent-kind={element.kind}
+      className="flex flex-col gap-1.5"
+    >
+      <span
+        data-testid="inspector-contextual-create-header"
+        className="text-xs font-medium text-muted-foreground"
+      >
+        {`Add to ${parentLabel}`}
+      </span>
+      <div className="flex flex-col gap-1.5">
+        {options.map((option) => {
+          const childKindLabel = kindLabel(option.kind).singular;
+          return (
+            <button
+              key={`${option.kind}.${option.ownerRole}`}
+              type="button"
+              data-testid={`inspector-contextual-create-action-${option.kind}-${option.ownerRole}`}
+              data-element-kind={option.kind}
+              data-owner-role={option.ownerRole}
+              onClick={() => handleCreate(option)}
+              className="inline-flex items-center justify-start gap-2 rounded-md border border-border bg-card px-3 py-2 text-left text-sm font-medium text-foreground shadow-sm transition hover:bg-accent focus:border-primary focus:outline-none"
+            >
+              {`+ New ${childKindLabel}`}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
