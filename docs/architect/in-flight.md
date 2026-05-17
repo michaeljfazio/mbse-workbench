@@ -6,4 +6,4 @@ When a branch merges (or is abandoned), remove its row.
 
 | Branch | Lead engineer (subagent) | Theme | Issues | Files touched (paths) | Started | Status |
 |--------|--------------------------|-------|--------|-----------------------|---------|--------|
-| _(none)_ | — | — | — | — | — | — |
+| phase-15/bdd-drag-coord-overlay | iter-797 | interaction/drag feedback | #375 | src/workspace/CanvasPane.tsx, src/workspace/DragCoordOverlay.tsx, src/workspace/__tests__/dragCoordOverlay.test.ts, tests/e2e/bdd-drag-coord-overlay.spec.ts | 2026-05-17 | in-progress |
