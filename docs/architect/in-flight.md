@@ -6,4 +6,4 @@ When a branch merges (or is abandoned), remove its row.
 
 | Branch | Lead engineer (subagent) | Theme | Issues | Files touched (paths) | Started | Status |
 |--------|--------------------------|-------|--------|-----------------------|---------|--------|
-| phase-15/cmd-z-rename-input-fix | iter-798 (inline) | undo/keyboard | #386 | src/workspace/tree/ContainmentTree.tsx, tests/e2e/cmd-z-from-rename-input.spec.ts | 2026-05-17 | in-flight |
+| _(none)_ | — | — | — | — | — | — |
