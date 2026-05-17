@@ -6,4 +6,4 @@ When a branch merges (or is abandoned), remove its row.
 
 | Branch | Lead engineer (subagent) | Theme | Issues | Files touched (paths) | Started | Status |
 |--------|--------------------------|-------|--------|-----------------------|---------|--------|
-| _(none)_ | — | — | — | — | — | — |
+| phase-15/palette-show-all-kinds | iter-800 subagent | Palette discoverability | #372 | `src/workspace/tree/ProjectTree.tsx`, `tests/unit/workspace/tree/ProjectTree.test.tsx`, `tests/e2e/palette-shows-all-kinds.spec.ts` | 2026-05-17 | in-flight |
