@@ -6,4 +6,4 @@ When a branch merges (or is abandoned), remove its row.
 
 | Branch | Lead engineer (subagent) | Theme | Issues | Files touched (paths) | Started | Status |
 |--------|--------------------------|-------|--------|-----------------------|---------|--------|
-| phase-15/bdd-drag-coord-overlay | iter-797 | interaction/drag feedback | #375 | src/workspace/CanvasPane.tsx, src/workspace/DragCoordOverlay.tsx, src/workspace/__tests__/dragCoordOverlay.test.ts, tests/e2e/bdd-drag-coord-overlay.spec.ts | 2026-05-17 | in-progress |
+| phase-15/cmd-z-rename-input-fix | iter-798 (inline) | undo/keyboard | #386 | src/workspace/tree/ContainmentTree.tsx, tests/e2e/cmd-z-from-rename-input.spec.ts | 2026-05-17 | in-flight |
