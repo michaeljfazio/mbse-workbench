@@ -19,3 +19,4 @@ to the index below in chronological order.
 - [0011 — Explorer foundation: ownerId single source of truth + required DiagramContext](0011-explorer-foundation-ownerid-context.md)
 - [0012 — Library seam enforcement: command-bus pre-apply guard + onError surface](0012-library-seam-enforcement.md)
 - [0013 — KerML core library: fixture shape, merge semantics, downstream filtering](0013-kerml-core-library-fixture.md)
+- [0014 — Package row menu: implicit-owner creation for non-Package diagrams](0014-package-row-implicit-owner.md)
