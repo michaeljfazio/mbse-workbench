@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
+import { ReactFlowProvider } from '@xyflow/react';
+import type { ReactElement } from 'react';
 
 import { createSessionUser } from '@/collab';
 import { createInMemorySessionRepository } from '@/repository';
@@ -8,6 +10,14 @@ import {
   resetWorkspaceStoreForTests,
   useWorkspaceStore,
 } from '@/workspace';
+
+// ADR 0015 step 2: <EmptyState /> now calls `useReactFlow()` to compute
+// canvas centre in flow coordinates. In production it's mounted inside
+// the <ReactFlowProvider> on <CanvasPane>; the unit test render must do
+// the same.
+function renderEmptyState(element: ReactElement): ReturnType<typeof render> {
+  return render(<ReactFlowProvider>{element}</ReactFlowProvider>);
+}
 
 function makeMemoryStorage(): Storage {
   const map = new Map<string, string>();
@@ -34,23 +44,34 @@ async function bootstrap(): Promise<void> {
   await useWorkspaceStore.getState().bootstrap({ repository, user, storage });
 }
 
-describe('<EmptyState /> CTAs (T-13.34)', () => {
+describe('<EmptyState /> CTAs (T-13.34, ADR 0015 step 2)', () => {
   beforeEach(() => resetWorkspaceStoreForTests());
   afterEach(() => resetWorkspaceStoreForTests());
 
-  it('New Block creates a PartDefinition under the project root and queues rename', async () => {
+  it('New Part Definition dispatches the shared createBlock command and queues rename', async () => {
+    // ADR 0015 step 2 (#376): the card click goes through the same
+    // `createBlock` entry point that the palette drag's
+    // `CanvasPane.handleDrop` BDD branch calls, so empty-state click and
+    // palette drag emit indistinguishable elements (auto-name "Block N",
+    // owned by the root Package, placed via an `update-diagram-position`
+    // compound).
     await bootstrap();
     const rootId = useWorkspaceStore.getState().project!.rootId;
 
-    render(<EmptyState onImportJson={() => {}} />);
-    fireEvent.click(screen.getByTestId('empty-state-new-block'));
+    renderEmptyState(<EmptyState onImportJson={() => {}} />);
+    fireEvent.click(screen.getByTestId('empty-state-new-part-definition'));
 
     const elements = useWorkspaceStore.getState().elements;
     const created = elements.find(
-      (e) => e.kind === 'PartDefinition' && e.ownerId === rootId,
+      (e) =>
+        e.kind === 'PartDefinition' &&
+        e.ownerId === rootId &&
+        e.name.startsWith('Block '),
     );
-    expect(created, 'PartDefinition should be created under the root').toBeDefined();
-    expect(created!.name).toBe('New Part Definition');
+    expect(
+      created,
+      'PartDefinition should be created under the root with the shared autoname',
+    ).toBeDefined();
 
     expect(useWorkspaceStore.getState().selectedElementIds).toEqual([
       created!.id,
@@ -60,19 +81,28 @@ describe('<EmptyState /> CTAs (T-13.34)', () => {
     );
   });
 
-  it('New Requirement creates a Requirement under the project root, switches to the Requirements surface, and queues rename', async () => {
+  it('New Requirement dispatches the shared createRequirement command, switches to the Requirements surface, and queues rename', async () => {
+    // Same shape as Part Definition: the card delegates to the same
+    // `createRequirement(diagramId, position)` entry point that
+    // `CanvasPane.handleDrop`'s Requirements branch calls — auto-name
+    // "ReqN", owned by the root Package.
     await bootstrap();
     const rootId = useWorkspaceStore.getState().project!.rootId;
 
-    render(<EmptyState onImportJson={() => {}} />);
+    renderEmptyState(<EmptyState onImportJson={() => {}} />);
     fireEvent.click(screen.getByTestId('empty-state-new-requirement'));
 
     const elements = useWorkspaceStore.getState().elements;
     const created = elements.find(
-      (e) => e.kind === 'Requirement' && e.ownerId === rootId,
+      (e) =>
+        e.kind === 'Requirement' &&
+        e.ownerId === rootId &&
+        /^Req\d+$/.test(e.name),
     );
-    expect(created, 'Requirement should be created under the root').toBeDefined();
-    expect(created!.name).toBe('New Requirement');
+    expect(
+      created,
+      'Requirement should be created under the root with the shared autoname',
+    ).toBeDefined();
 
     expect(useWorkspaceStore.getState().activeSurfaceKind).toBe('requirements');
     expect(useWorkspaceStore.getState().selectedElementIds).toEqual([
@@ -87,7 +117,7 @@ describe('<EmptyState /> CTAs (T-13.34)', () => {
     await bootstrap();
     const onImportJson = vi.fn();
 
-    render(<EmptyState onImportJson={onImportJson} />);
+    renderEmptyState(<EmptyState onImportJson={onImportJson} />);
     fireEvent.click(screen.getByTestId('empty-state-import-json'));
 
     expect(onImportJson).toHaveBeenCalledTimes(1);
@@ -96,18 +126,18 @@ describe('<EmptyState /> CTAs (T-13.34)', () => {
   it('Open Chat switches the inspector tab to chat', async () => {
     await bootstrap();
 
-    render(<EmptyState onImportJson={() => {}} />);
+    renderEmptyState(<EmptyState onImportJson={() => {}} />);
     expect(useWorkspaceStore.getState().inspectorTab).toBe('inspector');
 
     fireEvent.click(screen.getByTestId('empty-state-open-chat'));
     expect(useWorkspaceStore.getState().inspectorTab).toBe('chat');
   });
 
-  it('New Block and New Requirement are disabled when no project is loaded', () => {
+  it('New Part Definition and New Requirement are disabled when no project is loaded', () => {
     // Skip bootstrap: store is fresh, project is null.
-    render(<EmptyState onImportJson={() => {}} />);
+    renderEmptyState(<EmptyState onImportJson={() => {}} />);
     expect(
-      screen.getByTestId('empty-state-new-block'),
+      screen.getByTestId('empty-state-new-part-definition'),
     ).toBeDisabled();
     expect(
       screen.getByTestId('empty-state-new-requirement'),
