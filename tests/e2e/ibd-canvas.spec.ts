@@ -74,6 +74,41 @@ test.describe('IBD viewpoint (issue #49)', () => {
     );
   });
 
+  test('IBD canvas exposes the in-canvas palette with a draggable Part chip (issue #385)', async ({
+    page,
+  }) => {
+    await page.goto('/');
+    const tablist = page.getByRole('tablist', { name: 'Diagram tabs' });
+
+    // BDD is the initial active tab; the IBD palette must not be visible.
+    await expect(page.getByTestId('ibd-palette')).toHaveCount(0);
+
+    await tablist.getByRole('tab', { name: 'Engine IBD' }).click();
+    await expect(
+      tablist.getByRole('tab', { name: 'Engine IBD', selected: true }),
+    ).toBeVisible();
+
+    // Palette strip + "Drag onto canvas" hint mirror the Activity / State
+    // Machine pattern (closes the IBD discoverability gap that issue #385
+    // raises against rubric dimensions 6 and 15).
+    const palette = page.getByTestId('ibd-palette');
+    await expect(palette).toBeVisible();
+    await expect(palette).toHaveAttribute('role', 'toolbar');
+    await expect(palette).toContainText('Drag onto canvas');
+    await expect(palette).toContainText('Connections & Item Flows');
+
+    const partChip = page.getByTestId('ibd-palette-PartUsage');
+    await expect(partChip).toBeVisible();
+    await expect(partChip).toHaveText('Part');
+    await expect(partChip).toHaveAttribute('draggable', 'true');
+    await expect(partChip).toHaveAttribute('data-element-kind', 'PartUsage');
+
+    // Switch back to the BDD tab — the IBD palette must disappear so its
+    // affordances do not bleed across viewpoints.
+    await tablist.getByRole('tab', { name: 'Main BDD' }).click();
+    await expect(page.getByTestId('ibd-palette')).toHaveCount(0);
+  });
+
   test('@a11y empty IBD canvas has no serious or critical violations', async ({
     page,
   }) => {
