@@ -634,6 +634,69 @@ describe('serializeProject — determinism + snapshot', () => {
   });
 });
 
+describe('serializeProject — quoted identifiers (#446 — OMG SysMLv2 §4.4.1)', () => {
+  it('quotes a Package name that contains whitespace with `<…>`', () => {
+    const pkg = asMember<PackageElement>(
+      { id: eid('p'), kind: 'Package', name: 'Untitled Project' },
+      0,
+    );
+    const text = serializeProject(buildProject([pkg]));
+    expect(text).toContain('package <Untitled Project> {');
+    expect(text).not.toMatch(/package Untitled Project \{/);
+  });
+
+  it('emits bare names for safe identifiers (no false positives)', () => {
+    const pkg = asMember<PackageElement>(
+      { id: eid('p'), kind: 'Package', name: 'FCS-Control_v2' },
+      0,
+    );
+    const text = serializeProject(buildProject([pkg]));
+    expect(text).toContain('package FCS-Control_v2 {');
+    expect(text).not.toContain('<FCS-Control_v2>');
+  });
+
+  it('quotes ident-position references when their names contain whitespace', () => {
+    const def = asMember<Extract<ModelElement, { kind: 'PartDefinition' }>>(
+      {
+        id: eid('def1'),
+        kind: 'PartDefinition',
+        name: 'Flight Controller',
+        isAbstract: false,
+      },
+      0,
+    );
+    const usage = asMember<Extract<ModelElement, { kind: 'PartUsage' }>>(
+      {
+        id: eid('use1'),
+        kind: 'PartUsage',
+        name: 'primary FCC',
+        definitionId: eid('def1'),
+      },
+      1,
+    );
+    const text = serializeProject(buildProject([def, usage]));
+    expect(text).toContain('part def <Flight Controller> {');
+    expect(text).toContain('part <primary FCC> : <Flight Controller> {');
+  });
+
+  it('quotes Requirement reqId and name when either has whitespace', () => {
+    const req = asMember<Extract<ModelElement, { kind: 'Requirement' }>>(
+      {
+        id: eid('r1'),
+        kind: 'Requirement',
+        name: 'Braking Distance',
+        reqId: 'REQ 001',
+        text: 'Stop within 40m',
+        priority: 'high',
+        status: 'approved',
+      },
+      0,
+    );
+    const text = serializeProject(buildProject([req]));
+    expect(text).toContain('requirement <REQ 001> <Braking Distance> {');
+  });
+});
+
 describe('serializeProject — import directives (T-14.05)', () => {
   it('emits no `import` lines when the project references no library content', () => {
     const text = serializeProject(
