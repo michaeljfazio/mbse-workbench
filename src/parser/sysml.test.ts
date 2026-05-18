@@ -651,3 +651,58 @@ describe('parseSysmlText — import directives (T-14.05)', () => {
     expect(res.value.imports).toBeUndefined();
   });
 });
+
+describe('parseSysmlText — quoted identifiers (#446 — OMG SysMLv2 §4.4.1)', () => {
+  it('tokenizes `<Untitled Project>` as a single ident whose value is the inner text', () => {
+    const text = `package <Untitled Project> { // id: pkg1\n}\n`;
+    const res = parseSysmlText(text);
+    expect(res.ok).toBe(true);
+    if (!res.ok) throw new Error(`parse failed: ${JSON.stringify(res.errors)}`);
+    const pkg = res.value.elements.find((e) => e.kind === 'Package');
+    expect(pkg?.name).toBe('Untitled Project');
+  });
+
+  it('round-trips a Package whose name contains whitespace', () => {
+    const pkg = asMember<PackageElement>(
+      { id: eid('p1'), kind: 'Package', name: 'Untitled Project' },
+      0,
+    );
+    const parsed = roundTrip([pkg]);
+    const out = parsed.elements.find((e) => e.kind === 'Package' && e.name === 'Untitled Project');
+    expect(out).toBeDefined();
+  });
+
+  it('round-trips a PartUsage whose definition reference name contains whitespace', () => {
+    const def = asMember<Extract<ModelElement, { kind: 'PartDefinition' }>>(
+      {
+        id: eid('def1'),
+        kind: 'PartDefinition',
+        name: 'Flight Controller',
+        isAbstract: false,
+      },
+      0,
+    );
+    const usage = asMember<Extract<ModelElement, { kind: 'PartUsage' }>>(
+      {
+        id: eid('use1'),
+        kind: 'PartUsage',
+        name: 'primary FCC',
+        definitionId: eid('def1'),
+      },
+      1,
+    );
+    const parsed = roundTrip([def, usage]);
+    const reusage = parsed.elements.find((e) => e.kind === 'PartUsage');
+    expect(reusage?.name).toBe('primary FCC');
+    expect(reusage?.kind === 'PartUsage' && reusage.definitionId).toBe(eid('def1'));
+  });
+
+  it('reports a parse error on an unterminated `<…` quoted identifier', () => {
+    const text = `package <Untitled { // id: pkg1\n}\n`;
+    const res = parseSysmlText(text);
+    expect(res.ok).toBe(false);
+    if (!res.ok) {
+      expect(res.errors[0]?.message).toMatch(/quoted name|unterminated/i);
+    }
+  });
+});

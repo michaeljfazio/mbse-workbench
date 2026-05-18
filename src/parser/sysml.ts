@@ -235,6 +235,28 @@ function tokenize(src: string): Token[] {
       i = j;
       continue;
     }
+    if (ch === '<') {
+      // OMG SysMLv2 §4.4.1 quotedName: `<` … `>` around any character
+      // except newline and unescaped `>`. The inner content becomes the
+      // identifier value verbatim. Issue #446.
+      const startLine = line;
+      const startCol = col;
+      let j = i + 1;
+      let body = '';
+      while (j < n && src[j] !== '>' && src[j] !== '\n') {
+        body += src[j];
+        j += 1;
+      }
+      if (j >= n || src[j] !== '>') {
+        throw new ParserError('unterminated quoted name', startLine, startCol);
+      }
+      j += 1;
+      tokens.push({ type: 'ident', value: body, line: startLine, col: startCol });
+      const consumed = j - i;
+      for (let k = 0; k < consumed; k += 1) col += 1;
+      i = j;
+      continue;
+    }
     tokens.push({ type: 'punct', value: ch, line, col });
     col += 1;
     i += 1;
