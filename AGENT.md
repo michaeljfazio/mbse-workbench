@@ -322,6 +322,38 @@ These are not suggestions. They protect the demo's design integrity.
     check" section. If anything fails the check, file a `p0`,
     `type:bug` issue and prioritise it before resuming feature work.
 
+14. **PR backlog sweep (every iteration).** After the halt check and
+    before starting new architect-walk work, drain the open-PR backlog.
+    A stale PR pile pollutes signal and breaks the "one issue per PR,
+    auto-merge on green" assumption upstream of this loop. Run:
+
+    ```sh
+    gh pr list --state open --json number,title,headRefName,mergeStateStatus,mergeable,isDraft,statusCheckRollup,reviewDecision
+    ```
+
+    Then for each open, non-draft PR, take the cheapest applicable
+    action and move on — do not deep-dive multiple PRs in one
+    iteration:
+
+    - `mergeStateStatus: BEHIND` + CI green → `gh pr merge <n> --auto --squash --update-branch` (or `--merge` if that's the repo default). GitHub will rebase and auto-merge on green.
+    - `mergeStateStatus: BEHIND` + CI red/failed → investigate the failure; if it's a baseline drift from main, refresh and push; if it's a real regression, fix the code in the PR's branch. Do NOT just retry CI hoping for green.
+    - `mergeStateStatus: BLOCKED` + CI green + no required reviewer → check branch protection; if a required check is missing, surface it (don't bypass). If a required review is missing and review is self-enabled in this autonomous loop, dispatch a code-review subagent and approve when warranted.
+    - `mergeStateStatus: DIRTY` (merge conflicts) → resolve on the PR branch, push, let CI re-run.
+    - CI `IN_PROGRESS` or `QUEUED` → leave it; next iteration will catch it.
+    - Stacked walk-PRs where each depends on the prior → merge in order, oldest first. After each merge, the next-in-stack flips from `BEHIND` to mergeable with one update-branch.
+
+    Cap PR-sweep work at ~5 minutes of iteration time. If the backlog is
+    deep (e.g. >6 PRs all needing update-branch), do 2-3 per iteration
+    and let the loop chew through them across iterations rather than
+    blocking new work for a single mega-sweep. Log "PR sweep: merged
+    #X, updated #Y, blocked #Z (reason)" in STATUS.md under a "Last PR
+    sweep" line so cross-iteration progress is visible.
+
+    Do NOT close walk-* close-out PRs without merging — they are
+    real documentation deliverables. If a walk close-out has gone
+    stale because main moved on, rebase and merge rather than
+    abandoning.
+
 # Feature set
 
 ## Core modelling

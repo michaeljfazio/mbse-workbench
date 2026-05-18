@@ -836,3 +836,19 @@ Phase 13 ships zero library content. Phase 13's design accommodates Phase 14 via
 - Production-quality rubric: https://github.com/michaeljfazio/mbse-workbench/blob/main/docs/architect/quality-rubric.md
 
 ---
+
+## Iteration 826 — 2026-05-18 — First rubric dimension at score 3 (BDD)
+
+**Event:** design-decision
+
+**Phase:** phase:15 — Architect-driven UX & feature hardening
+
+**Narrative:** Walk-14 crossed the line. After 33 iterations of architect walks, engineer batches, and five intermediate release tags (vphase-15.1 → vphase-15.5 / v1.1.0 → v1.4.0), rubric dimension 5 (SysML conformance — BDD) became the first of 28 dimensions to score a full 3. Three score-3 requirements all held simultaneously: the full BDD edge taxonomy (Composition, Aggregation, Generalization, Association, Dependency — three visually verified mid-walk, the remaining two covered by PR #433's e2e), association multiplicity edited through the inspector with SysML 1.x bracketed `[1..*]` serialization holding round-trip (PR #436's e2e), and block compartments visible since the Phase 13 schema rewrite. What made this milestone interesting was its ordering: dim 5 was the cheapest path to score 3 only because two engineer batches (#430 → PR #433 for the full edge-marker taxonomy, #434 → PR #436 for association multiplicity) had landed during a parallel walk push that brought the deep-dive scope into reach. The convergence chain reset to 1 at walk-14 by the rubric's own rules — only zero-issue walks *after* the most recent ready-state mutation count — and walks 15, 16, 17, 18, 19 rebuilt it to 6 across Activity, Use Case, State Machine, Parametric, and Requirements/Package coverage respectively. Termination state moves to A.12 #1 = 1/28, A.12 #2 still ✓ (queue empty since #434 closed), A.12 #3 at 6 consecutive zero-issue walks. The 27 dimensions still at scores 2/1/0 are now the explicit termination work — every walk from walk-20 forward picks a target dimension by lowest score and cheapest evidence path. Walk-20 candidate: dim 14 (round-trip integrity, score 0) — JSON export → wipe → import → diff is one walk, deterministic, no operator dependency, and de-risks A.12 #4 (FBW example) by validating the export pipeline before the example is rich enough to commit.
+
+**Links:**
+- Walk-14 PR (merged `fe0c277`): https://github.com/michaeljfazio/mbse-workbench/pull/437
+- Walk-14 log: https://github.com/michaeljfazio/mbse-workbench/blob/main/docs/architect/walks/walk-14.md
+- Enabling batches: PR #433 (edge-marker taxonomy) + PR #436 (association multiplicity)
+- Production-quality rubric: https://github.com/michaeljfazio/mbse-workbench/blob/main/docs/architect/quality-rubric.md
+
+---
