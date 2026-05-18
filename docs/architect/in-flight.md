@@ -6,4 +6,4 @@ When a branch merges (or is abandoned), remove its row.
 
 | Branch | Lead engineer (subagent) | Theme | Issues | Files touched (paths) | Started | Status |
 |--------|--------------------------|-------|--------|-----------------------|---------|--------|
-| `phase-15/issue-453-ci-doc-only-skip-e2e` | main | `area:cross-cutting (CI velocity)` | #453 | `.github/workflows/ci.yml`, `docs/adr/0016-ci-doc-only-skip-e2e.md`, `docs/adr/README.md`, `docs/architect/in-flight.md` | 2026-05-18 | in PR |
+| `phase-15/empty-ibd-seed-frame` | subagent | `area:viewpoint:ibd + area:cross-cutting` | #461 | `src/viewpoints/ibd/enclosingFrame.ts`, `src/workspace/flowGraph.ts`, `src/workspace/__tests__/ibdSeedFrame.test.ts`, `tests/e2e/ibd-seed-frame.spec.ts` | 2026-05-18 | in PR |
