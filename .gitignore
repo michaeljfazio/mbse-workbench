@@ -43,6 +43,8 @@ artifacts
 # Per-iteration scratch (loop runner state)
 agent-trace.jsonl
 loop.log
+loop.pid
+STOP
 dry-run/
 
 # Container scratch (when generating Linux baselines via podman/docker)
