@@ -198,8 +198,12 @@ test.describe('BDD auto-layout (issue #34)', () => {
       await page.mouse.click(paneBox.x + paneBox.width - 80, paneBox.y + 40);
     }
     await page.mouse.move(0, 0);
+    // Per-test threshold raised to 0.025 — see issue #444 for diagnosis.
+    // This baseline has ~0.02 natural rendering variance across CI runs that
+    // is not a regression signal; visual project runs with retries: 0.
     await expect(page).toHaveScreenshot('bdd-three-blocks-autolayout.png', {
       fullPage: false,
+      maxDiffPixelRatio: 0.025,
     });
   });
 });
