@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Background,
+  ConnectionMode,
   Controls,
   ReactFlow,
   ReactFlowProvider,
@@ -1307,6 +1308,16 @@ function CanvasInner(): JSX.Element {
           onNodeContextMenu={onNodeContextMenu}
           onEdgeContextMenu={onEdgeContextMenu}
           isValidConnection={isValidConnection}
+          // IBD: `HANDLE_TYPE_BY_DIRECTION` resolves `inout` to `source`, so a
+          // drag between two default-direction ports is source→source. Loose
+          // mode delegates handle-role validity to the typed
+          // `isValidIbdConnection` callback, which is the single source of
+          // truth per ADR 0003. Issue #499.
+          connectionMode={
+            viewpoint.id === IBD_VIEWPOINT_ID
+              ? ConnectionMode.Loose
+              : ConnectionMode.Strict
+          }
           deleteKeyCode={['Delete', 'Backspace']}
           fitView={false}
           proOptions={{ hideAttribution: true }}
