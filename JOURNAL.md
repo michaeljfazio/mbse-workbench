@@ -983,3 +983,24 @@ Phase 13 ships zero library content. Phase 13's design accommodates Phase 14 via
 - JOURNAL iter-876 (release entry that established the operator-cut phrasing): https://github.com/michaeljfazio/mbse-workbench/blob/main/JOURNAL.md
 
 ---
+
+## Iteration 886 — 2026-05-19 — vphase-15.10 / v1.6.1 released — first agent-cut release under ADR 0017, post-#528 deploy un-blocks walk-34 plan-seal
+
+**Event:** release
+
+**Phase:** phase:15 — Architect-driven UX & feature hardening
+
+**Narrative:** The very next iteration after ADR 0017 landed cut the first tag under its convention. The pre-conditions held cleanly: A.8's four-gate release-window checklist on post-#543 `main` (`7a118a7`) showed seven batches since `vphase-15.9` (the iter-879 #528 fix plus five blocked-tick STATUS syncs plus the ADR PR itself — concrete evidence the operator-gate stall was real and bounded by the slack window), the `CI Full Matrix` post-merge run **26065525680** SUCCESS across `fast` + `e2e (shard 1..4/4)` + `merge-reports`, the SemVer line decided as `v1.6.1` patch (the #528 use-case bidirectional-drag fix is a bug fix, and ADR 0017 is process-only and not user-visible), and no halt signal. I cut `vphase-15.10` and `v1.6.1` on `7a118a7` and pushed via `git push origin vphase-15.10 v1.6.1`; both release workflows queued at 2026-05-18T23:11:11Z. Anchoring the release on the ADR PR's squash rather than on the load-bearing fix (`f4915ae`) bundles the convention change into the release-notes diff — the document a future operator audit will read to see *why* the cadence shifted. The five blocked-tick close-out PRs (#533 / #535 / #537 / #539 / #541) will appear in the release notes as a single chronological block; that's accurate history, not noise — those iterations existed, the slack window did real work containing the cost of the convention drift before the audit threshold tripped. The structural lesson Phase 15 keeps consolidating: *the constitution is the constitution, and ambiguities in it should be detected, escalated, and resolved via ADR within a bounded latency rather than papered over by session habit*. The slack-window mechanism (iter-881 → iter-885) is the artefact that machinery; ADR 0017 retires it for tag cadence specifically, but the pattern generalises. With this release live, walk-34 plan-seal un-blocks at iter-887 against whatever `last-modified` / `etag` the new deploy settles to. Walk-34 is the chain[1] candidate that — on a clean re-execution of walk-33's 24 PCs with both V-B directions PASS — promotes rubric dim 10 (Use Case SysML conformance) from 2 to 3, the fourth score-3 dimension. The deploy itself runs in parallel with this close-out; iter-887's first action is the header-drift verification.
+
+**Links:**
+- vphase-15.10 release: https://github.com/michaeljfazio/mbse-workbench/releases/tag/vphase-15.10
+- v1.6.1 release: https://github.com/michaeljfazio/mbse-workbench/releases/tag/v1.6.1
+- Live app (vphase-15.10 deploy): https://michaeljfazio.github.io/mbse-workbench/
+- ADR 0017 (tag-cutting cadence — first enacted this iteration): https://github.com/michaeljfazio/mbse-workbench/blob/main/docs/adr/0017-tag-cutting-cadence.md
+- Load-bearing fix PR (iter-879 #528 use-case bidirectional drag): #531
+- Iter-885 ADR PR (release-notes anchor commit): #543
+- Iter-880 → iter-884 blocked-tick close-out PRs: #533, #535, #537, #539, #541
+- `CI Full Matrix` GREEN on main commit `7a118a7`: https://github.com/michaeljfazio/mbse-workbench/actions/runs/26065525680
+- Quality rubric: https://github.com/michaeljfazio/mbse-workbench/blob/main/docs/architect/quality-rubric.md
+
+---
