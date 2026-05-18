@@ -73,6 +73,8 @@ export type {
   IbdEnclosingFrameNodeType,
 } from './IbdEnclosingFrameNode';
 export {
+  IBD_ENCLOSING_FRAME_DEFAULT_HEIGHT,
+  IBD_ENCLOSING_FRAME_DEFAULT_WIDTH,
   IBD_ENCLOSING_FRAME_HEADER_HEIGHT,
   IBD_ENCLOSING_FRAME_PADDING,
   computeEnclosingFrameBounds,

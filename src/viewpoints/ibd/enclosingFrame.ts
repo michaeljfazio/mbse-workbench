@@ -4,6 +4,14 @@ import type { Diagram } from '@/workspace/diagram';
 export const IBD_ENCLOSING_FRAME_PADDING = 48;
 export const IBD_ENCLOSING_FRAME_HEADER_HEIGHT = 32;
 
+/**
+ * Default dimensions rendered for a freshly-created (empty) IBD — i.e. when
+ * the diagram has a context PartDefinition but no PartUsage nodes yet.
+ * Sized to accommodate two standard PartUsage columns with padding.
+ */
+export const IBD_ENCLOSING_FRAME_DEFAULT_WIDTH = 640;
+export const IBD_ENCLOSING_FRAME_DEFAULT_HEIGHT = 320;
+
 export interface IbdRect {
   readonly x: number;
   readonly y: number;

@@ -16,6 +16,8 @@ import {
   activityViewpoint,
   bddViewpoint,
   ibdViewpoint,
+  IBD_ENCLOSING_FRAME_DEFAULT_HEIGHT,
+  IBD_ENCLOSING_FRAME_DEFAULT_WIDTH,
   IBD_ENCLOSING_FRAME_HEADER_HEIGHT,
   IBD_ENCLOSING_FRAME_NODE_TYPE,
   IBD_ENCLOSING_FRAME_PADDING,
@@ -235,7 +237,11 @@ describe('toFlowNodes — IBD enclosing-frame injection (T-13.20)', () => {
     );
   });
 
-  it('does not inject a frame when no PartUsage nodes are rendered', () => {
+  it('injects a seed frame at default dimensions when no PartUsage nodes are rendered (fix #461)', () => {
+    // Per #461: an empty IBD (no PartUsage elements) must still render the
+    // enclosing frame so the canvas is not blank. The frame uses
+    // IBD_ENCLOSING_FRAME_DEFAULT_WIDTH / _HEIGHT constants and is positioned
+    // at the canvas origin.
     const def = mkPartDef('def-pump', 'Pump');
     const registry = buildRegistry([def]);
     const diagram = ibdDiagram({ kind: 'partDefinition', id: def.id });
@@ -248,7 +254,13 @@ describe('toFlowNodes — IBD enclosing-frame injection (T-13.20)', () => {
       registry,
       EMPTY,
     );
-    expect(nodes).toHaveLength(0);
+    expect(nodes).toHaveLength(1);
+    expect(nodes[0]?.type).toBe(IBD_ENCLOSING_FRAME_NODE_TYPE);
+    expect(nodes[0]?.position).toEqual({ x: 0, y: 0 });
+    expect(nodes[0]?.width).toBe(IBD_ENCLOSING_FRAME_DEFAULT_WIDTH);
+    expect(nodes[0]?.height).toBe(IBD_ENCLOSING_FRAME_DEFAULT_HEIGHT);
+    expect(nodes[0]?.data['partDefinitionId']).toBe(def.id);
+    expect(nodes[0]?.data['name']).toBe('Pump');
   });
 
   it('does not inject a frame when the referenced PartDefinition is missing from the registry', () => {
