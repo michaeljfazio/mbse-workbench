@@ -926,3 +926,21 @@ Phase 13 ships zero library content. Phase 13's design accommodates Phase 14 via
 - Quality rubric: https://github.com/michaeljfazio/mbse-workbench/blob/main/docs/architect/quality-rubric.md
 
 ---
+
+## Iteration 874 — 2026-05-19 — type:design backlog cleared: #452 and #454 dispositioned, A.12 #2 termination axis nearly satisfied
+
+**Event:** design-decision
+
+**Phase:** phase:15 — Architect-driven UX & feature hardening
+
+**Narrative:** Two open `type:design` issues had been hanging behind the iter-844 merge-queue escalation, and the iter-872 single-PR scope decision for #517 nudged the loop into a useful gap iteration while PR #519's CI ran and the post-merge `ci-full-matrix.yml` had not yet fired. The right scope for that gap was the disposition of #452 and #454 — both flagged in `STATUS.md`'s Known-issues section for several iterations as effectively-moot but still officially open. **#452** ("Speed up PR-gate CI") was the original tracking epic for the three CI-velocity steps: step 1 (e2e sharding, #472) and step 2 (chromium-only at PR gate, #475) both shipped earlier in the sprint and together cut PR-gate wallclock from ~30 min to ~4 min, with ADR 0016's doc-only-skip (corrected in #491) compounding to ~1m 30s for doc PRs; step 3 (merge queue, #469) hit the GitHub feature-gate wall documented in the iter-844 escalation (merge queue is org-only; `mbse-workbench` is a personal repo), and the operator closed #469 `COMPLETED` at 2026-05-18T13:17:34Z without a closing comment, effectively choosing the "accept steps 1+2 speedup, defer step 3" path. With the epic's three children all closed and the stated wallclock target (≤15 min) comfortably exceeded by steps 1+2 alone, #452 closed `completed` with a substantive disposition comment linking the iter-844 escalation, ADR 0016, and the operator's #469 path-decision. **#454** (raise A.8 cap 5 → 10) had a sharper question to answer because its own body specified the decisive criterion: *"If the data says no, keep at 5 and close this issue."* The data is in. Across ~30+ iterations since the CI-velocity fixes landed, the per-iteration "Last PR sweep" line in `STATUS.md` has tracked in-flight count at **1-2/5** without exception — branches drain faster than they open, throughput exceeds open-rate, the cap is not binding. Closing `not planned` with a comment recording the measurement window and pointing future iterations at the same data criterion if the question reopens. The bigger termination implication: **A.12 #2** (Zero open `phase:15` issues labelled `type:bug/feature/design`) now sits at 0 open `type:design` for the first time in this session. The remaining `type:feature` open is #517 — closing via PR #519's auto-merge as soon as CI clears the chromium baseline lift (iter-873's work). When #519 merges, A.12 #2 flips to fully satisfied; A.12 #1 (rubric saturation, currently 3 × score-3) and A.12 #3 (three convergence walks, currently chain[0 / 3]) remain the load-bearing termination gates. The lesson this iteration consolidates: **disposition is a first-class deliverable**. Issues that have become moot via external decisions (merge-queue feature gate, observed-not-binding cap pressure) cost ongoing cognitive load every time `STATUS.md` enumerates "open type:design issues"; explicit closure with a citation-bearing comment is cheaper than carrying them, and it documents the reasoning for a future reader who finds the issue link in a JOURNAL entry. The closure comments are the load-bearing artifacts here — anyone reopening the question hits the comment before re-doing the analysis.
+
+**Links:**
+- #452 closed `completed`: https://github.com/michaeljfazio/mbse-workbench/issues/452#issuecomment-4482213312
+- #454 closed `not planned`: https://github.com/michaeljfazio/mbse-workbench/issues/454#issuecomment-4482216174
+- iter-844 JOURNAL entry (merge-queue escalation): https://github.com/michaeljfazio/mbse-workbench/blob/main/JOURNAL.md
+- ADR 0016 (doc-only skip) with iter-849 correction: https://github.com/michaeljfazio/mbse-workbench/blob/main/docs/adr/0016-ci-doc-only-skip-e2e.md
+- AGENT.md A.8 (the unchanged 5-branch soft cap and the file-overlap claim board): https://github.com/michaeljfazio/mbse-workbench/blob/main/AGENT.md
+- Quality rubric: https://github.com/michaeljfazio/mbse-workbench/blob/main/docs/architect/quality-rubric.md
+
+---
