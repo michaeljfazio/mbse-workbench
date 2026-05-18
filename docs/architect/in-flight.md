@@ -6,4 +6,4 @@ When a branch merges (or is abandoned), remove its row.
 
 | Branch | Lead engineer (subagent) | Theme | Issues | Files touched (paths) | Started | Status |
 |--------|--------------------------|-------|--------|-----------------------|---------|--------|
-| _(none)_ | — | — | — | — | — | — |
+| `phase-15/explorer-diagram-row-click-area` | main | `area:explorer + area:cross-cutting` | #462 | `src/workspace/tree/ContainmentTree.tsx`, `tests/unit/workspace/tree/ContainmentTree.test.tsx`, `tests/e2e/explorer-diagram-row-activate.spec.ts` | 2026-05-18 | in PR |
