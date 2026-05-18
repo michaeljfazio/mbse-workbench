@@ -3,6 +3,8 @@
 ## Current phase
 phase:15 — Architect-driven UX & feature hardening
 
+🎯 **Iter-873: Chromium `use-case-with-association-edge` baseline lifted from CI run 26059828566 (PR #519).** Per the iter-25 procedure documented in `docs/CONTEXT.md`: PR #519's first CI run failed on shard 4/4 with the expected `A snapshot doesn't exist … writing actual` error for the new chromium baseline. Downloaded `playwright-test-results-shard-4` artifact, copied `use-case-with-association-edge-actual.png` (1280×720, 112751 bytes) over `tests/e2e/__screenshots__/use-case-edges.spec.ts/use-case-with-association-edge-chromium.png`. PR-gate CI is chromium-only per `ci.yml` (Webkit deferred to `ci-full-matrix.yml` on push-to-main + nightly). Webkit baseline lift happens in iter-874 after merge fires the full-matrix workflow.
+
 🎯 **Iter-872: #517 Actor↔UseCase association implemented (engineer batch); ADR 0007 § 5 / § 7 deferral closed.** Phase-15 #517 was the explicit dim-10 (UC SysML conformance) score-3 promotion blocker recorded by walk-32. Single-PR scope: validator accepts cross-kind Actor↔UseCase pairs in both directions; store's `linkUseCaseEdge` dispatches an `AssociationEdge` (already in the metamodel, shared with BDD) when `kind === 'Association'` and endpoints are cross-kind; the use-case viewpoint registers a new `USE_CASE_ASSOCIATION_EDGE_TYPE` rendered by `src/viewpoints/useCase/AssociationEdge.tsx` (plain solid line, no arrowhead, optional multiplicity labels mirroring the BDD geometry — UML use-case convention); the stereotype picker popover (`UseCaseEdgeKindPopover`) gains a fourth `Association` button enabled only for cross-kind drops. ADR 0007 amended with a "§ 5 / § 7 deferral closed by phase-15 #517" section. New `@visual` baseline `use-case-with-association-edge` (Chromium + WebKit) added — first CI run will fail on the missing baselines; iter-873 lifts them from the playwright-report artifact per the iter-25 procedure in `docs/CONTEXT.md`. Chain holds at 0 / 3 (this iteration is engineer work, not a walk).
 
 🎯 **Iter-871: walk-32 EXECUTED → 22/24 PCs PASS; #517 filed (Actor↔UseCase association deferral); chain stayed at 0 / 3.** Walk-32 confirmed 3/4 of iter-870's driver-correction hypothesis; the fourth (UC association drag direction) was falsified — root cause traced to ADR 0007 § 5 deferral never landing, not handle direction.
@@ -31,25 +33,22 @@ phase:15 — Architect-driven UX & feature hardening
 | A.12 #4 | FBW example shipped + loadable | **Unblocked.** Authoring can proceed in parallel with #517 follow-on work. |
 
 ## Current iteration
-- Iteration #: 872
-- Started: 2026-05-19 (UTC)
-- Branch: `phase-15/iter-872-actor-usecase-association` (off main, not stacked)
-- Working on: #517 — Actor↔UseCase association (PR pending)
+- Iteration #: 873
+- Started: 2026-05-18 (UTC)
+- Branch: `phase-15/iter-872-actor-usecase-association` (off main, not stacked) — reused for the baseline-lift commit on the same PR #519.
+- Working on: #517 — Actor↔UseCase association: PR #519 awaiting re-run after baseline lift.
 
 ## Last test run
-- `pnpm run typecheck` → PASS (no diagnostics).
-- `pnpm run lint` → PASS (0 errors, 3 pre-existing warnings — react-refresh/only-export-components in `ActionUsageNode.tsx` and `TransitionEdge.tsx`; unchanged from main).
-- `pnpm run test:unit` → PASS (136 files, 1486 tests). Updated assertions: `tests/unit/viewpoints/useCase.test.ts` (acceptedEdgeKinds now includes `'Association'`; edgeTypes registry now includes `USE_CASE_ASSOCIATION_EDGE_TYPE`; new `edgeTypeFor(Association)` case); `tests/unit/viewpoints/useCase/isValidConnection.test.ts` (cross-kind Actor↔UseCase now accepts; default+allowed for cross-kind returns `'Association'` / `['Association']`); `tests/unit/workspace/useCaseActions.test.ts` (three new linkUseCaseEdge(Association) tests: Actor→UseCase, UseCase→Actor, same-kind rejects).
-- `@visual` baselines for the new test `use-case-with-association-edge` (Chromium + WebKit) NOT yet generated locally — local darwin renderer differs from CI's Linux runner per `docs/CONTEXT.md` (2026-05-12 entry). First CI run will fail on those two screenshots; iter-873 lifts the `*-actual.png` from the playwright-report artifact via the documented iter-25 procedure.
-- `pnpm run test:e2e` not run locally (Playwright `webServer` brings up `pnpm dev` and the agent's runtime budget is better spent on CI's full suite).
+- CI run **26059828566** on PR #519 head `83db4d9` (commit before baseline lift): fast PASS (1m40s), e2e shards 1/2/3 PASS, shard **4/4 FAILED** on exactly one expected error: `A snapshot doesn't exist at … use-case-with-association-edge-chromium.png, writing actual.` No other regressions. Sibling baselines from the new Association palette entry held (no chip-strip drift like iter-37/iter-53 — the Use Case viewpoint did not add palette items, only an edge kind in the stereotype popover, which is non-canvas chrome). Webkit not exercised in PR gate.
+- Iter-873 baseline-lift commit (this iteration) adds only `use-case-with-association-edge-chromium.png` (1280×720, 112751 bytes); no code changes. Expected CI: fast PASS, e2e shards 1–4 PASS, auto-merge fires.
+- Webkit baseline pending the post-merge `ci-full-matrix.yml` run; iter-874 lifts it from that run's artefact.
 
 ## Last health check
 
 Per AGENT.md directive #13, iter-870 ran the periodic health check (divisible by 10) — all four checks PASS. Next health check is iter-880.
 
 ## Last PR sweep
-- Iter-872 launch: PR #518 (iter-871) had auto-merged at `2026-05-18T20:37:12Z` (fast-lane SUCCESS; e2e SKIPPED for doc-only changes per `.github/workflows/ci.yml` fast-lane). No other open PRs.
-- Iter-872 open: PR for this iteration (iter-872-actor-usecase-association) — pending. **In-flight 1/5 of A.8 cap.**
+- Iter-873: PR #519 (Actor↔UseCase association + chromium baseline) is the only open PR. CI run 26059828566 (pre-baseline-lift) FAILED on shard 4/4 missing-baseline only. New commit pushes the chromium baseline; expected to flip mergeable. **In-flight 1/5 of A.8 cap.**
 
 ## Known issues / blockers
 - **#517 OPEN at iter-872 launch, CLOSING via this iteration's PR.** Single-PR scope per the proposed-resolution sketch in the issue body. ADR 0007 § 6 (system-boundary chrome) remains a separate concern explicitly out of scope.
@@ -92,16 +91,16 @@ Rubric: **3 × score-3** (dim 5 BDD, dim 14 Round-trip integrity, dim 6 IBD) + *
 
 ## Next action
 
-**Iter-873 — lift the two new `@visual` baselines from the first failing CI artefact, push, watch merge.** Procedure (per `docs/CONTEXT.md` 2026-05-12 entry):
+**Iter-874 — watch PR #519 re-run, then lift the WebKit baseline from `ci-full-matrix.yml`.**
 
-1. `gh run list --branch phase-15/iter-872-actor-usecase-association --limit 1` to find the failing CI run-id.
-2. `gh run download <run-id> --name playwright-report --dir /tmp/iter-872-report`.
-3. For each browser project (`chromium-visual`, `webkit-visual`), locate the `data/<trace-hash>.zip` for the failing `use-case-with-association-edge` spec and extract the `*-actual.png` sha1 from `test.trace`.
-4. Copy `data/<sha1>` over `tests/e2e/__screenshots__/use-case-edges.spec.ts/use-case-with-association-edge-chromium.png` and `…-webkit.png` respectively.
-5. Commit `chore(visual): lift use-case-with-association-edge baselines from CI`, push.
-6. Auto-merge should fire on the green CI run.
+1. Confirm PR #519 PR-gate CI re-runs green on the baseline-lift commit and auto-merges to `main`.
+2. The post-merge push to `main` fires `ci-full-matrix.yml` (webkit-visual project included). That run will fail with a single missing-baseline error for `use-case-with-association-edge-webkit.png`. Find the run id with `gh run list --workflow ci-full-matrix.yml --branch main --limit 1`.
+3. `gh run download <run-id> --dir /tmp/iter-874-report`. Locate `use-case-with-association-edge-actual.png` under the `playwright-test-results-shard-*` directory whose path contains `webkit-visual`.
+4. Copy it over `tests/e2e/__screenshots__/use-case-edges.spec.ts/use-case-with-association-edge-webkit.png`.
+5. Commit `chore(visual): lift use-case-with-association-edge webkit baseline from full-matrix CI`, open a separate small PR, auto-merge.
+6. After webkit baseline lands, the next push or scheduled full-matrix run will go green, unblocking the next intermediate `vphase-15.N` release.
 
-**After PR merges + `vphase-15.N` deploys** (likely `v1.6.0` per A.8 SemVer rule — Association is an outward-facing feature visible to the architect):
+**After PR #519 merges + `vphase-15.N` deploys** (likely `v1.6.0` per A.8 SemVer rule — Association is an outward-facing feature visible to the architect):
 
 - **Walk-33** (regression of walk-32 against the post-merge `vphase-15.N` Pages) — expected outcome: 23/24 PASS + 1 INFO, no PARTIAL. If holds, advance chain 0 → 1 / 3 and promote rubric dim 10 → 3 (FOURTH score-3 dimension).
 - **Dedicated dim-17 walk** (reconnect-by-endpoint-drag + waypoint add/remove + per-edge routing-style) — schedulable after dim-10 promotion lands.
