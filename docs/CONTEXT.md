@@ -8,47 +8,37 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
 
 ## Discovered facts
 
-- **2026-05-18 (iter-844, CI step 3 / #469)** — GitHub's native **merge
-  queue** is enabled on `main` via a Repository Ruleset (rule type
-  `merge_queue`, `merge_method: SQUASH`, `grouping_strategy: ALLGREEN`,
-  `min_entries_to_merge: 1`, `max_entries_to_merge: 5`,
-  `min_entries_to_merge_wait_minutes: 5`, `check_response_timeout_minutes: 60`).
-  The ruleset is **not checked in** — it lives on the repo and is
-  managed via `gh api /repos/{owner}/{repo}/rulesets`. The runbook to
-  enable / inspect / disable lives at the bottom of this entry. Three
-  PR-sweep semantics shifted with the queue:
-  (1) `gh pr merge --auto --squash` still works — once CI is green on
-  the PR, GitHub enrolls it into the queue automatically; the loop's
-  commands need no change.
-  (2) **Do NOT `gh pr update-branch` a PR that is already enrolled in
-  the queue.** The queue tests the PR against the latest `main` by
-  building a temporary `gh-readonly-queue/main/pr-<n>-<sha>` ref; a
-  manual update-branch dequeues the PR, re-runs CI from scratch on the
-  PR's own branch, and forfeits the batched-CI benefit. The PR sweep
-  directive must skip a PR whose status checks include a
-  `Queued / In merge queue` indicator — visible via
-  `gh pr view <n> --json autoMergeRequest,statusCheckRollup` (look for
-  `headRefName` matching `gh-readonly-queue/main/pr-*` in the latest
-  check run, or use `gh api /repos/.../pulls/<n>` and inspect
-  `auto_merge.merge_method` + the queue head refs).
-  (3) When the queue tests a batch of N PRs together, CI fires on
-  `merge_group` event against the merge-group ref. `ci.yml` listens for
-  that event and the same `check` umbrella job runs. If `check` fails
-  on the merge group, GitHub bisects: the queue removes the most
-  recently-added PR and retries; if `check` then passes, the removed
-  PR is left in `Queued` state with a failure annotation for the agent
-  to triage. **Bisect failures show up in the PR's checks history with
-  the `merge_group` event source.** Branch-protection-required context
-  name `check` is unchanged. `ci-full-matrix.yml` is **not** queue-gated
-  and continues to run only on `push:main` + cron + dispatch — it
-  observes the queue's batched-squash commit on main after merge.
-  **Runbook (gh api):** see the documented commands in the comment at
-  `.github/workflows/ci.yml` header. The current ruleset id (printed
-  by `gh api /repos/michaeljfazio/mbse-workbench/rulesets`) is needed
-  to update or delete the queue config. To disable the queue (halting
-  safety per #469 / AGENT.md): `gh api -X DELETE
-  /repos/michaeljfazio/mbse-workbench/rulesets/<id>` — this removes the
-  queue immediately and PRs fall back to direct auto-merge.
+- **2026-05-18 (iter-844, CI step 3 / #469 — BLOCKED)** — GitHub's
+  native **merge queue cannot be activated on this repository**.
+  Empirical evidence (iter-844): `POST /repos/.../rulesets` with a
+  `merge_queue` rule returns `422 Validation Failed: "Invalid rule
+  'merge_queue': "` (the trailing empty colon is consistent across
+  every parameter variation — minimum body, full body with
+  `bypass_actors: []`, with/without an accompanying
+  `required_status_checks` rule, `enforcement: active` vs `evaluate`).
+  The same POST endpoint accepts other rule types (e.g. `deletion`)
+  fine on this repo, so the API is reachable; the failure is
+  rule-type-specific. The GraphQL `Repository.mergeQueue` field
+  returns `null` for this repo, and there is no `enableMergeQueue`
+  mutation in the schema — the only queue-related GraphQL mutations
+  are `enqueuePullRequest` and `dequeuePullRequest`, which require the
+  queue to already exist. **Root cause: GitHub gates merge queue to
+  organization-owned repositories.** `mbse-workbench` is a user-owned
+  (michaeljfazio) public repo, so the feature is unavailable
+  regardless of plan. Confirmed by checking
+  `gh api /repos/michaeljfazio/mbse-workbench --jq '.owner.type'`
+  (returns `User`, not `Organization`). The `merge_group:` event
+  trigger added to `ci.yml` in PR #477 is kept (dormant) so a future
+  org-transfer doesn't require a workflow change. **Issue #469 is
+  relabeled `status:needs-human`** for the operator to decide: (a)
+  transfer the repo to a GitHub organization (queue then unblocks via
+  the documented Rulesets POST), (b) close #469 as `wontfix` and
+  accept the existing 7-9× speedup from CI steps 1+2 (#472 + #475),
+  or (c) explore non-queue batching strategies (none currently exist
+  in the GitHub feature set). The 7-9× speedup from steps 1+2 already
+  satisfies the bulk of #452's "speed up PR-gate CI" intent; step 3
+  was incremental on top. No further loop work on #469 until human
+  decides (a)/(b)/(c).
 
 - **2026-05-18 (iter-842, CI step 2 / #468)** — CI now has two workflows:
   `ci.yml` is the **PR gate** (chromium + chromium-visual only, sharded

@@ -3,13 +3,15 @@
 ## Current phase
 phase:15 — Architect-driven UX & feature hardening
 
-🎯 **Iter-842: CI restructure step 2 IN FLIGHT — PR opening for #468.** `.github/workflows/ci.yml` PR gate trimmed to chromium projects only (`--project=chromium --project=chromium-visual` + chromium-only browser install) and its `push: branches: [main]` trigger removed. New `.github/workflows/ci-full-matrix.yml` carries push-to-main + daily 09:00-UTC cron + `workflow_dispatch` triggers and runs all four projects (chromium + chromium-visual + webkit + webkit-visual). Webkit regressions now caught post-merge in the observational full-matrix workflow; manual `p0/type:bug` filing expectation per AGENT.md directive #13 documented in the new workflow's header comment + `docs/CONTEXT.md`. Branch protection's required `check` context unchanged (umbrella job retained in `ci.yml`); full-matrix workflow intentionally not required. Expected further PR-gate wallclock cut vs iter-841's 5m 46s baseline (chromium-only halves the e2e + browser-install work per shard).
+🎯 **Iter-844: CI restructure step 3 BLOCKED — merge queue not available on user-owned public repos.** PR #477 merged the `merge_group:` workflow trigger to `main` (`ci.yml` header documents that the trigger is dormant pending repo transfer to an organization). Subsequent attempt to activate the queue via `POST /repos/michaeljfazio/mbse-workbench/rulesets` with a `merge_queue` rule returned **`422 Validation Failed: "Invalid rule 'merge_queue': "`** across every parameter variation (minimum body, full body with `bypass_actors: []`, with/without companion `required_status_checks` rule, `enforcement: active` vs `evaluate`). The 422 is consistent and the empty-colon suffix is a feature-gate sentinel — other rule types (e.g. `deletion`) POST fine on this repo. GraphQL `Repository.mergeQueue` returns `null`; no `enableMergeQueue` mutation exists; only `enqueuePullRequest` / `dequeuePullRequest` exist (both require an already-enabled queue). **Root cause: `gh api /repos/michaeljfazio/mbse-workbench --jq '.owner.type'` returns `User` (not `Organization`)** — GitHub gates the merge queue feature to org-owned repositories regardless of plan/visibility. **#469 relabeled `status:needs-human`** with a comment summarising the diagnosis; the operator decides (a) transfer the repo to a GitHub org → queue unblocks via the documented Rulesets POST, (b) close #469 as `wontfix` and accept the existing **~7-9× CI speedup** from steps 1+2 (#472 + #475) which already satisfies the bulk of #452's "speed up PR-gate CI" intent, or (c) explore non-queue batching strategies (none currently exist in the GitHub feature set). No further loop work on #469 until the operator decides. Workflow trigger left in place so an eventual org transfer doesn't need a workflow change.
 
-🎯 **Iter-841: CI restructure step 1 SHIPPED — PR #472 merged at 12:05:31Z.** `.github/workflows/ci.yml` split from monolithic `check` → `fast` + 4-way sharded `e2e` matrix + `merge-reports` + umbrella `check`. Total PR-gate wallclock measured on #472's own run: **5m 46s** (kick-off 11:59:42Z → required `check` SUCCESS 12:05:28Z) vs prior ~30-40min baseline = **~6× speedup**. All 7 jobs green; auto-merge fired 3 s after `check` turned SUCCESS. Branch-protection preserved (umbrella `check` keeps the exact context name required by `branches/main/protection`). Issue #467 closed. CI-velocity epic #452 advances to step 2 (#468, webkit-out-of-PR-gate, opening this iteration) and step 3 (#469, merge queue, ready).
+🎯 **Iter-843: STATUS sync + PR sweep + observe first full-matrix run.** PR #476 (iter-843 STATUS sync) opened against post-#475 main; CI green but BEHIND after #477 merged → still open at iter-844 start, **superseded by this iter-844 STATUS PR** (closing #476 as subsumed). First push-to-main `ci-full-matrix` run on SHA `0ea8f52` completed **conclusion: success** — inaugural webkit-side signal on the post-restructure architecture is GREEN. PR sweep rebased all 3 then-open PRs (#473, #471, #463) onto post-#475 main; auto-merge already armed (SQUASH) on each. #473 (README Pages-URL link) merged as squash `07ce95e` during iter-843. Iter-844 began with #476/#471/#463 BEHIND post-#477 main.
 
-🎯 **Iter-836: walk-23 — Pages-side regression of the dim-14 fixture against the deployed `vphase-15.6` / `v1.5.0` bundle (`9136ae8`).** Identical fixture to walk-21/walk-22 (6 elements, 5 whitespace names, 1 explicit BDD repr). All four iter-833 pass-criteria GREEN against the live Pages URL: JSON round-trip lossless; SysML round-trip lossless **including diagrams** (`diagram_total: 2 → 2`); `baseline.sysml` Pages-emitted **byte-identical (925 bytes)** to walk-22's dev output. Page errors: 0. Console errors: 0. **Rubric dim 14 holds at 3** (no change — promoted at walk-22). **Convergence chain (A.12 #3): 1 → 2** (walk-22 chain[1] → walk-23 chain[2]). Zero workbench issues filed.
+🎯 **Iter-842: CI restructure step 2 SHIPPED — PR #475 merged at 12:25Z (squash `0ea8f52`).** `.github/workflows/ci.yml` PR gate trimmed to chromium projects only and its `push: branches: [main]` trigger removed; new `.github/workflows/ci-full-matrix.yml` runs all four projects (chromium + chromium-visual + webkit + webkit-visual) on push-to-main + daily 09:00-UTC cron + `workflow_dispatch`. Measured PR-gate wallclock on #475's own run: **4m 10s** vs iter-841 step-1 baseline of 5m 46s = **~28% additional cut** (cumulative vs pre-restructure monolithic ~30-40min ≈ **~7-9× speedup**). All 7 jobs green; auto-merge fired ~3 s after `check` turned SUCCESS. Branch-protection preserved. Issue #468 closed.
 
-🎯 **Iter-835: `vphase-15.6` / `v1.5.0` release shipped.** SemVer minor bump (A.8 outward-facing rationale: #433/#436 BDD edge-taxonomy + multiplicity features visible to a user loading the example). Pages deploy live (HTTP 200) at deploy SHA `9136ae8`. JOURNAL entry written per A.14.
+🎯 **Iter-841: CI restructure step 1 SHIPPED — PR #472 merged at 12:05:31Z.** `.github/workflows/ci.yml` split from monolithic `check` → `fast` + 4-way sharded `e2e` matrix + `merge-reports` + umbrella `check`. PR-gate wallclock 5m 46s vs prior ~30-40min baseline = **~6× speedup**. Branch-protection-required `check` context preserved. Issue #467 closed.
+
+🎯 **Iter-836: walk-23 — Pages-side regression of the dim-14 fixture against the deployed `vphase-15.6` / `v1.5.0` bundle (`9136ae8`).** All four iter-833 pass-criteria GREEN against the live Pages URL. **Rubric dim 14 holds at 3** (promoted at walk-22). **Convergence chain (A.12 #3): 1 → 2** (walk-22 chain[1] → walk-23 chain[2]). Zero workbench issues filed.
 
 🎯 **Iter-826: walks 14 + 19 merged → rubric dim 5 (BDD) at score 3 = FIRST score-3 dimension.**
 
@@ -18,31 +20,33 @@ phase:15 — Architect-driven UX & feature hardening
 | # | Condition | Status |
 |---|-----------|--------|
 | A.12 #1 | Every rubric dim at 3 | **2 of 28** at 3 (dim 5 BDD at iter-826; dim 14 Round-trip integrity at iter-834, Pages-side confirmed at iter-836); 20 at 2, 2 at 1 (dim 17 edge editing; dim 22 import/export), 4 at 0 (incl. dim 13, dim 23) |
-| A.12 #2 | Zero open `phase:15` issues labelled `type:bug/feature/design` | **3 open `type:design`** — #452 (CI-velocity epic), #454 (raise A.8 cap; status:blocked), #468 (status:in-progress this iter). All CI-velocity meta-work. |
+| A.12 #2 | Zero open `phase:15` issues labelled `type:bug/feature/design` | **2 open `type:design`** — #452 (CI-velocity epic; only step 3 remains and that's now `status:needs-human` per iter-844), #454 (raise A.8 cap; status:blocked, gated on #469 which is now itself blocked). **1 open `type:chore` with `status:needs-human`**: #469. |
 | A.12 #3 | Three consecutive convergence walks | **chain at 2** (walk-22, walk-23). One more zero-issue walk completes A.12 #3; walk-24 (#463) in flight. |
 | A.12 #4 | FBW example shipped + loadable | partial — engineering-unblocked at dim-14 = 3; remaining bottleneck is architect authoring throughput vs A.6 coverage thresholds. |
 
 ## Current iteration
-- Iteration #: 842
+- Iteration #: 844
 - Started: 2026-05-18
-- Branch: `phase-15/iter-842-ci-step2-webkit-out-of-pr-gate`
-- Working on: **CI step 2 (#468)** — chromium-only PR gate + new `ci-full-matrix.yml` workflow for push-to-main + nightly full-browser coverage. Touched files: `.github/workflows/ci.yml`, `.github/workflows/ci-full-matrix.yml` (new), `docs/CONTEXT.md`, `STATUS.md`. Disjoint touched-file sets vs every other in-flight PR.
+- Branch: `phase-15/iter-844-merge-queue-blocked`
+- Working on: **CI step 3 (#469) blocked** — PR #477 (`merge_group:` workflow trigger) shipped to `main` as squash `42c84ed`; post-merge Rulesets POST returned 422 across all attempts due to repo being user-owned (not org-owned). Touched files this PR: `.github/workflows/ci.yml` (header comment correcting "active" → "dormant"), `docs/CONTEXT.md` (correcting the iter-844 entry to document the block), `STATUS.md` (this update). Disjoint touched-file sets vs every other in-flight PR.
 
 ## Last test run
-- Local: `python3 -c "import yaml; [yaml.safe_load(open(p)) for p in ['.github/workflows/ci.yml','.github/workflows/ci-full-matrix.yml']]; print('yaml ok')"` → PASS. No source-code changes this iteration; functional/visual signal comes from this PR's own CI run on the new `ci.yml` shape. The new `ci-full-matrix.yml` fires only on push-to-main + cron + dispatch — first webkit-side data point arrives on squash-merge to main.
+- No source-code or workflow-logic changes this iteration (only ci.yml header comment + docs + STATUS). `dorny/paths-filter@v3` classifies `.github/workflows/ci.yml` as `code` so the full e2e shard matrix still runs on this PR's CI; expected wallclock ~4-5 min on the post-#475 PR gate.
 
 ## Last PR sweep
-- Iter-842 start: 4 open PRs (#463, #471, #473, #474). #471 + #463 had GREEN CI on the pre-restructure monolithic `check` but were BEHIND main; ran `gh pr update-branch` on both (both rebased successfully — they now pick up the post-#472 split `fast` + sharded `e2e` workflow). #473 (docs-only README link) was on its own CI; #474 (iter-841 STATUS sync) `fast` was IN_PROGRESS at sweep time, then merged at ~12:18Z as squash `3325b64`. Auto-merge enabled on every open PR. **PR sweep: merged 1 (#474 closed mid-iteration), updated 2 (#471, #463), still in-flight 2 (#473, plus my own #475 rebased post-#474).**
+- Iter-843 start: 3 open PRs (#473, #471, #463). All three GREEN on their last `check` but BEHIND post-#475 main. Ran `gh pr update-branch` on all three; auto-merge already enabled (SQUASH) on each. #473 merged during iter-843 as squash `07ce95e`.
+- Iter-844 start: 4 open PRs (#476, #471, #463, plus #477 just opened). After #477 merged mid-iter as squash `42c84ed`, the other 3 went BEHIND again. `gh pr update-branch` ran on #476/#471/#463 mid-iteration; CI re-running. **iter-844 sweep: rebased 3 (#476, #471, #463), merged 1 (#477), in-progress 1 (this STATUS PR).** #476 will be closed as subsumed by this STATUS PR.
 
 ## Known issues / blockers
-- None for rubric/walk advancement. `phase:15` backlog: #452 CI-velocity epic with step 2 (#468) opening this iteration, step 3 (#469) ready; #454 ADR cap-raise unblocks after step 3 lands; #470 in-flight board sync handled by #471.
+- **#469 (CI step 3, merge queue) BLOCKED:** GitHub feature-gates merge queue to org-owned repos. Relabeled `status:needs-human`. No further loop work pending operator decision (transfer to org, close as wontfix, or accept current 7-9× speedup as sufficient).
+- All other rubric/walk advancement unblocked. `phase:15` backlog narrows further once #469 is resolved one way or another.
 
-## Open phase:15 issues at iter-842 mid-iteration
-- #452 (p1, type:design, status:ready, area:cross-cutting) — Speed up PR-gate CI (closeable once #469 also lands)
-- #454 (p2, type:design, status:blocked, area:cross-cutting) — ADR: raise A.8 in-flight branch soft cap (unblock after #469)
-- #468 (p1, type:chore, status:in-progress, area:cross-cutting) — **CI step 2**: PR opening this iteration
-- #469 (p1, type:chore, status:ready, area:cross-cutting) — **CI step 3**: enable GitHub merge queue on `main`
-- #470 (p2, type:chore, status:in-progress, area:cross-cutting) — Sync in-flight claim board (PR #471 in flight)
+## Open phase:15 issues at iter-844 close
+- #452 (p1, type:design, status:ready, area:cross-cutting) — Speed up PR-gate CI. Steps 1+2 done; step 3 (#469) blocked. Closeable when human decides #469 fate; bulk of intent already delivered (7-9× speedup).
+- #454 (p2, type:design, status:blocked, area:cross-cutting) — ADR: raise A.8 in-flight branch soft cap. Was gated on step 3 landing; now indefinitely blocked unless step 3 resolves.
+- #469 (p1, type:chore, **status:needs-human**, area:cross-cutting) — CI step 3 merge queue. Blocked on repo ownership (User vs Organization). Diagnosis comment posted iter-844.
+- #470 (p2, type:chore, status:in-progress, area:cross-cutting) — Sync in-flight claim board (PR #471 in flight, rebased iter-844).
+- #463 PR open — walk-24 close-out (dim-13 cross-diagram coherence findings #461 / #462), rebased iter-844.
 
 ## Decisions log
 
@@ -57,11 +61,13 @@ phase:15 — Architect-driven UX & feature hardening
 - **Iter-836 — walk-23 Pages-side regression:** Dim 14 holds at 3. **Convergence chain A.12 #3: 1 → 2.**
 - **Iter-837..840 (compressed):** A.8 cap unblock via rebase-all; walk-23 close-out merged; walk-9 / walk-16 docs-only close-outs merged; ADR 0016 doc-only e2e-skip path filter shipped via #466 (closing #453 by implementation); PR #465 explorer diagram-tab fix; PR #464 IBD enclosing-frame seed; CI-velocity epic #452 decomposed into 3 step-issues (#467 / #468 / #469); walk-24 dispatched (#463); in-flight board sync dispatched (#471); visual baseline thresholds raised on known-flake screens (#460).
 - **Iter-841 — CI step 1 shipped (PR #472 → squash `6d15ca9`).** Split monolithic `check` → `fast` + 4-way sharded `e2e` + `merge-reports` + umbrella `check`. PR-gate wallclock 5m 46s vs prior ~30-40min = ~6× speedup. Branch protection's `check` context preserved. STATUS sync for iter-841 landed as #474 (squash `3325b64`) during iter-842's tick.
-- **Iter-842 — CI step 2 PR opened (#475 → closes #468).** `ci.yml` PR-gate trimmed to chromium projects only (chromium browser install + `--project=chromium --project=chromium-visual` flags); `push: branches: [main]` trigger removed. New `ci-full-matrix.yml` runs all four projects on push-to-main + daily 09:00-UTC cron + workflow_dispatch. Branch-protection-required `check` context unchanged. Manual escalation for full-matrix red runs documented in the new workflow's header + `docs/CONTEXT.md` (deferred automation per #468's "or document the manual escalation expectation" out). PR sweep this iteration rebased #471 + #463 onto post-#472 main; #474 (iter-841 STATUS sync) merged during the tick → #475 rebased onto post-#474 main to resolve STATUS conflict.
+- **Iter-842 — CI step 2 PR opened (#475 → closes #468).** `ci.yml` PR-gate trimmed to chromium projects only; `push: branches: [main]` trigger removed. New `ci-full-matrix.yml` runs all four projects on push-to-main + daily 09:00-UTC cron + workflow_dispatch.
+- **Iter-843 — CI step 2 merged (PR #475 → squash `0ea8f52`).** Measured PR-gate wallclock 4m 10s vs step-1 5m 46s = ~28% additional cut; cumulative ~7-9× speedup. Issue #468 closed. First push-to-main `ci-full-matrix` run on `0ea8f52` reported **success**. Open backlog narrowed to 2 design + 1 chore + 1 in-progress chore. iter-843 STATUS-sync PR (#476) opened but did not merge before iter-844 began — subsumed by this iter-844 STATUS PR.
+- **Iter-844 — CI step 3 BLOCKED on repo-ownership feature gate.** PR #477 shipped the `merge_group:` workflow trigger to `main` (squash `42c84ed`). Post-merge Rulesets POST to enable the queue returned 422 across every parameter variation; root cause confirmed via `.owner.type == "User"` + GraphQL `Repository.mergeQueue == null` + no `enableMergeQueue` mutation. **#469 relabeled `status:needs-human` with diagnosis comment.** Loop will not retry #469 until operator transfers the repo to an organization, closes #469 as `wontfix`, or proposes a non-queue alternative. The 7-9× speedup from steps 1+2 already delivers the bulk of #452's stated intent — step 3 was incremental. Workflow trigger left in place (dormant) so a future org transfer is a one-API-call activation.
 
 ## Session checkpoint summary
 
-This session (iter-793 → iter-842) executed **50 iterations** spanning bootstrap, **12 architect walks** (6-10 FBW + 14-23 viewpoints + round-trip ×4) plus walk-24 in flight, **~22 engineer batches**, **6 release tags**, **3 ADRs** (0014/0015/0016), and CI-velocity restructure steps 1 (#472) + 2 (#475 in flight). Cumulative delivery:
+This session (iter-793 → iter-844) executed **52 iterations** spanning bootstrap, **12 architect walks** (6-10 FBW + 14-23 viewpoints + round-trip ×4) plus walk-24 in flight, **~23 engineer batches**, **6 release tags**, **3 ADRs** (0014/0015/0016), and CI-velocity restructure steps 1 (#472) + 2 (#475) shipped + step 3 (#469) blocked on org-only feature gate. Cumulative delivery:
 
 | Tag | Date | What |
 |-----|------|------|
@@ -72,18 +78,20 @@ This session (iter-793 → iter-842) executed **50 iterations** spanning bootstr
 | vphase-15.5 / v1.4.0 | 2026-05-18 | ADR 0015 steps 2/3/4 (empty-state click-shortcut, inspector contextual, toolbar `+` retires) |
 | vphase-15.6 / v1.5.0 | 2026-05-18 | #448 quoted-ident + #451 SysML view-block round-trip → dim 14 to 3 |
 
-Rubric: **2 × score-3** (dim 5 BDD, dim 14 Round-trip integrity; Pages-side dim 14 confirmed iter-836) + 20 × score-2 + 2 × score-1 + 4 × score-0.
+Rubric: **2 × score-3** (dim 5 BDD, dim 14 Round-trip integrity) + 20 × score-2 + 2 × score-1 + 4 × score-0.
 
 ## Next action
 
-**Iter-843 — recommended pickup: observe step-2 PR CI shape, then decide between CI step 3 (#469, merge queue) and walk-25 dim-13 follow-up.** Rationale: (a) Step 2's first PR-gate run (#475 itself) is the wallclock data point against the chromium-only-PR-gate shape — capture it on merge so we have a step-2 baseline to compare against step-3's merge-queue introduction. (b) Step 3 (#469) further reshapes the PR-gate signal (merge queue serialises merges and adds its own status context); only safe to pick once step 2 is post-merge AND the first push-to-main full-matrix run has reported (so the full-matrix workflow is known-good before merge queue serialises around it). (c) Walk-24 close-out (#463) and walk-25 are sequentially gated — walk-24's dim-13 finding set (#461 / #462 per PR title) needs reading before the next walk's plan is written.
+**Iter-845 — recommended pickup: walk-25 dim-13 follow-up after walk-24 close-out (#463) merges.** Rationale: With #469 stuck on a non-engineering decision and #452/#454 transitively blocked behind it, rubric advancement returns to the front. Walk-24's #461/#462 finding set must be on `main` before walk-25's plan is written (per A.5 walk discipline). Walk-25 then targets dim-13 (cross-diagram coherence — same element across viewpoints stays in sync, cross-diagram navigation, rename reflection, registry integrity) toward score 2 → 3.
 
-**CI step 3 (#469, merge queue) sequencing:** still pick after step 2 lands AND at least one full-matrix push-to-main run reports clean.
+**Iter-845 PR sweep:** rebase #471 + #463 + (if still open) #476 onto post-iter-844 main. With this STATUS PR aiming for merge, the trio will go BEHIND again — same churn pattern that motivated #469. Without the queue, the cost is unchanged from baseline. The full-matrix workflow ran clean on `0ea8f52` so the chromium-only PR gate is the steady-state PR signal going forward.
 
-**ADR for raising A.8 cap (#454):** still gated on step 3 landing (step 2 + step 3 together justify the cap raise per #454's body).
+**#469 (CI step 3, merge queue):** No further loop work. `status:needs-human` until operator decides (a) org transfer, (b) wontfix close, or (c) propose a non-queue alternative. If wontfix: close #469 and #454, downgrade #452 to "closeable" with steps 1+2 delivered.
+
+**ADR for raising A.8 cap (#454):** indefinitely blocked behind #469.
 
 **FBW example (A.12 #4):** engineering-unblocked at dim-14 = 3. Architect authoring throughput against A.6 coverage thresholds remains the bottleneck.
 
-**In-flight at iter-842 close (4/5 of A.8 cap after #474 merged mid-iter):** #463 (walk-24, rebased onto post-#472 main), #471 (in-flight board sync, rebased), #473 (README Pages-URL link), #475 (this iteration — CI step 2, rebased onto post-#474 main). All non-overlapping touched-file sets.
+**In-flight at iter-844 close (4/5 of A.8 cap):** #463 (walk-24, rebased post-#477), #471 (in-flight board sync, rebased post-#477), this iter-844 STATUS PR, and #476 (iter-843 STATUS — will be closed-as-subsumed at the same time this iter-844 STATUS PR is opened). After cleanup, the cap reads 3/5.
 
-**Halting safety:** STOP file / `status:emergency-stop` label unchanged; Phase-15 iter-count at 50, well under the 300 churn ceiling.
+**Halting safety:** STOP file / `status:emergency-stop` label unchanged; Phase-15 iter-count at 52, well under the 300 churn ceiling. Halting safety for #469 per AGENT.md: relabel to `status:needs-human` is the prescribed move when the work isn't loop-resumable — applied.
