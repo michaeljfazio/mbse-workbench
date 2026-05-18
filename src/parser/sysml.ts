@@ -1243,8 +1243,14 @@ class Parser {
     switch (kw) {
       case 'composition':
         return this.finishEdge('Composition');
+      case 'aggregation':
+        return this.finishEdge('Aggregation');
       case 'generalization':
         return this.finishEdge('Generalization');
+      case 'association':
+        return this.finishEdge('Association');
+      case 'dependency':
+        return this.finishEdge('Dependency');
       case 'trace': {
         const kindTok = this.expectIdent();
         const traceKind = kindTok.value as RequirementTraceKind;

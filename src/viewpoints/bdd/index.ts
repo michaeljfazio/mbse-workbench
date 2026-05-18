@@ -8,22 +8,57 @@ import {
   BlockNode,
 } from './BlockNode';
 import {
+  BDD_AGGREGATION_EDGE_TYPE,
+  AggregationEdge,
+  type BddAggregationEdge,
+} from './AggregationEdge';
+import {
+  BDD_ASSOCIATION_EDGE_TYPE,
+  AssociationEdge,
+  type BddAssociationEdge,
+} from './AssociationEdge';
+import {
   BDD_COMPOSITION_EDGE_TYPE,
   CompositionEdge,
   type BddCompositionEdge,
 } from './CompositionEdge';
+import {
+  BDD_DEPENDENCY_EDGE_TYPE,
+  DependencyEdge,
+  type BddDependencyEdge,
+} from './DependencyEdge';
 import {
   BDD_GENERALIZATION_EDGE_TYPE,
   GeneralizationEdge,
   type BddGeneralizationEdge,
 } from './GeneralizationEdge';
 
-export { BDD_BLOCK_NODE_TYPE, BDD_COMPOSITION_EDGE_TYPE, BDD_GENERALIZATION_EDGE_TYPE };
+export {
+  BDD_AGGREGATION_EDGE_TYPE,
+  BDD_ASSOCIATION_EDGE_TYPE,
+  BDD_BLOCK_NODE_TYPE,
+  BDD_COMPOSITION_EDGE_TYPE,
+  BDD_DEPENDENCY_EDGE_TYPE,
+  BDD_GENERALIZATION_EDGE_TYPE,
+};
 export type { BddBlockData, BddBlockNode, BlockRenameCallback, BlockResizeCallback } from './BlockNode';
+export type { BddAggregationEdge };
+export type { BddAssociationEdge };
 export type { BddCompositionEdge };
+export type { BddDependencyEdge };
 export type { BddGeneralizationEdge };
-export type BddEdge = BddCompositionEdge | BddGeneralizationEdge;
-export type BddEdgeKind = 'Composition' | 'Generalization';
+export type BddEdge =
+  | BddCompositionEdge
+  | BddAggregationEdge
+  | BddGeneralizationEdge
+  | BddAssociationEdge
+  | BddDependencyEdge;
+export type BddEdgeKind =
+  | 'Composition'
+  | 'Aggregation'
+  | 'Generalization'
+  | 'Association'
+  | 'Dependency';
 
 export {
   BDD_BLOCK_COMPARTMENT_DEFAULT_MAX_VISIBLE,
@@ -59,7 +94,10 @@ const BDD_NODE_TYPES = Object.freeze({
 
 const BDD_EDGE_TYPES = Object.freeze({
   [BDD_COMPOSITION_EDGE_TYPE]: CompositionEdge,
+  [BDD_AGGREGATION_EDGE_TYPE]: AggregationEdge,
   [BDD_GENERALIZATION_EDGE_TYPE]: GeneralizationEdge,
+  [BDD_ASSOCIATION_EDGE_TYPE]: AssociationEdge,
+  [BDD_DEPENDENCY_EDGE_TYPE]: DependencyEdge,
 }) as unknown as ViewpointEdgeTypes;
 
 export const bddViewpoint: Viewpoint = {
@@ -67,7 +105,13 @@ export const bddViewpoint: Viewpoint = {
   label: 'Block Definition Diagram',
   acceptedElementKinds: ['PartDefinition'],
   acceptedContextKinds: ['package', 'partDefinition'],
-  acceptedEdgeKinds: ['Composition', 'Generalization'],
+  acceptedEdgeKinds: [
+    'Composition',
+    'Aggregation',
+    'Generalization',
+    'Association',
+    'Dependency',
+  ],
   acceptedEdgeElementKinds: [],
   defaultLayout: 'dagre',
   paletteItems: [
@@ -87,8 +131,14 @@ export const bddViewpoint: Viewpoint = {
     switch (edge.kind) {
       case 'Composition':
         return BDD_COMPOSITION_EDGE_TYPE;
+      case 'Aggregation':
+        return BDD_AGGREGATION_EDGE_TYPE;
       case 'Generalization':
         return BDD_GENERALIZATION_EDGE_TYPE;
+      case 'Association':
+        return BDD_ASSOCIATION_EDGE_TYPE;
+      case 'Dependency':
+        return BDD_DEPENDENCY_EDGE_TYPE;
       default:
         throw new Error(`bdd viewpoint cannot render edge kind: ${edge.kind}`);
     }

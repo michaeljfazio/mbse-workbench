@@ -459,7 +459,10 @@ function renderLiteral(v: ValueLiteral): string {
 
 const EDGE_KEYWORD: Readonly<Record<ModelEdge['kind'], string>> = Object.freeze({
   Composition: 'composition',
+  Aggregation: 'aggregation',
   Generalization: 'generalization',
+  Association: 'association',
+  Dependency: 'dependency',
   RequirementTrace: 'trace',
   ControlFlow: 'control-flow',
   ObjectFlow: 'object-flow',

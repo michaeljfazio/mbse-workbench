@@ -13,8 +13,20 @@ export interface CompositionEdge extends EdgeBase {
   readonly kind: 'Composition';
 }
 
+export interface AggregationEdge extends EdgeBase {
+  readonly kind: 'Aggregation';
+}
+
 export interface GeneralizationEdge extends EdgeBase {
   readonly kind: 'Generalization';
+}
+
+export interface AssociationEdge extends EdgeBase {
+  readonly kind: 'Association';
+}
+
+export interface DependencyEdge extends EdgeBase {
+  readonly kind: 'Dependency';
 }
 
 export interface RequirementTraceEdge extends EdgeBase {
@@ -51,7 +63,10 @@ export interface PackageImportEdge extends EdgeBase {
 
 export type ModelEdge =
   | CompositionEdge
+  | AggregationEdge
   | GeneralizationEdge
+  | AssociationEdge
+  | DependencyEdge
   | RequirementTraceEdge
   | ControlFlowEdge
   | ObjectFlowEdge
@@ -64,7 +79,10 @@ export type EdgeKind = ModelEdge['kind'];
 
 export const EDGE_KINDS: readonly EdgeKind[] = [
   'Composition',
+  'Aggregation',
   'Generalization',
+  'Association',
+  'Dependency',
   'RequirementTrace',
   'ControlFlow',
   'ObjectFlow',
