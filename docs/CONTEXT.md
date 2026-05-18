@@ -8,22 +8,60 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
 
 ## Discovered facts
 
-- **2026-05-18 (iter-847..848, ADR 0016 correction / #483):** The
-  `dorny/paths-filter@v3` action uses **picomatch v2 glob semantics**,
-  where `**/*.md` requires at least one path segment before `*.md`.
-  Root-level `.md` files (`STATUS.md`, `JOURNAL.md`, `README.md`,
-  `AGENT.md`) therefore do NOT match the `'!**/*.md'` exclusion and
-  fall through to the positive `'**'` rule — i.e. they classify as
-  `code` even though they are documentation, defeating ADR 0016's
-  doc-only e2e skip on the most-touched files in this autonomous
-  loop. The fix (PR #485): add a sibling `'!*.md'` exclusion alongside
-  `'!**/*.md'` so depth-0 `.md` is also dropped. **Rule:** when
-  authoring picomatch globs for `dorny/paths-filter`, treat root-level
-  globs as a separate dimension from `**`-prefixed globs and add both
-  forms; a depth-0 file does not match a `**/`-prefixed pattern. The
-  ADR 0016 conservative-default still holds: any non-`.md` file at any
-  path still triggers the full e2e shard matrix. See ADR 0016
-  "Correction (iter-847)" and PR #485.
+- **2026-05-18 (iter-848 correction of the iter-847..848 entry below
+  / #488):** The next entry blamed a "picomatch `**/*.md` requires ≥1
+  path segment" quirk for ADR 0016's broken doc-only skip. **That
+  hypothesis is empirically falsified** by PR #487's own CI run
+  ([26038639703](https://github.com/michaeljfazio/mbse-workbench/actions/runs/26038639703)):
+  the PR touched only `docs/CONTEXT.md` (a depth-1 `.md`) and the
+  classifier still logged `Filter code = true / Matching files:
+  docs/CONTEXT.md [modified]`. A direct picomatch reproduction shows
+  `isMatch('STATUS.md', '**/*.md') = true` AND
+  `isMatch('docs/CONTEXT.md', '**/*.md') = true` — the negation rule
+  should exclude both in principle. **Actual root cause:**
+  `dorny/paths-filter@v3` `src/filter.ts` evaluates rules with the
+  **`some` predicate quantifier by default**
+  (`patterns.some(aPredicate)`). Each rule is wrapped in its own
+  picomatch matcher with no shared state, so a bang rule like
+  `'!**/*.md'` becomes "match files that don't match `**/*.md`" —
+  NOT "exclude .md files from a result set." When the rule list also
+  contains the catch-all `'**'`, every file matches that rule first
+  and `some` short-circuits to `true`, making every negation a no-op.
+  A local replica of dorny's exact matcher code returns `true` for
+  every file — even `LICENSE` itself. **ADR 0016's
+  `'!**/*.md' + '!LICENSE'` exclusion has therefore never excluded
+  anything in practice since #466 shipped; every STATUS / JOURNAL /
+  README / AGENT.md-only PR has been running full e2e despite the
+  doc-only-skip promise.** **Three viable fix directions:** (1)
+  `predicate-quantifier: every` action input plus carefully inverted
+  rules; (2) per-rule `any:/every:` YAML quantifier syntax (see
+  https://github.com/dorny/paths-filter#predicate-quantifier);
+  (3) drop the `'**'` catch-all and enumerate code-bearing paths
+  positively — simplest, no surprises. PR #485's proposed `'!*.md'`
+  addition does not change behaviour under the default `some`
+  semantics; see PR #485 comment thread (iter-848) for the empirical
+  argument. Cited source: `dorny/paths-filter` v3.0.2
+  `src/filter.ts`.
+
+- **2026-05-18 (iter-847..848, ADR 0016 correction / #483):** *[entry
+  superseded by the iter-848 correction above (#488). The text below
+  is the original hypothesis as merged in #487; preserved for
+  audit-trail continuity only — do not act on it.]*
+  The `dorny/paths-filter@v3` action uses **picomatch v2 glob
+  semantics**, where `**/*.md` requires at least one path segment
+  before `*.md`. Root-level `.md` files (`STATUS.md`, `JOURNAL.md`,
+  `README.md`, `AGENT.md`) therefore do NOT match the `'!**/*.md'`
+  exclusion and fall through to the positive `'**'` rule — i.e. they
+  classify as `code` even though they are documentation, defeating
+  ADR 0016's doc-only e2e skip on the most-touched files in this
+  autonomous loop. The fix (PR #485): add a sibling `'!*.md'`
+  exclusion alongside `'!**/*.md'` so depth-0 `.md` is also dropped.
+  **Rule:** when authoring picomatch globs for `dorny/paths-filter`,
+  treat root-level globs as a separate dimension from `**`-prefixed
+  globs and add both forms; a depth-0 file does not match a
+  `**/`-prefixed pattern. The ADR 0016 conservative-default still
+  holds: any non-`.md` file at any path still triggers the full e2e
+  shard matrix. See ADR 0016 "Correction (iter-847)" and PR #485.
 
 - **2026-05-18 (iter-844, CI step 3 / #469 — BLOCKED)** — GitHub's
   native **merge queue cannot be activated on this repository**.
