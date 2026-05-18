@@ -1094,7 +1094,10 @@ function renderDiagramRow(
           onCancel={ctx.cancelDiagramRename}
         />
       ) : (
-        <span className="truncate">{diagram.name}</span>
+        // #462: label takes remaining horizontal space so the kebab is pinned
+        // to the row's right edge — otherwise Playwright's centre-of-row
+        // `.click()` lands on the kebab and stopPropagation swallows it.
+        <span className="min-w-0 flex-1 truncate">{diagram.name}</span>
       )}
       {!isRenaming ? (
         <ContainmentTreeDiagramRowMenu
