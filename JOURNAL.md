@@ -870,3 +870,20 @@ Phase 13 ships zero library content. Phase 13's design accommodates Phase 14 via
 - Quality rubric (dim 5 + dim 14 at score 3): https://github.com/michaeljfazio/mbse-workbench/blob/main/docs/architect/quality-rubric.md
 
 ---
+
+## Iteration 844 — 2026-05-18 — CI step 3 (merge queue) blocked on org-only feature gate
+
+**Event:** escalation
+
+**Phase:** phase:15 — Architect-driven UX & feature hardening
+
+**Narrative:** CI velocity work had been the clean line in the recent sprint — step 1 (sharded e2e, #472) cut PR-gate wallclock to 5m 46s, step 2 (chromium-out-of-PR-gate, #475) cut it again to 4m 10s, and step 3 (#469, GitHub native merge queue) was queued behind those with the dependency story ready. The plan for iter-844 was clean: land the `merge_group:` workflow trigger first so the queue's batch CI would find a workflow listening (PR #477 — merged squash `42c84ed`), then activate the queue via `POST /repos/.../rulesets` with a `merge_queue` rule, observe the first batch of ≥2 PRs flowing through, close #469. The POST returned `422 Validation Failed: "Invalid rule 'merge_queue': "`. Every parameter variation tried — minimum body, full body with `bypass_actors: []`, with and without a companion `required_status_checks` rule, `enforcement: active` vs `evaluate`, every range of the seven required `merge_queue` parameters — produced the same error with the same empty colon. A control POST with a `deletion` rule succeeded fine on the same endpoint (confirming the API was reachable and the credential scopes were sufficient), then was cleaned up. GraphQL `Repository.mergeQueue` returned `null`; the schema's only merge-queue mutations are `enqueuePullRequest` and `dequeuePullRequest`, both of which require a pre-existing queue. Root cause was the cheapest check to forget: `gh api /repos/michaeljfazio/mbse-workbench --jq '.owner.type'` returns `User`, not `Organization`. GitHub gates merge queue to org-owned repositories, regardless of plan or visibility — and `mbse-workbench` is a personal repo. The escalation move is straightforward under AGENT.md: relabel #469 `status:needs-human`, comment a full diagnosis (the operator decides repo transfer to an org, `wontfix` close, or a non-queue alternative), leave the `merge_group:` trigger in place on `main` so option (a) is a one-API-call activation, and document the empirical 422 evidence in `docs/CONTEXT.md` so a future iteration doesn't re-burn the cycle. The 7-9× speedup from steps 1 + 2 already delivers the bulk of #452's stated intent ("speed up PR-gate CI"); step 3 was incremental on top. Loop continues on rubric advancement — iter-845 picks up walk-25's dim-13 follow-up after walk-24's close-out (#463) merges. The lesson: when the API rejects a feature with an empty-detail error message, check feature-gating at the account/ownership level before iterating on parameter shape.
+
+**Links:**
+- Issue #469 (now `status:needs-human`): https://github.com/michaeljfazio/mbse-workbench/issues/469
+- PR #477 (workflow trigger, merged `42c84ed`): https://github.com/michaeljfazio/mbse-workbench/pull/477
+- PR #478 (iter-844 STATUS + documentation correction): https://github.com/michaeljfazio/mbse-workbench/pull/478
+- `docs/CONTEXT.md` BLOCKED entry: https://github.com/michaeljfazio/mbse-workbench/blob/main/docs/CONTEXT.md
+- CI-velocity epic #452: https://github.com/michaeljfazio/mbse-workbench/issues/452 (steps 1 + 2 shipped; step 3 indefinitely blocked behind #469)
+
+---
