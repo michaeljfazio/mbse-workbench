@@ -14,6 +14,7 @@ import {
   findLibraryReferences,
   type LibraryIndex,
 } from '@/library';
+import type { Diagram } from '@/workspace/diagram';
 
 const INDENT = '  ';
 
@@ -94,6 +95,11 @@ export function serializeProject(
 
   const edgeBlock = renderEdges(project.edges);
   if (edgeBlock) blocks.push(edgeBlock);
+
+  for (const diagram of project.diagrams) {
+    const viewBlock = renderDiagram(diagram, byId);
+    if (viewBlock !== null) blocks.push(viewBlock);
+  }
 
   return blocks.join('\n\n') + '\n';
 }
@@ -550,4 +556,48 @@ function edgeDetail(edge: ModelEdge): string {
     default:
       return '';
   }
+}
+
+/**
+ * Renders one `view` block for a diagram whose context element is present in
+ * `byId`. Returns `null` when the context element is missing (library or
+ * orphaned), so the caller silently skips it — dropping an unresolvable
+ * diagram context from the text output is preferable to emitting a broken
+ * `expose` reference.
+ *
+ * Format per OMG SysML v2 §10 and issue #449:
+ *   // @viewpoint <viewpointId>
+ *   view <Name> { // id: <diagramId>
+ *     expose <OwnerPath>;
+ *   }
+ *
+ * The `<OwnerPath>` is the fully-qualified `::` path from the topmost
+ * non-null ancestor down to the context element, with each segment quoted
+ * via `ident(...)`.
+ */
+function renderDiagram(
+  diagram: Diagram,
+  byId: Map<ElementId, ModelElement>,
+): string | null {
+  const contextEl = byId.get(diagram.context.id);
+  if (contextEl === undefined) return null;
+
+  // Build the qualified path by walking up via ownerId.
+  const segments: string[] = [ident(contextEl.name)];
+  let current: ModelElement | undefined = contextEl;
+  while (current !== undefined && current.ownerId !== null) {
+    const parent = byId.get(current.ownerId);
+    if (parent === undefined) break;
+    segments.unshift(ident(parent.name));
+    current = parent;
+  }
+
+  const exposePath = segments.join('::');
+  const lines: string[] = [
+    `// @viewpoint ${diagram.viewpointId}`,
+    `view ${ident(diagram.name)} {${idTail(diagram.id)}`,
+    `${INDENT}expose ${exposePath};`,
+    `}`,
+  ];
+  return lines.join('\n');
 }

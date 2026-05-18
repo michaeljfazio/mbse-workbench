@@ -3161,7 +3161,9 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       rootId,
       elements,
       edges: parsed.value.edges,
-      diagrams: [newDefaultDiagram(rootId)],
+      diagrams: parsed.value.diagrams && parsed.value.diagrams.length > 0
+        ? parsed.value.diagrams
+        : [newDefaultDiagram(rootId)],
       history: EMPTY_COMMAND_HISTORY,
       conversations: [],
     });
