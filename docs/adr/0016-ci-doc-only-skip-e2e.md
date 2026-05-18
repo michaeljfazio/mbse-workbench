@@ -46,3 +46,22 @@ Typecheck / lint / unit / build run unconditionally — they are cheap and provi
 - The first natural validation of the skip path is the next doc-only walk close-out PR after this lands.
 - If a future regression shows a doc-only PR escaping a required e2e (classifier false negative), expand the `code` filter or add a positive include for the offending path; do **not** widen blanket-then-narrow.
 - Sibling #452 (Playwright sharding) remains independent and compounds: when sharding lands, code PRs get the sharded e2e benefit while doc PRs already skip entirely.
+
+## Correction (iter-847) — top-level `*.md` exclusion
+
+Empirical regression observed iter-846 (issue #483): PR #482 modified only `STATUS.md` and the `fast` classifier logged `code = true`, triggering all four e2e shards (~10 min wasted wallclock). Root cause: `dorny/paths-filter@v3` uses picomatch semantics where `**/*.md` requires at least one path segment before `*.md`. Root-level `STATUS.md`, `JOURNAL.md`, `README.md`, `AGENT.md` do not match the exclusion, fall through to `**`, and classify as code.
+
+Filter updated to include a sibling exclusion for root-level `.md` files:
+
+```yaml
+filters: |
+  code:
+    - '**'
+    - '!**/*.md'
+    - '!*.md'        # root-level .md — STATUS.md, JOURNAL.md, README.md, AGENT.md
+    - '!LICENSE'
+```
+
+The conservative-default rationale from the original decision still holds: a non-`.md` file added at any path triggers full e2e. The new exclusion is narrowly scoped to `*.md` at depth-0 only.
+
+Self-test: this ADR + ci.yml change is itself a code change (`.github/workflows/**`) → classifier sees `code = true` → full e2e runs and exercises the unchanged-positive path. Empirical validation of the new exclusion path is the next doc-only PR after this lands (a `STATUS.md`-only iteration sync).
