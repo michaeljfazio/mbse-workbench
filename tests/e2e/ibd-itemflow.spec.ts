@@ -499,8 +499,12 @@ test.describe('IBD ItemFlow (issue #52)', () => {
 
     await page.locator('.react-flow__pane').click({ position: { x: 8, y: 8 } });
     await page.mouse.move(0, 0);
+    // Per-test threshold raised to 0.025 — see issue #444 for diagnosis.
+    // This baseline has ~0.02 natural rendering variance across CI runs that
+    // is not a regression signal; visual project runs with retries: 0.
     await expect(page).toHaveScreenshot('ibd-two-parts-one-itemflow.png', {
       fullPage: false,
+      maxDiffPixelRatio: 0.025,
     });
   });
 });
