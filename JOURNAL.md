@@ -887,3 +887,23 @@ Phase 13 ships zero library content. Phase 13's design accommodates Phase 14 via
 - CI-velocity epic #452: https://github.com/michaeljfazio/mbse-workbench/issues/452 (steps 1 + 2 shipped; step 3 indefinitely blocked behind #469)
 
 ---
+
+## Iteration 855 — 2026-05-18 — vphase-15.7 / v1.5.1 released — walk-24 regressions confirmed fixed, two more rubric dims back at 2
+
+**Event:** release
+
+**Phase:** phase:15 — Architect-driven UX & feature hardening
+
+**Narrative:** The release window since `v1.5.0` was unusually broad for a patch bump, but every code-bearing change in it was either a defect fix or pure CI/tooling polish — no outward-facing new feature — so SemVer landed on `v1.5.1` paired with `vphase-15.7`. The load-bearing pair were PR #464 (IBD enclosing-frame seeded on creation, closing walk-24's #461 "IBD canvas empty") and PR #465 (tree-row click activates the diagram tab, closing walk-24's #462 "tree-row click does not surface the diagram"). Both fixes targeted dimensions that walk-24 had reset — dim 6 (SysML conformance — IBD) had dropped from 2 to 1, and dim 13 (Cross-diagram coherence) was at 0 (unmeasured) — so iter-852 sealed a regression-walk plan against `pnpm dev`, and iter-853 executed it clean: 4/4 pass-criteria all green, zero issues filed, both regressions confirmed end-to-end through architect-facing UX (no store mutations). That promoted dim 6 back to 2 and dim 13 to its first measurement at 2, and advanced the convergence chain from the walk-24 reset to chain[1] / 3. Around that core fix-and-verify arc, CI-velocity epic #452 made real ground without quite finishing: step 1 (#472, sharded e2e) and step 2 (#475, webkit-out-of-PR-gate) shipped and together cut PR-gate wallclock from ~12 minutes to ~4 minutes; step 3 (#469, GitHub native merge queue) hit the org-only feature-gate wall documented in the iter-844 escalation and is now `status:needs-human`. The ADR 0016 doc-only-skip arc also closed in this window: the original `'**' + '!**/*.md' + '!LICENSE'` filter never excluded anything because `dorny/paths-filter@v3` evaluates rules with `patterns.some(aPredicate)` (each rule is its own matcher, so the `'**'` catch-all short-circuits every accompanying bang rule to a no-op). PR #491 dropped the catch-all in favour of positively enumerating code-bearing paths; the next four doc-only PRs (#492 → #495) all ran through the doc-only path classifier returning `code = false`, skipped the e2e shard matrix, and the `check` umbrella aggregated to SUCCESS in ~1m 30s — the ~6× speedup ADR 0016 promised, finally observed in practice. Two release workflows queue behind the `pages` concurrency group; `vphase-15.7` deployed at 16:17:04Z and the live URL `https://michaeljfazio.github.io/mbse-workbench/` returned HTTP 200 within the iteration; `v1.5.1` redeploys the same artifact then files its paired GitHub Release. Termination state: A.12 #1 holds at 2/28 at score 3 (dim 5 BDD, dim 14 Round-trip integrity), with 22 dimensions now at score 2 (gained dim 6 + dim 13 in this window); A.12 #2 has 0 open `type:bug`, 2 open `type:design` (#452 + #454, both blocked behind #469); A.12 #3 at chain[1] / 3 with walk-26 (regression of walk-25 against this deploy) the immediate next candidate. The interesting choice in this release was *not* bumping to a minor: a strict reading of A.8 might count IBD-enclosing-frame as user-visible enough to justify a minor, but the dimension it targets had explicitly regressed from a previously-shipped state, so the work is fix-not-feature and `v1.5.1` is the honest SemVer.
+
+**Links:**
+- vphase-15.7 release: https://github.com/michaeljfazio/mbse-workbench/releases/tag/vphase-15.7
+- v1.5.1 release: https://github.com/michaeljfazio/mbse-workbench/releases/tag/v1.5.1
+- Live app (vphase-15.7 deploy): https://michaeljfazio.github.io/mbse-workbench/
+- Walk-25 log (clean 4/4): https://github.com/michaeljfazio/mbse-workbench/blob/main/docs/architect/walks/walk-25.md
+- Load-bearing fix PRs: #464 (IBD enclosing-frame seed, closes #461), #465 (tree-row activates diagram tab, closes #462)
+- CI-velocity epic #452: steps 1 + 2 shipped (#472, #475); step 3 (#469) blocked on org-only merge-queue gate
+- ADR 0016 doc-only-skip empirical close (iter-849 correction in #491): https://github.com/michaeljfazio/mbse-workbench/pull/491
+- Quality rubric: https://github.com/michaeljfazio/mbse-workbench/blob/main/docs/architect/quality-rubric.md
+
+---
