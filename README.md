@@ -28,5 +28,5 @@ pnpm run check    # typecheck + lint + unit + build + e2e (matches CI)
 ## Deployment
 
 Production builds publish to GitHub Pages on each `vphase-*` and `v*.*.*`
-tag via `.github/workflows/release.yml`. See the
-[Releases](../../releases) tab for the live URL of the latest deploy.
+tag via `.github/workflows/release.yml`. The live deploy is at
+<https://michaeljfazio.github.io/mbse-workbench/>.
