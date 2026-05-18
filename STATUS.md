@@ -31,6 +31,7 @@ phase:15 — Architect-driven UX & feature hardening
 
 ## Last test run
 - Local: this PR touches only `docs/architect/diagram-types/ibd.md`, `docs/architect/walks/walk-27.md`, `STATUS.md`, and `docs/architect/in-flight.md` — no code, no tests. CI-self-test: should classify `code = false`, skip all e2e shards, aggregate doc-only-branch `check` SUCCESS in ~1m 30s. Seventh consecutive doc-only-skip observation since the ADR 0016 path-filter correction (#491) shipped.
+- **Iter-858 CI-stuck retrigger:** Run `26047509259` sat `check` aggregator in QUEUED state for >18h after `fast=SUCCESS` / `e2e=SKIPPED` / `merge-reports=SKIPPED` resolved correctly. Every prior run on neighbouring branches completed normally — isolated to one run, GitHub Actions scheduling hiccup not a workflow defect. Cancelled `26047509259` (now `cancelled/completed`), pushed empty no-op commit (`8e606b2`) to retrigger. New run `26047766234` queued at 16:55:50Z on `8e606b2`; auto-merge stays armed. No code or test change — same doc-only diff.
 
 ## Last PR sweep
 - Iter-857 open: 0 open PRs (iter-856's #497 squash-merged at 16:33:45Z as `a257094`; main now at `a257094`).
