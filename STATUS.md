@@ -3,7 +3,9 @@
 ## Current phase
 phase:15 — Architect-driven UX & feature hardening
 
-🎯 **Iter-880: PR #531 merged + iter-880 periodic health check PASS; awaiting operator-cut `vphase-15.10` / `v1.6.1` tag.** PR #531 (iter-879's `ConnectionMode.Loose` fix for #528) auto-merged at 2026-05-18T22:17:16Z (squash `f4915ae`). Per AGENT.md directive #13, iter-880 is divisible by 10 and ran the periodic health check — all four checks PASS (see `## Last health check`). Next productive iteration step requires the operator to cut `vphase-15.10` / `v1.6.1` on the post-#531 main commit so the Pages bundle re-deploys with the bidirectionality fix; walk-34 plan-seal then runs in iter-881 (needs verified `last-modified` / `etag` headers in the plan's snapshot per the walk-33 pattern) and walk-34 execute in iter-882. No code changes this iteration.
+🎯 **Iter-881: blocked tick — operator-cut `vphase-15.10` / `v1.6.1` still pending; no other productive work surfaced.** Iter-881 re-verified at launch that (a) `STOP` file absent, (b) zero `status:emergency-stop`-labelled issues, (c) tags on `origin` still `v1.6.0` / `vphase-15.9` from 2026-05-18T21:14Z, (d) live Pages bundle still byte-identical to the walk-33 snapshot anchor (`last-modified: Mon, 18 May 2026 21:15:00 GMT`, `etag: "6a0b8154-1eb"`), (e) PR sweep `gh pr list --state open` returned `[]`, (f) zero open `phase:15` issues. Walk-34 plan-seal stays blocked on the missing post-#531 deploy headers; no `iter÷10` health check due; PR backlog empty; FBW-example authoring gated on dim-10 score-3 promotion which gates on walk-34 PASS. Iter-881 ships a thin doc-only STATUS-sync PR closing #534 to maintain the cadence of one-commit-per-iteration and document the blocked state.
+
+🎯 **Iter-880: PR #531 merged + iter-880 periodic health check PASS; awaiting operator-cut `vphase-15.10` / `v1.6.1` tag.** PR #531 (iter-879's `ConnectionMode.Loose` fix for #528) auto-merged at 2026-05-18T22:17:16Z (squash `f4915ae`). Per AGENT.md directive #13, iter-880 is divisible by 10 and ran the periodic health check — all four checks PASS (see `## Last health check`). Next productive iteration step requires the operator to cut `vphase-15.10` / `v1.6.1` on the post-#531 main commit so the Pages bundle re-deploys with the bidirectionality fix; walk-34 plan-seal then runs once the deploy headers exist (iter-881 found them still unchanged, so plan-seal pushes to iter-882+) and walk-34 execute in the iteration after that. No code changes this iteration.
 
 🎯 **Iter-879: engineer hat → #528 fix shipped.** Use-case viewpoint switched to `ConnectionMode.Loose` (the same pattern IBD adopted in #499). The validator `isValidUseCaseConnection` is already the single source of truth for handle-pair validity (post-#519 it accepts Actor↔UseCase in both element orderings), so promoting connection mode from Strict to Loose unblocks drags that *start* from a `type="target"` handle — including the previously-broken `actor.left → usecase.left` direction surfaced by walk-33. The fix is **+11 / −1 LOC in `CanvasPane.tsx`** (a single line in the `connectionMode` ternary plus an updated comment) and **+41 LOC in `tests/e2e/use-case-edges.spec.ts`** (two new handle helpers + one new test for the previously-broken direction). No DOM changes; no new handles; no visual baseline drift. Existing 10 use-case-edges tests pass unchanged on chromium AND webkit; new test passes on both projects.
 
@@ -35,10 +37,10 @@ phase:15 — Architect-driven UX & feature hardening
 | A.12 #4 | FBW example shipped + loadable | **Un-gates on walk-34 chain[1] PASS + dim-10 promotion to score-3.** |
 
 ## Current iteration
-- Iteration #: 880
-- Started: 2026-05-18 (UTC, ~22:18Z post-#531-merge)
-- Branch: `phase-15/iter-880-health-check-and-status-sync` (off main `f4915ae`, not stacked)
-- Working on: #532 — periodic health check (iter÷10) + STATUS sync to post-#531 merge state
+- Iteration #: 881
+- Started: 2026-05-19 (UTC, post-#533-merge, post-iter-880)
+- Branch: `phase-15/iter-881-blocked-tick-status-sync` (off main `2d32496`, not stacked)
+- Working on: #534 — iter-881 blocked-tick STATUS sync (awaiting operator-cut `vphase-15.10` / `v1.6.1`)
 
 ## Last test run
 - No code changes this iteration — STATUS-only edit.
@@ -56,19 +58,21 @@ Per AGENT.md directive #13, **iter-880** ran the periodic health check (divisibl
 Next health check is **iter-890**.
 
 ## Last PR sweep
-- Iter-880 launch `gh pr list --state open` returned `[]` after PR #531 auto-merged at 2026-05-18T22:17:16Z. This iteration opens one new PR (#532's close-out). **In-flight 1 / 5 of A.8 cap.**
+- Iter-881 launch `gh pr list --state open` returned `[]` after iter-880's PR #533 auto-merged at 2026-05-18T22:25:38Z. This iteration opens one new PR (#534's blocked-tick close-out). **In-flight 1 / 5 of A.8 cap.**
 
 ## Known issues / blockers
-- None new. **#528** closed by PR #531's merge.
+- **Blocker:** walk-34 plan-seal blocked on operator-cut `vphase-15.10` / `v1.6.1`. Re-verified at iter-881 launch: tag set on `origin` unchanged from iter-880 (latest is `v1.6.0` / `vphase-15.9`); Pages headers `last-modified: Mon, 18 May 2026 21:15:00 GMT` and `etag: "6a0b8154-1eb"` are byte-identical to the walk-33 snapshot anchor, confirming the deploy is still serving the pre-#531 bundle.
 
-## Open phase:15 issues at iter-880 launch
-- (none) — A.12 #2 fully satisfied. Iter-880's `#532` is `type:chore` (close-out tracking), explicitly excluded from A.12 #2's label scope.
+## Open phase:15 issues at iter-881 launch
+- (none) — A.12 #2 fully satisfied. Iter-881's `#534` is `type:chore` (blocked-tick close-out tracking), explicitly excluded from A.12 #2's label scope.
 
 ## Decisions log
 
-**Iter-808..iter-879 entries preserved in earlier commits.**
+**Iter-808..iter-880 entries preserved in earlier commits.**
 
-- **Iter-880 — defer walk-34 plan-seal to iter-881 once operator-cut `vphase-15.10` lands.** Walk-33's plan was sealed at iter-877 with the live Pages `last-modified: Mon, 18 May 2026 21:15:00 GMT, etag: "6a0b8154-1eb"` captured in its `## Snapshot` section as the byte-identity anchor for the execute-iteration's re-verify step. The same pattern requires verified deploy headers from the post-#531 bundle to seal walk-34 — and those headers don't exist until the operator cuts the tag and the release workflow's `pages` concurrency group lets the deploy fronted. Writing walk-34's plan against unknown headers would either need a "fill in at execute time" placeholder (loses the snapshot's purpose as an iteration-anchor) or a re-edit pass at iter-881 once the headers exist (loses the single-PR cleanliness of plan-seal). Cleanest is to do the health check + STATUS sync now and seal the plan in iter-881. No ADR needed — this is a pacing decision, not an architectural one.
+- **Iter-881 — blocked-tick STATUS sync rather than (a) cutting the tag myself or (b) running an off-chain walk.** The session convention since iter-861 has been operator-cut release tags; the JOURNAL iter-876 release entry explicitly recorded "tagged ... by the operator", so cutting `vphase-15.10` from the agent would silently reverse that convention without an ADR. Running an off-chain walk (e.g. dim-23 LLM, the only score-0 dimension) would either find issues (almost-certain for a score-0 dimension and would keep the chain at 0 / 3) or compete with walk-34's setup for the chain — both bad outcomes. The thin doc-only STATUS-sync PR keeps the one-commit-per-iteration cadence, documents the blocked state in the durable record, and costs one ~90s fast-CI run under ADR 0016. Trade-off recognised: if the operator stays idle for many iterations, this pattern produces N blocked-tick PRs; that's tolerable for the short term but I'd file a `type:design` issue if it stretches past iter-885 without operator action.
+
+- **Iter-880 — defer walk-34 plan-seal until operator-cut `vphase-15.10` lands.** Walk-33's plan was sealed at iter-877 with the live Pages `last-modified: Mon, 18 May 2026 21:15:00 GMT, etag: "6a0b8154-1eb"` captured in its `## Snapshot` section as the byte-identity anchor for the execute-iteration's re-verify step. The same pattern requires verified deploy headers from the post-#531 bundle to seal walk-34 — and those headers don't exist until the operator cuts the tag and the release workflow's `pages` concurrency group lets the deploy fronted. Writing walk-34's plan against unknown headers would either need a "fill in at execute time" placeholder (loses the snapshot's purpose as an iteration-anchor) or a re-edit pass once the headers exist (loses the single-PR cleanliness of plan-seal). Cleanest is to do the health check + STATUS sync now and seal the plan in the iteration after the tag lands. No ADR needed — this is a pacing decision, not an architectural one.
 
 - **Iter-880 — no JOURNAL entry this iteration.** A.14 + AGENT.md JOURNAL triggers do not include "periodic health check" or "STATUS sync". The dim-10 score-3 promotion at iter-882+ post-walk-34 will be the next JOURNAL-worthy event (event: design-decision per A.14 "First rubric dimension at 3 of category" — fourth score-3 dimension overall).
 
@@ -76,7 +80,7 @@ Next health check is **iter-890**.
 
 ## Session checkpoint summary
 
-This session (iter-793 → iter-880) executed **88 iterations** spanning bootstrap, **18 broad/regression walks against deployed Pages** (walks 1 + 26 + 27 + 28 + 29 + 30 + 31 + 32 + 33), **~29 engineer batches**, **9 release tags** (`vphase-15.1` → `vphase-15.9`), **3 ADRs** (0014/0015/0016). Most recent arc: iter-871 walk-32 (22/24 + #517) → iter-872 #517 implementation → iter-876 vphase-15.9 / v1.6.0 release → iter-877 walk-33 plan-seal → iter-878 walk-33 execute (#528 surfaces post-#519 bidirectionality gap) → iter-879 engineer fix: use-case → ConnectionMode.Loose (merged 2026-05-18T22:17:16Z) → **iter-880 close-out: periodic health check PASS (next iter-890) + STATUS sync; awaiting operator-cut `vphase-15.10` / `v1.6.1` tag**.
+This session (iter-793 → iter-881) executed **89 iterations** spanning bootstrap, **18 broad/regression walks against deployed Pages** (walks 1 + 26 + 27 + 28 + 29 + 30 + 31 + 32 + 33), **~29 engineer batches**, **9 release tags** (`vphase-15.1` → `vphase-15.9`), **3 ADRs** (0014/0015/0016). Most recent arc: iter-871 walk-32 (22/24 + #517) → iter-872 #517 implementation → iter-876 vphase-15.9 / v1.6.0 release → iter-877 walk-33 plan-seal → iter-878 walk-33 execute (#528 surfaces post-#519 bidirectionality gap) → iter-879 engineer fix: use-case → ConnectionMode.Loose (merged 2026-05-18T22:17:16Z) → iter-880 close-out: periodic health check PASS (next iter-890) + STATUS sync → **iter-881 blocked-tick STATUS sync (this iteration); awaiting operator-cut `vphase-15.10` / `v1.6.1` tag**.
 
 | Tag | Date | What |
 |-----|------|------|
@@ -94,16 +98,17 @@ Rubric: **3 × score-3** (dim 5 BDD, dim 14 Round-trip integrity, dim 6 IBD) + *
 
 ## Next action
 
-**Iter-881 — operator release + walk-34 plan-seal.** Sequence (operator-cut tags remain operator-driven per the established session convention; agent does not cut tags directly):
+**Iter-882 (or first iteration post-tag) — walk-34 plan-seal once operator-cut `vphase-15.10` lands.** Sequence (operator-cut tags remain operator-driven per the established session convention; agent does not cut tags directly):
 
 1. ~~PR #531 (iter-879 fix) auto-merges on green CI~~ ✓ Merged at 2026-05-18T22:17:16Z (squash `f4915ae`).
 2. ~~Iter-880 periodic health check (iter÷10) per AGENT.md directive #13~~ ✓ 4/4 PASS (see `## Last health check`).
-3. ~~Iter-880 STATUS sync to post-#531 merge state + close-out chore PR~~ ⏳ This iteration's PR closes #532.
-4. **Operator** cuts `vphase-15.10` / `v1.6.1` on the post-`f4915ae` main commit. Pages deploys via existing release workflow (`build` → `deploy` → `github-release` per `.github/workflows/release.yml`).
-5. **Iter-881 architect-hat → walk-34 plan-seal.** Author `docs/architect/walks/walk-34.md § Plan` + `§ Snapshot` with verified Pages `last-modified` / `etag` headers from the newly-deployed bundle. Pattern: copy of walk-33 plan-seal (iter-877) with the V-B secondary-direction assertion promoted from "anticipated PARTIAL" to "expected PASS" (since #531's fix means React Flow's `ConnectionMode.Loose` now matches the validator's bidirectionality at the runtime gate).
-6. **Iter-882 architect-hat → walk-34 execute.** Re-execute walk-33's 24 PCs against the deployed `vphase-15.10` / `v1.6.1` bundle, with the bidirectional V-B driver. Expected outcome (per `walk-33.md § Plan § Acceptance / rubric impact` top row): **23/24 PASS + 1 INFO (X-7) — both V-B directions PASS** → chain advances **0 → 1 / 3** + dim-10 (Use Case SysML conformance) promotes **2 → 3** (FOURTH score-3 dimension) + JOURNAL entry (`event: design-decision` per A.14 "First rubric dimension at 3 of category" — fourth-of-category here).
+3. ~~Iter-880 STATUS sync to post-#531 merge state + close-out chore PR~~ ✓ PR #533 merged 2026-05-18T22:25:38Z.
+4. ~~Iter-881 blocked-tick STATUS sync + close-out chore PR~~ ⏳ This iteration's PR closes #534.
+5. **Operator** cuts `vphase-15.10` / `v1.6.1` on the post-`f4915ae` main commit. Pages deploys via existing release workflow (`build` → `deploy` → `github-release` per `.github/workflows/release.yml`). (If operator stays idle past iter-885, agent files a `type:design` issue questioning the operator-cut-tag session convention.)
+6. **First post-tag iteration architect-hat → walk-34 plan-seal.** Author `docs/architect/walks/walk-34.md § Plan` + `§ Snapshot` with verified Pages `last-modified` / `etag` headers from the newly-deployed bundle. Pattern: copy of walk-33 plan-seal (iter-877) with the V-B secondary-direction assertion promoted from "anticipated PARTIAL" to "expected PASS" (since #531's fix means React Flow's `ConnectionMode.Loose` now matches the validator's bidirectionality at the runtime gate).
+7. **Next iteration architect-hat → walk-34 execute.** Re-execute walk-33's 24 PCs against the deployed `vphase-15.10` / `v1.6.1` bundle, with the bidirectional V-B driver. Expected outcome (per `walk-33.md § Plan § Acceptance / rubric impact` top row): **23/24 PASS + 1 INFO (X-7) — both V-B directions PASS** → chain advances **0 → 1 / 3** + dim-10 (Use Case SysML conformance) promotes **2 → 3** (FOURTH score-3 dimension) + JOURNAL entry (`event: design-decision` per A.14 "First rubric dimension at 3 of category" — fourth-of-category here).
 
-**Halting safety:** STOP file / `status:emergency-stop` label unchanged; Phase-15 iter-count at 88, well under the 300 churn ceiling.
+**Halting safety:** STOP file / `status:emergency-stop` label unchanged; Phase-15 iter-count at 89, well under the 300 churn ceiling.
 
-**In-flight at iter-880 close (1 / 5 of A.8 cap):**
-- PR for iter-880's `#532` close-out chore (STATUS sync + health check log) — opens this iteration.
+**In-flight at iter-881 close (1 / 5 of A.8 cap):**
+- PR for iter-881's `#534` blocked-tick close-out chore (STATUS sync only) — opens this iteration.
