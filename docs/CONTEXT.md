@@ -8,6 +8,26 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
 
 ## Discovered facts
 
+- **2026-05-18 (iter-842, CI step 2 / #468)** — CI now has two workflows:
+  `ci.yml` is the **PR gate** (chromium + chromium-visual only, sharded
+  4 ways) and `ci-full-matrix.yml` is **observational** (push-to-main +
+  daily 09:00-UTC cron + workflow_dispatch, runs all four projects).
+  Branch protection's required-context name `check` is preserved by the
+  umbrella `check` job in `ci.yml`; the full-matrix workflow has no
+  umbrella `check` job and is intentionally not required. **Webkit
+  regressions are caught post-merge, not pre-merge.** When a full-matrix
+  run goes red, the agent files a `p0`, `type:bug` issue manually per
+  AGENT.md directive #13 (the deferred automation footnote in
+  `ci-full-matrix.yml` header documents this expectation explicitly).
+  PR-gate wallclock should drop further from #472's 5m 46s baseline
+  because chromium-only halves the browser-install + e2e work per
+  shard. Visual baselines under `tests/e2e/__screenshots__/<spec>/`
+  remain on disk for both `chromium` and `webkit` filename suffixes —
+  the full-matrix workflow continues to exercise both; the PR gate
+  exercises chromium only. Do **not** delete `*-webkit.png` baselines
+  on the grounds that "PR CI doesn't use them" — they are load-bearing
+  for the full-matrix workflow.
+
 - **2026-05-16 (iter-788, T-14.06)** — Library namespace seeding for the
   SysMLv2 text parser/serializer now routes through the `LibraryIndex`
   interface in `src/library/libraryIndex.ts` (replaces the two static
