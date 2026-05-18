@@ -6,4 +6,4 @@ When a branch merges (or is abandoned), remove its row.
 
 | Branch | Lead engineer (subagent) | Theme | Issues | Files touched (paths) | Started | Status |
 |--------|--------------------------|-------|--------|-----------------------|---------|--------|
-| `phase-15/iter-880-health-check-and-status-sync` | main agent | Iter-880 close-out chore — periodic health check (iter÷10) + STATUS sync to post-#531 merge state. No code changes. Waiting on operator-cut `vphase-15.10` / `v1.6.1` tag to seal walk-34 plan in iter-881. | #532 (close) | `STATUS.md`, `docs/architect/in-flight.md` | 2026-05-18 | PR pending |
+| `phase-15/iter-881-blocked-tick-status-sync` | main agent | Iter-881 blocked-tick close-out chore — STATUS sync only; no code changes; no health check due (iter-890 next). Documents that operator-cut `vphase-15.10` / `v1.6.1` is still pending and walk-34 plan-seal remains blocked on the missing deploy headers. | #534 (close) | `STATUS.md`, `docs/architect/in-flight.md` | 2026-05-19 | PR pending |
