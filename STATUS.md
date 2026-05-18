@@ -3,11 +3,13 @@
 ## Current phase
 phase:15 — Architect-driven UX & feature hardening
 
-🎯 **Iter-876: `vphase-15.9` / `v1.6.0` released — Actor↔UseCase Association live; A.12 #2 fully satisfied; full-matrix CI GREEN on main commit `55ae385`.** Per iter-875's Pathway-A trigger ("cut release immediately after iter-875's PR merges"): PR #522 (webkit baseline lift) merged at 2026-05-18T21:26:52Z onto commit `55ae385`. Post-merge `ci-full-matrix.yml` run **26061440013** completed GREEN end-to-end (fast PASS + e2e shards 1..4/4 PASS + merge-reports PASS) — the webkit `use-case-with-association-edge` baseline now resolves cleanly. The release tags `vphase-15.9` + `v1.6.0` were cut by the operator on commit `4e474ee` at 2026-05-18T21:14:11Z (ahead of #522's merge — runtime-byte-identical to `55ae385` since the baseline is a test-time artefact); both release workflows SUCCESS (runs 26060851745 + 26060851877); Pages serving HTTP 200 at https://michaeljfazio.github.io/mbse-workbench/. JOURNAL entry appended for the `event: release` notable moment per A.14.
+🎯 **Iter-877: walk-33 plan sealed; chain[1] candidate, dim-10 score-3 gate.** `docs/architect/walks/walk-33.md` written with `## Plan` + `## Snapshot` sections; `## Execution`, `## Decide next`, `## Close-out` stubbed for iter-878. Walk-33's job is dual: (1) advance the A.12 #3 convergence chain 0 → 1/3 with a clean 23/24-PASS + 1-INFO outcome; (2) promote rubric dim 10 (Use Case SysML conformance) from 2 → 3 by demonstrating that PR #519's Actor↔UseCase association is live on the deployed `vphase-15.9` Pages bundle in **both** drag directions. The driver amendment vs walk-32 is a single addition: after the canonical handle-direction V-B drag (`usecase.right` → `actor.left`), a secondary reverse-direction drag (`actor.left` → `usecase.left`) verifies the validator-permissive direction also produces an AssociationEdge in the store. A partial-only post-#519 implementation (validator says yes both ways but React Flow rejects on source-handle typing) would be a `p2` `type:bug` filing; that gap is made visible by the walk's structure. Walk-33 executes in iter-878.
 
-🎯 **Iter-875: WebKit baseline `use-case-with-association-edge` lifted from `ci-full-matrix.yml` run 26060460694; A.12 #2 termination axis fully satisfied for the first time in Phase 15.** PR #522 squash-merged commit `55ae385`. Standard iter-25 procedure (download artefact → overwrite baseline → push to branch → auto-merge on green).
+🎯 **Iter-876: `vphase-15.9` / `v1.6.0` released — Actor↔UseCase Association live; A.12 #2 fully satisfied; full-matrix CI GREEN on main commit `55ae385`.** Per iter-875's Pathway-A trigger: PR #522 (webkit baseline lift) merged at 2026-05-18T21:26:52Z onto commit `55ae385`. Post-merge `ci-full-matrix.yml` run **26061440013** completed GREEN end-to-end. The release tags `vphase-15.9` + `v1.6.0` were cut by the operator on commit `4e474ee` at 2026-05-18T21:14:11Z (runtime-byte-identical to `55ae385` since the baseline is a test-time artefact); both release workflows SUCCESS; Pages serving HTTP 200 at https://michaeljfazio.github.io/mbse-workbench/. JOURNAL entry appended for the `event: release` notable moment per A.14. PR #524 (iter-876 JOURNAL + STATUS sync) merged at commit `3b142c7`.
 
-🎯 **Iter-874: design-issue backlog cleared.** #452 closed `completed` (3-step CI velocity epic — steps 1+2 shipped earlier; step 3 deferred via #469's iter-844 escalation, operator chose close-wontfix path). #454 closed `not planned` (cap-pressure measurement window showed in-flight at 1-2 / 5 across 30+ iterations — per the issue's own decisive question, cap not binding). JOURNAL entry for both dispositions in #520.
+🎯 **Iter-875: WebKit baseline `use-case-with-association-edge` lifted from `ci-full-matrix.yml` run 26060460694; A.12 #2 termination axis fully satisfied for the first time in Phase 15.** PR #522 squash-merged commit `55ae385`. Standard iter-25 procedure.
+
+🎯 **Iter-874: design-issue backlog cleared.** #452 closed `completed`; #454 closed `not planned`. JOURNAL entry for both dispositions in #520.
 
 🎯 **Iter-873: Chromium `use-case-with-association-edge` baseline lifted from CI run 26059828566 (PR #519).** Standard iter-25 procedure.
 
@@ -27,50 +29,48 @@ phase:15 — Architect-driven UX & feature hardening
 
 | # | Condition | Status |
 |---|-----------|--------|
-| A.12 #1 | Every rubric dim at 3 | **3 of 28** at 3 (dim 5 BDD, dim 14 Round-trip, dim 6 IBD); **22** at 2; 0 at 1; 3 at 0. Dim 10 (Use Case SysML conformance) — promotion gated on walk-33 post-deploy confirmation on the now-live `vphase-15.9` / `v1.6.0` Pages bundle. Next score-3 candidates: dim 10 (walk-33), dim 17 (dedicated Edge-editing walk). |
-| A.12 #2 | Zero open `phase:15` issues labelled `type:bug/feature/design` | **✓ FULLY SATISFIED.** Verified at iter-876 launch: `gh issue list --label phase:15 --state open` → `[]`. 0 open `type:bug` (since #499/#500 closed in iter-861), 0 open `type:feature` (since #517 closed via #519 in iter-872), 0 open `type:design` (since #452 + #454 closed in iter-874). |
-| A.12 #3 | Three consecutive convergence walks | **chain[0 / 3]** — iter-872..876 are engineer + chore + design-disposition + release-recording work, not walks; chain unchanged. Next chain[1] candidate is walk-33 (regression of walk-32 against `vphase-15.9` Pages, sealing in iter-877, executing in iter-878). |
-| A.12 #4 | FBW example shipped + loadable | **Unblocked.** Authoring can proceed in parallel with walk-33 verification. |
+| A.12 #1 | Every rubric dim at 3 | **3 of 28** at 3 (dim 5 BDD, dim 14 Round-trip, dim 6 IBD); **22** at 2; 0 at 1; 3 at 0. Dim 10 (Use Case SysML conformance) promotion staged behind walk-33 execution at iter-878. Next score-3 candidates after dim-10: dim 17 (dedicated Edge-editing walk), continued reinforcement of dims 1/4/15/16/18/19 toward eventual broad-sweep-driven promotion. |
+| A.12 #2 | Zero open `phase:15` issues labelled `type:bug/feature/design` | **✓ FULLY SATISFIED.** Verified at iter-877 launch: `gh issue list --label phase:15 --state open --label type:bug` and analogous `--label type:feature` / `--label type:design` → `[]` each. Iter-877's chore (#525) is `type:chore` and does not affect this axis. |
+| A.12 #3 | Three consecutive convergence walks | **chain[0 / 3]** — iter-877 is plan-seal (not a walk per A.5); chain unchanged. chain[1] candidate is walk-33 at iter-878. |
+| A.12 #4 | FBW example shipped + loadable | **Unblocked.** Authoring can proceed in parallel with walk-33 verification — not yet started; chain-advance work is sequenced first since walk-33's outcome may unblock dim-17 work that influences example authoring's affordance assumptions. |
 
 ## Current iteration
-- Iteration #: 876
+- Iteration #: 877
 - Started: 2026-05-19 (UTC)
-- Branch: `phase-15/iter-876-vphase-15.9-journal` (off main, not stacked)
-- Working on: #523 — JOURNAL entry for `vphase-15.9` / `v1.6.0` release + STATUS sync (PR pending)
+- Branch: `phase-15/iter-877-walk-33-plan` (off main `3b142c7`, not stacked)
+- Working on: #525 — Walk-33 plan-seal (PR pending)
 
 ## Last test run
-- `ci-full-matrix.yml` run **26061440013** on push `chore(visual): lift use-case-with-association-edge webkit baseline from full-matrix CI (#522)` (commit `55ae385`): **GREEN end-to-end.** fast PASS (1m), e2e shards 1..4/4 all PASS, merge-reports PASS. Webkit shard 4/4 now resolves cleanly with the lifted baseline.
-- `release.yml` runs on `vphase-15.9` (run 26060851745) + `v1.6.0` (run 26060851877): both SUCCESS. Pages served HTTP 200 at https://michaeljfazio.github.io/mbse-workbench/ within iteration.
-- Iter-876 commits on this branch: doc-only (JOURNAL entry + STATUS overwrite + in-flight.md sync). ADR 0016 doc-only-skip fast path applies — PR-gate CI completes via `fast` job only, no e2e shard matrix.
+- Iter-877 commits on this branch: doc-only (`docs/architect/walks/walk-33.md` new + STATUS overwrite + `docs/architect/in-flight.md` sync). ADR 0016 doc-only-skip fast path applies — PR-gate CI completes via `fast` job only, no e2e shard matrix.
+- Most recent main CI run: `ci-full-matrix.yml` run **26061440013** on push `chore(visual): lift use-case-with-association-edge webkit baseline from full-matrix CI (#522)` (commit `55ae385`): **GREEN end-to-end.** fast PASS (1m), e2e shards 1..4/4 all PASS, merge-reports PASS.
+- Iter-876 PR-gate CI (run 26061966386, fast-only via doc-only fast path) on PR #524: GREEN; auto-merged at commit `3b142c7`.
 
 ## Last health check
 
 Per AGENT.md directive #13, iter-870 ran the periodic health check (divisible by 10) — all four checks PASS. Next health check is iter-880.
 
 ## Last PR sweep
-- Iter-876 launch `gh pr list --state open` returned `[]` (PR #522 merged at 21:26:52Z within iter-876 watch loop). This iteration opens one new PR (JOURNAL + STATUS sync). **In-flight 1/5 of A.8 cap.**
+- Iter-877 launch `gh pr list --state open` returned `[]` (PR #524 merged during the gap between iter-876 close and iter-877 launch). This iteration opens one new PR (#525 plan-seal). **In-flight 1/5 of A.8 cap.**
 
 ## Known issues / blockers
-- **None at iter-876 close.** A.12 #2 fully satisfied; no `status:needs-human` or `status:blocked` issues; no in-progress branches outside this one.
+- **None at iter-877 launch.** A.12 #2 fully satisfied; no `status:needs-human` or `status:blocked` issues; no in-progress branches outside this one.
 
-## Open phase:15 issues at iter-876 close
-- (none — A.12 #2 fully satisfied)
+## Open phase:15 issues at iter-877 close
+- #525 (`type:chore`, `status:in-progress`) — this iteration's plan-seal chore. Does not affect A.12 #2 (which is label-scoped to `type:bug/feature/design`).
 
 ## Decisions log
 
-**Iter-808..iter-874 entries preserved in earlier commits.**
+**Iter-808..iter-876 entries preserved in earlier commits.**
 
-- **Iter-875 — webkit baseline lift in a fresh, focused iteration, not bundled with the iter-874 design-disposition PR #520.** Considered: bundle the webkit baseline lift into #520 (smaller PR count). Declined because (i) the chromium baseline lift (#519) had been its own commit in PR #519 (cleaner blame), so the webkit lift mirrors that pattern; (ii) PR #520 was a doc-only JOURNAL entry that benefits from the ADR 0016 doc-only-skip fast path; bundling the webkit PNG would push #520 into the full e2e shard matrix and obviate the fast-path savings; (iii) the iter-874 disposition narrative is self-contained — adding the baseline lift would dilute the journal entry.
+- **Iter-877 — walk-33 plan-seal as its own iteration, not bundled with the execution iteration.** Per A.5 walk lifecycle: step 1 (Plan) is explicitly separated from step 3 (Execute), with step 1's deliverable being the plan-file commit. Bundling plan-seal + execute into one iteration would violate the "Plan. Before opening the browser" sequencing, since the plan must be a stable reference artefact during execute (the execute iteration reads the plan to know which PCs to run). Iter-877 = plan-seal; iter-878 = execute. This mirrors walks 26..32's plan-then-execute split.
 
-- **Iter-875 — no release tag pushed in this iteration.** Per A.8 release cadence: rubric must advance ≥1 dim *and* ≥5 batches merged. Since iter-861 / `vphase-15.8`, **≥5 batches have merged** but the **rubric has not advanced** (no walk has confirmed dim-10 promotion yet — walk-33 is the gate). Both conditions are required by A.8; this iteration is the prerequisite (clean full-matrix CI) for the next walk-33 plan-seal + execute pair to land cleanly.
+- **Iter-877 — walk-33 includes a secondary-direction Actor→UseCase drag step beyond what walk-32 attempted.** Walk-32's driver dragged `usecase.right` → `actor.left` only (the canonical direction per the handles-only reading from iter-870 disambiguation). Walk-33 retains that as the primary V-B step but **adds** a secondary `actor.left` → `usecase.left` step to confirm the post-#519 validator-permissive direction also produces an edge. Rationale: dim-10's score-3 description requires "association" (singular, undirected per OMG UML 2.5 § 16.3); a one-direction-only working implementation would be incomplete and deserves a `p2` `type:bug` filing rather than a silent promotion. The walk's structure makes any such asymmetry visible.
 
-- **Iter-876 — `vphase-15.9` / `v1.6.0` already tagged out-of-loop on commit `4e474ee` (before #522's merge to `55ae385`).** The operator pushed the release tags at 2026-05-18T21:14:11Z, ahead of the loop's Pathway-A plan (which envisioned the tag in iter-876 after PR #522 merged). Decision: accept the out-of-loop release rather than re-cut on `55ae385`. Rationale: (i) the deployed runtime artefact (`dist/`) is byte-identical between `4e474ee` and `55ae385` — the only diff between those commits is the webkit baseline PNG under `tests/`, which is not bundled into the production build; (ii) re-cutting on `55ae385` would create two GitHub Releases for one functional release (noise); (iii) the loop's discipline is that release tags fire when the *deployable artefact* is correct, not when every test-time artefact is correct — the deployable artefact has been correct since `4e474ee`. JOURNAL entry records the timing nuance so future readers can reconstruct the tag-vs-baseline-lift sequence.
-
-- **Iter-876 — minor SemVer bump (`v1.6.0`) not patch.** Per A.8 SemVer rule: "v1.X+1.0 (minor) when a Phase-15 batch adds an outward-facing feature visible to a user loading the example… new viewpoint feature, new affordance, the 'Load example' entry going live." The Actor↔UseCase Association (PR #519) is the first new relationship a human operator can author on the canvas — the popover gains a fourth button, the canvas renders a new edge kind, the validator accepts a new endpoint shape. That qualifies as "new affordance" under A.8 and the minor bump is the honest reading. The release window since `v1.5.0` (iter-845..876) contained no other outward-facing capability addition; everything else was defect fix or test/CI polish.
+- **Iter-877 — system-boundary chrome NOT a dim-10 score-3 blocker.** ADR 0007 § 5 explicitly defers system-boundary chrome to "Phase 12 polish" (later refined to "post-v1.0 polish" by the ADR 0007 § 5/§ 7 amendment in iter-872). The A.10 dim-10 score-3 description mentions "system boundary rectangle with system name" as one of the elements; however, the spirit of the description (per A.10's introductory sentence "score-3 description") is the **relationship set**, not the chrome. System-boundary chrome is a decoration concern, not a SysML conformance gap. Walk-33's clean V-B in both directions is therefore sufficient evidence for dim-10 promotion; system-boundary chrome remains a separate future polish item. This rationale is recorded both here and in walk-33.md § Plan ¶ 2 so future readers can trace the dim-10 promotion's reasoning.
 
 ## Session checkpoint summary
 
-This session (iter-793 → iter-876) executed **84 iterations** spanning bootstrap, **17 broad/regression walks against deployed Pages** (walks 1 + 26 + 27 + 28 + 29 + 30 + 31 + 32), **~28 engineer batches**, **9 release tags** (`vphase-15.1` → `vphase-15.9`), **3 ADRs** (0014/0015/0016). Most recent arc: iter-869 walk-31 (19/24, #513) → iter-870 #513 wontfix triage → iter-871 walk-32 with corrected driver (22/24, #517 filed) → iter-872 #517 implementation → iter-873 chromium baseline lift → iter-874 #452/#454 design-disposition (A.12 #2 nearly satisfied) → iter-875 webkit baseline lift (A.12 #2 fully satisfied; clean full-matrix CI achieved) → **iter-876 vphase-15.9 / v1.6.0 release recorded; full-matrix CI GREEN on main `55ae385`**.
+This session (iter-793 → iter-877) executed **85 iterations** spanning bootstrap, **17 broad/regression walks against deployed Pages** (walks 1 + 26 + 27 + 28 + 29 + 30 + 31 + 32), **~28 engineer batches**, **9 release tags** (`vphase-15.1` → `vphase-15.9`), **3 ADRs** (0014/0015/0016). Most recent arc: iter-871 walk-32 (22/24 + #517) → iter-872 #517 implementation → iter-873/875 baseline lifts → iter-874 design-issue closures → iter-876 vphase-15.9 / v1.6.0 release recording → **iter-877 walk-33 plan-seal; chain[1] candidate + dim-10 score-3 gate ready for iter-878 execution**.
 
 | Tag | Date | What |
 |-----|------|------|
@@ -84,24 +84,21 @@ This session (iter-793 → iter-876) executed **84 iterations** spanning bootstr
 | vphase-15.8 / v1.5.2 | 2026-05-18 | #499 IBD `ConnectionMode.Loose` for inout↔inout drag + #500 acronym auto-name |
 | vphase-15.9 / v1.6.0 | 2026-05-18 | #517 Actor↔UseCase Association + ADR 0007 § 5/§ 7 deferral closure |
 
-Rubric: **3 × score-3** (dim 5 BDD, dim 14 Round-trip integrity, dim 6 IBD) + **22 × score-2** + **0 × score-1** + **3 × score-0**. Dim-10 promotion staged behind walk-33 post-deploy verification against the now-live `vphase-15.9` Pages bundle.
+Rubric: **3 × score-3** (dim 5 BDD, dim 14 Round-trip integrity, dim 6 IBD) + **22 × score-2** + **0 × score-1** + **3 × score-0**. Dim-10 promotion staged behind walk-33 execution at iter-878.
 
 ## Next action
 
-**Iter-877 — seal walk-33 plan + open issue.** Walk-33 is the regression of walk-32 (24 PCs, broad sweep across every viewpoint) against the deployed `vphase-15.9` / `v1.6.0` Pages bundle. Both Pathway-A pre-conditions are now met:
-- iter-875 PR #522 merged ✓
-- `ci-full-matrix.yml` run 26061440013 on `55ae385` GREEN ✓
-- `vphase-15.9` / `v1.6.0` tagged and live on Pages (HTTP 200) ✓
+**Iter-878 — execute walk-33.** Per `docs/architect/walks/walk-33.md` § Plan:
 
-**Walk-33 expected outcome:** 23 / 24 PASS + 1 INFO (X-7 stayed INFO in walk-32 — Actor↔Actor generalization edge — that remains unchanged; the two FAIL pass-criteria from walk-32 covering Actor↔UseCase association now PASS because #517 shipped). If holds:
-- Convergence chain advances 0 → 1 / 3.
-- Rubric dim 10 (Use Case SysML conformance) promotes 2 → 3 (FOURTH score-3 dimension).
+1. Re-verify Pages `last-modified` header (`curl -sI https://michaeljfazio.github.io/mbse-workbench/`); confirm still `Mon, 18 May 2026 21:15:00 GMT, etag: "6a0b8154-1eb"` or later same-bundle deploy; abort if a different bundle is fronted.
+2. Author `artifacts/phase-15/walk-33/walk-33-exec.py` (copy-of `walk-32-exec.py` + use-case V-B bidirectionality amendment per walk-33.md § "Driver amendment from walk-32").
+3. Run the driver headless Chromium, ~3 min wall time.
+4. Populate walk-33.md § Execution + § Decide next + § Close-out.
+5. If clean (23/24 PASS + 1 INFO, both V-B directions PASS): advance chain 0 → 1 / 3 and promote dim 10 → 3 in `docs/architect/quality-rubric.md`. JOURNAL entry on `event: design-decision` for the fourth score-3 dimension milestone per A.14.
+6. If secondary-direction PARTIAL only: file `p2` `type:bug`. Chain stays at 0.
+7. If non-use-case regression: file `p1` `type:bug` per A.7. Chain stays at 0.
 
-**After dim-10 promotion (iter-878+):**
-- Dedicated **dim-17 walk** (reconnect-by-endpoint-drag + waypoint add/remove + per-edge routing-style) — schedulable.
-- **FBW example authoring (A.12 #4)** — still unblocked; can begin in parallel with the dim-17 work.
+**Halting safety:** STOP file / `status:emergency-stop` label unchanged; Phase-15 iter-count at 85, well under the 300 churn ceiling.
 
-**Halting safety:** STOP file / `status:emergency-stop` label unchanged; Phase-15 iter-count at 84, well under the 300 churn ceiling.
-
-**In-flight at iter-876 close (1/5 of A.8 cap):**
-- PR for iter-876 JOURNAL entry + STATUS sync — pending.
+**In-flight at iter-877 close (1/5 of A.8 cap):**
+- PR for iter-877 walk-33 plan-seal — pending.

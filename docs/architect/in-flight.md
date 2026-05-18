@@ -6,4 +6,4 @@ When a branch merges (or is abandoned), remove its row.
 
 | Branch | Lead engineer (subagent) | Theme | Issues | Files touched (paths) | Started | Status |
 |--------|--------------------------|-------|--------|-----------------------|---------|--------|
-| `phase-15/iter-876-vphase-15.9-journal` | main agent | JOURNAL entry for `vphase-15.9` / `v1.6.0` release + STATUS overwrite to iter-876 close. Doc-only — ADR 0016 fast-path PR-gate. | #523 (close) | `JOURNAL.md`, `STATUS.md`, `docs/architect/in-flight.md` | 2026-05-19 | PR pending |
+| `phase-15/iter-877-walk-33-plan` | main agent | Walk-33 plan-seal (chain[1] candidate regression of walk-32 on `vphase-15.9` Pages; dim-10 score-3 gate). Doc-only — ADR 0016 fast-path PR-gate. | #525 (close) | `docs/architect/walks/walk-33.md`, `STATUS.md`, `docs/architect/in-flight.md` | 2026-05-19 | PR pending |
