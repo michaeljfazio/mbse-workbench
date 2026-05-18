@@ -303,11 +303,20 @@ async function readPersistedProject(
 function canonicalize(
   list: ReadonlyArray<Record<string, unknown>>,
 ): ReadonlyArray<Record<string, unknown>> {
+  // ownerIndex is a derived sibling-ordering hint, not a structural
+  // property: the SysMLv2 text serializer emits in a canonical (kind+id
+  // sorted) order, so re-imported elements get parse-order indices that
+  // may differ from the pre-export indices even when the model is
+  // structurally identical (same ids/kinds/ownerId/ownerRole). The
+  // final-gate contract — like the Phase-12 gate — is "structurally
+  // identical modulo IDs"; ordering hints fall outside that contract.
+  // (Mirrors the canonicalize in phase-12-gate.spec.ts.)
   return [...list]
     .map((item) => {
       const cleaned: Record<string, unknown> = {};
       for (const [k, v] of Object.entries(item)) {
         if (v === undefined) continue;
+        if (k === 'ownerIndex') continue;
         cleaned[k] = v;
       }
       return cleaned;
@@ -407,6 +416,13 @@ test.describe('v1.0.0 final gate (issue #250) — full smoke + LLM critique + ro
         { timeout: 15_000 },
       )
       .toBe(SEED_ELEMENTS.length + SEED_EDGES.length);
+
+    // If the SysMLv2 importer surfaced a parse error, the storage stays
+    // unchanged and the count-poll above trivially matches the still-
+    // seeded data, masking the regression. Assert the error banner did
+    // not appear during the import window so silent-fail imports can't
+    // satisfy the gate.
+    await expect(page.getByTestId('import-error-banner')).toBeHidden();
 
     // Step 7 — structural equality (modulo IDs is satisfied because
     // the serializer's `// id:` comments are the parser's ID-recovery
