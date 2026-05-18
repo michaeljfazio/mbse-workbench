@@ -124,3 +124,69 @@ Phase-15 score-3 count at walk open: **2** (dim 5 BDD, dim 14 Round-trip integri
 This file is the **Plan** per A.5. Sealed in iter-864. Any deviation during execution is captured as a finding, not as a plan amendment.
 
 The execute iteration (next iter after this PR merges) will append `## Execution` / `## Findings` / `## Rubric score deltas` / `## Convergence chain (A.12 #3)` / `## Decide next` sections to this file, plus run the driver, capture screenshots, and update `quality-rubric.md`.
+
+## Execution
+
+**Iteration:** 865 (2026-05-19). **Driver:** `artifacts/phase-15/walk-29/walk-29-exec.py` (gitignored per `artifacts/` rule), cloned byte-for-byte from `walk-28-exec.py` with one functional delta: the `page.wait_for_function` settle-wait specified in § "Tool & environment" inserted between the inspector-item-type `Enter` press and the PC5 marker probe. **Target:** deployed `vphase-15.8` Pages bundle. **Pre-launch verification:** `curl -sI https://michaeljfazio.github.io/mbse-workbench/` returned `last-modified: Mon, 18 May 2026 18:32:43 GMT` — confirmed unchanged from walk-28's measurement (no new release tag between walks; functional SHA `95fb6c2`). **Browser:** headless Chromium via Playwright `sync_api`; 1440×900 viewport; networkidle wait on goto. **Wall clock:** ~3 minutes (`app_load = 1507 ms`).
+
+**Outcome:** **7/8 PCs PASS automated; 8/8 by visual inspection** of `screenshots/09-itemflow-created.png` (filled-triangle arrowhead at `ADIRU_1.data`, `FlightCommand` label committed on the bezier path, inspector populated). Identical pattern to walk-28: PC5 fails automated, visual PASS holds.
+
+| # | Verdict | Detail |
+|---|---------|--------|
+| PC1 | PASS | `n_parts=2, frame=✓, pfc_name='PFC_1', adiru_name='ADIRU_1'` (acronym auto-name from #500 verified again). |
+| PC2 | PASS | `cmd=12×12 radius='0px'`, `data=12×12 radius='0px'`. |
+| PC3 | PASS | `markerEnd=None, markerStart=None, strokeDasharray='none'` — `ConnectionMode.Loose` from #499 verified again. |
+| PC4 | PASS | `direction='out'`, glyph `'◀'`. |
+| **PC5** | **FAIL automated; PASS visual** | `markerEnd='', triangle=True, label='FlightCommand'`. The #505 settle-wait worked — the probe ran with the edge `<g>` AND the label `<div>` reattached AND `label.textContent.trim() === 'FlightCommand'` (the wait would otherwise have timed out). But the marker-end attribute read returned `null` because of a different driver-side defect (see § Findings). |
+| PC6 | PASS | Only v2-default proxy pattern surfaced — acceptable per `ibd.md` §D. |
+| PC7 | PASS | Reload preserves `parts=2`, `conns=1`, `flows=1`, names, port direction, item-flow label `'FlightCommand'`. |
+| PC8 | PASS | 0 page errors, 0 console errors. |
+
+**Delta vs walk-28:** PC5 verdict text changes shape (`markerEnd=null` from a torn-down `<g>` → `markerEnd=''` from a stably-mounted `<g>` with a wrong-element probe read). All other PCs identical, as predicted by the plan's "no change expected" column. The structural delta (`walk_28 vs walk_29` in `walk-29.json`'s `delta_vs_walk_28` section) confirms: PC1–PC4 + PC6–PC8 byte-identical; PC5 reshaped per above.
+
+## Findings
+
+### F-29-1 — PC5 driver probe selects wrong `<path>` element (filed as #508)
+
+**Severity:** `p3 type:chore area:cross-cutting` (driver-side measurement defect, not a product defect; no architect modeling blocked; one-line fix).
+
+**Root cause:** The probe at `walk-29-exec.py` line ~745 uses `g.querySelector('path')` to read the BaseEdge's `marker-end` attribute. Per `src/viewpoints/ibd/ItemFlowEdge.tsx` lines 48–73 the `<g data-testid="ibd-edge-${id}">` contains, in document order:
+
+1. `<defs><marker id="ibd-itemflow-arrow-${id}"><path d="M0 0 L12 6 L0 12 Z" fill={stroke}/></marker></defs>` — the FIRST `<path>` in the group; lives inside `<defs>` and has no `marker-end` attribute.
+2. `<BaseEdge .../>` — renders as a `<path>` with `marker-end="url(#ibd-itemflow-arrow-${id})"`; this is the SECOND `<path>`.
+
+`g.querySelector('path')` returns (1), the marker's interior triangle path, which has no `marker-end`. The probe correctly reads `markerExists=true` and the correct `markerPathD`/`markerPathFill` from a separate `marker` selector, but the `marker-end` attribute read goes to the wrong element. **The product is correct in every measurable way:** filled-triangle marker definition exists, BaseEdge path renders with the marker applied (screenshot confirms), label commits to `'FlightCommand'`, persistence holds across reload. Only the driver's probe selector is wrong.
+
+**Distinction from #505:** #505 was the settle-wait issue — the probe ran while React was mid-commit and the entire `<g>` wrapper was transiently torn down, so `g.querySelector('path')` returned `null`. The #505 fix (the settle-wait specified in walk-29.md) DID work — it correctly waited until the edge AND label were both mounted AND the label text had committed. That fix is verified by this walk. #508 is a separate driver-side defect that the #505 fix exposed by getting past the unmount race.
+
+**Fix:** Replace the probe's path selector with `g.querySelector('path[marker-end]')` or the explicit walk past `<defs>`. Forward-fix lands in walk-30's `walk-30-exec.py` per the gitignore policy and is documented in walk-30.md § "Tool & environment" prior to walk-30 execution. Issue acceptance is the corrected probe shape recorded in that file.
+
+**No other findings.** PC1–PC4, PC6, PC7, PC8 inherit walk-28's PASS verdicts unchanged; the bundle is bit-for-bit identical so the structural assertions cannot have moved.
+
+## Rubric score deltas
+
+| Dim | Old | New | Rationale |
+|-----|----:|----:|-----------|
+| 6 (IBD) | 2 | **2** | Pages-regression of walk-28 against `vphase-15.8` (unchanged bundle). 7/8 PCs PASS automated; 8/8 visually. The #505 settle-wait fix DID work (the probe correctly waited until React's commit phase resolved). PC5 still FAIL automated due to #508 (driver probe selects wrong `<path>` element). **Score-3 promotion deferred again** to walk-30 regression after #508 fix lands. Honest-measurement standard (A.5) again chosen over throughput. |
+| 17 (Edge editing) | 2 | **2** | Pages-regression. PC3 PASS reinforced — `ConnectionMode.Loose` plain-line `ConnectionUsage` creation continues to work on the unchanged bundle. No advance to 3 (still gated on reconnect-by-endpoint-drag + waypoint + routing-style — dedicated dim-17 walk reserved for after dim 6 reaches 3). |
+| 27 (Persistence) | 2 | **2** | Pages-regression. PC7 PASS reinforced — reload preserves `parts=2`, `conns=1`, `flows=1`, names, direction, and item-flow label `'FlightCommand'` on the unchanged bundle. Score 3 still reserves multi-project switching coverage. |
+
+## Convergence chain (A.12 #3)
+
+**Status:** `chain[0] / 3`. Walk-29 surfaced a finding (#508 — driver-side, A.5 strict reading: "rubric explicitly scores honesty over throughput"). Even though the product is correct in every visual and structural sense (and the #505 fix this walk was designed to verify is itself verified), a new issue was filed; per A.5 the chain does not advance.
+
+**Reset rationale:** Two consecutive walks (28, 29) have now failed dim-6 score-3 promotion for distinct driver-side reasons (#505 settle-wait, then #508 probe-selector). Both findings are `p3 type:chore`. The product behaviour has been steady across both walks — bit-for-bit identical bundle (`95fb6c2`), identical visual output. The convergence chain stays at 0; the next chain[0] candidate is walk-30 (regression of walk-29 after #508 fix).
+
+## Decide next
+
+**Iter-866 — execute walk-30** as the chain[0] candidate. Walk-30 is itself a regression of walk-29 (re-running the same eight PCs) with the #508 driver-probe fix in place. The driver inherits walk-29-exec.py byte-for-byte except for the PC5 marker-end probe selector, which becomes `g.querySelector('path[marker-end]')` (or equivalent). Expected outcome: 8/8 PCs PASS automated; dim 6 promotion 2 → **3** (THIRD score-3 dimension); chain[0] → chain[1] / 3; #508 closes.
+
+**If walk-30 also fails for some new reason:** chain stays at 0; file the finding; dim 6 stays at 2. Two consecutive driver-side findings on the same PC suggests the probe shape itself is fragile and a dedicated `tests/e2e/__helpers__/edge-probe.ts` or equivalent stable selector pattern should be invested in — that would be a `type:design` issue at that point.
+
+**Walks 31 + 32** become the chain[1]/chain[2] candidates after walk-30 lands cleanly. The plan for them stays as previously stated (broad-sweep walk-30 was the original chain[2] candidate, but the #508 finding now consumes that slot — walks 30/31/32 collectively now form the convergence chain).
+
+**FBW example (A.12 #4):** unblocks the iteration after dim 6 reaches 3 — currently expected iter-867 or iter-868 (post-walk-30 clean).
+
+**#469 (CI step 3, merge queue):** no further loop work. `status:needs-human` unchanged.
+
+**ADR for raising A.8 cap (#454):** indefinitely blocked behind #469.
