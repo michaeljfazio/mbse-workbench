@@ -1,9 +1,13 @@
 name: CI
 
+# PR gate. Runs chromium + chromium-visual only. Webkit coverage is run by
+# `.github/workflows/ci-full-matrix.yml` on push-to-main and nightly schedule
+# (issue #468 / CI step 2 of #452). Branch protection requires the `check`
+# umbrella job below; the full-matrix workflow is observational and files
+# a manual p0 issue if it goes red (see CONTEXT.md / ci-full-matrix.yml
+# header for the deferred-automation expectation).
 on:
   pull_request:
-    branches: [main]
-  push:
     branches: [main]
 
 concurrency:
@@ -106,14 +110,20 @@ jobs:
           path: ~/.cache/ms-playwright
           key: pw-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
 
+      # PR gate installs chromium only — webkit is exercised by
+      # ci-full-matrix.yml on push-to-main + nightly, so the PR job
+      # skips the webkit binary download (~50 MB + sys deps saved per
+      # shard × 4 shards).
       - name: Install Playwright browsers
-        run: pnpm exec playwright install --with-deps chromium webkit
+        run: pnpm exec playwright install --with-deps chromium
 
       # `--reporter=blob` replaces the config's `[github, html]` so each
       # shard writes a `blob-report/` consumed by the `merge-reports`
       # job below. Worker count comes from playwright.config.ts (CI=4).
-      - name: E2E shard ${{ matrix.shard }}/4
-        run: pnpm exec playwright test --shard=${{ matrix.shard }}/4 --reporter=blob
+      # `--project=chromium --project=chromium-visual` restricts the PR
+      # gate to chromium; webkit projects run in the full-matrix workflow.
+      - name: E2E shard ${{ matrix.shard }}/4 (chromium only)
+        run: pnpm exec playwright test --shard=${{ matrix.shard }}/4 --project=chromium --project=chromium-visual --reporter=blob
 
       - name: Upload blob report
         if: ${{ always() }}
