@@ -8,6 +8,29 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
 
 ## Discovered facts
 
+- **2026-05-19 (iter-871 — React Flow drag-pipeline two-stage rejection):**
+  A handle-drag failure in a React Flow viewpoint can be rejected at
+  **two distinct stages**: (1) the handle hit-test (the source/target
+  handle must exist with the expected `type="source"` / `type="target"`
+  and `position`); (2) the connection validator (`isValidConnection`
+  prop on the canvas, which each viewpoint implements separately —
+  e.g., `src/viewpoints/useCase/isValidConnection.ts`). Iter-870
+  disambiguated walk-31's use-case/V-B PARTIAL by inspecting ONLY stage
+  1 (actor has no source handles, drag direction was reversed) and
+  concluded "driver artefact." Walk-32 (iter-871) reversed the
+  direction per that disambiguation; the PARTIAL persisted, because
+  stage 2 also rejects: `isValidUseCaseConnection` returns `false` for
+  any cross-kind Actor↔UseCase pair per ADR 0007 § 5/§ 7's silent-
+  reject rule (the Phase 12 polish deferral never landed). The full
+  drag pipeline is `mousedown handle → drag preview → mouseup target
+  handle → onConnect callback → isValidConnection check → command bus
+  dispatch`. A driver-artefact hypothesis that inspects only the
+  handle layer is incomplete; check the validator too. **Rule:** when
+  triaging a React Flow handle-drag failure, trace BOTH stages: handle
+  declarations (`ActorNode.tsx:51-62` style) AND viewpoint connection
+  validator (`isValidConnection.ts`). Recorded in
+  `docs/architect/walks/walk-32.md § Use-case V-B PARTIAL — root cause`.
+
 - **2026-05-19 (iter-870 — Phase 15 walk-finding triage heuristic):**
   When a broad-sweep walk has *some* PCs FAIL and *others* PASS for the
   same conceptual category, FIRST check whether the failing/passing
