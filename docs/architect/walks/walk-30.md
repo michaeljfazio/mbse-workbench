@@ -145,3 +145,77 @@ Phase-15 score-3 count at walk open: **2** (dim 5 BDD, dim 14 Round-trip integri
 This file is the **Plan** per A.5. Sealed in iter-866. Any deviation during execution is captured as a finding, not as a plan amendment.
 
 The execute iteration (next iter after this PR merges) will append `## Execution` / `## Findings` / `## Rubric score deltas` / `## Convergence chain (A.12 #3)` / `## Decide next` sections to this file, plus run the driver, capture screenshots, and update `quality-rubric.md`.
+
+## Execution
+
+**Iteration:** 867
+**Executed:** 2026-05-19 (UTC)
+**Target:** `https://michaeljfazio.github.io/mbse-workbench/` — `vphase-15.8` / `v1.5.2` deploy. Pages `last-modified: Mon, 18 May 2026 18:32:43 GMT` **re-verified at launch** (bit-for-bit unchanged from walks 28/29; no new release tag required for the driver-only fix).
+**Driver:** `artifacts/phase-15/walk-30/walk-30-exec.py` (gitignored). Cloned byte-for-byte from `artifacts/phase-15/walk-29/walk-29-exec.py` with the sole functional delta being the PC5 marker-end probe-selector replacement specified in § "Tool & environment". The #505 settle-wait inherited from walk-29 is preserved verbatim.
+**Wall-clock:** ~3 minutes (matches the walks 28/29 envelope; well inside the A.5 15–45 min regression-walk budget).
+**Screenshots:** `artifacts/phase-15/walk-30/screenshots/` — 10 PNGs captured at phases 01–10 inclusive.
+**Outcome JSON:** `artifacts/phase-15/walk-30/walk-30.json` — pass/fail verdicts, timings, IDs, measurements, and a `delta_vs_walk_29` section comparing PC verdicts.
+
+### Pass-criteria results
+
+| # | Criterion | Walk-30 verdict (automated) | Walk-30 verdict (visual) | Delta vs walk-29 |
+|---|-----------|-----------------------------|--------------------------|------------------|
+| 1 | Two PartUsages render nested in FCS enclosing-frame with acronym auto-names (`PFC_1`/`ADIRU_1`) | **PASS** (`n_parts=2`, `frame=✓`, `pfc_name='PFC_1'`, `adiru_name='ADIRU_1'`) | PASS | unchanged |
+| 2 | Port handles render as 12×12 squares, radius 0 px | **PASS** (`cmd=12×12, radius='0px'`; `data=12×12, radius='0px'`) | PASS | unchanged |
+| 3 | Drag-create `ConnectionUsage` — plain solid line, no arrowheads | **PASS** (`markerEnd=None`, `markerStart=None`, `strokeDasharray='none'`) | PASS | unchanged |
+| 4 | Set `cmd` direction to `out`; direction glyph appears | **PASS** (`direction='out'`, `glyph='◀'`) | PASS | unchanged |
+| 5 | Shift+drag → `ItemFlow`; payload `FlightCommand`; filled-triangle marker at target end | **PASS** (`markerEnd='url(#ibd-itemflow-arrow-2899f63e-eec6-4c5b-9589-08496dc7d84a)'`, `triangle=True`, `label='FlightCommand'`) | PASS | **FLIPPED FAIL → PASS automated** — #508 probe-selector fix succeeded; visual unchanged from walk-29 (was already PASS visually) |
+| 6 | Proxy vs full port distinction | **PASS** (informational — only v2-default `port` surfaced, acceptable per `ibd.md` §D) | PASS | unchanged |
+| 7 | Reload preserves full structure (parts + names + cmd direction + 1 connection + 1 item flow with `FlightCommand` label) | **PASS** (`parts=2`, `conns=1`, `flows=1`, `pfc_name='PFC_1'`, `adiru_name='ADIRU_1'`, `cmd_dir='out'`, `flow_label='FlightCommand'`) | PASS | unchanged |
+| 8 | Zero page errors AND zero console errors | **PASS** (`page_errors=0`, `console_errors=0`) | PASS | unchanged |
+
+**Aggregate: 8/8 PCs PASS automated; 8/8 PCs PASS visually.** First fully clean IBD walk against the deployed bundle. The expected outcome from the plan's acceptance table held exactly: PC5 flipped to PASS automated; all other PCs unchanged.
+
+## Findings
+
+**Zero new findings.** No new issues filed. The #508 probe-selector fix specified in the plan resolved the only outstanding driver-side defect without disturbing any other PC. The bundle has not changed between walks 28, 29, and 30 — and three consecutive regressions on the same artifact now produce identical visual outcomes with the test driver converged on those visuals.
+
+The acceptance-table row "All 8 PCs PASS + 0 issues filed" is realised. This is the path of least resistance through walk-30; no decision-tree branches activated.
+
+Informational notes preserved from walks 28/29:
+
+- PC6 continues to surface only the v2-default `port` pattern (no `«proxy»` / `«full»` keyword distinction). Acceptable per `ibd.md` §D — the v2-default `port` IS the proxy pattern; `«full»` has no v2 equivalent.
+- The visible filled-triangle arrowhead in `09-itemflow-created.png` is rendered by the SVG `<marker>` element referenced by `BaseEdge`'s `marker-end="url(#ibd-itemflow-arrow-…)"` attribute; the `<marker>` lives inside an SVG `<defs>` and contains its own `<path d="M0 0 L12 6 L0 12 Z" fill={stroke}/>`. The walk-30 probe correctly identifies and traverses both elements.
+
+## Rubric score deltas
+
+| Dim | Old | New | Rationale |
+|-----|-----|-----|-----------|
+| 6 (SysML conformance — IBD) | 2 | **3** | **THIRD score-3 dimension** after dim 5 (BDD) and dim 14 (Round-trip integrity). All four score-3 IBD criteria from A.10 are now met against the deployed `vphase-15.8` bundle, with automated probe alignment honest-measurement passing: (a) **Parts as nested blocks within an enclosing block context** — PC1 PASS (PartUsages `PFC_1`/`ADIRU_1` nested inside `ibd-enclosing-frame-${fcsId}` with the FCS PartDefinition as the context, per ADR 0003 + `ibd.md` §A); (b) **Ports on parts** — PC2 PASS (12×12 squares with 0 px radius, `ibd.md` §A geometry); (c) **Connected via `ConnectionUsage`** — PC3 PASS (plain solid bezier between `PFC_1.cmd` and `ADIRU_1.data`, no arrowheads, `strokeDasharray='none'`, `ibd.md` §B); (d) **Item flows along connections** — PC5 PASS (filled-triangle arrowhead `M0 0 L12 6 L0 12 Z` at `ADIRU_1.data`, `FlightCommand` payload label, `ibd.md` §C); (e) **Proxy/full distinction where applicable** — PC6 PASS (v2-default `port` pattern surfaces as the proxy pattern per `ibd.md` §D — `«full»` has no v2 equivalent). Persistence reload reinforces the full structure (PC7 PASS) and the bundle is page-error-clean (PC8 PASS). Pages `last-modified: 18:32:43 GMT` confirms the same `vphase-15.8` artifact that walks 28/29 measured. |
+| 3 (Visual fidelity — ports) | 2 | 2 | Pages-regression — third consecutive PC2 PASS reinforcement. 12×12 square geometry + 0 px border-radius on both `pfc_1.cmd` and `adiru_1.data`. Direction glyph `◀` rendered after setting `cmd` direction to `out`. Score 3 still gated on comprehensive direction coverage across all four boundary positions + `~Type` conjugate-port distinction. |
+| 17 (Edge editing affordances) | 2 | 2 | Pages-regression — third consecutive PC3 PASS reinforcement (`ConnectionUsage` drag-create renders plain solid bezier on the unchanged bundle). Score 3 still gated on reconnect-by-endpoint-drag + waypoint add/remove + per-edge routing-style (dedicated dim-17 walk unblocks now that dim 6 lands at 3 — see "Decide next" below). |
+| 27 (Persistence) | 2 | 2 | Pages-regression — third consecutive PC7 PASS reinforcement. Full IBD authoring state (parts + names + port direction + 1 ConnectionUsage + 1 ItemFlow with `'FlightCommand'` label) round-trips through sessionStorage on the unchanged bundle. Score 3 still gated on multi-project switching state preservation. |
+
+## Convergence chain (A.12 #3)
+
+**Status: chain[0] → chain[1] / 3.**
+
+Walk-30 advances the convergence chain by one because no new issues were filed and the rubric did not degrade (dim 6 advanced, dims 3/17/27 reinforced positively). Chain progress under the A.12 #3 protocol:
+
+- **chain[1]** — walk-30 (this walk): IBD regression on `vphase-15.8`, 8/8 PCs PASS automated + visual, zero issues filed, three rubric dims reinforced, one dim advanced 2 → 3.
+- **chain[2]** — TBD walk (next regression or broad-sweep on the same or a successor bundle, must file zero issues with zero rubric degradation).
+- **chain[3]** — TBD walk (third consecutive zero-issue walk = convergence).
+
+A subsequent walk that files even one issue or degrades any rubric dim resets the chain to 0. Per A.12 #3 the chain must reach 3 to satisfy that termination clause, jointly with rubric saturation (A.12 #1), zero open phase:15 work (A.12 #2), FBW example shipped (A.12 #4), and final tags + green CI (A.12 #5, #6).
+
+## Decide next
+
+The clean walk-30 outcome unblocks the iter-868+ trajectory described in walk-30's plan and in `STATUS.md`. The next iteration should be a **broad-sweep walk** (walk-31), per A.6's recommendation that a broad-sweep confirm no broad-coverage regressions before committing the FBW example. The broad-sweep should:
+
+- Touch every viewpoint with shallow modelling (BDD, IBD, Requirements, Activity, State Machine, Use Case, Parametric, Package).
+- Verify the eight `vphase-15.8` fixes (acronym auto-name, `ConnectionMode.Loose`) do not leak unexpected behaviour into other viewpoints.
+- Re-verify positive evidence on dims 1–4 (visual fidelity), 18 (explorer), 19 (inspector), 24 (empty state), and 25 (accessibility) at the resolution a regression sweep can reach.
+- Inform a follow-up dim selection — likely dims 8/9/11 (Activity / State Machine / Parametric SysML conformance) as the next deep-dive candidates given dim 6 is now satisfied.
+
+If walk-31 also files zero issues, chain[2] / 3 advances; one more clean walk after that satisfies A.12 #3.
+
+The FBW example commit (A.12 #4) does not need to wait for the convergence chain to complete — A.12 #4 requires only that dim 6 reach 3 and the example loads via UI without console errors. With dim 6 at 3 the FBW model authoring effort can be planned in parallel with walk-31 (per the A.6 coverage targets — ≥50 PartDefinitions, ≥100 PartUsages, ≥60 ConnectionUsages, etc.). Decision on whether to start the FBW build now or hold for walk-31 will be made at iter-868 open after re-reading `STATUS.md` and the post-walk-30 phase-15 issue census.
+
+The dedicated **dim-17 walk** (reconnect-by-endpoint-drag + waypoint add/remove + per-edge routing-style per edge) is now unblocked and can be scheduled after either walk-31 or alongside FBW work depending on iter-868's prioritisation.
+
+**No new issues filed this iteration.** **No `type:design` issues opened** — the iter-865 contingency clause for a `tests/e2e/__helpers__/edge-probe.ts` stable helper does not trigger because the cost was paid only twice (#505 in walk-28 → settle-wait fix; #508 in walk-29 → probe-selector fix) and walk-30 closes the IBD-probe arc cleanly without a third occurrence.

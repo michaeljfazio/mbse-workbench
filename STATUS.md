@@ -3,70 +3,71 @@
 ## Current phase
 phase:15 — Architect-driven UX & feature hardening
 
-🎯 **Iter-866: walk-30 plan SEALED + #508 closed.** Walk-30 inherits walks 28/29's eight PCs verbatim. The PC5 marker-end probe-selector fix is specified in `docs/architect/walks/walk-30.md` § "Tool & environment" with a verbatim Python `evaluate` snippet that prefers `g.querySelector('path[marker-end]')` with `[...g.querySelectorAll('path')].find(p => p.hasAttribute('marker-end'))` fallback and `g.querySelector('path')` final-fallback — explicitly skips the marker triangle inside `<defs>` to read `marker-end` from the `BaseEdge` visible `<path>`. Per `artifacts/` gitignore policy the driver itself lives under `artifacts/phase-15/walk-30/walk-30-exec.py` and is not committed; the plan-spec is the durable record. Closes #508. No new release tag — driver-side fix only; bundle unchanged across walks 28/29/30 (Pages `last-modified` will be re-verified at execute time).
+🎯 **Iter-867: walk-30 EXECUTED → 8/8 PCs PASS automated + visually. Dim 6 (IBD) promoted 2 → 3 = THIRD score-3 dimension. Convergence chain advances 0 → 1 / 3.** Walk-30 ran against `vphase-15.8` Pages (`95fb6c2` deploy, `last-modified: Mon, 18 May 2026 18:32:43 GMT` re-verified before launch — bit-for-bit unchanged from walks 28/29). The iter-866 #508 probe-selector fix (three-tier `path[marker-end]` → `find(hasAttribute)` → `path`) succeeded end-to-end: PC5 marker probe now reads `markerEnd='url(#ibd-itemflow-arrow-2899f63e-eec6-4c5b-9589-08496dc7d84a)'` with `triangle=True` and `label='FlightCommand'`. All other PCs unchanged. **Zero issues filed.** All five score-3 IBD criteria from A.10 satisfied with honest automated-probe alignment.
 
-🎯 **Iter-865: walk-29 EXECUTED** against `vphase-15.8` Pages (`95fb6c2` deploy, Pages `last-modified: Mon, 18 May 2026 18:32:43 GMT` re-verified before launch). **7/8 PCs PASS automated; 8/8 visually.** The #505 settle-wait fix DID work end-to-end. PC5 still FAIL automated for a different reason that the #505 fix exposed: `g.querySelector('path')` returns the FIRST `<path>` in document order inside `<g data-testid="ibd-edge-${id}">`, which is the marker's interior triangle path inside `<defs>` (no `marker-end` attribute) — not `BaseEdge`'s visible `<path>` with `marker-end="url(#…)"`. Visual evidence in `09-itemflow-created.png` (filled-triangle arrowhead at `ADIRU_1.data`, `FlightCommand` label committed) confirms the product is correct. Filed **#508** (`p3 type:chore area:cross-cutting`). Dim 6 (IBD) promotion 2 → 3 **deferred again** to walk-30. Convergence chain stays `chain[0] / 3`.
+🎯 **Iter-866: walk-30 plan SEALED + #508 closed via PR #510 (`518be4c1`).** Walk-30 inherited walks 28/29's eight PCs verbatim with the PC5 marker-end probe-selector fix specified in walk-30.md § "Tool & environment".
 
-🎯 **Iter-864: walk-29 plan SEALED + #505 closed.** Settle-wait pattern specified in walk-29.md § "Tool & environment". Closes #505.
+🎯 **Iter-865: walk-29 EXECUTED** against `vphase-15.8` Pages. **7/8 PCs PASS automated; 8/8 visually.** #505 settle-wait fix worked end-to-end. PC5 still FAIL automated for a different reason (probe selector miss) — filed #508. Dim 6 promotion 2 → 3 **deferred to walk-30**.
 
-🎯 **Iter-863: walk-28 EXECUTED** against `vphase-15.8` Pages. **7/8 PCs PASS automated; 8/8 visually.** Both #499 (`ConnectionMode.Loose`) + #500 (acronym auto-name) fixes verified on Pages. PC5 automated probe returned `null` due to inspector-edit re-render unmounting the edge `<g>` transiently. Filed #505 (`p3 type:chore`) — closed in iter-864.
+🎯 **Iter-864: walk-29 plan SEALED + #505 closed.**
 
-🎯 **Iter-862: walk-28 plan SEALED** — plan/execute boundary preserved.
+🎯 **Iter-863: walk-28 EXECUTED** against `vphase-15.8` Pages. **7/8 PCs PASS automated; 8/8 visually.** Both #499 + #500 fixes verified on Pages. PC5 automated probe returned `null` due to inspector-edit re-render — filed #505 → closed in iter-864.
 
-🎯 **Iter-861: `vphase-15.8` / `v1.5.2` released.** PR #502 (squash `95fb6c2`) closed #499 + #500. Tags `vphase-15.8` + `v1.5.2` deployed. Pages last-modified `Mon, 18 May 2026 18:32:43 GMT`.
+🎯 **Iter-862: walk-28 plan SEALED.**
 
-🎯 **Iter-860: #499 + #500 engineer batch shipped as PR #502.**
-
-🎯 **Iter-859: walk-27 (IBD deep-dive) executed → 5/8 PCs PASS, 2 issues filed (#499 + #500).**
+🎯 **Iter-861: `vphase-15.8` / `v1.5.2` released.** PR #502 (squash `95fb6c2`) closed #499 + #500. Tags `vphase-15.8` + `v1.5.2` deployed.
 
 🎯 **Iter-826: walk-14 + 19 → rubric dim 5 (BDD) at score 3 = FIRST score-3 dimension.**
 🎯 **Iter-834: rubric dim 14 (Round-trip integrity) → score 3 via SysML view-block round-trip (#451) = SECOND score-3 dimension.**
+🎯 **Iter-867: rubric dim 6 (IBD) → score 3 via walk-30 clean regression on `vphase-15.8` Pages = THIRD score-3 dimension.**
 
 ## Phase 15 termination conditions
 
 | # | Condition | Status |
 |---|-----------|--------|
-| A.12 #1 | Every rubric dim at 3 | **2 of 28** at 3 (dim 5 BDD, dim 14 Round-trip integrity); **23** at 2; 0 at 1; 3 at 0. Dim 6 (IBD) promotion 2 → 3 **deferred for the THIRD consecutive walk** target (28 → #505, 29 → #508, 30 → planned PASS). Walk-30 (regression after #508 fix) is the next promotion attempt. |
-| A.12 #2 | Zero open `phase:15` issues labelled `type:bug/feature/design` | **0 open `type:bug`/`type:feature`**. **2 open `type:design`**: #452 (`status:needs-human` via #469), #454 (blocked behind #469). **0 open `type:chore` `status:ready`** (held once #508 closes in this PR). **1 open `type:chore` `status:needs-human`**: #469. |
-| A.12 #3 | Three consecutive convergence walks | **chain[0 / 3]** (walk-29 surfaced #508 — driver-side per A.5 strict reading). Walk-30 (regression after #508 fix) is the next chain[0] candidate. |
-| A.12 #4 | FBW example shipped + loadable | Unblocks once dim 6 reaches 3. If walk-30 also fails for a third driver-side reason, the iter-865 decisions log triggers a `type:design` issue for a stable edge-probe helper. |
+| A.12 #1 | Every rubric dim at 3 | **3 of 28** at 3 (dim 5 BDD, dim 14 Round-trip integrity, **dim 6 IBD ← walk-30**); **22** at 2; 0 at 1; 3 at 0. Next score-3 candidates: dim 17 (Edge editing — unblocked now that dim 6 lands), dims 8/9/11 (Activity / State Machine / Parametric SysML conformance — deep-dive candidates per walk-30 "Decide next"). |
+| A.12 #2 | Zero open `phase:15` issues labelled `type:bug/feature/design` | **0 open `type:bug`/`type:feature`**. **2 open `type:design`**: #452 (`status:needs-human` via #469), #454 (blocked behind #469). **0 open `type:chore` `status:ready`** (#508 closed at iter-866 merge `518be4c1`). **1 open `type:chore` `status:needs-human`**: #469. |
+| A.12 #3 | Three consecutive convergence walks | **chain[1 / 3]** — walk-30 advanced the chain by one (8/8 PCs, zero issues filed, dim 6 advanced 2→3, dims 3/17/27 reinforced positively). Walk-31 (broad-sweep, per walk-30 § "Decide next") is the chain[2] candidate. |
+| A.12 #4 | FBW example shipped + loadable | **Unblocked.** Dim 6 at 3 is the sole gating prerequisite per A.10. Authoring can proceed in parallel with walk-31 or be sequenced after it — decision held to iter-868 open. |
 
 ## Current iteration
-- Iteration #: 866
+- Iteration #: 867
 - Started: 2026-05-19 (UTC)
-- Branch: `phase-15/iter-866-walk-30-plan-seal`
-- Working on: walk-30 plan-seal + close #508.
+- Branch: `phase-15/iter-867-walk-30-execute`
+- Working on: walk-30 execute (clean) + dim 6 promotion to 3 + chain advance to 1/3.
 
 ## Last test run
-- iter-866 is a docs-only change (`docs/architect/walks/walk-30.md` (new file), `docs/architect/in-flight.md`, `STATUS.md`). Per ADR 0016 the doc-only paths-filter skips e2e on this PR; only the fast lane runs.
-- iter-865 walk-29-exec PR #509 merged at `ec1d4c9` after CI green.
-- iter-864 walk-29-plan-seal PR #507 merged at 19:07:07Z as `423bca2`.
-- iter-863 walk-28-exec PR #506 merged at 18:59:00Z as `822c8d3`.
+- iter-867 is a docs-only change (`docs/architect/walks/walk-30.md` (append-only Execution/Findings/etc. sections), `docs/architect/quality-rubric.md` (dim 6 cell + 4 score-delta-log rows), `docs/architect/in-flight.md` (one-row swap), `STATUS.md`). Per ADR 0016 the doc-only paths-filter skips e2e on this PR; only the fast lane runs.
+- iter-866 walk-30-plan-seal PR #510 merged at 19:26:17Z as `518be4c1`. Fast lane green; e2e skipped via paths-filter.
+- iter-865 walk-29-exec PR #509 merged at `ec1d4c9`.
+- iter-864 walk-29-plan-seal PR #507 merged as `423bca2`.
 
 ## Last PR sweep
-- Iter-866 open: this walk-30-plan-seal PR. **In-flight 1/5 of A.8 cap.**
-- Per AGENT.md PR-sweep protocol: no other PRs open at iter-866 start.
+- Iter-867 open: this walk-30-execute PR. **In-flight 1/5 of A.8 cap.**
+- Per AGENT.md PR-sweep protocol at iter-867 start: PR #510 (iter-866 walk-30-plan-seal) was IN_PROGRESS → completed green → auto-merged before this iteration's work began. No other PRs open.
 
 ## Known issues / blockers
 - **#469 (CI step 3, merge queue) BLOCKED:** `status:needs-human` pending operator decision.
 - **#452 (CI velocity epic step 3):** blocked behind #469.
 - **#454 (raise A.8 cap):** blocked behind #469.
 
-## Open phase:15 issues at iter-866 close (expected, after #508 closes)
+## Open phase:15 issues at iter-867 close
 - #452 (p1, type:design, status:ready, area:cross-cutting) — Speed up PR-gate CI. Steps 1+2 done; step 3 (#469) blocked.
 - #454 (p2, type:design, status:blocked, area:cross-cutting) — ADR: raise A.8 in-flight branch soft cap. Blocked behind #469.
 
 ## Decisions log
 
-**Iter-808..iter-865 entries preserved in earlier commits.**
+**Iter-808..iter-866 entries preserved in earlier commits.**
 
-- **Iter-866 — walk-30 plan-seal closes #508 via the `## Tool & environment` probe-snippet recipe, mirroring the iter-864 pattern that closed #505.** Per #508 acceptance criteria: "Walk-30.md § Tool & environment documents the corrected probe pattern." The verbatim Python `evaluate` body with the three-tier fallback (`path[marker-end]` → `find(hasAttribute)` → `path`) is now sealed in the plan. The driver itself (`artifacts/phase-15/walk-30/walk-30-exec.py`) is gitignored under the `artifacts/` rule, so the plan-spec is the durable record. This is the same gitignore-aware closure pattern used in iter-864 for #505.
+- **Iter-867 — dim 6 (IBD) promotes 2 → 3 on the walk-30 clean regression, honest-measurement-aligned.** The three-tier marker-end probe selector specified in walk-30.md § "Tool & environment" and committed in iter-866 (closing #508) worked end-to-end on first execute. PC5 verdict flipped FAIL → PASS automated; visual was already PASS in walks 28/29. All five score-3 criteria for dim 6 from A.10 (parts-nested-in-frame, port-handles-as-squares, `ConnectionUsage` plain line, `ItemFlow` with filled-triangle marker + payload label, proxy/full distinction acceptable per `ibd.md` §D) are satisfied with automated probe agreement — the "scores honesty over throughput" gate from A.5 is honoured. Promotion deferred twice (walk-28 → #505, walk-29 → #508) on driver-side defects without ever advancing the score; walk-30 lands the promotion only because both driver issues are now closed and the third regression produced clean automated alignment.
 
-- **Iter-866 — fallback chain in the probe snippet is deliberate, not defensive coding.** `path[marker-end]` covers Chromium's standard SVG attribute-selector behaviour. The `[...g.querySelectorAll('path')].find(p => p.hasAttribute('marker-end'))` middle layer tolerates browser engines where SVG attribute selectors behave inconsistently across vendor implementations. The final `g.querySelector('path')` matches pre-#508 behaviour so a complete miss still surfaces a verdict (rather than `null`) — this preserves the diagnostic signal walk-30's `walk-30.json` would emit if all three layers fell through. The three-tier shape is therefore aligned with A.5's "scores honesty over throughput" — silent failures are worse than verbose-but-readable verdicts.
+- **Iter-867 — convergence chain advances chain[0] → chain[1] / 3 (A.12 #3).** Walk-30 filed zero new issues, degraded no rubric dim, and advanced one dim — the chain advance criterion holds. Walk-31 (broad-sweep, per walk-30 § "Decide next") is the chain[2] candidate. A single issue or degraded score in walk-31 resets the chain to 0; an issue-free walk-31 advances to chain[2], and chain[3] then completes A.12 #3.
+
+- **Iter-867 — no `type:design` issue opened for a stable edge-probe helper (`tests/e2e/__helpers__/edge-probe.ts`).** The iter-865 contingency clause ("if walk-30 fails for a third driver-side reason on the same PC") does not trigger because walk-30 succeeded on first run with the #508 fix. The cost was paid twice (#505 in walk-28, #508 in walk-29) and the arc is now closed; no infrastructure investment justified at this point.
 
 ## Session checkpoint summary
 
-This session (iter-793 → iter-866) executed **74 iterations** spanning bootstrap, **15 architect walks** + **walks 26 + 27 + 28 + 29 against deployed Pages** + **walks 28 + 29 + 30 plan-sealed**, **~25 engineer batches**, **8 release tags**, **3 ADRs** (0014/0015/0016), and the iter-859 → iter-866 IBD ConnectionMode arc (walk-27 finding → #499/#500 batch → `vphase-15.8` ship → walk-28 verifies fix + dim 17 advance → walk-29 plan-seal closes #505 → walk-29 exec verifies #505 fix + surfaces #508 → walk-30 plan-seal closes #508).
+This session (iter-793 → iter-867) executed **75 iterations** spanning bootstrap, **15 architect walks** + **walks 26 + 27 + 28 + 29 + 30 against deployed Pages** + **walks 28 + 29 + 30 plan-sealed + walk-30 EXECUTED**, **~25 engineer batches**, **8 release tags**, **3 ADRs** (0014/0015/0016), and the iter-859 → iter-867 IBD ConnectionMode arc (walk-27 finding → #499/#500 batch → `vphase-15.8` ship → walk-28 verifies fix + dim 17 advance → walk-29 plan-seal closes #505 → walk-29 exec verifies #505 fix + surfaces #508 → walk-30 plan-seal closes #508 → walk-30 exec verifies #508 fix + **dim 6 lands at 3**).
 
 | Tag | Date | What |
 |-----|------|------|
@@ -79,24 +80,22 @@ This session (iter-793 → iter-866) executed **74 iterations** spanning bootstr
 | vphase-15.7 / v1.5.1 | 2026-05-18 | #464 IBD enclosing-frame seed + #465 tree-row activates diagram tab → dim 6 → 2, dim 13 → 2 |
 | vphase-15.8 / v1.5.2 | 2026-05-18 | #499 IBD `ConnectionMode.Loose` for inout↔inout drag + #500 acronym auto-name |
 
-Rubric: **2 × score-3** (dim 5 BDD, dim 14 Round-trip integrity) + **23 × score-2** + **0 × score-1** + **3 × score-0** (incl. dim 23).
+Rubric: **3 × score-3** (dim 5 BDD, dim 14 Round-trip integrity, **dim 6 IBD ← walk-30**) + **22 × score-2** + **0 × score-1** + **3 × score-0** (incl. dim 23).
 
 ## Next action
 
-**Iter-867 — execute walk-30.** Run `walk-30-exec.py` (gitignored; cloned byte-for-byte from `walk-29-exec.py` with the single PC5 probe-selector swap specified in walk-30.md § "Tool & environment") against `vphase-15.8` Pages (no new release tag required — driver-side fix only). Re-verify Pages `last-modified: Mon, 18 May 2026 18:32:43 GMT` before launch. Expected: 8/8 PCs PASS automated. Clean outcome → dim 6 promotion (2 → **3**, THIRD score-3 dimension) + chain[0] → chain[1] / 3.
+**Iter-868 — open the broad-sweep walk-31 plan (per walk-30 § "Decide next").** Walk-31 is the chain[2] candidate. Plan-seal pattern: write `docs/architect/walks/walk-31.md` § "Plan" against the unchanged `vphase-15.8` Pages bundle (re-verify Pages `last-modified: Mon, 18 May 2026 18:32:43 GMT` before launch in iter-869). Scope: shallow modelling across every viewpoint (BDD, IBD, Requirements, Activity, State Machine, Use Case, Parametric, Package) verifying that the `vphase-15.8` fixes do not leak unexpected behaviour into the non-IBD viewpoints. Inform dim selection — likely dims 8/9/11 (Activity / State Machine / Parametric SysML conformance) as the next deep-dive candidates given dim 6 is now satisfied.
 
-**Iter-868+ — broad-sweep walk-31 OR FBW example.** Once dim 6 reaches 3, the FBW example commit (A.12 #4) unblocks. The broad-sweep walk should happen first to confirm no broad-coverage regressions before the example commit, per A.6.
+**Iter-869+ — execute walk-31** against `vphase-15.8` Pages. Clean outcome (zero issues, zero rubric degradation) advances chain[2] → chain[3] / 3 → A.12 #3 satisfied. If walk-31 surfaces a finding, the chain resets to 0 per A.12 #3 and the finding is filed per A.7.
 
-**If walk-30 fails for a third driver-side reason:** chain stays at 0; file the finding; dim 6 stays at 2; file a `type:design` issue per the iter-865 decisions log for a stable edge-probe helper (`tests/e2e/__helpers__/edge-probe.ts` or equivalent in the architect-walk infrastructure).
+**FBW example (A.12 #4):** unblocked by dim 6 at 3. Authoring can begin in parallel with walk-31 or be sequenced after it — decision held to iter-868 open. Per A.11 the FBW model must be authored through the production application's UI (no fixture imports, no command-bus shortcuts); the model's coverage targets from A.6 (≥50 PartDefinitions, ≥100 PartUsages, ≥60 ConnectionUsages, etc.) imply a multi-iteration authoring effort. The example commit (`examples/flight-control-system/`) and the "Load example" UI wiring are subsequent PRs.
 
-**If walk-30 finds a NEW product issue (regression):** chain stays at 0; file the finding per A.7; rubric updates per the walk-30 acceptance table.
+**Dedicated dim-17 walk** (reconnect-by-endpoint-drag + waypoint add/remove + per-edge routing-style) is now unblocked and can be scheduled after either walk-31 or alongside FBW work, depending on iter-868's prioritisation.
 
 **#469 (CI step 3, merge queue):** no further loop work. `status:needs-human` until operator decides.
 
 **ADR for raising A.8 cap (#454):** indefinitely blocked behind #469.
 
-**FBW example (A.12 #4):** unblocks the iteration after dim 6 reaches 3 — currently expected iter-868 or iter-869 (post-walk-30 clean).
+**In-flight at iter-867 open (1/5 of A.8 cap):** this walk-30-execute PR.
 
-**In-flight at iter-866 open (1/5 of A.8 cap):** this walk-30-plan-seal PR.
-
-**Halting safety:** STOP file / `status:emergency-stop` label unchanged; Phase-15 iter-count at 74, well under the 300 churn ceiling.
+**Halting safety:** STOP file / `status:emergency-stop` label unchanged; Phase-15 iter-count at 75, well under the 300 churn ceiling.

@@ -6,4 +6,4 @@ When a branch merges (or is abandoned), remove its row.
 
 | Branch | Lead engineer (subagent) | Theme | Issues | Files touched (paths) | Started | Status |
 |--------|--------------------------|-------|--------|-----------------------|---------|--------|
-| `phase-15/iter-866-walk-30-plan-seal` | main agent | walk-30 plan-seal (regression of walk-29 against unchanged `vphase-15.8` Pages — corrected PC5 marker-end probe selector per #508) | closes #508 | `docs/architect/walks/walk-30.md`, `docs/architect/in-flight.md`, `STATUS.md` | 2026-05-19 | PR open, awaiting auto-merge |
+| `phase-15/iter-867-walk-30-execute` | main agent | walk-30 execute (regression of walk-29 on unchanged `vphase-15.8` Pages — #508 probe-selector fix verified end-to-end, dim 6 IBD promoted 2 → 3) | none | `docs/architect/walks/walk-30.md`, `docs/architect/quality-rubric.md`, `docs/architect/in-flight.md`, `STATUS.md` | 2026-05-19 | PR open, awaiting auto-merge |
