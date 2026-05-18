@@ -8,6 +8,23 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
 
 ## Discovered facts
 
+- **2026-05-18 (iter-847..848, ADR 0016 correction / #483):** The
+  `dorny/paths-filter@v3` action uses **picomatch v2 glob semantics**,
+  where `**/*.md` requires at least one path segment before `*.md`.
+  Root-level `.md` files (`STATUS.md`, `JOURNAL.md`, `README.md`,
+  `AGENT.md`) therefore do NOT match the `'!**/*.md'` exclusion and
+  fall through to the positive `'**'` rule — i.e. they classify as
+  `code` even though they are documentation, defeating ADR 0016's
+  doc-only e2e skip on the most-touched files in this autonomous
+  loop. The fix (PR #485): add a sibling `'!*.md'` exclusion alongside
+  `'!**/*.md'` so depth-0 `.md` is also dropped. **Rule:** when
+  authoring picomatch globs for `dorny/paths-filter`, treat root-level
+  globs as a separate dimension from `**`-prefixed globs and add both
+  forms; a depth-0 file does not match a `**/`-prefixed pattern. The
+  ADR 0016 conservative-default still holds: any non-`.md` file at any
+  path still triggers the full e2e shard matrix. See ADR 0016
+  "Correction (iter-847)" and PR #485.
+
 - **2026-05-18 (iter-844, CI step 3 / #469 — BLOCKED)** — GitHub's
   native **merge queue cannot be activated on this repository**.
   Empirical evidence (iter-844): `POST /repos/.../rulesets` with a
