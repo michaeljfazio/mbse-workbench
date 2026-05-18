@@ -151,6 +151,12 @@ function leftHandleOfUseCase(page: Page, id: string): Locator {
     .locator('.react-flow__handle-left');
 }
 
+function rightHandleOfActor(page: Page, id: string): Locator {
+  return page
+    .getByTestId(`use-case-actor-${id}`)
+    .locator('.react-flow__handle-right');
+}
+
 test.describe('Use Case edges — Include + Extend + Generalization (#119)', () => {
   test.beforeEach(async ({ page }) => {
     await seedUseCaseProject(page);
@@ -309,6 +315,40 @@ test.describe('Use Case edges — Include + Extend + Generalization (#119)', () 
     await dragHandle(
       page,
       leftHandleOfActor(page, ACTOR_A_ID),
+      leftHandleOfUseCase(page, UC_A_ID),
+    );
+    const popover = page.getByTestId('use-case-edge-kind-popover');
+    await expect(popover).toBeVisible();
+    await expect(
+      page.getByTestId('use-case-edge-kind-Association'),
+    ).toBeEnabled();
+    await page.getByTestId('use-case-edge-kind-Association').click();
+    await expect(popover).toHaveCount(0);
+    await expect(
+      page.locator('g[data-association-edge="true"]'),
+    ).toHaveCount(1);
+  });
+
+  // Phase-15 #548 — walk-34's secondary direction (`actor.right →
+  // usecase.left`) reportedly produced no edge in the deployed bundle.
+  // Investigation in iter-890 traced the finding to a driver artefact: the
+  // walk's `wait_for_function` polled for the prefix `use-case-edge-*`,
+  // which incidentally matches the popover testids (`use-case-edge-kind-
+  // popover`, `use-case-edge-kind-Association`, ...) — so PRIMARY reported
+  // PASS purely from the popover opening, while SECONDARY's `before` set
+  // already contained those popover testids and so timed out waiting for
+  // something "new". This test locks in the actual application behaviour:
+  // drag from Actor's new `Position.Right` source handle (PR #531) into a
+  // UseCase's `Position.Left` target handle, with ConnectionMode.Loose
+  // delegating handle-role validity to `isValidUseCaseConnection`. Pick
+  // Association from the popover; assert the edge appears.
+  test('drag Actor.right → UseCase.left also opens popover for Association (phase-15 #548)', async ({
+    page,
+  }) => {
+    await gotoUseCase(page);
+    await dragHandle(
+      page,
+      rightHandleOfActor(page, ACTOR_A_ID),
       leftHandleOfUseCase(page, UC_A_ID),
     );
     const popover = page.getByTestId('use-case-edge-kind-popover');

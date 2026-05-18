@@ -8,6 +8,36 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
 
 ## Discovered facts
 
+- **2026-05-19 (iter-890 — `use-case-edge-*` testid prefix collides with
+  the popover, polluting walk-driver `wait_for_function` polls):** Edge
+  components emit `data-testid={`use-case-edge-${id}`}` (e.g.
+  `use-case-edge-${edgeId}`) and the kind picker emits
+  `use-case-edge-kind-popover` plus one button per kind
+  (`use-case-edge-kind-Include`, `-Extend`, `-Generalization`,
+  `-Association`). Both sets share the `use-case-edge-` prefix, so any
+  selector that probes for "did a new edge appear?" using
+  `[data-testid^="use-case-edge-"]` will match the popover items, not
+  just real edges. Walk-34's driver hit this twice over: the PRIMARY
+  direction reported PASS purely from the popover opening (its testids
+  were new vs. the pre-drag snapshot), and the SECONDARY direction
+  reported FAIL because the popover testids were already in the
+  pre-drag snapshot from PRIMARY's still-open popover, so nothing
+  appeared "new." #548 was filed as a `p1` bug on the back of that
+  artefact; investigation in iter-890 traced the false partition to
+  the prefix collision (application is correct; existing tests
+  `drag UseCase→Actor` and `drag Actor.left → UseCase.left` already
+  prove cross-kind both-direction Association works). **Rule:** walk
+  drivers that test for new use-case edges MUST use a tighter
+  selector — either `g[data-association-edge="true"]` /
+  `g[data-include-edge="true"]` / `g[data-extend-edge="true"]` /
+  `g[data-generalization-edge="true"]` (decorated by the edge
+  components themselves), or `[data-testid^="use-case-edge-"]:not(
+  [data-testid^="use-case-edge-kind-"])`. The same collision pattern
+  applies to any future viewpoint where the popover's testid prefix
+  could overlap the edge testid; check before adding a popover.
+  Recorded in #548 close-out and `tests/e2e/use-case-edges.spec.ts`
+  (lock-in test for `actor.right → usecase.left`).
+
 - **2026-05-19 (iter-879 — `ConnectionMode.Loose` is the project pattern for
   bidirectional handle-pair validity):** When a viewpoint's
   `isValidConnection` callback is the single source of truth for which
