@@ -23,6 +23,12 @@ export interface GeneralizationEdge extends EdgeBase {
 
 export interface AssociationEdge extends EdgeBase {
   readonly kind: 'Association';
+  // SysML 1.x §9.4: each association end may carry a multiplicity
+  // (e.g. `1`, `0..1`, `0..*`, `1..*`). Stored verbatim with no validation
+  // — future spec (#434 follow-up) may constrain to a multiplicity grammar.
+  // Empty/undefined renders blank, matching the pre-#434 plain-line edge.
+  sourceMultiplicity?: string;
+  targetMultiplicity?: string;
 }
 
 export interface DependencyEdge extends EdgeBase {

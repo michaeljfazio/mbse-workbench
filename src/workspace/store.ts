@@ -358,6 +358,10 @@ export interface WorkspaceActions {
     target: ElementId,
     kind: BddEdgeKind,
   ): EdgeId | null;
+  // SysML 1.x §9.4 — multiplicities at each end of a BDD Association edge.
+  // Pass empty string to clear. Issue #434.
+  setAssociationSourceMultiplicity(id: EdgeId, multiplicity: string): void;
+  setAssociationTargetMultiplicity(id: EdgeId, multiplicity: string): void;
   setNodePosition(
     diagramId: DiagramId,
     elementId: ElementId,
@@ -1662,6 +1666,30 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
     };
     bus.dispatch({ kind: 'link', edge }, user);
     return edgeId;
+  },
+
+  setAssociationSourceMultiplicity(id, multiplicity) {
+    const { bus, user, registry } = get();
+    if (!bus || !user || !registry) return;
+    const existing = registry.getEdge(id);
+    if (!existing || existing.kind !== 'Association') return;
+    const trimmed = multiplicity.trim();
+    const next = trimmed.length === 0 ? undefined : trimmed;
+    if ((existing.sourceMultiplicity ?? undefined) === next) return;
+    const patch: EdgePatch<'Association'> = { sourceMultiplicity: next };
+    bus.dispatch({ kind: 'update-edge', id, patch }, user);
+  },
+
+  setAssociationTargetMultiplicity(id, multiplicity) {
+    const { bus, user, registry } = get();
+    if (!bus || !user || !registry) return;
+    const existing = registry.getEdge(id);
+    if (!existing || existing.kind !== 'Association') return;
+    const trimmed = multiplicity.trim();
+    const next = trimmed.length === 0 ? undefined : trimmed;
+    if ((existing.targetMultiplicity ?? undefined) === next) return;
+    const patch: EdgePatch<'Association'> = { targetMultiplicity: next };
+    bus.dispatch({ kind: 'update-edge', id, patch }, user);
   },
 
   setNodePosition(diagramId, elementId, position) {

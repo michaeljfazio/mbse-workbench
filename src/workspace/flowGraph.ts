@@ -234,6 +234,10 @@ export function toFlowEdges(
     if (e.kind === 'ParameterBinding') {
       data.label = e.label;
     }
+    if (e.kind === 'Association') {
+      data.sourceMultiplicity = e.sourceMultiplicity;
+      data.targetMultiplicity = e.targetMultiplicity;
+    }
     out.push({
       id: e.id,
       type: viewpoint.edgeTypeFor(e),

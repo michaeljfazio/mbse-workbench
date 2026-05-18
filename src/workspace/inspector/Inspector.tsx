@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type {
   ActionDefinitionElement,
   ActionUsageElement,
+  AssociationEdge,
   ConnectionUsageElement,
   ConstraintUsageElement,
   ControlFlowEdge,
@@ -151,6 +152,9 @@ export function Inspector(): JSX.Element {
   }
   if (edge && edge.kind === 'Generalization') {
     return <InspectorGeneralizationEdge edge={edge} />;
+  }
+  if (edge && edge.kind === 'Association') {
+    return <InspectorAssociationEdge edge={edge} />;
   }
   if (edge && edge.kind === 'ParameterBinding') {
     return <InspectorParameterBindingEdge edge={edge} />;
@@ -1354,6 +1358,162 @@ function InspectorGeneralizationEdge({
           <dd data-testid="inspector-generalization-target">{targetLabel}</dd>
         </div>
       </dl>
+    </div>
+  );
+}
+
+function describeBddEndpoint(
+  elements: readonly ModelElement[],
+  id: ElementId,
+): string {
+  const el = elements.find((e) => e.id === id);
+  if (!el) return 'unknown';
+  if (el.kind === 'PartDefinition') return el.name;
+  return `${el.kind} · ${el.name}`;
+}
+
+interface InspectorAssociationEdgeProps {
+  readonly edge: AssociationEdge;
+}
+
+// SysML 1.x §9.4 — Association edges may carry a multiplicity at each end
+// (`1`, `0..*`, ...). This inspector surfaces two free-text inputs that
+// dispatch via the standard `update-edge` command path (see store.ts
+// `setAssociationSourceMultiplicity`/`setAssociationTargetMultiplicity`).
+// Issue #434.
+function InspectorAssociationEdge({
+  edge,
+}: InspectorAssociationEdgeProps): JSX.Element {
+  const elements = useWorkspaceStore((s) => s.elements);
+  const setSourceMult = useWorkspaceStore(
+    (s) => s.setAssociationSourceMultiplicity,
+  );
+  const setTargetMult = useWorkspaceStore(
+    (s) => s.setAssociationTargetMultiplicity,
+  );
+
+  const sourceLabel = useMemo(
+    () => describeBddEndpoint(elements, edge.sourceId),
+    [elements, edge.sourceId],
+  );
+  const targetLabel = useMemo(
+    () => describeBddEndpoint(elements, edge.targetId),
+    [elements, edge.targetId],
+  );
+
+  const [sourceDraft, setSourceDraft] = useState(edge.sourceMultiplicity ?? '');
+  useEffect(() => {
+    setSourceDraft(edge.sourceMultiplicity ?? '');
+  }, [edge.id, edge.sourceMultiplicity]);
+
+  const [targetDraft, setTargetDraft] = useState(edge.targetMultiplicity ?? '');
+  useEffect(() => {
+    setTargetDraft(edge.targetMultiplicity ?? '');
+  }, [edge.id, edge.targetMultiplicity]);
+
+  const sourceInputId = useMemo(
+    () => `inspector-edge-multiplicity-source-${edge.id}`,
+    [edge.id],
+  );
+  const targetInputId = useMemo(
+    () => `inspector-edge-multiplicity-target-${edge.id}`,
+    [edge.id],
+  );
+
+  const commitSource = (): void => {
+    if (sourceDraft !== (edge.sourceMultiplicity ?? '')) {
+      setSourceMult(edge.id, sourceDraft);
+    }
+  };
+  const commitTarget = (): void => {
+    if (targetDraft !== (edge.targetMultiplicity ?? '')) {
+      setTargetMult(edge.id, targetDraft);
+    }
+  };
+
+  return (
+    <div
+      data-testid="inspector-association-edge"
+      data-edge-id={edge.id}
+      className="flex flex-col gap-4"
+    >
+      <header className="flex flex-col gap-0.5">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-foreground/75">
+          Association
+        </span>
+        <span className="text-sm font-medium text-foreground">
+          Block association
+        </span>
+      </header>
+      <dl
+        data-testid="inspector-association-endpoints"
+        className="flex flex-col gap-1 rounded-md border border-dashed border-border bg-muted/40 px-2 py-1.5 text-xs text-foreground/75"
+      >
+        <div className="flex gap-2">
+          <dt className="font-semibold uppercase tracking-wide">Source</dt>
+          <dd data-testid="inspector-association-source">{sourceLabel}</dd>
+        </div>
+        <div className="flex gap-2">
+          <dt className="font-semibold uppercase tracking-wide">Target</dt>
+          <dd data-testid="inspector-association-target">{targetLabel}</dd>
+        </div>
+      </dl>
+      <div className="flex flex-col gap-1.5">
+        <label
+          htmlFor={sourceInputId}
+          className="text-xs font-medium text-muted-foreground"
+        >
+          Source multiplicity
+        </label>
+        <input
+          id={sourceInputId}
+          type="text"
+          value={sourceDraft}
+          data-testid="inspector-edge-multiplicity-source"
+          placeholder="e.g. 1, 0..1, 1..*"
+          onChange={(e) => setSourceDraft(e.target.value)}
+          onBlur={commitSource}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              (e.target as HTMLInputElement).blur();
+            } else if (e.key === 'Escape') {
+              e.preventDefault();
+              setSourceDraft(edge.sourceMultiplicity ?? '');
+              (e.target as HTMLInputElement).blur();
+            }
+          }}
+          className="rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground shadow-sm focus:border-primary focus:outline-none"
+        />
+      </div>
+      <div className="flex flex-col gap-1.5">
+        <label
+          htmlFor={targetInputId}
+          className="text-xs font-medium text-muted-foreground"
+        >
+          Target multiplicity
+        </label>
+        <input
+          id={targetInputId}
+          type="text"
+          value={targetDraft}
+          data-testid="inspector-edge-multiplicity-target"
+          placeholder="e.g. 1, 0..*, 1..*"
+          onChange={(e) => setTargetDraft(e.target.value)}
+          onBlur={commitTarget}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              (e.target as HTMLInputElement).blur();
+            } else if (e.key === 'Escape') {
+              e.preventDefault();
+              setTargetDraft(edge.targetMultiplicity ?? '');
+              (e.target as HTMLInputElement).blur();
+            }
+          }}
+          className="rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground shadow-sm focus:border-primary focus:outline-none"
+        />
+      </div>
     </div>
   );
 }
