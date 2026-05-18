@@ -48,16 +48,40 @@ jobs:
       # could affect runtime behaviour) or doc-only. Doc-only PRs skip
       # the e2e shard matrix below; the umbrella `check` job still
       # reports success so branch protection requires no change.
-      # See docs/adr/0016-ci-doc-only-skip-e2e.md and issue #453.
+      #
+      # **Positive enumeration**, not blanket-then-narrow. `dorny/paths-filter@v3`
+      # uses picomatch with `patterns.some(aPredicate)` semantics by default
+      # (`src/filter.ts`): each rule is its own matcher, so a `'**'` catch-all
+      # makes every accompanying bang rule a no-op (the first `some()` hit
+      # short-circuits). ADR 0016's original `'**' + '!**/*.md' + '!LICENSE'`
+      # therefore never excluded anything in practice. See iter-849 correction
+      # in `docs/adr/0016-ci-doc-only-skip-e2e.md` and the dorny-`some`
+      # landmine entry in `docs/CONTEXT.md` (iter-848).
+      #
+      # Trade-off: new top-level code-bearing files (e.g., a future
+      # `Dockerfile`, `vercel.json`, additional config) default to
+      # **doc-only** and won't trigger e2e until they're added below. Closes
+      # #490; sees the dorny `some`-default landmine head-on.
       - name: Classify changed paths
         id: filter
         uses: dorny/paths-filter@v3
         with:
           filters: |
             code:
-              - '**'
-              - '!**/*.md'
-              - '!LICENSE'
+              - 'src/**'
+              - 'tests/**'
+              - 'scripts/**'
+              - '.github/workflows/**'
+              - 'index.html'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'vite.config.ts'
+              - 'vitest.config.ts'
+              - 'playwright.config.ts'
+              - 'tsconfig*.json'
+              - 'tailwind.config.ts'
+              - 'postcss.config.js'
+              - '.eslintrc.cjs'
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4

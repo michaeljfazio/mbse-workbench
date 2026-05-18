@@ -6,4 +6,4 @@ When a branch merges (or is abandoned), remove its row.
 
 | Branch | Lead engineer (subagent) | Theme | Issues | Files touched (paths) | Started | Status |
 |--------|--------------------------|-------|--------|-----------------------|---------|--------|
-| `phase-15/iter-844-merge-queue-blocked` | main | `area:cross-cutting (CI step 3 / #469 escalation + iter-844 STATUS)` | n/a (close-out of `status:needs-human` on #469) | `STATUS.md`, `docs/CONTEXT.md`, `.github/workflows/ci.yml` (header comment only), `JOURNAL.md` | 2026-05-18 | in PR (#478, CI almost green: 4/5 jobs pass, shard 3/4 pending; auto-merge armed SQUASH) |
+| `issue/490-positive-enumeration` | main | `area:cross-cutting` (CI velocity — ADR 0016 actual fix) | #490 | `.github/workflows/ci.yml`, `docs/adr/0016-ci-doc-only-skip-e2e.md`, `STATUS.md`, `docs/architect/in-flight.md` | 2026-05-18 | in PR (just opened; auto-merge armed SQUASH; self-test: workflow change → `code = true` → full e2e MUST run) |
