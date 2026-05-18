@@ -6,4 +6,4 @@ When a branch merges (or is abandoned), remove its row.
 
 | Branch | Lead engineer (subagent) | Theme | Issues | Files touched (paths) | Started | Status |
 |--------|--------------------------|-------|--------|-----------------------|---------|--------|
-| `phase-15/iter-879-actor-source-handles` | main agent | Engineer fix for #528 — promote use-case viewpoint to `ConnectionMode.Loose` (same pattern as IBD #499) so drags can initiate from `type="target"` handles. Validator-layer `isValidUseCaseConnection` already accepts both Actor↔UseCase orderings. +11/-1 in CanvasPane, +41 LOC e2e test. | #528 (close) | `src/workspace/CanvasPane.tsx`, `tests/e2e/use-case-edges.spec.ts`, `STATUS.md`, `docs/architect/in-flight.md` | 2026-05-19 | PR pending |
+| `phase-15/iter-880-health-check-and-status-sync` | main agent | Iter-880 close-out chore — periodic health check (iter÷10) + STATUS sync to post-#531 merge state. No code changes. Waiting on operator-cut `vphase-15.10` / `v1.6.1` tag to seal walk-34 plan in iter-881. | #532 (close) | `STATUS.md`, `docs/architect/in-flight.md` | 2026-05-18 | PR pending |
