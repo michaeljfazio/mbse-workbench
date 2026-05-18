@@ -3,6 +3,10 @@
 ## Current phase
 phase:15 — Architect-driven UX & feature hardening
 
+🎯 **Iter-846: resume #480 + STATUS sync (this PR).** Rebased PR #480 (`gh pr update-branch` succeeded cleanly — `in-flight.md` doesn't overlap with #478's touched-file set; CI re-queued, auto-merge SQUASH still armed). Filed #481 + opened this STATUS-sync PR on `phase-15/iter-846-status-sync` to bring `STATUS.md` current after iter-845's unplanned-but-correct board-hygiene detour. No rubric movement this iteration; A.12 termination table unchanged. Open PR count at iter-846 open: 1 (#480 in-flight, this PR makes it 2). FBW example, walk-25 dim-13 follow-up, and all viewpoint advancement remain unblocked and front of next-action.
+
+🎯 **Iter-845: in-flight claim board re-sync via PR #480 (closes #479).** Three rows on the board (iter-836 STATUS sync via #459, walk-24 close-out via #463, iter-840 board-sync via #471) corresponded to branches already merged hours earlier. Iter-845 dispatched a single-file doc-only PR replacing them with the only actually-in-flight row at iter-845 start: `phase-15/iter-844-merge-queue-blocked` (#478). **PR #480 opened at 13:17:06Z; #478 merged 26 s later at 13:17:32Z** — so #480 went `BEHIND` immediately and the new row was stale by merge time (the recurring "board cleanup chases its tail" pattern that motivated #471 → #480 in the first place). Resolved at iter-846 by `gh pr update-branch 480` (clean rebase; no in-flight.md conflict). Auto-merge still armed SQUASH. Single-file doc-only diff classifies as `docs` per `dorny/paths-filter` → only `fast` runs per ADR 0016.
+
 🎯 **Iter-844: CI restructure step 3 BLOCKED — merge queue not available on user-owned public repos.** PR #477 merged the `merge_group:` workflow trigger to `main` (`ci.yml` header documents that the trigger is dormant pending repo transfer to an organization). Subsequent attempt to activate the queue via `POST /repos/michaeljfazio/mbse-workbench/rulesets` with a `merge_queue` rule returned **`422 Validation Failed: "Invalid rule 'merge_queue': "`** across every parameter variation (minimum body, full body with `bypass_actors: []`, with/without companion `required_status_checks` rule, `enforcement: active` vs `evaluate`). The 422 is consistent and the empty-colon suffix is a feature-gate sentinel — other rule types (e.g. `deletion`) POST fine on this repo. GraphQL `Repository.mergeQueue` returns `null`; no `enableMergeQueue` mutation exists; only `enqueuePullRequest` / `dequeuePullRequest` exist (both require an already-enabled queue). **Root cause: `gh api /repos/michaeljfazio/mbse-workbench --jq '.owner.type'` returns `User` (not `Organization`)** — GitHub gates the merge queue feature to org-owned repositories regardless of plan/visibility. **#469 relabeled `status:needs-human`** with a comment summarising the diagnosis; the operator decides (a) transfer the repo to a GitHub org → queue unblocks via the documented Rulesets POST, (b) close #469 as `wontfix` and accept the existing **~7-9× CI speedup** from steps 1+2 (#472 + #475) which already satisfies the bulk of #452's "speed up PR-gate CI" intent, or (c) explore non-queue batching strategies (none currently exist in the GitHub feature set). No further loop work on #469 until the operator decides. Workflow trigger left in place so an eventual org transfer doesn't need a workflow change.
 
 🎯 **Iter-843: STATUS sync + PR sweep + observe first full-matrix run.** PR #476 (iter-843 STATUS sync) opened against post-#475 main; CI green but BEHIND after #477 merged → still open at iter-844 start, **superseded by this iter-844 STATUS PR** (closing #476 as subsumed). First push-to-main `ci-full-matrix` run on SHA `0ea8f52` completed **conclusion: success** — inaugural webkit-side signal on the post-restructure architecture is GREEN. PR sweep rebased all 3 then-open PRs (#473, #471, #463) onto post-#475 main; auto-merge already armed (SQUASH) on each. #473 (README Pages-URL link) merged as squash `07ce95e` during iter-843. Iter-844 began with #476/#471/#463 BEHIND post-#477 main.
@@ -20,33 +24,32 @@ phase:15 — Architect-driven UX & feature hardening
 | # | Condition | Status |
 |---|-----------|--------|
 | A.12 #1 | Every rubric dim at 3 | **2 of 28** at 3 (dim 5 BDD at iter-826; dim 14 Round-trip integrity at iter-834, Pages-side confirmed at iter-836); 20 at 2, 2 at 1 (dim 17 edge editing; dim 22 import/export), 4 at 0 (incl. dim 13, dim 23) |
-| A.12 #2 | Zero open `phase:15` issues labelled `type:bug/feature/design` | **2 open `type:design`** — #452 (CI-velocity epic; only step 3 remains and that's now `status:needs-human` per iter-844), #454 (raise A.8 cap; status:blocked, gated on #469 which is now itself blocked). **1 open `type:chore` with `status:needs-human`**: #469. |
+| A.12 #2 | Zero open `phase:15` issues labelled `type:bug/feature/design` | **2 open `type:design`** — #452 (CI-velocity epic; only step 3 remains and that's `status:needs-human` per iter-844), #454 (raise A.8 cap; status:blocked, gated on #469). **1 open `type:chore` with `status:needs-human`**: #469. (Open `type:chore` work in flight does not count against A.12 #2: #479 board-resync via PR #480; #481 STATUS sync via this PR.) |
 | A.12 #3 | Three consecutive convergence walks | **chain at 2** (walk-22, walk-23). One more zero-issue walk completes A.12 #3; walk-24 (#463) in flight. |
 | A.12 #4 | FBW example shipped + loadable | partial — engineering-unblocked at dim-14 = 3; remaining bottleneck is architect authoring throughput vs A.6 coverage thresholds. |
 
 ## Current iteration
-- Iteration #: 844
+- Iteration #: 846
 - Started: 2026-05-18
-- Branch: `phase-15/iter-844-merge-queue-blocked`
-- Working on: **CI step 3 (#469) blocked** — PR #477 (`merge_group:` workflow trigger) shipped to `main` as squash `42c84ed`; post-merge Rulesets POST returned 422 across all attempts due to repo being user-owned (not org-owned). Touched files this PR: `.github/workflows/ci.yml` (header comment correcting "active" → "dormant"), `docs/CONTEXT.md` (correcting the iter-844 entry to document the block), `STATUS.md` (this update). Disjoint touched-file sets vs every other in-flight PR.
+- Branch: `phase-15/iter-846-status-sync`
+- Working on: **STATUS sync (#481)** — bring `STATUS.md` current after iter-845's board-resync detour (#480 in flight, rebased clean this iter). Resume-mid-PR per AGENT.md step 5 handled #480; this PR is the iteration's net-new deliverable. Touched files this PR: `STATUS.md` only. Disjoint touched-file sets vs #480 (which touches only `docs/architect/in-flight.md`).
 
 ## Last test run
-- No source-code or workflow-logic changes this iteration (only ci.yml header comment + docs + STATUS). `dorny/paths-filter@v3` classifies `.github/workflows/ci.yml` as `code` so the full e2e shard matrix still runs on this PR's CI; expected wallclock ~4-5 min on the post-#475 PR gate.
+- No source-code or workflow-logic changes this iteration (only `STATUS.md`). `dorny/paths-filter@v3` classifies the diff as `docs` → only `fast` runs per ADR 0016; e2e shards skipped. Same paths classification on #480.
 
 ## Last PR sweep
-- Iter-843 start: 3 open PRs (#473, #471, #463). All three GREEN on their last `check` but BEHIND post-#475 main. Ran `gh pr update-branch` on all three; auto-merge already enabled (SQUASH) on each. #473 merged during iter-843 as squash `07ce95e`.
-- Iter-844 start: 4 open PRs (#476, #471, #463, plus #477 just opened). After #477 merged mid-iter as squash `42c84ed`, the other 3 went BEHIND again. `gh pr update-branch` ran on #476/#471/#463 mid-iteration; CI re-running. **iter-844 sweep: rebased 3 (#476, #471, #463), merged 1 (#477), in-progress 1 (this STATUS PR).** #476 will be closed as subsumed by this STATUS PR.
+- Iter-845 start: 0 open PRs (post-iter-844 cleanup). Opened PR #480 (board re-sync, closes #479). Auto-merge armed SQUASH. PR went `BEHIND` 26 s after open when #478 merged.
+- Iter-846 start: 1 open PR (#480, `BEHIND`, `fast` IN_PROGRESS on stale base). `gh pr update-branch 480` → ✓ rebased; CI re-queued on post-#478 base. Auto-merge still armed. **iter-846 sweep: rebased 1 (#480); this STATUS PR opens as the second in-flight.** Cap usage: 2/5.
 
 ## Known issues / blockers
-- **#469 (CI step 3, merge queue) BLOCKED:** GitHub feature-gates merge queue to org-owned repos. Relabeled `status:needs-human`. No further loop work pending operator decision (transfer to org, close as wontfix, or accept current 7-9× speedup as sufficient).
-- All other rubric/walk advancement unblocked. `phase:15` backlog narrows further once #469 is resolved one way or another.
+- **#469 (CI step 3, merge queue) BLOCKED:** GitHub feature-gates merge queue to org-owned repos. Closed; `status:needs-human` stands pending operator decision (transfer to org, close as wontfix, or accept current 7-9× speedup as sufficient).
+- All other rubric/walk advancement unblocked. `phase:15` backlog at iter-846 close: 2 design (#452, #454) + 2 chore-in-flight (#479 / #481 via PRs #480 / this).
 
-## Open phase:15 issues at iter-844 close
+## Open phase:15 issues at iter-846 open
 - #452 (p1, type:design, status:ready, area:cross-cutting) — Speed up PR-gate CI. Steps 1+2 done; step 3 (#469) blocked. Closeable when human decides #469 fate; bulk of intent already delivered (7-9× speedup).
-- #454 (p2, type:design, status:blocked, area:cross-cutting) — ADR: raise A.8 in-flight branch soft cap. Was gated on step 3 landing; now indefinitely blocked unless step 3 resolves.
-- #469 (p1, type:chore, **status:needs-human**, area:cross-cutting) — CI step 3 merge queue. Blocked on repo ownership (User vs Organization). Diagnosis comment posted iter-844.
-- #470 (p2, type:chore, status:in-progress, area:cross-cutting) — Sync in-flight claim board (PR #471 in flight, rebased iter-844).
-- #463 PR open — walk-24 close-out (dim-13 cross-diagram coherence findings #461 / #462), rebased iter-844.
+- #454 (p2, type:design, status:blocked, area:cross-cutting) — ADR: raise A.8 in-flight branch soft cap. Indefinitely blocked behind #469.
+- #479 (p2, type:chore, status:in-progress, area:cross-cutting) — iter-845 board re-sync (PR #480 in flight, rebased iter-846).
+- #481 (p2, type:chore, status:in-progress, area:cross-cutting) — **iter-846 STATUS sync (this PR)**.
 
 ## Decisions log
 
@@ -64,10 +67,12 @@ phase:15 — Architect-driven UX & feature hardening
 - **Iter-842 — CI step 2 PR opened (#475 → closes #468).** `ci.yml` PR-gate trimmed to chromium projects only; `push: branches: [main]` trigger removed. New `ci-full-matrix.yml` runs all four projects on push-to-main + daily 09:00-UTC cron + workflow_dispatch.
 - **Iter-843 — CI step 2 merged (PR #475 → squash `0ea8f52`).** Measured PR-gate wallclock 4m 10s vs step-1 5m 46s = ~28% additional cut; cumulative ~7-9× speedup. Issue #468 closed. First push-to-main `ci-full-matrix` run on `0ea8f52` reported **success**. Open backlog narrowed to 2 design + 1 chore + 1 in-progress chore. iter-843 STATUS-sync PR (#476) opened but did not merge before iter-844 began — subsumed by this iter-844 STATUS PR.
 - **Iter-844 — CI step 3 BLOCKED on repo-ownership feature gate.** PR #477 shipped the `merge_group:` workflow trigger to `main` (squash `42c84ed`). Post-merge Rulesets POST to enable the queue returned 422 across every parameter variation; root cause confirmed via `.owner.type == "User"` + GraphQL `Repository.mergeQueue == null` + no `enableMergeQueue` mutation. **#469 relabeled `status:needs-human` with diagnosis comment.** Loop will not retry #469 until operator transfers the repo to an organization, closes #469 as `wontfix`, or proposes a non-queue alternative. The 7-9× speedup from steps 1+2 already delivers the bulk of #452's stated intent — step 3 was incremental. Workflow trigger left in place (dormant) so a future org transfer is a one-API-call activation.
+- **Iter-845 — board re-sync detour (PR #480, closes #479).** Three rows on `docs/architect/in-flight.md` were stale (#459, #463, #471 merged hours earlier). Iter-845 replaced them with the only actually-in-flight row at dispatch time (`phase-15/iter-844-merge-queue-blocked` / #478). #478 merged 26 s after #480 opened, leaving the new row stale by merge time — the recurring board-hygiene tail-chasing pattern. PR went `BEHIND` immediately; carried into iter-846.
+- **Iter-846 — resume #480 + STATUS sync (this PR, closes #481).** `gh pr update-branch 480` succeeded cleanly (no in-flight.md overlap with #478's touched-file set); CI re-queued; auto-merge SQUASH still armed → expected to merge on `fast` green. Filed #481 + opened this STATUS-sync PR to bring `STATUS.md` current after iter-844's "iter-845 plan" was overtaken by the actual board-hygiene work. No rubric movement; A.12 table unchanged; walk-25 (dim-13 follow-up) deferred to iter-847.
 
 ## Session checkpoint summary
 
-This session (iter-793 → iter-844) executed **52 iterations** spanning bootstrap, **12 architect walks** (6-10 FBW + 14-23 viewpoints + round-trip ×4) plus walk-24 in flight, **~23 engineer batches**, **6 release tags**, **3 ADRs** (0014/0015/0016), and CI-velocity restructure steps 1 (#472) + 2 (#475) shipped + step 3 (#469) blocked on org-only feature gate. Cumulative delivery:
+This session (iter-793 → iter-846) executed **54 iterations** spanning bootstrap, **12 architect walks** (6-10 FBW + 14-23 viewpoints + round-trip ×4) plus walk-24 merged, **~23 engineer batches**, **6 release tags**, **3 ADRs** (0014/0015/0016), and CI-velocity restructure steps 1 (#472) + 2 (#475) shipped + step 3 (#469) blocked on org-only feature gate. Iter-845/846 = board-hygiene + STATUS-sync hygiene; no rubric or feature movement. Cumulative delivery:
 
 | Tag | Date | What |
 |-----|------|------|
@@ -82,16 +87,16 @@ Rubric: **2 × score-3** (dim 5 BDD, dim 14 Round-trip integrity) + 20 × score-
 
 ## Next action
 
-**Iter-845 — recommended pickup: walk-25 dim-13 follow-up after walk-24 close-out (#463) merges.** Rationale: With #469 stuck on a non-engineering decision and #452/#454 transitively blocked behind it, rubric advancement returns to the front. Walk-24's #461/#462 finding set must be on `main` before walk-25's plan is written (per A.5 walk discipline). Walk-25 then targets dim-13 (cross-diagram coherence — same element across viewpoints stays in sync, cross-diagram navigation, rename reflection, registry integrity) toward score 2 → 3.
+**Iter-847 — recommended pickup: walk-25 dim-13 follow-up (the work iter-844 originally recommended for iter-845).** Rationale: walk-24 (#463) is on main carrying the #461/#462 dim-13 finding set; #469 / #452 / #454 are operator-blocked; rubric advancement is again the front. Walk-25 targets dim-13 (cross-diagram coherence — same element across viewpoints stays in sync, cross-diagram navigation, rename reflection, registry integrity) toward score 2 → 3. Write the walk plan at `docs/architect/walks/walk-25.md` *before* opening the browser per A.5.
 
-**Iter-845 PR sweep:** rebase #471 + #463 + (if still open) #476 onto post-iter-844 main. With this STATUS PR aiming for merge, the trio will go BEHIND again — same churn pattern that motivated #469. Without the queue, the cost is unchanged from baseline. The full-matrix workflow ran clean on `0ea8f52` so the chromium-only PR gate is the steady-state PR signal going forward.
+**Iter-847 PR sweep:** with #480 + this STATUS PR expected to merge during iter-846, iter-847 should open with 0 open PRs. If either is still in flight, rebase before dispatching new parallel work.
 
 **#469 (CI step 3, merge queue):** No further loop work. `status:needs-human` until operator decides (a) org transfer, (b) wontfix close, or (c) propose a non-queue alternative. If wontfix: close #469 and #454, downgrade #452 to "closeable" with steps 1+2 delivered.
 
 **ADR for raising A.8 cap (#454):** indefinitely blocked behind #469.
 
-**FBW example (A.12 #4):** engineering-unblocked at dim-14 = 3. Architect authoring throughput against A.6 coverage thresholds remains the bottleneck.
+**FBW example (A.12 #4):** engineering-unblocked at dim-14 = 3. Architect authoring throughput against A.6 coverage thresholds remains the bottleneck — walk-25 dim-13 work is the higher-marginal-value path until the FBW deficit becomes binding.
 
-**In-flight at iter-844 close (4/5 of A.8 cap):** #463 (walk-24, rebased post-#477), #471 (in-flight board sync, rebased post-#477), this iter-844 STATUS PR, and #476 (iter-843 STATUS — will be closed-as-subsumed at the same time this iter-844 STATUS PR is opened). After cleanup, the cap reads 3/5.
+**In-flight at iter-846 open (2/5 of A.8 cap):** #480 (iter-845 board re-sync, rebased iter-846), this iter-846 STATUS PR. Both doc-only; touched-file sets disjoint (`docs/architect/in-flight.md` vs `STATUS.md`).
 
-**Halting safety:** STOP file / `status:emergency-stop` label unchanged; Phase-15 iter-count at 52, well under the 300 churn ceiling. Halting safety for #469 per AGENT.md: relabel to `status:needs-human` is the prescribed move when the work isn't loop-resumable — applied.
+**Halting safety:** STOP file / `status:emergency-stop` label unchanged; Phase-15 iter-count at 54, well under the 300 churn ceiling. Halting safety for #469 per AGENT.md: relabel to `status:needs-human` is the prescribed move when the work isn't loop-resumable — applied iter-844.
