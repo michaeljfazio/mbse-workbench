@@ -1483,3 +1483,21 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
   "the failing CI run names them all". Alternative if unsure: dispatch
   a Playwright snapshot-update workflow that regenerates all visual
   baselines from a single CI environment in one shot.
+
+- **2026-05-19 (iter-860, issue #499):** React Flow v12's default
+  `connectionMode={ConnectionMode.Strict}` only fires `onConnect` when
+  drag goes from a `source` handle to a `target` handle. Source→source
+  and target→target drags are rejected at the framework level **before**
+  the typed `isValidConnection` callback runs — so the validator never
+  sees them and the connection silently no-ops with no UI feedback.
+  When a viewpoint maps multiple port semantics onto the same handle
+  role (the IBD's `HANDLE_TYPE_BY_DIRECTION.inout = 'source'` is the
+  canonical case per ADR 0003 — two `inout` ports both produce
+  `source` handles), the only working route is to opt the viewpoint
+  into `ConnectionMode.Loose`. That delegates handle-role validity to
+  the typed callback, which becomes the single source of truth.
+  Implemented as a per-viewpoint ternary on the `<ReactFlow>` prop in
+  `src/workspace/CanvasPane.tsx` (IBD only — other viewpoints use
+  distinct nodes for source vs target and keep Strict). Future
+  viewpoints that map symmetric semantics onto same-role handles
+  must explicitly opt into Loose; do not flip the global default.

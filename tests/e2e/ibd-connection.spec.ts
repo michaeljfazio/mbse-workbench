@@ -241,6 +241,148 @@ test.describe('IBD connection (issue #51)', () => {
     await expect(edge).toHaveCount(1);
   });
 
+  // Issue #499: with two `inout` ports (the default direction for a new
+  // PortDefinition), both port handles resolve to `source` role per
+  // `HANDLE_TYPE_BY_DIRECTION`. The IBD ReactFlow opts into
+  // `ConnectionMode.Loose` so React Flow allows the source→source drag and
+  // delegates validity to the typed `isValidIbdConnection` callback, which
+  // accepts `inout:inout` per ADR 0003 / SysML v2 BidirectionalConnector.
+  test('drag between two inout ports creates a ConnectionUsage (issue #499)', async ({
+    page,
+  }) => {
+    await page.addInitScript(
+      ({
+        projectId,
+        bddId,
+        ibdId,
+        producerDef,
+        producerPortDef,
+        producerPartUsage,
+        producerPortUsage,
+        consumerDef,
+        consumerPortDef,
+        consumerPartUsage,
+        consumerPortUsage,
+      }) => {
+        const project = {
+          id: projectId,
+          name: 'IBD Connection Seed (inout-inout)',
+          createdAt: '2026-05-19T10:00:00.000Z',
+          modifiedAt: '2026-05-19T10:05:00.000Z',
+          elements: [
+            {
+              id: producerDef,
+              kind: 'PartDefinition',
+              name: 'PFC',
+              isAbstract: false,
+              propertyIds: [],
+              portIds: [producerPortDef],
+            },
+            {
+              id: producerPortDef,
+              kind: 'PortDefinition',
+              name: 'data',
+              direction: 'inout',
+            },
+            {
+              id: producerPortUsage,
+              kind: 'PortUsage',
+              name: 'data',
+              definitionId: producerPortDef,
+            },
+            {
+              id: producerPartUsage,
+              kind: 'PartUsage',
+              name: 'pfc_1',
+              definitionId: producerDef,
+              portUsageIds: [producerPortUsage],
+            },
+            {
+              id: consumerDef,
+              kind: 'PartDefinition',
+              name: 'ADIRU',
+              isAbstract: false,
+              propertyIds: [],
+              portIds: [consumerPortDef],
+            },
+            {
+              id: consumerPortDef,
+              kind: 'PortDefinition',
+              name: 'feed',
+              direction: 'inout',
+            },
+            {
+              id: consumerPortUsage,
+              kind: 'PortUsage',
+              name: 'feed',
+              definitionId: consumerPortDef,
+            },
+            {
+              id: consumerPartUsage,
+              kind: 'PartUsage',
+              name: 'adiru_1',
+              definitionId: consumerDef,
+              portUsageIds: [consumerPortUsage],
+            },
+          ],
+          edges: [],
+          diagrams: [
+            {
+              id: bddId,
+              viewpointId: 'bdd',
+              name: 'Main BDD',
+              positions: {},
+            },
+            {
+              id: ibdId,
+              viewpointId: 'ibd',
+              name: 'PFC IBD',
+              positions: {
+                [producerPartUsage]: { x: 80, y: 120 },
+                [consumerPartUsage]: { x: 420, y: 120 },
+              },
+              context: { kind: 'partDefinition', id: producerDef },
+            },
+          ],
+          history: { undo: [], redo: [] },
+        };
+        sessionStorage.setItem(
+          `mbse:v1:project:${projectId}`,
+          JSON.stringify(project),
+        );
+      },
+      {
+        projectId: 'p-ibd-connection-inout-inout',
+        bddId: 'd-bdd-3',
+        ibdId: 'd-ibd-3',
+        producerDef: 'pd-pfc',
+        producerPortDef: 'port-d-data',
+        producerPartUsage: 'pu-pfc',
+        producerPortUsage: 'pu-data',
+        consumerDef: 'pd-adiru',
+        consumerPortDef: 'port-d-feed',
+        consumerPartUsage: 'pu-adiru',
+        consumerPortUsage: 'pu-feed',
+      },
+    );
+
+    await page.goto('/');
+    await page.getByRole('tab', { name: 'PFC IBD' }).click();
+    await expect(
+      page.locator('[data-testid^="ibd-part-"][data-element-id]'),
+    ).toHaveCount(2);
+
+    await dragHandle(
+      page,
+      page.getByTestId('ibd-handle-pu-data'),
+      page.getByTestId('ibd-handle-pu-feed'),
+    );
+
+    await expect(
+      page.locator('[data-testid^="ibd-edge-"][data-edge-kind="ConnectionUsage"]'),
+    ).toHaveCount(1);
+  });
+
   test('rejects an in ↔ in drag (typed compatibility per ADR 0003)', async ({
     page,
   }) => {

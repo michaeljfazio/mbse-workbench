@@ -288,6 +288,149 @@ test.describe('IBD ItemFlow (issue #52)', () => {
     await expect(label).toContainText('Fuel');
   });
 
+  // Issue #499 companion: Shift+drag between two `inout` ports must create an
+  // ItemFlow. Same root cause as the ConnectionUsage path — without
+  // `ConnectionMode.Loose` the source→source drag is rejected before
+  // `isValidIbdConnection` runs.
+  test('Shift+drag between two inout ports creates an ItemFlow (issue #499)', async ({
+    page,
+  }) => {
+    await page.addInitScript(
+      ({
+        projectId,
+        ibdId,
+        bddId,
+        producerDef,
+        producerPortDef,
+        producerPartUsage,
+        producerPortUsage,
+        consumerDef,
+        consumerPortDef,
+        consumerPartUsage,
+        consumerPortUsage,
+      }) => {
+        const project = {
+          id: projectId,
+          name: 'IBD ItemFlow Seed (inout-inout)',
+          createdAt: '2026-05-19T10:00:00.000Z',
+          modifiedAt: '2026-05-19T10:05:00.000Z',
+          elements: [
+            {
+              id: producerDef,
+              kind: 'PartDefinition',
+              name: 'PFC',
+              isAbstract: false,
+              propertyIds: [],
+              portIds: [producerPortDef],
+            },
+            {
+              id: producerPortDef,
+              kind: 'PortDefinition',
+              name: 'data',
+              direction: 'inout',
+            },
+            {
+              id: producerPortUsage,
+              kind: 'PortUsage',
+              name: 'data',
+              definitionId: producerPortDef,
+            },
+            {
+              id: producerPartUsage,
+              kind: 'PartUsage',
+              name: 'pfc_1',
+              definitionId: producerDef,
+              portUsageIds: [producerPortUsage],
+            },
+            {
+              id: consumerDef,
+              kind: 'PartDefinition',
+              name: 'ADIRU',
+              isAbstract: false,
+              propertyIds: [],
+              portIds: [consumerPortDef],
+            },
+            {
+              id: consumerPortDef,
+              kind: 'PortDefinition',
+              name: 'feed',
+              direction: 'inout',
+            },
+            {
+              id: consumerPortUsage,
+              kind: 'PortUsage',
+              name: 'feed',
+              definitionId: consumerPortDef,
+            },
+            {
+              id: consumerPartUsage,
+              kind: 'PartUsage',
+              name: 'adiru_1',
+              definitionId: consumerDef,
+              portUsageIds: [consumerPortUsage],
+            },
+          ],
+          edges: [],
+          diagrams: [
+            {
+              id: bddId,
+              viewpointId: 'bdd',
+              name: 'Main BDD',
+              positions: {},
+            },
+            {
+              id: ibdId,
+              viewpointId: 'ibd',
+              name: 'PFC IBD',
+              positions: {
+                [producerPartUsage]: { x: 80, y: 120 },
+                [consumerPartUsage]: { x: 420, y: 120 },
+              },
+              context: { kind: 'partDefinition', id: producerDef },
+            },
+          ],
+          history: { undo: [], redo: [] },
+        };
+        sessionStorage.setItem(
+          `mbse:v1:project:${projectId}`,
+          JSON.stringify(project),
+        );
+      },
+      {
+        projectId: 'p-ibd-itemflow-inout-inout',
+        bddId: 'd-bdd-iof',
+        ibdId: 'd-ibd-iof',
+        producerDef: 'pd-pfc-iof',
+        producerPortDef: 'port-d-data-iof',
+        producerPartUsage: 'pu-pfc-iof',
+        producerPortUsage: 'pu-data-iof',
+        consumerDef: 'pd-adiru-iof',
+        consumerPortDef: 'port-d-feed-iof',
+        consumerPartUsage: 'pu-adiru-iof',
+        consumerPortUsage: 'pu-feed-iof',
+      },
+    );
+
+    await page.goto('/');
+    await page.getByRole('tab', { name: 'PFC IBD' }).click();
+    await expect(
+      page.locator('[data-testid^="ibd-part-"][data-element-id]'),
+    ).toHaveCount(2);
+
+    await dragHandleWithShift(
+      page,
+      page.getByTestId('ibd-handle-pu-data-iof'),
+      page.getByTestId('ibd-handle-pu-feed-iof'),
+    );
+
+    await expect(
+      page.locator('[data-testid^="ibd-edge-"][data-edge-kind="ItemFlow"]'),
+    ).toHaveCount(1);
+    await expect(
+      page.locator('[data-testid^="ibd-edge-"][data-edge-kind="ConnectionUsage"]'),
+    ).toHaveCount(0);
+  });
+
   test('rejects in ↔ in Shift+drag (typed compatibility per ADR 0003)', async ({
     page,
   }) => {

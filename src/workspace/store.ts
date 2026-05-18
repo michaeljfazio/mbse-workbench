@@ -748,17 +748,29 @@ function nextPortName(
   return `port${n}`;
 }
 
+// All-uppercase identifier (optionally with digits / underscores) → treat as
+// an acronym (e.g. `PFC`, `ADIRU`, `PRIM_1`). Acronym PartUsage names keep
+// the unchanged form and append `_1`, `_2`, … so the usage is visibly
+// distinct from its like-named PartDefinition without producing
+// mid-camelCase like `pFC`. Issue #500.
+const ACRONYM_PATTERN = /^[A-Z][A-Z0-9_]*$/;
+
 function nextPartUsageName(
   definition: PartDefinitionElement,
   elements: readonly ModelElement[],
 ): string {
   const base = definition.name.length > 0 ? definition.name : 'part';
-  const lowered = base.charAt(0).toLowerCase() + base.slice(1);
   const taken = new Set(
     elements
       .filter((e): e is PartUsageElement => e.kind === 'PartUsage')
       .map((e) => e.name),
   );
+  if (ACRONYM_PATTERN.test(base)) {
+    let n = 1;
+    while (taken.has(`${base}_${n}`)) n += 1;
+    return `${base}_${n}`;
+  }
+  const lowered = base.charAt(0).toLowerCase() + base.slice(1);
   if (!taken.has(lowered)) return lowered;
   let n = 2;
   while (taken.has(`${lowered}${n}`)) n += 1;

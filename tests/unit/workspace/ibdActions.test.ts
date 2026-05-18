@@ -274,6 +274,36 @@ describe('workspace store — IBD actions (issue #50)', () => {
       expect(findPartUsage(b)?.name).toBe('engine2');
     });
 
+    // Acronym PartDefinitions (all-uppercase, optionally with digits/underscores)
+    // are auto-named with a numeric suffix instead of being first-char-lowered.
+    // `PFC` → `PFC_1`, `PFC_2`. Mixed-case names keep the lowercased convention
+    // (`Engine` → `engine`, `engine2`). Issue #500.
+    it('names an acronym PartDefinition with a numeric suffix', async () => {
+      await bootstrap();
+      const defId = useWorkspaceStore.getState().createBlock()!;
+      useWorkspaceStore.getState().renameElement(defId, 'PFC');
+      const ibdId = useWorkspaceStore.getState().openInternalDiagram(defId)!;
+      const a = useWorkspaceStore
+        .getState()
+        .createPartUsage(ibdId, defId, { x: 0, y: 0 })!;
+      const b = useWorkspaceStore
+        .getState()
+        .createPartUsage(ibdId, defId, { x: 10, y: 10 })!;
+      expect(findPartUsage(a)?.name).toBe('PFC_1');
+      expect(findPartUsage(b)?.name).toBe('PFC_2');
+    });
+
+    it('treats names with digits and underscores as acronyms if all-uppercase', async () => {
+      await bootstrap();
+      const defId = useWorkspaceStore.getState().createBlock()!;
+      useWorkspaceStore.getState().renameElement(defId, 'ADIRU_3');
+      const ibdId = useWorkspaceStore.getState().openInternalDiagram(defId)!;
+      const id = useWorkspaceStore
+        .getState()
+        .createPartUsage(ibdId, defId, { x: 0, y: 0 })!;
+      expect(findPartUsage(id)?.name).toBe('ADIRU_3_1');
+    });
+
     it('one undo step reverts the whole compound (PortUsages + PartUsage + position)', async () => {
       await bootstrap();
       const defId = useWorkspaceStore.getState().createBlock()!;
