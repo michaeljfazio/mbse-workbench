@@ -17,6 +17,10 @@ if (import.meta.env.DEV || import.meta.env.MODE === 'test') {
     createMultiRoundFixtureProvider,
     setChatProviderOverride,
   };
+  // Workspace store seam — used by e2e specs that need to drive
+  // selection state directly (React Flow v12 edge clicks are unreliable
+  // per docs/CONTEXT.md 2026-05-12). Issue #434 test harness reads here.
+  (window as unknown as Record<string, unknown>)['__workspaceStore'] = useWorkspaceStore;
 }
 
 const rootElement = document.getElementById('root');

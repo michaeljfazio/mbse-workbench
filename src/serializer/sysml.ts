@@ -489,11 +489,33 @@ function renderEdges(edges: readonly ModelEdge[]): string {
   for (const edge of sorted) {
     const kw = EDGE_KEYWORD[edge.kind];
     const detail = edgeDetail(edge);
+    // SysML 1.x §9.4 — Association may carry optional multiplicities at
+    // each association end. Rendered as `[srcMult]` immediately after the
+    // source name and `[tgtMult]` immediately after the target name, e.g.
+    // `association src [1] -> tgt [0..*];`. Other edge kinds carry no
+    // multiplicities; their source/target chunks come out unbracketed.
+    // Issue #434. SysML v2 textual notation for association ends with
+    // multiplicities is still being finalised in OMG; the bracketed form
+    // matches the 1.x conventional notation and round-trips losslessly
+    // through the parser below (see src/parser/sysml.ts `finishEdge`).
+    const sourceChunk = formatEdgeEndpoint(edge, edge.sourceId, 'source');
+    const targetChunk = formatEdgeEndpoint(edge, edge.targetId, 'target');
     lines.push(
-      `${kw}${detail} ${edge.sourceId} -> ${edge.targetId};${idTail(edge.id)}`,
+      `${kw}${detail} ${sourceChunk} -> ${targetChunk};${idTail(edge.id)}`,
     );
   }
   return lines.join('\n');
+}
+
+function formatEdgeEndpoint(
+  edge: ModelEdge,
+  endpointId: ElementId,
+  role: 'source' | 'target',
+): string {
+  if (edge.kind !== 'Association') return endpointId;
+  const mult =
+    role === 'source' ? edge.sourceMultiplicity : edge.targetMultiplicity;
+  return mult ? `${endpointId} [${mult}]` : endpointId;
 }
 
 function edgeDetail(edge: ModelEdge): string {

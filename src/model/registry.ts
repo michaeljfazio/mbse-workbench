@@ -92,6 +92,9 @@ const ELEMENT_BASE_OPTIONAL_FIELDS = new Set<string>(['ownerId', 'documentation'
 const EDGE_KIND_OPTIONAL_FIELDS: Partial<
   Record<EdgeKind, ReadonlySet<string>>
 > = {
+  // Association multiplicities are SysML 1.x §9.4 optionals — first-time
+  // patch on an Association edge created before #434 must be accepted.
+  Association: new Set(['sourceMultiplicity', 'targetMultiplicity']),
   ControlFlow: new Set(['guard']),
   ObjectFlow: new Set(['itemType']),
   Extend: new Set(['extensionPoint']),

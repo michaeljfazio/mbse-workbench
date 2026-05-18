@@ -540,6 +540,59 @@ describe('parseSysmlText — edges round-trip', () => {
       'RequirementTrace',
     ]);
   });
+
+  // Issue #434 — Association edges round-trip optional multiplicities at
+  // either end. Tested with both ends decorated, target-only, and bare to
+  // verify the optional brackets do not poison the unambiguous parse of
+  // other endpoint shapes.
+  it('parses Association edges with optional [sourceMultiplicity] and [targetMultiplicity]', () => {
+    const edges: ModelEdge[] = [
+      {
+        id: edgeId('ea1'),
+        kind: 'Association',
+        sourceId: eid('a'),
+        targetId: eid('b'),
+      },
+      {
+        id: edgeId('ea2'),
+        kind: 'Association',
+        sourceId: eid('a'),
+        targetId: eid('b'),
+        sourceMultiplicity: '1',
+        targetMultiplicity: '0..*',
+      },
+      {
+        id: edgeId('ea3'),
+        kind: 'Association',
+        sourceId: eid('a'),
+        targetId: eid('b'),
+        targetMultiplicity: '1..*',
+      },
+    ];
+    const els: ModelElement[] = [
+      asMember<Extract<ModelElement, { kind: 'Actor' }>>(
+        { id: eid('a'), kind: 'Actor', name: 'A' },
+        0,
+      ),
+      asMember<Extract<ModelElement, { kind: 'Actor' }>>(
+        { id: eid('b'), kind: 'Actor', name: 'B' },
+        1,
+      ),
+    ];
+    const parsed = roundTrip(els, edges);
+    const assocs = parsed.edges.filter(
+      (e): e is Extract<ModelEdge, { kind: 'Association' }> =>
+        e.kind === 'Association',
+    );
+    expect(assocs).toHaveLength(3);
+    const byId = new Map(assocs.map((e) => [e.id, e]));
+    expect(byId.get(edgeId('ea1'))?.sourceMultiplicity).toBeUndefined();
+    expect(byId.get(edgeId('ea1'))?.targetMultiplicity).toBeUndefined();
+    expect(byId.get(edgeId('ea2'))?.sourceMultiplicity).toBe('1');
+    expect(byId.get(edgeId('ea2'))?.targetMultiplicity).toBe('0..*');
+    expect(byId.get(edgeId('ea3'))?.sourceMultiplicity).toBeUndefined();
+    expect(byId.get(edgeId('ea3'))?.targetMultiplicity).toBe('1..*');
+  });
 });
 
 describe('parseSysmlText — import directives (T-14.05)', () => {

@@ -414,7 +414,10 @@ class Parser {
   private isEdgeKeyword(value: string): boolean {
     return [
       'composition',
+      'aggregation',
       'generalization',
+      'association',
+      'dependency',
       'trace',
       'control-flow',
       'object-flow',
@@ -1315,12 +1318,16 @@ class Parser {
     extra: Partial<Extract<ModelEdge, { kind: K }>> = {},
   ): ModelEdge {
     const source = this.expectIdent().value;
+    // SysML 1.x §9.4 — optional `[multiplicity]` immediately after the
+    // source name, only meaningful for Association edges. Issue #434.
+    const sourceMultiplicity = this.tryConsumeBracketed();
     const arrow = this.peek();
     if (arrow.type !== 'arrow') {
       throw new ParserError(`expected '->'`, arrow.line, arrow.col);
     }
     this.consume();
     const target = this.expectIdent().value;
+    const targetMultiplicity = this.tryConsumeBracketed();
     this.expectPunct(';');
     const id = this.consumeIdMark() as unknown as EdgeId;
     const base = {
@@ -1330,7 +1337,43 @@ class Parser {
       targetId: target as ElementId,
       ...extra,
     } as ModelEdge;
+    if (kind === 'Association') {
+      const assocBase = base as Extract<ModelEdge, { kind: 'Association' }>;
+      if (sourceMultiplicity !== undefined) {
+        (assocBase as { sourceMultiplicity?: string }).sourceMultiplicity =
+          sourceMultiplicity;
+      }
+      if (targetMultiplicity !== undefined) {
+        (assocBase as { targetMultiplicity?: string }).targetMultiplicity =
+          targetMultiplicity;
+      }
+    }
     return base;
+  }
+
+  // Consume `[<contents>]` if present at the current cursor and return the
+  // contents verbatim. Returns `undefined` when the next token is not `[`.
+  // Used by `finishEdge` to pick up optional association multiplicities;
+  // also benignly tolerates bracketed annotations on other edge kinds in
+  // case future spec extensions appear.
+  private tryConsumeBracketed(): string | undefined {
+    const next = this.peek();
+    if (next.type !== 'punct' || next.value !== '[') return undefined;
+    const opener = this.consume();
+    let buf = '';
+    while (!(this.peek().type === 'punct' && this.peek().value === ']')) {
+      const tk = this.consume();
+      if (tk.type === 'eof') {
+        throw new ParserError(
+          `unterminated multiplicity`,
+          opener.line,
+          opener.col,
+        );
+      }
+      buf += tk.value;
+    }
+    this.expectPunct(']');
+    return buf;
   }
 
   private resolveName(name: string): ElementId {

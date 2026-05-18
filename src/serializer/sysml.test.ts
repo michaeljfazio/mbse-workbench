@@ -515,6 +515,43 @@ describe('serializeProject — edges', () => {
     expect(text).toContain('binding a -> b;');
     expect(text).toContain('import a -> b;');
   });
+
+  // Issue #434 — Association edges may carry optional multiplicities at
+  // each end. SysML 1.x §9.4 convention: bracketed cardinality immediately
+  // following the association end name. Bare (no multiplicities) emission
+  // remains identical to the pre-#434 plain-line form.
+  it('association: emits multiplicity in brackets after each endpoint when present', () => {
+    const edges: ModelEdge[] = [
+      {
+        id: edgeId('e1'),
+        kind: 'Association',
+        sourceId: eid('a'),
+        targetId: eid('b'),
+      },
+      {
+        id: edgeId('e2'),
+        kind: 'Association',
+        sourceId: eid('a'),
+        targetId: eid('b'),
+        sourceMultiplicity: '1',
+        targetMultiplicity: '0..*',
+      },
+      {
+        id: edgeId('e3'),
+        kind: 'Association',
+        sourceId: eid('a'),
+        targetId: eid('b'),
+        targetMultiplicity: '1..*',
+      },
+    ];
+    const text = serializeProject(buildProject([], edges));
+    // Bare association round-trips as a plain `a -> b` line.
+    expect(text).toContain('association a -> b; // id: e1');
+    // Both ends decorated with bracketed multiplicities.
+    expect(text).toContain('association a [1] -> b [0..*]; // id: e2');
+    // Target-only multiplicity still emits the source bare.
+    expect(text).toContain('association a -> b [1..*]; // id: e3');
+  });
 });
 
 describe('serializeProject — determinism + snapshot', () => {
