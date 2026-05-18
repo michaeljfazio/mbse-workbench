@@ -3,7 +3,9 @@
 ## Current phase
 phase:15 — Architect-driven UX & feature hardening
 
-🎯 **Iter-861: `vphase-15.8` / `v1.5.2` released.** PR #502 merged at 2026-05-18T18:24:10Z (squash `95fb6c2`), closing #499 (`p1` `area:viewpoint:ibd` IBD ConnectionMode root cause) + #500 (`p2` PartUsage acronym auto-name). Tags `vphase-15.8` + `v1.5.2` pushed to `main` at the same SHA; both release workflows ran clean (build + deploy + github-release all green). Pages last-modified `Mon, 18 May 2026 18:32:43 GMT`. GitHub Releases: vphase-15.8 published 18:33:54Z, v1.5.2 published 18:32:58Z. Live URL `https://michaeljfazio.github.io/mbse-workbench/` returns HTTP 200. Patch bump (not minor) per SemVer: the work is fix-not-feature — both #499 and #500 were defects surfaced by walk-27, no outward-facing capability gained beyond what walk-27 had attempted to exercise.
+🎯 **Iter-862: walk-28 plan SEALED** against `vphase-15.8` Pages (`95fb6c2` deploy, Pages `last-modified: Mon, 18 May 2026 18:32:43 GMT`). Walk-28 is the first regression after the walk-27 reset; it re-runs walk-27's eight PCs against the post-#502 bundle to verify the IBD `ConnectionMode.Loose` fix (#499) + the acronym auto-name fix (#500). Clean walk-28 → dim 6 (IBD) promotes 2 → 3 (THIRD score-3 dimension) AND dim 17 (Edge editing) advances 1 → 2 AND convergence chain advances chain[0] → chain[1] / 3.
+
+🎯 **Iter-861: `vphase-15.8` / `v1.5.2` released.** PR #502 merged at 2026-05-18T18:24:10Z (squash `95fb6c2`), closing #499 (`p1` `area:viewpoint:ibd` IBD ConnectionMode root cause) + #500 (`p2` PartUsage acronym auto-name). Tags `vphase-15.8` + `v1.5.2` pushed to `main` at the same SHA; both release workflows ran clean (build + deploy + github-release all green). Pages last-modified `Mon, 18 May 2026 18:32:43 GMT`. GitHub Releases: vphase-15.8 published 18:33:54Z, v1.5.2 published 18:32:58Z. Live URL `https://michaeljfazio.github.io/mbse-workbench/` returns HTTP 200. Patch bump (not minor) per SemVer: the work is fix-not-feature — both #499 and #500 were defects surfaced by walk-27, no outward-facing capability gained beyond what walk-27 had attempted to exercise. iter-861 STATUS PR #503 merged at 18:39:00Z (squash `afc4810`).
 
 🎯 **Iter-860: #499 + #500 engineer batch shipped as PR #502** (closed by squash-merge `95fb6c2`).
 
@@ -24,44 +26,43 @@ phase:15 — Architect-driven UX & feature hardening
 
 | # | Condition | Status |
 |---|-----------|--------|
-| A.12 #1 | Every rubric dim at 3 | **2 of 28** at 3 (dim 5 BDD, dim 14 Round-trip integrity); **22** at 2; 1 at 1 (dim 17 Edge editing — fix shipped in `vphase-15.8`, awaiting walk-28 measurement); 3 at 0. The IBD `ConnectionMode.Loose` fix is on Pages; **walk-28** (regression of walk-27) is the next decisive measurement — clean outcome promotes dim 6 (IBD) from 2 to 3 AND advances dim 17 from 1 toward 2/3 simultaneously. |
+| A.12 #1 | Every rubric dim at 3 | **2 of 28** at 3 (dim 5 BDD, dim 14 Round-trip integrity); **22** at 2; 1 at 1 (dim 17 Edge editing — fix shipped in `vphase-15.8`, awaiting walk-28 measurement); 3 at 0. The IBD `ConnectionMode.Loose` fix is on Pages; **walk-28** (regression of walk-27, plan sealed in iter-862) is the next decisive measurement — clean outcome promotes dim 6 (IBD) from 2 to 3 AND advances dim 17 from 1 toward 2 simultaneously. |
 | A.12 #2 | Zero open `phase:15` issues labelled `type:bug/feature/design` | **0 open `type:bug`** (held since #499 + #500 closed at 18:24:11Z). **2 open `type:design`**: #452 (`status:needs-human` via #469), #454 (blocked behind #469). **1 open `type:chore` `status:needs-human`**: #469. |
-| A.12 #3 | Three consecutive convergence walks | **chain[0 / 3]** (reset by walk-27). Walk-28 (regression) is the next chain[1] candidate; clean outcome → chain[1] AND dim 6 → 3 simultaneously. |
+| A.12 #3 | Three consecutive convergence walks | **chain[0 / 3]** (reset by walk-27). Walk-28 (regression, plan sealed) is the next chain[1] candidate; clean outcome → chain[1] AND dim 6 → 3 simultaneously. |
 | A.12 #4 | FBW example shipped + loadable | unblocks once dim 6 reaches 3 (precondition for authoring A.6-coverage FBW IBDs via UI). |
 
 ## Current iteration
-- Iteration #: 861
+- Iteration #: 862
 - Started: 2026-05-18 (UTC)
-- Branch: `phase-15/iter-861-vphase-15.8-release`
-- Working on: STATUS + in-flight.md update PR; release work itself complete.
+- Branch: `phase-15/iter-862-walk-28-plan`
+- Working on: walk-28 plan-seal PR (regression-walk plan against `vphase-15.8` Pages bundle).
 
 ## Last test run
-- Iter-860 PR #502 CI: full code-path. `fast` (typecheck + lint + unit + classify) SUCCESS in ~5m; `e2e (shard 1/4)`, `(shard 2/4)`, `(shard 3/4)`, `(shard 4/4)` all SUCCESS; `merge-reports` + `check` umbrella SUCCESS. Run [26052034001](https://github.com/michaeljfazio/mbse-workbench/actions/runs/26052034001).
-- Release workflows: v1.5.2 [26052695792](https://github.com/michaeljfazio/mbse-workbench/actions/runs/26052695792) success; vphase-15.8 [26052704429](https://github.com/michaeljfazio/mbse-workbench/actions/runs/26052704429) success. Both deployed the same `95fb6c2` artifact.
+- iter-861 STATUS PR #503 CI: `fast` SUCCESS at 18:38:52Z (1m 36s wall); `e2e (shard …/4)` + `merge-reports` SKIPPED via ADR-0016 path-filter (docs/STATUS-only diff); `check` umbrella SUCCESS at 18:38:58Z. Run [26052961151](https://github.com/michaeljfazio/mbse-workbench/actions/runs/26052961151). Auto-merge fired at 18:39:00Z → `afc4810`.
+- Release workflows (iter-861): v1.5.2 [26052695792](https://github.com/michaeljfazio/mbse-workbench/actions/runs/26052695792) success; vphase-15.8 [26052704429](https://github.com/michaeljfazio/mbse-workbench/actions/runs/26052704429) success. Both deployed the same `95fb6c2` artifact.
 
 ## Last PR sweep
-- Iter-861 open: this STATUS PR (only). PR #502 merged 18:24:10Z (squash `95fb6c2`).
-- No other PRs open at iter-861 start.
+- Iter-862 open: this walk-28-plan PR (only). PR #503 (iter-861 STATUS) merged at 18:39:00Z.
+- No other PRs open at iter-862 start.
 
 ## Known issues / blockers
 - **#469 (CI step 3, merge queue) BLOCKED:** `status:needs-human` pending operator decision.
 - **#452 (CI velocity epic step 3):** blocked behind #469.
 - **#454 (raise A.8 cap):** blocked behind #469.
 
-## Open phase:15 issues at iter-861 close
+## Open phase:15 issues at iter-862 close
 - #452 (p1, type:design, status:ready, area:cross-cutting) — Speed up PR-gate CI. Steps 1+2 done; step 3 (#469) blocked.
 - #454 (p2, type:design, status:blocked, area:cross-cutting) — ADR: raise A.8 in-flight branch soft cap. Blocked behind #469.
 
 ## Decisions log
 
-**Iter-808..iter-860 entries preserved in earlier commits.**
+**Iter-808..iter-861 entries preserved in earlier commits.**
 
-- **Iter-861 — release-and-not-walk-28 in this iteration.** A.5 walks are budgeted at 1–3 hours of execution and produce their own close-out commit; bundling walk-28 into the same iteration as the release would couple two unrelated risk surfaces (release-workflow correctness vs walk-28 measurement validity) and would write a STATUS at iteration boundaries that didn't reflect what actually happened. Iter-861 ships only the release; **iter-862** writes the walk-28 plan section against the `vphase-15.8` Pages bundle and executes it. This matches the iter-855 / iter-856 pattern (release then walk-26 in separate iterations).
-- **Iter-861 — kept patch SemVer (`v1.5.2`) not minor.** A strict A.8 reading on the boundary between fix and feature: PR #502 added new keyboard semantics (Shift+drag → ItemFlow) and a new naming behaviour. But the new keyboard semantics is the precondition for an existing-but-broken UX (PC5 from walk-27 failed because the precondition was missing), and the acronym branch is a defect fix. Neither adds a feature visible to a user of the deployed Pages beyond what walk-27 had attempted to exercise on `vphase-15.7`. Calling this a feature would inflate the SemVer line; `v1.5.2` is the honest patch bump. Recorded for the post-walk-28 release decision (which may justify a minor if dim 6 → 3 promotion is paired with new affordances).
+- **Iter-862 — plan-and-not-execute in this iteration.** Walk-28 is a *regression* walk (A.5 budget: 15–45 min execution). Even at the lower bound, bundling plan-seal + execution in a single iteration would couple the plan-soundness review surface with the execution result surface; a finding mid-execution that demands a plan amendment would then either retroactively edit the "plan" (against A.5 "plan vs execute boundary") or be reframed mid-iteration. The iter-857/iter-859 split for walk-27 worked cleanly; iter-862/iter-863 replicates that pattern. Iter-863 executes the walk against the `vphase-15.8` bundle.
 
 ## Session checkpoint summary
 
-This session (iter-793 → iter-861) executed **69 iterations** spanning bootstrap, **15 architect walks** + **walks 26 + 27 executed against deployed Pages**, **~25 engineer batches**, **8 release tags**, **3 ADRs** (0014/0015/0016), CI-velocity steps 1+2 (#472, #475) shipped + step 3 (#469) blocked, the iter-847..851 ADR 0016 path-filter correction trail, and the iter-859 → iter-861 IBD ConnectionMode arc (walk-27 finding → #499/#500 batch → `vphase-15.8` ship).
+This session (iter-793 → iter-862) executed **70 iterations** spanning bootstrap, **15 architect walks** + **walks 26 + 27 executed against deployed Pages** + **walk-28 plan sealed**, **~25 engineer batches**, **8 release tags**, **3 ADRs** (0014/0015/0016), CI-velocity steps 1+2 (#472, #475) shipped + step 3 (#469) blocked, the iter-847..851 ADR 0016 path-filter correction trail, and the iter-859 → iter-861 IBD ConnectionMode arc (walk-27 finding → #499/#500 batch → `vphase-15.8` ship → walk-28 plan).
 
 | Tag | Date | What |
 |-----|------|------|
@@ -78,16 +79,18 @@ Rubric: **2 × score-3** (dim 5 BDD, dim 14 Round-trip integrity) + **22 × scor
 
 ## Next action
 
-**Iter-862 — walk-28** (regression of walk-27) against `vphase-15.8` Pages (`95fb6c2` deploy, Pages last-modified `Mon, 18 May 2026 18:32:43 GMT`). Re-run the same eight PCs from walk-27. Clean outcome → dim 6 (IBD) promotes from 2 to 3 (THIRD score-3 dimension), dim 17 (Edge editing) advances from 1 toward 2 via PC 3 (plain-line connection edge), and convergence chain advances from chain[0] to chain[1] / 3. Walk-28 follows the A.5 protocol: plan in `docs/architect/walks/walk-28.md` with `## Plan` written before opening the browser; close-out PR committed on `phase-15/walk-28-log`.
+**Iter-863 — execute walk-28** against `vphase-15.8` Pages (`95fb6c2` deploy, Pages last-modified `Mon, 18 May 2026 18:32:43 GMT`). The walk-28 plan was sealed in iter-862 at `docs/architect/walks/walk-28.md`. The executing iteration re-verifies Pages `last-modified` first (guard against stale-bundle service), clones `walk-27-exec.py` to `artifacts/phase-15/walk-28/walk-28-exec.py` with the acronym auto-name expectations updated (`pfc_1` / `adiru_1` not `pFC` / `aDIRU`) and the PC3 / PC5 / PC7 verdicts flipped from `expected-fail` to `expected-pass`, runs the same eight PCs from walk-27, and appends `## Execution` / `## Findings` / `## Rubric score deltas` / `## Convergence chain (A.12 #3)` / `## Decide next` sections to walk-28.md.
 
-**If walk-28 finds new issues:** chain stays at 0; file each finding per A.7 (one-per-defect, area-labeled); rubric scores update per the walk-27 table outcomes.
+**If walk-28 is clean (expected):** dim 6 (IBD) promotes 2 → 3 (THIRD score-3 dimension), dim 17 (Edge editing) advances 1 → 2 via PC3 plain-line connection-edge evidence, convergence chain advances chain[0] → chain[1] / 3. Walk-29 (broad sweep) becomes the chain[2] candidate.
+
+**If walk-28 finds new issues:** chain stays at 0; file each finding per A.7 (one-per-defect, area-labeled); rubric scores update per the walk-28 acceptance table.
 
 **#469 (CI step 3, merge queue):** no further loop work. `status:needs-human` until operator decides.
 
 **ADR for raising A.8 cap (#454):** indefinitely blocked behind #469.
 
-**FBW example (A.12 #4):** unblocks the iteration after dim 6 reaches 3.
+**FBW example (A.12 #4):** unblocks the iteration after dim 6 reaches 3 — likely iter-864 (post-walk-28 if clean).
 
-**In-flight at iter-861 close (1/5 of A.8 cap):** this STATUS PR.
+**In-flight at iter-862 close (1/5 of A.8 cap):** this walk-28-plan PR.
 
-**Halting safety:** STOP file / `status:emergency-stop` label unchanged; Phase-15 iter-count at 69, well under the 300 churn ceiling.
+**Halting safety:** STOP file / `status:emergency-stop` label unchanged; Phase-15 iter-count at 70, well under the 300 churn ceiling.
