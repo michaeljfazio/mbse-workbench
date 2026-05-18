@@ -15,25 +15,22 @@ permissions:
   pull-requests: read
 
 jobs:
-  check:
-    name: check
+  # Fast lane: typecheck + lint + unit + build. Target wallclock ≤3 min.
+  # Also emits the `code` output (doc-only classifier) consumed by `e2e`.
+  fast:
+    name: fast
     runs-on: ubuntu-latest
-    # 60min cap (was 30) so a baseline shake-out run still flushes the
-    # playwright-report artifact before the job is cancelled — that report
-    # is required by the lift-from-trace rebaseline procedure in
-    # docs/CONTEXT.md. Note: @visual specs run with `retries: 0` (see
-    # playwright.config.ts) so a baseline storm no longer triples the
-    # wallclock on retries; only functional flakes retry.
-    timeout-minutes: 60
+    timeout-minutes: 15
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
       # Classify the PR/push changed-file set as `code` (anything that
       # could affect runtime behaviour) or doc-only. Doc-only PRs skip
-      # the ~30-40min Playwright install + e2e steps below; the `check`
-      # job still runs (typecheck/lint/unit/build) and still reports
-      # the `check` status, so branch protection requires no change.
+      # the e2e shard matrix below; the umbrella `check` job still
+      # reports success so branch protection requires no change.
       # See docs/adr/0016-ci-doc-only-skip-e2e.md and issue #453.
       - name: Classify changed paths
         id: filter
@@ -71,8 +68,38 @@ jobs:
       - name: Build
         run: pnpm run build
 
+  # Sharded Playwright e2e. 4 shards × 4 workers = 16-way parallelism
+  # (was 4-way in the monolithic `check` job). Each shard runs across
+  # both chromium + webkit projects.
+  e2e:
+    name: e2e (shard ${{ matrix.shard }}/4)
+    runs-on: ubuntu-latest
+    needs: fast
+    if: ${{ needs.fast.outputs.code == 'true' }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.9.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Cache Playwright browsers
-        if: steps.filter.outputs.code == 'true'
         id: pw-cache
         uses: actions/cache@v4
         with:
@@ -80,15 +107,79 @@ jobs:
           key: pw-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
 
       - name: Install Playwright browsers
-        if: steps.filter.outputs.code == 'true'
         run: pnpm exec playwright install --with-deps chromium webkit
 
-      - name: E2E tests
-        if: steps.filter.outputs.code == 'true'
-        run: pnpm run test:e2e
+      # `--reporter=blob` replaces the config's `[github, html]` so each
+      # shard writes a `blob-report/` consumed by the `merge-reports`
+      # job below. Worker count comes from playwright.config.ts (CI=4).
+      - name: E2E shard ${{ matrix.shard }}/4
+        run: pnpm exec playwright test --shard=${{ matrix.shard }}/4 --reporter=blob
 
-      - name: Upload Playwright report
-        if: ${{ always() && steps.filter.outputs.code == 'true' }}
+      - name: Upload blob report
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: blob-report-${{ matrix.shard }}
+          path: blob-report
+          if-no-files-found: ignore
+          retention-days: 1
+
+      # `playwright-report/` is only flushed when the run completes — on
+      # a job-cancelled timeout the upload step finds no files (see run
+      # 25937962140). `test-results/` is written incrementally per test
+      # and contains the per-test `<arg>-actual.png` for every failing
+      # `toHaveScreenshot` assertion, so it survives cancellation and is
+      # the input the lift-from-trace rebaseline procedure actually
+      # needs. Uploaded per-shard to avoid artifact-name collision.
+      - name: Upload Playwright test-results (shard ${{ matrix.shard }})
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-test-results-shard-${{ matrix.shard }}
+          path: test-results
+          if-no-files-found: ignore
+          retention-days: 14
+
+  # Merge per-shard blob reports into one HTML report so reviewers see
+  # a single Playwright report per PR (matches today's UX). Runs
+  # whenever any e2e shard ran (success or failure); skipped when e2e
+  # itself was skipped (doc-only or fast failed).
+  merge-reports:
+    name: merge-reports
+    runs-on: ubuntu-latest
+    needs: e2e
+    if: ${{ always() && needs.e2e.result != 'skipped' }}
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.9.0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Download all blob reports
+        uses: actions/download-artifact@v4
+        with:
+          path: all-blob-reports
+          pattern: blob-report-*
+          merge-multiple: true
+
+      - name: Merge blobs into single HTML report
+        run: pnpm exec playwright merge-reports --reporter html ./all-blob-reports
+
+      - name: Upload merged Playwright report
+        if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
@@ -96,17 +187,38 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-      # `playwright-report/` is only flushed when the run completes — on a
-      # job-cancelled timeout the upload step finds no files (see run
-      # 25937962140). `test-results/` is written incrementally per test
-      # and contains the per-test `<arg>-actual.png` for every failing
-      # `toHaveScreenshot` assertion, so it survives cancellation and is
-      # the input the lift-from-trace rebaseline procedure actually needs.
-      - name: Upload Playwright test-results (per-test actuals/diffs)
-        if: ${{ always() && steps.filter.outputs.code == 'true' }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-test-results
-          path: test-results
-          if-no-files-found: ignore
-          retention-days: 14
+  # Umbrella job that preserves the branch-protection-required context
+  # name `check`. Succeeds iff:
+  #   - fast succeeded, AND
+  #   - on code PRs: all e2e shards succeeded,
+  #   - on doc-only PRs: e2e was skipped.
+  # Branch protection (`required_status_checks.contexts: [check]`)
+  # therefore needs no change when the workflow is split.
+  check:
+    name: check
+    runs-on: ubuntu-latest
+    needs: [fast, e2e]
+    if: ${{ always() }}
+    steps:
+      - name: Aggregate job results
+        run: |
+          fast="${{ needs.fast.result }}"
+          e2e="${{ needs.e2e.result }}"
+          code="${{ needs.fast.outputs.code }}"
+          echo "fast=$fast  e2e=$e2e  code=$code"
+          if [ "$fast" != "success" ]; then
+            echo "::error::fast job did not succeed (result=$fast)"
+            exit 1
+          fi
+          if [ "$code" = "true" ]; then
+            if [ "$e2e" != "success" ]; then
+              echo "::error::e2e shards did not all succeed (aggregate=$e2e)"
+              exit 1
+            fi
+          else
+            if [ "$e2e" != "skipped" ]; then
+              echo "::error::doc-only PR but e2e was not skipped (result=$e2e)"
+              exit 1
+            fi
+          fi
+          echo "All required checks passed (code=$code)."
