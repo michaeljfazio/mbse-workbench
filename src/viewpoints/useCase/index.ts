@@ -10,6 +10,10 @@ import type {
 
 import { ActorNode } from './ActorNode';
 import {
+  AssociationEdge,
+  USE_CASE_ASSOCIATION_EDGE_TYPE,
+} from './AssociationEdge';
+import {
   ExtendEdge,
   USE_CASE_EXTEND_EDGE_TYPE,
 } from './ExtendEdge';
@@ -43,6 +47,14 @@ export type {
   UseCaseNodeData,
   UseCaseRenameCallback,
 } from './UseCaseNode';
+export {
+  AssociationEdge as UseCaseAssociationEdge,
+  USE_CASE_ASSOCIATION_EDGE_TYPE,
+} from './AssociationEdge';
+export type {
+  UseCaseAssociationEdgeData,
+  UseCaseAssociationFlowEdge,
+} from './AssociationEdge';
 export {
   ExtendEdge,
   USE_CASE_EXTEND_EDGE_TYPE,
@@ -88,6 +100,7 @@ const USE_CASE_EDGE_TYPES = Object.freeze({
   [USE_CASE_INCLUDE_EDGE_TYPE]: IncludeEdge,
   [USE_CASE_EXTEND_EDGE_TYPE]: ExtendEdge,
   [USE_CASE_GENERALIZATION_EDGE_TYPE]: GeneralizationEdge,
+  [USE_CASE_ASSOCIATION_EDGE_TYPE]: AssociationEdge,
 }) as unknown as ViewpointEdgeTypes;
 
 const USE_CASE_PALETTE_ITEMS: readonly PaletteItem[] = [
@@ -110,7 +123,7 @@ export const useCaseViewpoint: Viewpoint = {
   label: 'Use Case Diagram',
   acceptedElementKinds: ['Actor', 'UseCase'],
   acceptedContextKinds: ['package'],
-  acceptedEdgeKinds: ['Include', 'Extend', 'Generalization'],
+  acceptedEdgeKinds: ['Include', 'Extend', 'Generalization', 'Association'],
   acceptedEdgeElementKinds: [],
   defaultLayout: 'dagre',
   paletteItems: USE_CASE_PALETTE_ITEMS,
@@ -127,6 +140,7 @@ export const useCaseViewpoint: Viewpoint = {
     if (edge.kind === 'Include') return USE_CASE_INCLUDE_EDGE_TYPE;
     if (edge.kind === 'Extend') return USE_CASE_EXTEND_EDGE_TYPE;
     if (edge.kind === 'Generalization') return USE_CASE_GENERALIZATION_EDGE_TYPE;
+    if (edge.kind === 'Association') return USE_CASE_ASSOCIATION_EDGE_TYPE;
     throw new Error(
       `use case viewpoint cannot render edge kind: ${edge.kind}`,
     );
