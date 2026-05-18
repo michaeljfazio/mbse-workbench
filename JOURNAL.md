@@ -852,3 +852,21 @@ Phase 13 ships zero library content. Phase 13's design accommodates Phase 14 via
 - Production-quality rubric: https://github.com/michaeljfazio/mbse-workbench/blob/main/docs/architect/quality-rubric.md
 
 ---
+
+## Iteration 835 — 2026-05-18 — vphase-15.6 / v1.5.0 released — round-trip integrity reaches production quality
+
+**Event:** release
+
+**Phase:** phase:15 — Architect-driven UX & feature hardening
+
+**Narrative:** This release is the first Phase 15 cut that earns a SemVer minor bump rather than a vphase-only tag, because the work since `vphase-15.5` carries two outward-facing BDD features (the edge taxonomy expansion to five kinds — composition, generalization, aggregation, association, dependency — in #433, and Association multiplicity labels in #436) in addition to the two round-trip bug fixes (`<…>` quoted-identifier emission in #448 and `view`-block diagram preservation in #449/#451). Per A.8's "outward-facing feature visible to a user loading the example" trigger, that warranted `v1.5.0` paired with `vphase-15.6`; STATUS had specified a patch bump and was overridden on the merits at tag time. The release also closes the rubric-progress arc that began at iter-826: dimension 5 (BDD) first hit score 3 then, and walk-22 (iter-834) re-verified the round-trip fixes against local dev, promoting dimension 14 (Round-trip integrity) to score 3 — the **second** of 28 dimensions at production quality. The architect's convergence chain (A.12 #3) restarts at 1 with walk-22; iter-836 runs walk-23 against the Pages deploy of this release to push the chain toward 2. Two release workflows queued behind the `pages` concurrency group; vphase-15.6 deployed at 08:36:04Z (HTTP 200 on `https://michaeljfazio.github.io/mbse-workbench/`); v1.5.0 redeploys the same artifact then creates its paired GitHub Release. Walk-22's close-out PR (#456) is still in CI at tag time — a doc-only PR carrying STATUS + rubric updates — and lands separately without affecting the tagged tree.
+
+**Links:**
+- vphase-15.6 release: https://github.com/michaeljfazio/mbse-workbench/releases/tag/vphase-15.6
+- v1.5.0 release: https://github.com/michaeljfazio/mbse-workbench/releases/tag/v1.5.0
+- Live app (vphase-15.6 deploy): https://michaeljfazio.github.io/mbse-workbench/
+- Code PRs in this release window: #433, #436, #445, #448, #451
+- Walk-22 log: https://github.com/michaeljfazio/mbse-workbench/blob/phase-15/walk-22-dim14-regression/docs/architect/walks/walk-22.md
+- Quality rubric (dim 5 + dim 14 at score 3): https://github.com/michaeljfazio/mbse-workbench/blob/main/docs/architect/quality-rubric.md
+
+---
