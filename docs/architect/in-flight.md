@@ -6,4 +6,4 @@ When a branch merges (or is abandoned), remove its row.
 
 | Branch | Lead engineer (subagent) | Theme | Issues | Files touched (paths) | Started | Status |
 |--------|--------------------------|-------|--------|-----------------------|---------|--------|
-| `issue/490-positive-enumeration` | main | `area:cross-cutting` (CI velocity — ADR 0016 actual fix) | #490 | `.github/workflows/ci.yml`, `docs/adr/0016-ci-doc-only-skip-e2e.md`, `STATUS.md`, `docs/architect/in-flight.md` | 2026-05-18 | in PR (just opened; auto-merge armed SQUASH; self-test: workflow change → `code = true` → full e2e MUST run) |
+| `phase-15/iter-850-status-validation` | main | empirical validation of iter-849 ADR 0016 fix | — (doc-only) | `STATUS.md`, `docs/architect/in-flight.md` | 2026-05-18 | in PR (just opened; auto-merge armed SQUASH; expected outcome: `code = false`, all e2e shards SKIPPED, `check` success in ~2-3 min) |
