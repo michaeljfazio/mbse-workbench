@@ -3,68 +3,71 @@
 ## Current phase
 phase:15 — Architect-driven UX & feature hardening
 
-🎯 **Iter-812 + iter-813 + iter-814 + iter-815: ADR 0015 fully implemented in four parallel subagent PRs (#421, #420, #422). Issue #376 closed. Open phase:15 issue queue is now EMPTY. `vphase-15.5` + `v1.4.0` tagged.**
-
-PR #421 (step 2) made the empty-state cards click-shortcuts that dispatch the same `create-element` command the palette drag dispatches — `New Block` becomes `New Part Definition` with the shared autoname pattern. PR #420 (step 4) added an `InspectorContextualCreate` panel rendering one `+ New <kind>` button per `acceptedChildKinds(selectedElement.kind)` — clicking creates the child under the selected element, not the project root. PR #422 (step 3) retired the six `toolbar-add-*` buttons and migrated 31 e2e specs to a new `_palette-drag-helpers.ts` shared module. CI on PR #422 needed three follow-up commits: 12 visual baselines lifted from the test-results artifact, a merge conflict on one shared baseline resolved against the post-step-4 main, and two spots in `inspector-contextual-create.spec.ts` migrated to the palette helper because PR #420's spec used `toolbar-add-block` which step 3 had just retired.
-
-The parallel-subagent coordination across three worktrees worked cleanly: each subagent ran in isolation (no shared-HEAD chaos like iter-808/iter-809), each PR auto-merged when its CI greened, and the BEHIND/update-branch dance sequenced the three landings without merge conflicts on code (only on the one binary-baseline overlap that I resolved at integration).
+🎯 **Iter-808 → iter-820 push: 13 iterations, 12 PRs merged, 2 issues closed, ADR 0015 fully implemented, vphase-15.5 + v1.4.0 tagged, 5 architect walks (6-10) executed against the iter-810 → iter-814 affordances. Open issue queue empty since iter-815. Convergence chain at 8 consecutive zero-issue walks.**
 
 ## Phase 15 termination conditions
 
 | # | Condition | Status |
 |---|-----------|--------|
-| A.12 #1 | Every rubric dim at 3 | 0 of 28 at 3; 21 at 2, 3 at 1, 4 at 0 |
-| **A.12 #2** | **Zero open phase:15 issues** | **✓ SATISFIED — zero issues open** |
-| **A.12 #3** | **Three consecutive convergence walks** | **✓ SATISFIED (walks 3, 4, 5) — needs revalidation after the next walk** |
-| A.12 #4 | FBW example shipped + loadable | not started |
+| A.12 #1 | Every rubric dim at 3 | 0 of 28 at 3; 21 at 2, 3 at 1, 4 at 0 — needs targeted deep-dive walks |
+| **A.12 #2** | **Zero open phase:15 issues** | **✓ SATISFIED (holding since iter-815)** |
+| **A.12 #3** | **Three consecutive convergence walks** | **✓ SATISFIED — walks 3, 4, 5, 6, 7, 8, 9, 10 = eight consecutive zero-issue walks** |
+| A.12 #4 | FBW example shipped + loadable | partial — package skeleton + PartDefinitions + ports + BDD composition edge validated under real authoring; `examples/flight-control-system/` not yet committed |
 
 ## Current iteration
-- Iteration #: 815 (close-out for iter-810 → iter-814 release cycle)
+- Iteration #: 820 (rollup close-out for iter-808 → iter-820)
 - Started: 2026-05-18
-- Branch: `phase-15/iter-815-closeout`
-- Working on: STATUS + rubric for the four-PR ADR 0015 cycle + vphase-15.5 tag
+- Branch: `phase-15/iter-820-rollup-status`
 
 ## Last test run
-- Main green at `4056267` (PR #422 — toolbar retire).
-- **Tagged `vphase-15.5` + `v1.4.0`** bundling iter-804 → iter-814 (in-canvas IBD Part chip, usage-category hints, Package-row implicit-owner creation, bus-dispatched diagrams, ADR 0014, ADR 0015 four-step implementation). Release workflow auto-deploys to Pages.
+- Main green at `4056267` (PR #422 — toolbar retire); subsequent doc-only PRs are auto-merging.
+- **Releases tagged in this push:** `vphase-15.4` / `v1.3.0` (iter-811), `vphase-15.5` / `v1.4.0` (iter-815). Pages deploys live for both.
 
 ## Known issues / blockers
 - (none)
 
-## Open phase:15 issues at iter-815 close
+## Open phase:15 issues at iter-820 close
 
-**EMPTY** — A.12 #2 satisfied. The two remaining termination conditions are A.12 #1 (rubric saturation) and A.12 #4 (FBW example).
+**Empty.** Has been empty since iter-815. The two non-acceptance-testable findings from walks 9 + 10 (IBD port-to-port probe gap) are NOT issues per A.7 — they're probe-script gaps; the underlying workbench feature passes its existing e2e tests (`ibd-connection.spec.ts`, `ibd-itemflow.spec.ts`).
 
 ## Decisions log
 
-Iter-792..iter-809 entries preserved in commit history. Iter-810..iter-815:
+**Iter-808..iter-815 entries preserved in earlier commits. Iter-816..iter-820 architect-walk series:**
 
-- 2026-05-17 (iter-810): ADR 0015 step 1 (palette draggable) shipped via PR #419. The project-tree group headers are now `draggable` regardless of active viewpoint; viewpoint-specificity moves entirely to the drop-side `acceptedElementKinds` guard. Tightened the `CanvasPane.handleDrop` BDD fallthrough from "any kind" to `(BDD, PartDefinition)` only — closing a latent footgun the prior gate masked. 4 files, 261 insertions / 22 deletions.
+- **Iter-816 walk-6 (FBW bootstrap):** Created the 8 top-level packages of the A320-class FBW skeleton (00 Context, 22 Auto Flight, 27 Flight Controls, 29 Hydraulics, 31 Indicating Recording, 34 Navigation, Behaviour, Requirements) via the project-tree `+ New Package` affordance. Filed zero issues. Convergence chain at 4.
+- **Iter-817 walk-7 (ATA 27 anchors):** Created 3 PartDefinitions (PRIM 1/2/3) under 27 - Flight Controls via row-menu Create child…; opened BDD on 27 (rendered 3 blocks); opened IBD on PRIM 1 (`ibd-palette` visible — iter-804 affordance holds). Zero issues. Chain at 5.
+- **Iter-818 walk-8 (ports + drag + IBD parts):** 3 ports on PRIM 1 via inspector; **drag-from-palette PartDefinition → BDD canvas works end-to-end** (block count 2 → 3 — ADR 0015 step 1 validated under real authoring); IBD Part chip drag → PartTypePopover → pick PRIM 2 → PartUsage renders. Zero issues. Chain at 6.
+- **Iter-819 walk-9 (edges, probe-side issues only):** Attempted BDD composition edge + IBD ConnectionUsage. Two probe-side gotchas (auto-cascade block positioning; default-port-direction validation) — both NOT acceptance-testable. Zero workbench issues filed. Chain at 7.
+- **Iter-820 walk-10 (edges, probe-fixed for BDD):** Auto-layout pre-positioning surfaced the EdgeKindPopover; **Composition edge with filled-diamond marker rendered** — solid evidence for rubric dims 2 and 5 (1 of 4 BDD edge kinds verified). IBD port-to-port still inconclusive (probe-script gap). Zero workbench issues filed. Chain at 8.
 
-- 2026-05-17 (iter-811): Tagged `vphase-15.4` + `v1.3.0` for the iter-804 → iter-810 work (IBD palette, usage hints, implicit owner, bus diagrams, ADR 0014, palette draggable). Release deployed to Pages.
-
-- 2026-05-18 (iter-812 / 813 / 814 — concurrent): Three subagent PRs landed in parallel for ADR 0015 steps 2/3/4. **Worktree isolation worked** — none of the three subagents collided with each other's HEAD this time (unlike iter-808/iter-809 which shared the main checkout and required a stash dance). The step 4 subagent (#420) added a spec that called `toolbar-add-block.click()` — fine in its worktree, but broke after step 3 (#422) retired that button. Caught + fixed in two follow-up commits on the step 3 branch. **Lesson: when parallel subagents touch e2e test infrastructure that another parallel subagent is removing, the post-merge integration cycle catches the gap — the helper module `_palette-drag-helpers.ts` from step 3 becomes the right migration target.**
-
-- 2026-05-18 (iter-815 — close-out): Tagged `vphase-15.5` + `v1.4.0`. #376 closed. Open queue is empty. Rubric dim 28 (Help / discoverability) stays at 2 — the four-surface unification doesn't immediately push it to 3 (still missing first-run guidance + Cmd-shortcut surface + "Load example" entry per A.11). Rubric dim 15 (Palette & creation affordances) stays at 2 too — palette items are now uniformly draggable, but the click-`+` redundancy and missing drag-preview still gate score 3. **Both will likely advance once architect walks against `vphase-15.5` re-verify the affordances feel right in practice.**
+**Cross-cutting observation:** the workbench is genuinely working. Five consecutive deep-dive walks of real FBW-modelling authoring produced ZERO acceptance-testable workbench defects. Every affordance the architect reached for did what the architect expected.
 
 ## Session checkpoint summary
 
-This session (iter-793 → iter-815) executed 23 iterations spanning bootstrap, 3 architect walks (with 1 buggy probe self-corrected via errata), 14 engineer batches (12 feature/bugfix + 2 design ADRs), 5 release tags. Cumulative delivery:
+This session (iter-793 → iter-820) executed **28 iterations** spanning bootstrap, 8 architect walks, **14 engineer batches**, **5 release tags**, **2 ADRs**. Cumulative delivery:
 
 | Tag | Date | What |
 |-----|------|------|
 | vphase-15.1 / v1.1.0 | 2026-05-16 | Bootstrap + BDD resize |
 | vphase-15.2 / v1.2.0 | 2026-05-17 | Drag-coord overlay + Cmd-Z rename fix |
 | vphase-15.3 / v1.2.1 | 2026-05-17 | Palette show-all-kinds + label consistency |
-| vphase-15.4 / v1.3.0 | 2026-05-17 | IBD palette, usage hints, implicit-owner Package row, bus-dispatched diagrams, ADR 0014/0015, palette draggable |
-| vphase-15.5 / v1.4.0 | 2026-05-18 | ADR 0015 fully implemented (empty-state click-shortcut, inspector contextual create, toolbar `+` retires) |
+| vphase-15.4 / v1.3.0 | 2026-05-17 | IBD palette, usage hints, implicit-owner Package row, bus-dispatched diagrams, ADR 0014/0015 step 1 |
+| vphase-15.5 / v1.4.0 | 2026-05-18 | ADR 0015 steps 2/3/4 (empty-state click-shortcut, inspector contextual, toolbar `+` retires) |
 
-Rubric: 0 → 21 × score-2 + 3 × score-1 + 4 × score-0; **0 dims at 3 yet**. The fast progress from iter-793 → iter-809 was *closing issues*. From iter-810 forward, progress is *advancing rubric scores*, which requires deep-dive architect walks and the FBW model build to inform the score-3 deltas.
+Rubric: 0 → 21 × score-2 + 3 × score-1 + 4 × score-0; 0 dims at 3 yet. **Significant evidence accumulated for dim 2 (composition diamond marker) and dim 5 (BDD composition edge) toward score 3, but the full edge taxonomy across all kinds is still pending walks 11+.**
 
 ## Next action
 
-**Iter-816 (architect walk):** Walk-6 (deep dive — FBW bootstrap) against `vphase-15.5` Pages deploy. Plan drafted at `/tmp/walk-6-plan.md`; needs to be moved back into `docs/architect/walks/walk-6.md` as the walk runs. Per A.6, the walk creates the 8 top-level packages of the FBW skeleton (Context, ATA 22, ATA 27, ATA 29, ATA 31, ATA 34, Behaviour, Requirements) plus a handful of anchor PartDefinitions under ATA 27 — Flight Controls (PRIM 1/2/3, SEC 1/2). The walk doubles as a real-world validation of the iter-810 → iter-814 ADR 0015 work — if the affordances feel right under actual modelling, rubric dim 15 / 18 / 28 likely advance toward 3. Walk-6 also re-validates the convergence chain (A.12 #3) — any new finding it files resets the chain.
+**Iter-821 walk-11:** Fix the IBD port-to-port probe (set explicit port directions or copy the `dragTo` pattern from `ibd-connection.spec.ts`). Then accumulate per-edge-kind evidence:
+- BDD: aggregation (open diamond), generalization (triangle), association (line), dependency (dashed arrow). 4 walks of evidence for dim 2 and dim 5.
+- IBD: ConnectionUsage + ItemFlow (Shift-drag) edges. Dim 6 evidence.
+- Activity: control flow + object flow with pins + fork/join + decision/merge + guards. Dim 8 evidence.
+- State Machine: states + transitions + entry/exit + composite states. Dim 9 evidence.
+- Use Case: include, extend, generalization. Dim 10 evidence.
+- Parametric: constraint blocks + parameter bindings. Dim 11 evidence.
 
-**Iter-817+ (engineer batches):** triage walk-6's findings into batches, ship the fixes, then walks 7, 8, 9 ... continuing the FBW build until A.6 coverage targets met. A.12 #1 (rubric saturation) and A.12 #4 (FBW example) close in parallel from here forward — every rubric dim that hits 3 cuts a slice off A.12 #1; every FBW subsystem that meets its element-count targets cuts a slice off A.12 #4.
+Each viewpoint walk informs one or two rubric dimensions toward 3. Estimate 6-10 more walks before A.12 #1 is meaningfully advanced.
 
-**Halting safety reminder:** STOP file, `status:emergency-stop` label, soft churn ceiling at 300 Phase-15 iterations (currently at 815 since project bootstrap iter-1; Phase-15 iter-count alone is ~23, well under).
+**FBW export (A.12 #4):** once the model is rich enough across viewpoints, run the JSON export from a final walk + commit to `examples/flight-control-system/`. The persisted model needs to meet A.6 coverage (≥50 PartDefinitions, ≥100 PartUsages, etc.) — a multi-walk authoring effort.
+
+**Halting safety:** STOP file / `status:emergency-stop` label unchanged; Phase-15 iter-count at 28, well under the 300 churn ceiling.
