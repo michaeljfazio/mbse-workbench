@@ -6,4 +6,4 @@ When a branch merges (or is abandoned), remove its row.
 
 | Branch | Lead engineer (subagent) | Theme | Issues | Files touched (paths) | Started | Status |
 |--------|--------------------------|-------|--------|-----------------------|---------|--------|
-| `phase-15/iter-850-status-validation` | main | empirical validation of iter-849 ADR 0016 fix | — (doc-only) | `STATUS.md`, `docs/architect/in-flight.md` | 2026-05-18 | in PR (just opened; auto-merge armed SQUASH; expected outcome: `code = false`, all e2e shards SKIPPED, `check` success in ~2-3 min) |
+| `phase-15/iter-851-validation-confirmation` | main | CONTEXT.md closure entry confirming iter-849 ADR 0016 fix empirically verified | — (doc-only) | `docs/CONTEXT.md`, `STATUS.md`, `docs/architect/in-flight.md` | 2026-05-18 | in PR (auto-merge armed SQUASH; expected outcome: `code = false`, all e2e shards SKIPPED, `check` success in ~2-3 min — same shape as iter-850's #492) |

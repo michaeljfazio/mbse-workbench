@@ -8,6 +8,32 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
 
 ## Discovered facts
 
+- **2026-05-18 (iter-850/851 — ADR 0016 doc-only skip empirically
+  verified working / PR #492):** The iter-849 fix (PR #491, merge SHA
+  `23e3d71`) — dropping the `'**'` catch-all and enumerating
+  code-bearing paths positively — has now been observed working on a
+  genuinely doc-only diff. PR #492 modified only `STATUS.md` and
+  `docs/architect/in-flight.md`; CI run
+  [26040578522](https://github.com/michaeljfazio/mbse-workbench/actions/runs/26040578522)
+  classified the diff `code = false` and `e2e = false` in the `fast`
+  step, ran `fast` to SUCCESS in 1m 39s (14:41:32Z → 14:43:11Z),
+  SKIPPED all four `e2e (shard X/4)` jobs and the `merge-reports`
+  aggregator, and the umbrella `check` job aggregated the doc-only
+  branch to SUCCESS in 3s (14:43:16Z → 14:43:19Z). Total PR-open to
+  merge: ~1m 51s. Compared with the ~8–12 min full-e2e PR-gate runs
+  on code-bearing diffs, this is the ~6× speedup ADR 0016 originally
+  promised — and the first observed instance of it since #466 shipped.
+  Closes the iter-848 open thread: the dorny `some`-predicate
+  landmine is correctly worked around by the positive-enumeration
+  filter; the iter-847 picomatch-depth-0 hypothesis remains
+  empirically falsified and the iter-849 correction is the load-
+  bearing fix. **Rule:** any new top-level code-bearing file (a
+  build-config, a script at repo root, a new top-level source dir)
+  must be added to the `code` filter in `.github/workflows/ci.yml`
+  explicitly, because the positive-enumeration filter does not have
+  a catch-all rule any more. The trade-off is documented in ADR 0016
+  §"Correction (iter-849)".
+
 - **2026-05-18 (iter-848 correction of the iter-847..848 entry below
   / #488):** The next entry blamed a "picomatch `**/*.md` requires ≥1
   path segment" quirk for ADR 0016's broken doc-only skip. **That
