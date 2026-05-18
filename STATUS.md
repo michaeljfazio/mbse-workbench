@@ -3,9 +3,13 @@
 ## Current phase
 phase:15 — Architect-driven UX & feature hardening
 
-🎯 **Iter-830: Closed #446 via PR #448 (`phase-15/import-export-quoted-identifiers`) — serializer + parser now emit/parse OMG-§4.4.1 `<…>` quoted identifiers; unit suite green. First CI run (d9a1a21) red on `final-gate.spec.ts:329` ownerIndex mismatch — root-caused: the seed's project name `'Final Gate Seed'` contains spaces, so before the fix the SysML import was silently failing at col 18, leaving storage unchanged, and the test's count-poll trivially matched pre-export. The fix makes import actually succeed → the missing canonicalization (final-gate's `canonicalize` didn't strip `ownerIndex` like `phase-12-gate.spec.ts` does) surfaced. Aligned final-gate's `canonicalize` with phase-12-gate's (documented round-trip contract: structurally identical modulo IDs, ordering hints not in scope) and added an `import-error-banner.toBeHidden()` assertion after the count-poll so future silent-fail imports can't trivially pass the gate. Pushed as a second commit on the same branch.**
+🎯 **Iter-832: walk-21 (round-trip integrity re-verification, dim 14) executed against local `pnpm dev` @ `9578f3d`. JSON round-trip — fully lossless. SysML round-trip — `<…>` quoted-identifier emission landed cleanly (5 distinct `<…>` tokens in `baseline.sysml`); all 6 elements + kinds + names + structure preserved; BUT diagrams are silently dropped (`diagram_total: 2 → 1` — explicit user-authored `Flight Control System BDD` lost). Source confirms: serializer + parser have no view/representation knowledge. Filed #449 (p2, area:import-export, type:bug) — citation OMG SysMLv2 §10. Rubric dim 14: 1 → 2 (advances to 3 once #449 lands). Convergence chain (A.12 #3) stays at 0 — walk-21 filed an issue, so no chain has begun.**
 
-🎯 **Iter-829: Sweep tick (nothing actionable — all 7 BEHIND walk-close-out PRs have CI IN_PROGRESS or QUEUED; #432 walk-12 merged between iters), then ran walk-20 (round-trip integrity, dim 14). JSON round-trip preserves structural signature exactly under real UI authoring — strong dim-14 evidence. SysML text round-trip BROKEN: serializer emits `package Untitled Project { ... }` — unquoted multi-word identifier — parser rejects at column 18. Filed #446 (p1, area:import-export, type:bug) with two resolution sketches and citation to OMG SysMLv2 §4.4.1. Rubric dim 14: 0 → 1. Convergence chain reset (was 6 → 0). PR pending for walk-20 close-out.**
+🎯 **Iter-831: PR #448 merged at 06:54:58Z (squash `9578f3d`) — #446 closed. Serializer + parser now emit/parse OMG-§4.4.1 `<…>` quoted identifiers, and `final-gate.spec.ts` `canonicalize` aligned with `phase-12-gate.spec.ts` + an `import-error-banner.toBeHidden()` guard against silent-fail imports landed in the same PR. Main fast-forwarded to `9578f3d`. A.12 #2 satisfied.**
+
+🎯 **Iter-830: Closed #446 via PR #448 — quoted-identifier emission/parse + silent-import-failure-mask fix in `final-gate.spec.ts`. Second commit on the same branch.**
+
+🎯 **Iter-829: walk-20 (round-trip integrity, dim 14). JSON lossless. SysML BROKEN by default project name (`Untitled Project`) → filed #446. Dim 14: 0 → 1.**
 
 🎯 **Iter-826: walks 14 + 19 merged on main → rubric dim 5 (BDD) at score 3 = FIRST score-3 dimension. JOURNAL entry written per A.14. Sweep history in #443.**
 
@@ -13,42 +17,40 @@ phase:15 — Architect-driven UX & feature hardening
 
 | # | Condition | Status |
 |---|-----------|--------|
-| A.12 #1 | Every rubric dim at 3 | **1 of 28** at 3 (dim 5 — BDD); **dim 14 at 1** (JSON ✓ / SysML broken by #446 — advances to 3 once #446 lands + re-run walk); 19 at 2, 3 at 1, 4 at 0 |
-| A.12 #2 | Zero open phase:15 issues | **violated** — #444 (flake-fix, PR #445 in flight) + #446 (this walk's filing, PR pending) |
-| A.12 #3 | Three consecutive convergence walks | **reset to 0** by walk-20 (filed #446); was at 6 (walks 14-19) |
-| A.12 #4 | FBW example shipped + loadable | partial — A320 skeleton + PartDefinitions + ports + BDD composition edge validated under real authoring; round-trip dim 14 in flight; `examples/flight-control-system/` not yet committed |
+| A.12 #1 | Every rubric dim at 3 | **1 of 28** at 3 (dim 5 — BDD); **dim 14 at 2** (JSON ✓ both legs; SysML elements ✓; diagrams ✗ per #449 — advances to 3 once #449 lands and walk-22 re-verifies); 20 at 2, 3 at 1, 4 at 0 |
+| A.12 #2 | Zero open phase:15 issues | **VIOLATED** (transient) — #449 open after walk-21; expected to drain via next engineer batch |
+| A.12 #3 | Three consecutive convergence walks | **at 0** (walk-21 filed #449; no chain has begun since the walk-19 = 6 chain was reset at walk-20) |
+| A.12 #4 | FBW example shipped + loadable | partial — A320 skeleton + PartDefinitions + ports + BDD composition edge validated under real authoring; round-trip dim 14 element-side validated; `examples/flight-control-system/` not yet committed |
 
 ## Current iteration
-- Iteration #: 830
+- Iteration #: 832
 - Started: 2026-05-18
-- Branch: `phase-15/import-export-quoted-identifiers`
-- Working on: PR #448 (#446 quoted-idents fix) — pushed test-canonicalization alignment + silent-import guard, awaiting CI
-
-## Last PR sweep
-- **Iter-829:** Backlog snapshot at iter-start: 8 PRs (was 9; #432 walk-12 merged between iters). NOTHING actionable — all 7 BEHIND walk-close-out PRs (#445, #443, #441, #440, #439, #427, #426, #425) have CI IN_PROGRESS or QUEUED from the iter-821..828 rebases. Cap respected (~1 min). Iter-821..828 sweep history retained in #443 PR.
+- Branch: `phase-15/walk-21-roundtrip-reverify` (walk close-out PR pending)
+- Working on: walk-21 close-out — committing walk-21.md + rubric delta + STATUS
 
 ## Last test run
-- Main green at `60caa5a` (walk-12 close-out merged); rubric dim 5 holds at score 3 since `fe0c277`.
-- **Releases tagged in this push:** `vphase-15.4` / `v1.3.0` (iter-811), `vphase-15.5` / `v1.4.0` (iter-815). Pages deploys live for both.
+- Local `pnpm dev` @ `9578f3d`. Walk-21 exec: 0 page errors, 0 console errors, JSON round-trip ✓, SysML element round-trip ✓, SysML diagram round-trip ✗.
+- **Releases tagged in this push:** `vphase-15.4` / `v1.3.0` (iter-811), `vphase-15.5` / `v1.4.0` (iter-815). Pages deploys live for both. **#448 not yet in a release tag** — deployed Pages bundle is still pre-fix.
 
 ## Known issues / blockers
-- (none for the walk-20 close-out PR itself)
+- #449 (p2, area:import-export, type:bug) — SysMLv2 text round-trip silently drops diagrams. Holds dim 14 below 3.
 
-## Open phase:15 issues at iter-829 close
-- **#444** — `area:cross-cutting` / `p2` / `type:chore` — raise `maxDiffPixelRatio` to 0.025 on two known-flake visual baselines. PR #445 in flight (auto-merge enabled).
-- **#446** — `area:import-export` / `p1` / `type:bug` — SysMLv2 serializer emits unquoted multi-word identifiers; round-trip broken on default project name. **Filed this iteration.** PR pending.
+## Open phase:15 issues at iter-832 close
+- #449 — SysMLv2 text round-trip silently drops diagrams (representations / views)
 
 ## Decisions log
 
 **Iter-808..iter-820 entries preserved in earlier commits.**
 
-- **Iter-821..828 (sweep + flake-fix series):** see #443 (sweep log PR — 8 iters of stacked walk close-out rebasing), #445 (flake-threshold-bump PR closing #444), #437/#442 merged (walk-14 / walk-19 → first dim-3 = dim 5 BDD), JOURNAL iter-826 entry (first dim-3 milestone, `event: design-decision`).
-- **Iter-829 — walk-20 (round-trip integrity, dim 14):** Deterministic single-sequence walk. Authored small structured project (1 Package + 2 PartDefinition + 1 ActionDefinition + 1 Requirement + 1 BDD repr); exported JSON; re-imported in fresh ctx; re-exported JSON; structural signature equal — JSON round-trip is lossless. Then exported SysMLv2; re-imported in fresh ctx — failed at line 3, column 18 (`expected '{'`) because serializer wrote `package Untitled Project { ... }` (unquoted multi-word identifier). Default new-project name `Untitled Project` triggers the bug on every fresh export. **Filed #446** with two resolution sketches (preferred: OMG SysMLv2 §4.4.1 `<...>` quoted-identifier emission + reciprocal parser tolerance; alternative: serializer-side sanitization to underscores). Rubric dim 14: 0 → 1 (broken; advances to 3 in single follow-up walk once #446 lands). Convergence chain reset to 0 (was 6).
-- **Iter-830 — close #446 (PR #448):** Implemented preferred resolution: `quoteIdent`/`refIdent` in `src/serializer/sysml.ts` wraps any non-`/^[A-Za-z_][A-Za-z0-9_-]*$/` name in `<…>`; tokenizer in `src/parser/sysml.ts` recognises `<…>` as an ident whose value is the inner text. 51 serializer/parser unit tests green. First CI run d9a1a21 failed on `final-gate.spec.ts:329` ownerIndex equality — **the fix exposed a long-standing silent-import-failure mask**: pre-fix, the SysML round-trip in that test parse-errored on the project name `'Final Gate Seed'` at col 18, storage stayed seed-shaped, count-poll trivially matched, and the canonical-form mismatch on ownerIndex never surfaced. Post-fix the import actually succeeds, surfaces the canonical-sort reorder (already documented and handled in `phase-12-gate.spec.ts`'s `canonicalize`), and the test correctly rejects without the same stripping. Aligned final-gate's `canonicalize` with phase-12-gate's (strip `ownerIndex` — ordering hints are out of the round-trip contract) and added `expect(getByTestId('import-error-banner')).toBeHidden()` after the count-poll so a future silent-fail import cannot trivially satisfy the gate. Both fixes ship as a single follow-up commit on the same branch.
+- **Iter-821..828 (sweep + flake-fix series):** see #443 (sweep log PR — deferred), #445 (flake-threshold-bump PR closing #444), #437/#442 merged (walk-14 / walk-19 → first dim-3 = dim 5 BDD), JOURNAL iter-826 entry (first dim-3 milestone).
+- **Iter-829 — walk-20:** JSON round-trip lossless; SysML round-trip broken on default project name. Filed #446. Dim 14: 0 → 1.
+- **Iter-830 — PR #448 implementation:** OMG-§4.4.1 `<…>` quoted-ident emission/parse + silent-import-mask fix in `final-gate.spec.ts`.
+- **Iter-831 — #448 lands:** main fast-forwarded to `9578f3d`; A.12 #2 satisfied (transiently).
+- **Iter-832 — walk-21 (dim-14 re-verification):** Re-authored a small structured project with deliberate whitespace in names (`Flight Control System` root pkg + `Primary Flight Computer` + `SEC` + `Engage Autopilot` + `High Reliability` + 1 BDD repr — 5/6 names contain whitespace) against local `pnpm dev @ 9578f3d`. `baseline.sysml` contains 5 distinct `<…>` tokens — confirms #448 path was exercised. JSON round-trip: structural signature equal. SysML round-trip: all 6 elements + kinds + names + structure preserved, BUT `diagram_total: 2 → 1` (explicit `Flight Control System BDD` lost; only the default-seeded `Main BDD` remained). Source inspection: `grep -iE 'diagram|view|representation' src/serializer/sysml.ts src/parser/sysml.ts` returns no matches — serializer + parser have no view knowledge. **Filed #449** (p2, area:import-export, type:bug) with citation to OMG SysMLv2 §10 (`view def` / `view` / `expose`) and a resolution sketch using a `// @viewpoint <kind>` workbench decorator for viewpoint hints (cross-tool-compatible). Rubric dim 14: 1 → 2 (element-side lossless on both legs; views are a recognised rough edge; score 2 = "competent user can work around" — diagrams recreatable via UI; JSON path preserves everything). Convergence chain stays at 0 — walk-21 filed an issue. Walk-21 close-out PR pending.
 
 ## Session checkpoint summary
 
-This session (iter-793 → iter-829) executed **37 iterations** spanning bootstrap, **9 architect walks** (6-10 FBW + 14-20 viewpoints + round-trip), **14 engineer batches**, **5 release tags**, **2 ADRs**. Cumulative delivery:
+This session (iter-793 → iter-832) executed **40 iterations** spanning bootstrap, **10 architect walks** (6-10 FBW + 14-21 viewpoints + round-trip ×2), **15 engineer batches** (incl. #448 quoted-ident fix), **5 release tags**, **2 ADRs**. Cumulative delivery:
 
 | Tag | Date | What |
 |-----|------|------|
@@ -58,21 +60,24 @@ This session (iter-793 → iter-829) executed **37 iterations** spanning bootstr
 | vphase-15.4 / v1.3.0 | 2026-05-17 | IBD palette, usage hints, implicit-owner Package row, bus-dispatched diagrams, ADR 0014/0015 step 1 |
 | vphase-15.5 / v1.4.0 | 2026-05-18 | ADR 0015 steps 2/3/4 (empty-state click-shortcut, inspector contextual, toolbar `+` retires) |
 
-Rubric: **1 × score-3** (dim 5 BDD) + 19 × score-2 + 4 × score-1 (added dim 14) + 4 × score-0. First A.12 #1 dimension crossed at iter-826; second (dim 14) within reach pending #446.
+Rubric: **1 × score-3** (dim 5 BDD) + 20 × score-2 (dim 14 promoted) + 3 × score-1 + 4 × score-0. First A.12 #1 dimension crossed at iter-826; dim 14 advanced 1 → 2 at iter-832; dim 14 → 3 within reach pending #449.
 
 ## Next action
 
-**Iter-831:** wait for PR #448 CI (now d9a1a21 + a follow-up test-canonicalize/banner-guard commit) on the rebased branch. If green, GitHub auto-merge (already enabled) fires. If still red on E2E, diagnose the next failing spec specifically — but unit suite + the targeted fix make a fast green plausible. Once #448 merges, **walk-21** is a one-iter dim-14 re-verification walk; if it passes, dim 14 promotes 1 → 3 directly.
+**Iter-833 — engineer batch closing #449 (`phase-15/import-export-view-roundtrip`):** Implement `view <name> { expose <pathToContext>; }` emission in `src/serializer/sysml.ts` (after the structural block, one per persisted `Diagram` reachable from root) with the `// @viewpoint <bdd|ibd|req|act|stm|uc|par|pkg>` workbench decorator comment. Implement reciprocal parser tolerance in `src/parser/sysml.ts`. Drop the default-diagram seeding's silent creation when imported SysML already contains views (so we don't end up with an extra Main BDD beside imported ones). Tests:
+- `src/serializer/__tests__/sysml-diagrams.test.ts`: one diagram, two diagrams same package different names, whitespace name (quoted-ident interplay), round-trip preserves the diagram set.
+- `src/parser/__tests__/sysml-diagrams.test.ts`: parses `view`, ignores missing `// @viewpoint` (defaults to bdd), rejects malformed `expose`.
+Acceptance: deterministic re-run of `walk-21-exec.py` shows ctx3's `diagram_total` equal.
 
-**Parallel-eligible engineer batches** (per A.8 in-flight cap, no overlap with #446's files):
-- (none with high priority right now — walk-side dim work is the bottleneck)
+**Walk-22 (after #449 lands):** deterministic re-run of `walk-21-exec.py` against patched code. If both legs structurally identical (including diagrams), promote dim 14: 2 → 3 directly. Walk-22 = chain[1] if zero issues filed.
 
-**Other walk candidates by current scoring** (after #446 lands):
-- **Dim 13 (cross-diagram coherence, score 0):** create a PartDefinition in BDD, open its IBD, rename in one viewpoint, verify the rename reflects in the other.
-- **Dim 17 (edge editing affordances, score 1):** reconnect / waypoints / routing-style audit.
-- **Dim 23 (LLM integration, score 0):** needs API key; out of reach for an autonomous walk without operator support.
-- **Dim 27 (persistence, score 2):** reload-survives walk with the FBW skeleton.
+**After #449 lands, also tag `vphase-15.6` / `v1.4.1`** (patch — pure bug fix per the SemVer rule in A.8) so the deployed Pages bundle picks up #448 + #449. Then run a Pages-side regression walk for dim 14.
 
-**FBW example (A.12 #4):** once round-trip integrity is restored and the model is rich enough across viewpoints, run the JSON export from a dedicated walk + commit to `examples/flight-control-system/`. A.6 coverage (≥50 PartDefinitions, ≥100 PartUsages, etc.) requires a multi-walk authoring effort.
+**Parallel-eligible engineer batches** (no overlap with #449's files):
+- **Dim 13 walk** (cross-diagram coherence, score 0): doesn't touch serializer/parser.
+- **Dim 17 walk** (edge editing): doesn't touch serializer/parser.
+- **Dim 27 walk** (persistence reload): doesn't touch serializer/parser.
 
-**Halting safety:** STOP file / `status:emergency-stop` label unchanged; Phase-15 iter-count at 37, well under the 300 churn ceiling.
+**FBW example (A.12 #4):** still gated by the multi-walk authoring effort for A.6 coverage. Round-trip integrity at dim 14 = 3 is a precondition for the example commit, so #449 sits in the critical path.
+
+**Halting safety:** STOP file / `status:emergency-stop` label unchanged; Phase-15 iter-count at 40, well under the 300 churn ceiling.
