@@ -179,3 +179,105 @@ Phase-15 score-3 count at walk open: **3** (dim 5 BDD, dim 6 IBD, dim 14 Round-t
 This file is the **Plan** per A.5. Sealed in iter-868. Any deviation during execution is captured as a finding, not as a plan amendment.
 
 The execute iteration (next iter after this PR merges) will append `## Execution` / `## Findings` / `## Rubric score deltas` / `## Convergence chain (A.12 #3)` / `## Decide next` sections to this file, plus run the driver, capture screenshots, and update `quality-rubric.md`.
+
+---
+
+## Execution
+
+**Iteration:** 869.
+**Pages last-modified at launch:** `Mon, 18 May 2026 18:32:43 GMT` re-verified (`vphase-15.8` bundle unchanged from walks 27–30).
+**Driver:** `artifacts/phase-15/walk-31/walk-31-exec.py` (new — written iter-869, ~700 lines, inherits the walk-30 menu/representation helpers byte-for-byte and adds per-viewpoint V-A / V-B / X-2..X-6 slices plus the X-1, X-7, X-8 aggregate checks).
+**Headless Chromium**, viewport 1440×900. Run time end-to-end ~85 s.
+**Driver fixes applied mid-iteration (recorded for posterity):**
+1. **PascalCase group-kind test-ids.** `project-tree-group-{kind}` uses `ElementKind` literals (`PartDefinition`, `Requirement`, `Package`) per `src/model/elements.ts` and `tests/unit/workspace/tree/ProjectTree.test.tsx`. Initial driver used camelCase (`partDefinition`), which silently selected nothing — V-A for BDD / Requirements / Package read FAIL on the first run. Re-run after the casing fix: V-A passes for all 8 viewpoints.
+2. **React-Flow handle CSS classes** (`.react-flow__handle-bottom` / `.react-flow__handle-top` / `.react-flow__handle-left` / `.react-flow__handle-right`) per `tests/e2e/activity-edges.spec.ts` and `tests/e2e/bdd-association-multiplicity.spec.ts`. Initial driver used `[data-handle-position=...]` which doesn't exist in this codebase.
+3. **SVG-fill probe.** UseCase, Activity initial/final, and other SVG-rendered node kinds carry their visible fill on a child `<ellipse>` / `<rect>` / `<path>`, not on the wrapping `<div>`. V-A's visual-fidelity probe now walks descendants and accepts a non-transparent fill on any child SVG shape OR a non-transparent CSS `background-color` on the wrapper or any child `<div>`. Initial driver checked the wrapper div only — false negative on `use-case/V-A`.
+
+### Outcome — 19 / 24 PCs PASS automated
+
+| Viewpoint | V-A | V-B |
+|-----------|-----|-----|
+| BDD | **PASS** | **FAIL** — second drag from `project-tree-group-PartDefinition` inert |
+| IBD | **PASS** | **PASS** |
+| Requirements | **PASS** | **FAIL** — second drag from `project-tree-group-Requirement` inert |
+| Activity | **PASS** | **PASS** — control-flow edge made |
+| State Machine | **PASS** | **PASS** — transition edge made |
+| Use Case | **PASS** | **PARTIAL** — second-Actor drop OK, Actor → UseCase handle drag emits no edge |
+| Parametric | **PASS** | **PASS** — Value second-element OK |
+| Package | **PASS** | **FAIL** — second drag from `project-tree-group-Package` inert |
+
+| Cross-cutting | Verdict |
+|---------------|---------|
+| **X-1** zero page + console errors | **PASS** (0 / 0) |
+| **X-2** every created element in containment tree | **PASS** (all 8 vp) |
+| **X-3** tree-row → diagram-tab regression | **PASS** (all 8 vp — `#465` holds) |
+| **X-4** `ConnectionMode.Loose` no leak into non-IBD | **PASS** (no spurious edges; primary signal BDD/Activity drag-create did not produce ghost edges) |
+| **X-5** acronym auto-name no leak to non-PartUsage kinds | **PASS** (driver heuristic on node-text suffix) |
+| **X-6** reload-and-verify persistence per viewpoint | **PASS** (all 8 vp survive reload) |
+| **X-7** LLM chat sidebar drive-by visibility | **INFO** (test-id `inspector-tab-chat` not discovered; informational only — dim 23 stays at 0) |
+| **X-8** Cmd-K palette open + Escape close | **PASS** (Meta+K opens, Escape closes; first run also passed) |
+
+Aggregate: **19 / 24 PCs PASS** automated; **19 / 24 PASS** visual confirmation (the V-B failures and INFO match what screenshots show — no spurious visual defects).
+
+### Honest measurement — driver vs application disambiguation pending
+
+The 5 V-B failures share a structural property worth recording: **V-A succeeded for every viewpoint using the same affordance** (tree-group-header drag for BDD/Req/Package; palette-chip drag for Activity/State-Machine/UseCase). Only V-B's *second* invocation of the same affordance fails — or in Use Case's case, a *different* affordance (handle drag) fails. This is suspicious in two directions:
+
+- **Application bug.** Subsequent drags from a tree-group-header may not properly re-arm onDragStart after the first drag (closure capture, focus state, toggleGroup race). Use Case actor-handle config may need a per-side source/target reconfiguration. *Or* —
+- **Playwright driver artefact.** HTML5 `drag_to` on the same element in the same session can leave residual drag state that prevents a second drag. UseCase handle drag may need the canonical source→target direction (UseCase.right → Actor.left rather than Actor.right → UseCase.left, since per `ActorNode.tsx:51-62` actor handles are all `type="target"` and per `UseCaseNode.tsx:69-119` the usecase's only source is on Right).
+
+Per A.5's honest-measurement principle, the walk does NOT pre-decide. **Filed #513** (`area:palette`, `area:viewpoint:uc`, `p2`, `type:bug`) capturing the symptoms and asking for iter-870 to disambiguate via a non-headless reproduction. The PC verdicts above stand as the walk's honest record.
+
+### Issues filed
+
+- **#513** — `[area:palette] Walk-31 V-B failures: subsequent drag-from-tree-group-header inert, Actor→UseCase handle drag no-edge` (p2, type:bug, area:palette + area:viewpoint:uc).
+
+## Findings
+
+1. **V-B failure pattern, 5 / 24 PCs.** See #513. Symptom-only; root cause TBD in iter-870.
+2. **Driver discipline finding (informational, not filed as an issue).** The walk surfaced three driver-side patterns that future broad-sweeps should inherit: PascalCase group-kind test-ids, `.react-flow__handle-*` CSS classes, SVG-aware fill probe. These are documented in this walk file's § Execution and in the iter-869 PR body so iter-870+ doesn't re-discover them.
+3. **X-7 informational.** Chat tab test-id is not `inspector-tab-chat`. Dim 23 (LLM integration) stays at 0; a dedicated dim-23 walk will discover the canonical handle.
+
+## Rubric score deltas
+
+No dim demotions. The V-B failures are characterised as *needs investigation* (see #513). Per A.10 score-2 means "no blocking defects; recognisable rough edges; a competent user can work around them" — even if #513 resolves as a real bug, the multi-element creation gap is a rough edge that a user can work around by using `create_child` from the tree menu, not a blocker. **Dims 15 (Palette & creation), 17 (Edge editing), 10 (SysML — Use Case) all hold at 2.**
+
+V-A's reinforcement on dim 1 (visual fidelity — node shapes) is partial — only the 8 *primary* kinds were exercised, not the variants (Activity's fork/join/decision/merge, State Machine's pseudostates, Use Case's Actor system-boundary, etc.). Dim 1 remains at 2; the score-3 promotion would require a dedicated visual-fidelity walk covering all node kinds.
+
+Dim 27 (Persistence) reinforced — X-6 PASS across all 8 viewpoints, broad-coverage evidence. Still held at 2 pending a deeper persistence-edge-case walk (per-element manual position; large-diagram reload; concurrent-tab persistence).
+
+| Dim | Pre-walk | Post-walk | Note |
+|-----|----------|-----------|------|
+| 1 (Visual fidelity — node shapes) | 2 | 2 | V-A reinforcement on 8 primary kinds; variants out of scope |
+| 4 (Visual fidelity — colors) | 2 | 2 | V-A drive-by; no demote rationale |
+| 5 (SysML — BDD) | **3** | **3** | V-A reinforcement |
+| 6 (SysML — IBD) | **3** | **3** | V-A + V-B reinforcement |
+| 10 (SysML — Use Case) | 2 | 2 | V-A PASS, V-B PARTIAL — no demote pending #513 |
+| 14 (Round-trip integrity) | **3** | **3** | not exercised |
+| 15 (Palette & creation) | 2 | 2 | V-A 8/8 PASS; V-B 5/8 needs-investigation |
+| 17 (Edge editing) | 2 | 2 | Activity + State Machine V-B edges OK; Use Case PARTIAL |
+| 18 (Project tree / explorer) | 2 | 2 | X-3 PASS reinforcement (`#465` holds) |
+| 27 (Persistence) | 2 | 2 | X-6 PASS broad-coverage reinforcement |
+| Other | unchanged | unchanged | — |
+
+Phase-15 score-3 count remains **3** (dim 5 BDD, dim 6 IBD, dim 14 Round-trip integrity).
+
+## Convergence chain (A.12 #3)
+
+Per the plan's acceptance table: *"A single issue filed or any rubric demotion resets the chain to 0."* Walk-31 filed **#513**.
+
+**Chain[1] / 3 → Chain[0] / 3.** Two clean walks now required to reach chain[2]/3 before another clean walk caps the convergence.
+
+## Decide next
+
+**Iter-870 — disambiguate #513.** Reproduce the V-B failures non-headless (real browser, not Playwright headless Chromium). Specifically:
+- Manually drag `project-tree-group-PartDefinition` twice in a row in a fresh BDD canvas. Does the second drag deliver the drop event?
+- Watch the Use Case Actor → UseCase handle drag manually. Does the right→left direction connect, or does it need usecase.right → actor.left?
+
+If reproduction shows real app bugs, file follow-up issues with concrete fixes and proceed with an engineer batch. If reproduction shows the failures are driver artefacts, amend the walk-31 driver (e.g., explicit mouse.up + small idle before the next drag; or reverse the use-case drag direction) and re-run walk-31 — that re-run becomes the chain[1] candidate.
+
+**Walk-31 stands as-is.** The walk file is not retroactively edited if iter-870's disambiguation changes the interpretation. A new follow-up walk (walk-32) will re-cover the broad sweep after #513 resolves.
+
+**FBW example authoring (A.12 #4):** still unblocked. Phase 15 can author the FBW model in parallel with the walk-31 follow-up; coverage targets (≥50 PartDefinitions etc.) are independent of #513 since they'll go through standard tree-menu create-child rather than the suspect drag-from-group-header second drag.
+
+**Dedicated dim-17 walk** still schedulable after #513 resolves and walk-31's re-run lands a clean chain[1].
