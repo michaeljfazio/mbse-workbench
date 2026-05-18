@@ -25,12 +25,12 @@ phase:15 — Architect-driven UX & feature hardening
 ## Current iteration
 - Iteration #: 837
 - Started: 2026-05-18
-- Branch: `phase-15/iter-836-status-sync` (this STATUS sync; non-overlapping with PR #458)
-- Working on: iter-837 housekeeping — STATUS sync to reflect iter-835 release + iter-836 walk-23
+- Branch: `phase-15/iter-836-status-sync` (STATUS sync + A.8 cap-unblock; non-overlapping with rebased PRs #426/#427/#439/#458 — each touches a distinct walk-N.md file)
+- Working on: iter-837 housekeeping — (a) STATUS sync to reflect iter-835 release + iter-836 walk-23, (b) **A.8 in-flight cap unblock** — found 5/5 PRs open (cap); all docs-only walk logs (#426/#427/#439) BEHIND main with stale CI failures + #458 BEHIND with GREEN check. Triggered `gh pr update-branch --rebase` on all four; CI re-running from fresh main bases. Once #458 turns green (re-run) it auto-merges; #426/#427/#439 either pass (releasing slots toward walk-24) or fail-stably (diagnosable on fresh CI logs).
 
 ## Last test run
 - Walk-23 exec script (`artifacts/phase-15/walk-23/walk-23-exec.py`) against deployed Pages URL `https://michaeljfazio.github.io/mbse-workbench/` @ deploy SHA `9136ae8`: 3 browser contexts, 0 page errors, 0 console errors, `all_pass=True`, exit 0. Wall-clock 10.8 s (vs walk-22's ~10 s on localhost) — CDN-served bundle is fast enough that Pages-side regression cadence is cheap.
-- PR #458 (walk-23 close-out) auto-merge enabled; CI run 26024097228 in-progress (Playwright browser install at time of this STATUS write); merge gated on `check` job conclusion.
+- **PRs in flight at iter-837 close (post-rebase):** #459 (this STATUS sync; CI re-running after rebase onto `960ef1f`), #458 (walk-23 close-out; CI re-running after rebase, previously GREEN), #426 (walk-8; CI re-running after rebase, previously GREEN), #427 (walk-9; CI re-running after rebase, previously FAILURE — failure likely stale), #439 (walk-16; CI re-running after rebase, previously FAILURE — failure likely stale).
 - **Releases tagged historically:** `vphase-15.4` / `v1.3.0` (iter-811), `vphase-15.5` / `v1.4.0` (iter-815), `vphase-15.6` / `v1.5.0` (iter-835).
 
 ## Known issues / blockers
@@ -54,6 +54,7 @@ phase:15 — Architect-driven UX & feature hardening
 - **Iter-834 — walk-22 (regression of walk-21 fixture against `d99d298`):** Identical fixture to walk-21. All four iter-833 pass-criteria green. **Rubric dim 14: 2 → 3.** Convergence chain A.12 #3 restarts at chain[1]. PR #456 merged.
 - **Iter-835 — `vphase-15.6` / `v1.5.0` release tagged + Pages deployed.** SemVer minor bump (overrode `v1.4.1` patch prescription) per A.8 outward-facing rationale (#433/#436 user-visible BDD features). JOURNAL append via PR #457.
 - **Iter-836 — walk-23 (dim-14 Pages-side regression against `9136ae8`):** Identical fixture to walk-22. `baseline.sysml` byte-identical (925 bytes) to walk-22's dev output — every #448 + #451 emission marker survives the release pipeline. JSON + SysML round-trip structural signatures equal **including diagrams**. Dim 14 holds at 3. **Convergence chain A.12 #3: 1 → 2.** PR #458 (auto-merge enabled, CI in-progress).
+- **Iter-837 — A.8 cap unblock + STATUS sync.** Discovered 5/5 in-flight PRs (`gh pr list` returned #426, #427, #439, #458, #459) — at the soft cap, blocking walk-24 dispatch. Investigation: all five are docs-only (each touches exactly one distinct file: walk-N.md or STATUS.md), no merge-conflict risk; #426 / #458 had GREEN CI but mergeStateStatus=`BEHIND`; #427 / #439 had FAILURE CI on stale `9136ae8`-or-earlier bases; #459 had IN_PROGRESS CI on stale base. Action: `gh pr update-branch --rebase` on all four older PRs (#426/#427/#439/#458); local rebase of #459 onto `origin/main` (`960ef1f`). All five PRs now re-running CI from fresh main base — auto-merge enabled on all five, so the next CI-green PR fires its merge automatically (likely #426 or #458 first since both were already GREEN pre-rebase). Walk-24 (dim-13 cross-diagram coherence) dispatch deferred to iter-838 once the cap clears.
 
 ## Session checkpoint summary
 
@@ -82,6 +83,6 @@ Rubric: **2 × score-3** (dim 5 BDD, dim 14 Round-trip integrity; Pages-side dim
 
 **CI-velocity meta-work (#452/#453/#454):** worth picking up between walks once chain[3] lands; raising the A.8 cap conditionally on the other two unblocks more parallel batches.
 
-**In-flight (PR #458):** walk-23 close-out (single-file add — `docs/architect/walks/walk-23.md`) is auto-merge with `--squash`; CI gating on Playwright e2e. No action required from iter-837; the merge fires on green CI. STATUS sync (this PR) is non-overlapping with #458's touched-file set per A.8 claim-board check.
+**In-flight at iter-837 close:** 5 PRs (#426, #427, #439, #458, #459) all rebased onto `origin/main` (`960ef1f`) and re-running CI. All docs-only, all auto-merge enabled, all non-overlapping touched-file sets. Expected merge sequence: #426 + #458 first (both were GREEN pre-rebase), then #459 (this STATUS sync), then #427 / #439 contingent on whether their stale CI failures clear on fresh main. iter-838 plan: at iteration start, re-check the cap; if ≥2 slots are free, dispatch walk-24 (dim-13 cross-diagram coherence) per the planned scenario above; otherwise diagnose any newly-failing CI on #427/#439 (rebasing was the easy fix; if they still fail, the failures are real and need investigation).
 
-**Halting safety:** STOP file / `status:emergency-stop` label unchanged; Phase-15 iter-count at 44, well under the 300 churn ceiling.
+**Halting safety:** STOP file / `status:emergency-stop` label unchanged; Phase-15 iter-count at 45, well under the 300 churn ceiling.
