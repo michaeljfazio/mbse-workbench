@@ -7,12 +7,17 @@ name: CI
 # a manual p0 issue if it goes red (see CONTEXT.md / ci-full-matrix.yml
 # header for the deferred-automation expectation).
 #
-# `merge_group:` fires when the GitHub native merge queue (issue #469 /
-# CI step 3 of #452) builds a temporary merge-group ref combining queued
-# PRs + the latest `main`. The same `check` umbrella runs against that
-# ref, gating the queue's batch merge. The ruleset that activates the
-# queue lives on the repo (`gh api /repos/.../rulesets`) and is not
-# checked in — see docs/CONTEXT.md for the runbook to enable/disable.
+# `merge_group:` is wired in anticipation of GitHub's native merge queue
+# (issue #469 / CI step 3 of #452). The trigger is **currently dormant**:
+# the merge queue cannot be activated on user-owned public repositories
+# — GitHub gates the Rulesets API `merge_queue` rule type to
+# organization-owned repositories (empirical, iter-844: POST returns
+# `422 Validation Failed: Invalid rule 'merge_queue':` regardless of
+# parameters; no `enableMergeQueue` GraphQL mutation exists; the repo's
+# `repository.mergeQueue` GraphQL field returns `null`). The trigger is
+# kept here so that if the repo is transferred to an organization in
+# the future, the queue's `merge_group` CI is ready without a workflow
+# change. See docs/CONTEXT.md for the full diagnosis.
 on:
   pull_request:
     branches: [main]
