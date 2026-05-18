@@ -944,3 +944,24 @@ Phase 13 ships zero library content. Phase 13's design accommodates Phase 14 via
 - Quality rubric: https://github.com/michaeljfazio/mbse-workbench/blob/main/docs/architect/quality-rubric.md
 
 ---
+
+## Iteration 876 — 2026-05-19 — vphase-15.9 / v1.6.0 released — Actor↔UseCase Association ships, first Phase-15 minor bump, A.12 #2 fully satisfied
+
+**Event:** release
+
+**Phase:** phase:15 — Architect-driven UX & feature hardening
+
+**Narrative:** The arc from walk-32's filing of #517 (iter-871) to the live deploy of `vphase-15.9` / `v1.6.0` (iter-876) is one of the cleanest single-feature release arcs Phase 15 has produced. Walk-32 had run the corrected 24-pass-criteria broad sweep against `vphase-15.8` Pages and PASSed 22 of 24 — the two failures both rooted in the same gap: Actor↔UseCase association edges were syntactically blocked by the use-case validator because `linkUseCaseEdge` only handled UseCase↔UseCase pairs (ADR 0007 § 5/§ 7 deferral). Iter-872's engineer batch (#519) shipped a tightly-scoped fix — 30-odd lines across `useCaseValidator.ts`, `store.ts`'s `linkUseCaseEdge`, `useCaseViewpoint.ts`'s edge-kind registry, and a new `AssociationEdge.tsx` renderer plus a fourth `Association` button on the stereotype picker popover — and ADR 0007 was amended in place with a "§ 5/§ 7 deferral closed by phase-15 #517" section so the original deferral rationale isn't lost. The release was tagged on commit `4e474ee` (the #519 squash) at 2026-05-18T21:14Z by the operator, slightly ahead of iter-875's webkit-baseline lift (PR #522, merged at 21:26:52Z), because the baseline file is a test-time artefact — the runtime artefact bundled into the Pages deploy is byte-identical whether it's cut on `4e474ee` or `55ae385`, and the `pages` concurrency group plus the operator's foresight let the deploy go live before the post-merge `ci-full-matrix.yml` confirmation. Both release workflows ran clean (runs 26060851745 + 26060851877), Pages served HTTP 200, and iter-876 closed the loop by verifying that `ci-full-matrix.yml` run **26061440013** on commit `55ae385` was GREEN end-to-end — including shard 4/4 with the lifted webkit baseline. The SemVer choice (`v1.6.0`, minor) honours the A.8 rule: this is the first Phase-15 release window since `v1.5.0` to ship an outward-facing user-visible new capability (the Association is the first use-case relationship a human can author across Actor↔UseCase via the popover, not a defect fix or polish), so the minor bump is the honest reading. The structural lesson this release consolidates is the rhythm Phase 15 has been refining since walk-24: *deep-dive walk surfaces a typed-validator hole → small surgical engineer batch closes it with the ADR amended in-place → release tag rides on the feature commit's tree → next walk is a regression-walk that promotes the rubric dimension*. Termination state: A.12 #1 holds at 3 × score-3 (dim 5 BDD, dim 14 Round-trip, dim 6 IBD) — dim 10 (Use Case SysML conformance) promotion is staged behind walk-33's post-deploy verification; A.12 #2 **fully satisfied** for the first time in this session at iter-875 close (zero open `phase:15 type:bug/feature/design`); A.12 #3 still at chain[0 / 3] with walk-33 the immediate chain[1] candidate; A.12 #4 unblocked (FBW example authoring can begin in parallel). Three release tags inside 24 hours (`vphase-15.7` at iter-853, `vphase-15.8` at iter-861, `vphase-15.9` at iter-876) mark a sustained throughput regime — but the rubric advance per tag is what actually moves Phase 15 to termination, and that pace is set by walk cadence, not release cadence.
+
+**Links:**
+- vphase-15.9 release: https://github.com/michaeljfazio/mbse-workbench/releases/tag/vphase-15.9
+- v1.6.0 release: https://github.com/michaeljfazio/mbse-workbench/releases/tag/v1.6.0
+- Live app (vphase-15.9 deploy): https://michaeljfazio.github.io/mbse-workbench/
+- Load-bearing feature PR: #519 (Actor↔UseCase Association, closes #517)
+- Webkit baseline lift PR (iter-875): #522 (closes #521)
+- Walk-32 broad-sweep log (22/24 PASS, #517 filed): https://github.com/michaeljfazio/mbse-workbench/blob/main/docs/architect/walks/walk-32.md
+- ADR 0007 (Use-Case Diagram shape) with § 5/§ 7 deferral closure: https://github.com/michaeljfazio/mbse-workbench/blob/main/docs/adr/0007-use-case-diagram-shape.md
+- `ci-full-matrix.yml` GREEN on main commit `55ae385`: https://github.com/michaeljfazio/mbse-workbench/actions/runs/26061440013
+- Quality rubric: https://github.com/michaeljfazio/mbse-workbench/blob/main/docs/architect/quality-rubric.md
+
+---

@@ -6,4 +6,4 @@ When a branch merges (or is abandoned), remove its row.
 
 | Branch | Lead engineer (subagent) | Theme | Issues | Files touched (paths) | Started | Status |
 |--------|--------------------------|-------|--------|-----------------------|---------|--------|
-| `phase-15/iter-875-webkit-baseline-lift` | main agent | Lift WebKit baseline for `use-case-with-association-edge` from `ci-full-matrix.yml` run `26060460694` (post-#519 merge); STATUS sync to iter-875 close. | #521 (close) | `tests/e2e/__screenshots__/use-case-edges.spec.ts/use-case-with-association-edge-webkit.png` (new), `STATUS.md`, `docs/architect/in-flight.md` | 2026-05-19 | PR pending |
+| `phase-15/iter-876-vphase-15.9-journal` | main agent | JOURNAL entry for `vphase-15.9` / `v1.6.0` release + STATUS overwrite to iter-876 close. Doc-only — ADR 0016 fast-path PR-gate. | #523 (close) | `JOURNAL.md`, `STATUS.md`, `docs/architect/in-flight.md` | 2026-05-19 | PR pending |
