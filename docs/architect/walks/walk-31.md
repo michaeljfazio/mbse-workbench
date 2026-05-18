@@ -280,4 +280,76 @@ If reproduction shows real app bugs, file follow-up issues with concrete fixes a
 
 **FBW example authoring (A.12 #4):** still unblocked. Phase 15 can author the FBW model in parallel with the walk-31 follow-up; coverage targets (≥50 PartDefinitions etc.) are independent of #513 since they'll go through standard tree-menu create-child rather than the suspect drag-from-group-header second drag.
 
+---
+
+## Iter-870 disambiguation (appended; original sections above stand as-is)
+
+Per AGENT.md A.5's two-hat discipline, iter-870 wears the architect hat for one purpose: triage #513 by determining whether the V-B failures are application bugs or driver artefacts. Pure code inspection — no browser needed — was sufficient to reach a definitive conclusion for both halves.
+
+### Half A — Use Case Actor → UseCase handle drag (V-B PARTIAL)
+
+**Verdict: driver artefact.** Confirmed by code inspection of `src/viewpoints/usecase/ActorNode.tsx:51-62` and `src/viewpoints/usecase/UseCaseNode.tsx:69-119, 113-124`:
+
+| Node | Handles declared |
+|------|------------------|
+| Actor | `Position.Top` (target), `Position.Left` (target) — **NO source handles, NO right/bottom handles** |
+| UseCase | `Position.Top` (target), `Position.Left` (target), `Position.Right` (**source**), `Position.Bottom` (**source**) |
+
+The walk-31 driver attempted `actor.right → usecase.left` (line 786-794 of `walk-31-exec.py`). Two structural reasons this cannot form an edge:
+
+1. The actor has NO `.react-flow__handle-right` selector on the DOM — Playwright's locator was matching nothing or matching a stale/wrong handle.
+2. Even if the actor's left handle had been used, both endpoints would be target-typed; React Flow requires source → target for edge creation.
+
+**Canonical drag direction** (per code): `usecase.right` (source) → `actor.top` OR `actor.left` (target). OR: `usecase.bottom` → `actor.top` OR `actor.left`. The walk-31 driver had the direction reversed.
+
+This is symmetric with the standard SysML use-case association convention (associations are non-directional in the metamodel but React Flow needs explicit source/target endpoints; this codebase places source on the UseCase side, which is internally consistent and not a SysML conformance issue).
+
+### Half B — Tree-group-header V-B second drag (BDD / Requirements / Package V-B FAIL)
+
+**Verdict: driver artefact.** Confirmed by code inspection of `artifacts/phase-15/walk-31/walk-31-exec.py`:
+
+| V-A call (PASSED) | V-B call (FAILED) |
+|-------------------|-------------------|
+| line 442-444: `drag_tree_group_to_canvas(page, "PartDefinition", 300, 240)` | line 679-681: `drag_tree_group_to_canvas(page, "partDefinition", 600, 360)` |
+| line 451-453: `drag_tree_group_to_canvas(page, "Requirement", 300, 240)` | line 701-703: `drag_tree_group_to_canvas(page, "requirement", 600, 360)` |
+| line 471-473: `drag_tree_group_to_canvas(page, "Package", 300, 240)` | line 656: `drag_tree_group_to_canvas(page, "package", 540, 360)` |
+
+V-A drags pass PascalCase kind strings (correct). V-B drags pass lowercase first-letter typos. The driver's helper builds the locator as `[data-testid="project-tree-group-{group_kind}"]`. CSS attribute selectors are case-sensitive on values, so:
+
+- `[data-testid="project-tree-group-partDefinition"]` does NOT match `data-testid="project-tree-group-PartDefinition"` on the live DOM.
+- Playwright's `locator.drag_to()` therefore waited on a non-matching locator until actionability timeout (default 30s), reported as "V-B timed out" in `walk-31.json`.
+
+This is exactly the same casing bug that the iter-869 mid-iteration fix patched for V-A drags (documented in walk-31.md § Execution §1) but the patch did not propagate to V-B's drag invocations.
+
+**Cross-check (eliminates alternate hypotheses):** every V-B that drags from a *dedicated viewpoint palette chip* (IBD / Activity / State Machine / Use Case / Parametric — all with their own `*-palette-*` test-ids) PASSED. The failure correlates 1:1 with `drag_tree_group_to_canvas()` + lowercase kind argument. No subset of failures correlates with any *application* property (e.g., post-drop tree re-render, expanded-group state, dataTransfer reuse). The application's drag/drop flow is not at fault.
+
+### Combined verdict
+
+**#513 closes as wontfix / driver artefact.** Both halves are deficiencies in the walk-31 driver, not in the production application. Filing #513 was the right move at iter-869 close (the honest measurement was 19/24 PASS automated; the symptom-vs-cause distinction was correctly deferred until disambiguation), but the disambiguation now resolves the cause.
+
+### Effect on the convergence chain (A.12 #3)
+
+The chain reset 1 → 0 at iter-869 stands as recorded. iter-870 does NOT retroactively un-reset it. The reasoning:
+
+- The plan's acceptance table specified: *"A single issue filed OR any rubric demotion resets the chain to 0."* #513 was filed; the reset is the rubric working as designed regardless of #513's eventual resolution.
+- The chain measures *empirical convergence* — three consecutive walks that find nothing. A walk that found a driver artefact is a walk that found something; the chain must reset and resume from the next clean walk.
+
+The next chain[1] candidate is **walk-32** (iter-871 work): amend the driver (PascalCase V-B kind strings + reverse the UC association direction to `usecase.right → actor.{top,left}`) and re-execute against the unchanged `vphase-15.8` Pages bundle. Expected outcome: 24/24 PCs PASS automated and visually, no new issues filed, chain advances to 1/3.
+
+### Iter-870 deliverables
+
+1. This `## Iter-870 disambiguation` section.
+2. A comment on #513 summarising the disambiguation.
+3. `gh issue close 513 --reason "not planned"`.
+4. STATUS.md updated with next-action set to iter-871's driver amendment + walk-32.
+5. `docs/architect/in-flight.md` row swap.
+
+No production-code changes. No rubric movement (per A.10 score-2 holds for dims 10/15/17; disambiguation does not promote any dimension because no NEW evidence was gathered, only existing walk-31 evidence was re-interpreted).
+
+### Why this disambiguation took an iteration
+
+Worth noting for future iterations: the disambiguation was reachable via 30 minutes of code reading — no browser, no test re-run, no subagent dispatch. The key was checking the cross-correlation between the *kind of drag affordance used* (tree-group-header vs dedicated palette chip) and the *failure pattern* (5/8 viewpoints failed; the 5 are exactly the ones using tree-group-header for V-B). Once that correlation was visible, the lowercase typo in the V-B branch of the driver was the obvious next thing to check. Future walks where some PCs fail and others pass should always check this correlation first; a uniformly-failing pattern is more likely to be a real bug, a partition-aligned pattern is more likely to be a driver discipline issue.
+
+This finding is added to `docs/CONTEXT.md` under "Phase 15 walk patterns".
+
 **Dedicated dim-17 walk** still schedulable after #513 resolves and walk-31's re-run lands a clean chain[1].
