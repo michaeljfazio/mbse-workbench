@@ -8,6 +8,28 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
 
 ## Discovered facts
 
+- **2026-05-19 (iter-870 — Phase 15 walk-finding triage heuristic):**
+  When a broad-sweep walk has *some* PCs FAIL and *others* PASS for the
+  same conceptual category, FIRST check whether the failing/passing
+  partition aligns with a *driver-side property* (test-id casing,
+  selector pattern, helper function used, drag mechanism). If it
+  partitions cleanly along driver lines, the cause is far more likely
+  a driver discipline issue than a real application bug. A *uniformly*
+  failing pattern (every viewpoint, every kind, every diagram) is
+  evidence of a real bug; a *partition-aligned* pattern is evidence
+  of a driver inconsistency. Walk-31's #513 was a textbook example:
+  3 V-B failures correlated 1:1 with `drag_tree_group_to_canvas()` +
+  lowercase kind argument; the 5 PASSED V-Bs all used a dedicated
+  viewpoint-palette helper with PascalCase test-ids. Once the
+  correlation was visible, the lowercase typo (V-B drag calls)
+  vs PascalCase (V-A drag calls, fixed mid-walk) was an immediate
+  match. Disambiguation took ~30 minutes of pure code reading, no
+  browser, no subagent. **Rule:** before filing or closing a walk
+  finding, check the failure/pass partition against the driver's
+  call sites — if the partition aligns with driver code, treat as a
+  driver artefact until proven otherwise. Recorded in
+  `docs/architect/walks/walk-31.md § Iter-870 disambiguation`.
+
 - **2026-05-18 (iter-850/851 — ADR 0016 doc-only skip empirically
   verified working / PR #492):** The iter-849 fix (PR #491, merge SHA
   `23e3d71`) — dropping the `'**'` catch-all and enumerating
