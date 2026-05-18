@@ -90,32 +90,77 @@ Iter-878 (execute) is architect-hat only. No source code changes. If the walk su
 
 ## Execution
 
-**TBD — populated at iter-878 (or whichever iteration executes walk-33). The execute iteration appends:**
+Iter-878 executed the walk against the deployed `vphase-15.9` / `v1.6.0` bundle. Pages `last-modified` re-verified at execute launch: `Mon, 18 May 2026 21:15:00 GMT, etag: "6a0b8154-1eb"` — same bundle as plan-seal. Driver: `artifacts/phase-15/walk-33/walk-33-exec.py` (copy-of walk-32 + the use-case V-B bidirectionality amendment). Wall time: ~3 min (single-pass headless Chromium).
 
-- Per-PC verdict table (`PC`, `walk-32`, `walk-33`, `Δ` columns mirroring walk-32's table format).
-- Aggregate count.
-- Use-case V-B sub-finding (primary direction outcome + secondary direction outcome).
-- Issues filed (if any), per A.7.
-- Rubric movement (dim 10 promotion → 3 if all clean; otherwise unchanged).
-- Convergence chain update (0 → 1 if clean; held at 0 if any issue filed).
+### Per-PC verdicts
+
+| PC | walk-32 | walk-33 | Δ |
+|----|---------|---------|---|
+| bdd/V-A | PASS | PASS | — |
+| bdd/V-B | PASS | PASS | — |
+| ibd/V-A | PASS | PASS | — |
+| ibd/V-B | PASS | PASS | — |
+| requirements/V-A | PASS | PASS | — |
+| requirements/V-B | PASS | PASS | — |
+| activity/V-A | PASS | PASS | — |
+| activity/V-B | PASS | PASS | — |
+| state-machine/V-A | PASS | PASS | — |
+| state-machine/V-B | PASS | PASS | — |
+| use-case/V-A | PASS | PASS | — |
+| use-case/V-B | FAIL (no association edge) | **PARTIAL** (primary PASS, secondary FAIL) | ↑ (deferral closed; bidirectionality gap remains) |
+| parametric/V-A | PASS | PASS | — |
+| parametric/V-B | PASS | PASS | — |
+| package/V-A | PASS | PASS | — |
+| package/V-B | PASS | PASS | — |
+| X-1 page/console errors | PASS | PASS | — |
+| X-2 tree membership | PASS | PASS | — |
+| X-3 tree-row activates diagram | PASS | PASS | — |
+| X-4 ConnectionMode.Loose containment | PASS | PASS | — |
+| X-5 acronym auto-name containment | PASS | PASS | — |
+| X-6 persistence | PASS | PASS | — |
+| X-7 chat sidebar drive-by | INFO | INFO | — |
+| X-8 Cmd-K | PASS | PASS | — |
+
+**Aggregate: 22/24 PASS + 1 PARTIAL (use-case/V-B) + 1 INFO (X-7).**
+
+### Use-case V-B sub-finding (the load-bearing finding)
+
+Driver recorded `edge_kind='association-primary-only' edge_made=True`. Decomposed:
+
+- **Primary direction (`usecase.right` → `actor.left`):** ✅ PASS. An `AssociationEdge` (`use-case-edge-*` test-id) appeared in the store after the drag. Screenshot: `vp-use-case-after-V-B-primary.png`.
+- **Secondary direction (`actor.left` → `usecase.left`):** ❌ FAIL. No new edge in the store after the mousedown→mousemove→mouseup sequence. No console error. The walk-32→walk-33 fix surfaced bidirectional acceptance in the validator (`src/viewpoints/useCase/isValidConnection.ts:29-30` returns `true` for both orderings), but ActorNode (`src/viewpoints/useCase/ActorNode.tsx:51-62`) declares both handles (`top`, `left`) as `type="target"`. React Flow gates drag-initiation on `type="source"` handles, so the secondary direction never reaches `onConnect`. Screenshot: `vp-use-case-after-V-B-secondary.png`.
+
+This is the exact outcome anticipated in `## Plan § Driver amendment from walk-32`: "If the secondary direction produces no edge while the primary does, that's a **partial** post-#519 implementation gap (the validator accepts cross-kind in both directions per the code, but React Flow's handle-source-typing rejects before the validator runs). That would be a `p2` `type:bug` filing rather than a `type:feature`."
+
+### Issues filed
+
+- **#528** (`type:bug`, `p2`, `area:viewpoint:uc`, `status:ready`) — `Actor→UseCase reverse-direction drag silently fails (no source handles on ActorNode)`. Body cites OMG UML 2.5.1 § 11.5.4 (Association undirected), walk-33 § Plan's anticipation, and the precise file:line `ActorNode.tsx:51-62`. Proposed resolution: add paired `type="source"` Handles on the existing positions (and recommended additionally on `right`/`bottom` for symmetry with UseCaseNode).
+
+### Rubric movement
+
+**None.** Dim 10 (Use Case SysML conformance) holds at **2**. The walk-33 plan made the promotion contingent on a clean PASS in **both** V-B directions per the OMG UML 2.5 § 16.3 undirected-association semantics; primary-only is insufficient for dim-10 score-3.
+
+### Convergence chain (A.12 #3)
+
+**Chain holds at 0 / 3.** Any `type:bug` filing during a walk resets/freezes the chain per A.5 walk-completion semantics (a clean walk advances; an issue-filing walk does not). #528 is the issue that prevents chain advance this iteration.
 
 ## Decide next
 
-**TBD — populated at execute close. Anticipated paths:**
+The use-case-V-B-secondary FAIL outcome is the second-row anticipated path in `## Plan § Acceptance / rubric impact`. Following its prescription:
 
-- **Clean walk-33** (23/24 PASS + X-7 INFO): chain[2] candidate is either a follow-up broad-sweep or the dedicated dim-17 edge-editing walk per iter-876's "After dim-10 promotion (iter-878+)" plan. FBW example authoring (A.12 #4) can run in parallel with the chain[2] walk.
-- **Use-case V-B secondary direction FAIL only**: file `p2` `type:bug`; chain stays at 0; engineer batch follows to close the bidirectionality gap; walk-34 is the chain[1]-retry against the fixed bundle.
-- **Non-use-case regression**: file `p1` `type:bug`; chain stays at 0; engineer batch follows; walk-34 is the chain[1]-retry against the fixed bundle.
+- **Iter-879 → engineer hat → close #528.** The fix is small (add source handles to ActorNode). Engineer batch can be a single PR. Expected diff: +4 to +8 lines in `ActorNode.tsx`, plus a new e2e test that exercises `actor.* → usecase.*` drag and asserts an `AssociationEdge` in the store, plus a Chromium visual baseline for the actor-initiated drag scenario (the existing `use-case-with-association-edge` baseline already covers the primary direction — no baseline change there).
+- **Iter-880+ → walk-34 → chain[1] retry.** Once #528 is released in `vphase-15.10` (a `v1.6.1` patch tag per A.8 SemVer rule for bug-only releases), walk-34 re-executes the same 24 PCs with the bidirectional driver. A clean walk-34 advances chain 0 → 1/3 and promotes dim 10 → 3 as the FOURTH score-3 dimension.
+- **FBW example authoring (A.12 #4) remains gated** behind dim-10 promotion — the example contains use-case diagrams that must demonstrate the full association relationship set including the bidirectional handle behaviour. Starting authoring with a known-broken affordance would bake the gap into the example's mental model.
 
 ## Close-out
 
-**TBD — populated at execute close. Pattern from walk-32:**
+- **Walk-33 driver:** `artifacts/phase-15/walk-33/walk-33-exec.py` (gitignored per `artifacts/` rule; reproducible via the snapshot in `## Plan`).
+- **Outcome JSON:** `artifacts/phase-15/walk-33/walk-33.json` (gitignored).
+- **Screenshots:** `artifacts/phase-15/walk-33/screenshots/` (gitignored). Per-viewpoint × {V-A, V-B, after-reload} × use-case adds {V-B-primary, V-B-secondary} = 27 images total + bootstrap stages 01..03 = 30 images.
+- **Issues filed:** #528 (`p2`, `type:bug`, `area:viewpoint:uc`).
+- **Chain status:** 0 / 3 (held).
+- **Rubric:** dim 10 stays at 2. All other dims unchanged. **3 × score-3** dimensions (dim 5 BDD, dim 14 Round-trip, dim 6 IBD) + **22 × score-2** + **0 × score-1** + **3 × score-0** unchanged.
 
-- Walk-33 driver: `artifacts/phase-15/walk-33/walk-33-exec.py`.
-- Outcome JSON: `artifacts/phase-15/walk-33/walk-33.json`.
-- Screenshots: `artifacts/phase-15/walk-33/screenshots/` (per-viewpoint × {V-A, V-B-primary, V-B-secondary, after-reload}, plus bootstrap stages 01-03).
-- Issues filed: TBD.
-- Chain status: TBD.
-- Rubric: TBD (dim 10 promotion contingent on clean PASS in both V-B directions).
+Walk-33 done.
 
 ---
