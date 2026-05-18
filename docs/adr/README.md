@@ -22,3 +22,4 @@ to the index below in chronological order.
 - [0014 — Package row menu: implicit-owner creation for non-Package diagrams](0014-package-row-implicit-owner.md)
 - [0015 — Canonical creation affordance: drag-from-palette + redundant click-shortcuts](0015-canonical-creation-affordance.md)
 - [0016 — CI: skip e2e on doc-only PRs via step-level paths-filter](0016-ci-doc-only-skip-e2e.md)
+- [0017 — Tag-cutting cadence: agent-cut tags per AGENT.md step 17 / A.8](0017-tag-cutting-cadence.md)
