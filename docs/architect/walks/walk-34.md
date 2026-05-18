@@ -84,12 +84,75 @@ Iter-888 (execute) is architect-hat only. No source code changes. If the walk su
 
 ## Execution
 
-(To be filled by iter-888.)
+**Driver:** `artifacts/phase-15/walk-34/walk-34-exec.py` (gitignored). Authored as a byte-for-byte copy of `walk-33-exec.py` with one amendment per § Driver amendment from walk-33: the use-case V-B SECONDARY drag now uses `actor.right → usecase.left` (the NEW source handle added by PR #531 at `ActorNode.tsx:147-158`) instead of walk-33's `actor.left → usecase.left`. Run as a single-pass headless Chromium driver in ~3 min wall time. Outcome JSON at `artifacts/phase-15/walk-34/walk-34.json`; screenshots under `artifacts/phase-15/walk-34/screenshots/` (both gitignored per the `artifacts/` rule).
+
+**Pre-flight at execute launch (iter-888).** Pages headers re-verified via `curl -sI https://michaeljfazio.github.io/mbse-workbench/`: `last-modified: Mon, 18 May 2026 23:11:59 GMT`, `etag: "6a0b9cbf-1eb"`, HTTP 200 — identical to the plan-seal anchor (no intervening deploy). Halt check clean. Iter-887 plan-seal PR #547 merged at `a8651bb`.
+
+**Pass-criteria table (24 PCs).**
+
+| PC | Result | Detail |
+|----|--------|--------|
+| bdd / V-A | PASS | `node_id=914a218e…` bg `rgb(255, 255, 255)` opacity 1 size 220×240 |
+| bdd / V-B | PASS | Second-Block placement only (composition-edge drag skipped per plan) |
+| ibd / V-A | PASS | PartUsage `e7700f5a…` bg `rgb(255, 255, 255)` size 200×100 |
+| ibd / V-B | PASS | Second PartUsage placement (`9a7ec712…`) — `edge_kind=second-PartUsage-only` |
+| requirements / V-A | PASS | Requirement `eefe84f2…` bg `rgb(255, 255, 255)` size 240×180 |
+| requirements / V-B | PASS | Second-Requirement placement only |
+| activity / V-A | PASS | Action `21ca1445…` bg `rgb(255, 255, 255)` size 180×80 |
+| activity / V-B | PASS | Control-flow edge created (`edge_kind=control-flow`) |
+| state-machine / V-A | PASS | State `61f8461b…` bg `rgb(255, 255, 255)` size 160×72 |
+| state-machine / V-B | PASS | Transition edge created (`edge_kind=transition`) |
+| use-case / V-A | PASS | UseCase `8af6be19…` size 180×90; ellipse SVG fill `hsl(var(--card))` |
+| **use-case / V-B** | **PARTIAL** | **PRIMARY `usecase.right → actor.left` PASS; SECONDARY `actor.right → usecase.left` FAIL — drag completes, no edge appears within 5s. `edge_kind=association-primary-only`. Finding logged.** |
+| parametric / V-A | PASS | ConstraintUsage `1bf8cd53…` bg `rgb(255, 255, 255)` size 220×100 |
+| parametric / V-B | PASS | ValueProperty node `92861c74…` |
+| package / V-A | PASS | Package `bdc90e5a…` size 220×120 |
+| package / V-B | PASS | Second Package node `4543544a…` (containment edge skip per plan) |
+| X-1 page/console errors | PASS | `page_errors=0`, `console_errors=0` |
+| X-2 tree membership | PASS | All 8 viewpoints |
+| X-3 tree activates diagram tab | PASS | All 8 viewpoints |
+| X-4 ConnectionMode.Loose containment | PASS | All 8 viewpoints |
+| X-5 acronym auto-name containment | PASS | All 8 viewpoints |
+| X-6 persistence (reload) | PASS | All 8 viewpoints |
+| X-7 chat sidebar drive-by | INFO | No chat tab `data-testid` discovered — dim 23 stays at score 0 (unchanged) |
+| X-8 Cmd-K palette | PASS | Opens on Cmd-K, closes on Escape |
+
+**Aggregate.** **22 PASS + 1 PARTIAL + 1 INFO.** Lands on row 2 of § Acceptance / rubric impact.
+
+**Use-case V-B detail.** Both the actor's right-side source handle (`react-flow__handle-right` on `[data-testid="use-case-actor-<id>"]`) and the use case's left-side target handle (`react-flow__handle-left` on `[data-testid="use-case-usecase-<id>"]`) were located in the DOM. The driver dispatched the same `drag_handle()` helper that succeeded for the primary direction (real `mouse.down/move/up` events, not synthetic `dispatchEvent`). After the drag, the driver waited 5s for a new entry in the `use-case-edge-*` testid set and timed out. No new finding from the validator side: `src/viewpoints/useCase/isValidConnection.ts:25-32` accepts `Actor → UseCase` per #519. Issue **#548** filed (`p1`, `area:viewpoint:uc`, `type:bug`) with three candidate hypotheses for the engineer to investigate (duplicate-edge dedupe; `connectionMode` mismatch; `onConnectStart` filtering).
 
 ## Decide next
 
-(To be filled by iter-888.)
+**Outcome row applied:** row 2 of § Acceptance / rubric impact.
+
+- Convergence (A.12 #3): **chain stays at 0 / 3.** Walk-34 surfaced a fresh `type:bug`; chain resets to 0 per A.12 #3 semantics. The next walk (walk-35) becomes the new chain[1] candidate.
+- Rubric (A.10): **dim 10 (Use Case SysML conformance) holds at 2.** The bidirectional-association completeness gap that has held dim 10 at 2 since walk-1 is still present; the partial fix delivered by #531 closed the handle-typing portion but not the connection-creation portion.
+- No other dim demoted — no regression observed on any other viewpoint.
+
+**Issues filed**
+
+- **#548** — `[area:viewpoint:uc] Actor→UseCase drag from new source handle still produces no edge (vphase-15.10 / v1.6.1; PR #531 fix incomplete)` (`p1`, `type:bug`, `area:viewpoint:uc`, `status:ready`).
+
+**Iter-889 (close-out for the architect lifecycle).** Walk-34 is fully scored; no further architect work required in iter-889. Iter-889 lands STATUS sync + JOURNAL `event: escalation` entry per A.14 (walk surfaced fresh issue; chain reset).
+
+**Iter-890+ (engineer hat).** First engineer batch closes **#548**. Per the hypotheses in #548's body, the investigation order is: (1) isolated repro to falsify the duplicate-edge-dedupe hypothesis, (2) inspect `connectionMode` on the use-case ReactFlow instance, (3) inspect any `onConnectStart` filtering by `data-use-case-node-kind`. The fix lands with a new e2e test that drags `actor.right → usecase.left` in a clean diagram (no preceding primary) and asserts an Association edge appears.
+
+**Walk-35 (next architect walk).** After the #548 fix ships in a subsequent `vphase-15.N` release, walk-35 is the new chain[1] retry candidate against that bundle. Walk-35's contract is identical to walk-34's — 24 PCs against the deployed bundle, with use-case V-B now expected to PASS both directions cleanly.
 
 ## Close-out
 
-(To be filled by iter-888.)
+**Architect-hat finish (iter-888).** Walk-34 cleanly surfaced exactly the residual gap predicted by walk-34.md row 2: #531 made the handle source-typed but did not close the bidirectional-association path through to edge creation. The architect's instrument (the broad-sweep regression driver) did its job — caught a partial implementation that would have shipped invisibly otherwise.
+
+**Convergence chain state after iter-888:** 0 / 3 (reset by #548 filing).
+
+**Rubric snapshot after iter-888:** dim 5 (BDD) = 3, dim 6 (IBD) = 3, dim 14 (Round-trip) = 3; 22 other dims at 2 (incl. dim 10 holding); 3 dims at 0 (dims 3, 11, 23). No change from iter-887.
+
+**A.12 #2 (zero open `phase:15` issues labelled `type:bug/feature/design`):** **NOT satisfied at iter-888 close** — #548 (`type:bug`, `p1`) is open. Engineering iter-890+ work returns A.12 #2 to satisfied once #548 is closed and released.
+
+**Walk artefacts (gitignored):**
+
+- `artifacts/phase-15/walk-34/walk-34-exec.py` — driver
+- `artifacts/phase-15/walk-34/walk-34.json` — outcome JSON
+- `artifacts/phase-15/walk-34/screenshots/` — 27 PNGs across the 8 viewpoints + V-B primary/secondary split for use-case
+
+The walk file itself (this document) is committed under `docs/architect/walks/walk-34.md` per A.5 step 6.
