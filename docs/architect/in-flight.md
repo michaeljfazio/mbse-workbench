@@ -6,6 +6,4 @@ When a branch merges (or is abandoned), remove its row.
 
 | Branch | Lead engineer (subagent) | Theme | Issues | Files touched (paths) | Started | Status |
 |--------|--------------------------|-------|--------|-----------------------|---------|--------|
-| `phase-15/iter-836-status-sync` | main | `area:cross-cutting (STATUS hygiene)` | n/a (STATUS-only sync) | `STATUS.md` | 2026-05-18 | in PR (#459, CI green, BEHIND) |
-| `phase-15/walk-24-dim13-cross-diagram` | main | `area:cross-cutting (walk-24 close-out, files #461 #462, demotes dim 6)` | files #461, #462 | `docs/architect/walks/walk-24.md`, `docs/architect/quality-rubric.md`, `STATUS.md`, `artifacts/phase-15/walk-24/*` | 2026-05-18 | in PR (#463, CI in progress) |
-| `phase-15/iter-840-inflight-board-sync` | main | `area:cross-cutting (claim-board hygiene)` | closes #470 | `docs/architect/in-flight.md` | 2026-05-18 | in PR (this branch) |
+| `phase-15/iter-844-merge-queue-blocked` | main | `area:cross-cutting (CI step 3 / #469 escalation + iter-844 STATUS)` | n/a (close-out of `status:needs-human` on #469) | `STATUS.md`, `docs/CONTEXT.md`, `.github/workflows/ci.yml` (header comment only), `JOURNAL.md` | 2026-05-18 | in PR (#478, CI almost green: 4/5 jobs pass, shard 3/4 pending; auto-merge armed SQUASH) |
