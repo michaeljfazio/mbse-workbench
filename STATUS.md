@@ -42,6 +42,19 @@ phase:15 — Architect-driven UX & feature hardening
 - iter-868 walk-31-plan-seal PR #512 merged at `13b4dcbd` after fast-lane green.
 - iter-867 walk-30-execute PR #511 merged at `c23bbd3` after fast-lane green.
 
+## Last health check
+
+Per AGENT.md directive #13, iter-870 (divisible by 10) ran the periodic health check at iteration close:
+
+| Check | Result |
+|-------|--------|
+| Pages URL `https://michaeljfazio.github.io/mbse-workbench/` reachable | **HTTP 200** ✓ |
+| 5 most recently merged PRs all `MERGED` | **#514 #512 #511 #510 #509 all MERGED** ✓ |
+| `status:needs-human` open issue count ≤ 3 | **0 open** (#469 closed 2026-05-18) ✓ |
+| 5 most recent main CI runs all green | **5/5 `completed/success`** ✓ |
+
+All four checks PASS. No `p0 type:bug` incident issue needed. Bonus finding: #469's quiet closure on 2026-05-18 was not previously reflected in STATUS — the health check sweep caught the staleness and the "Known issues / blockers" section above is now corrected.
+
 ## Last PR sweep
 - Iter-870 open: PR #514 (iter-869 walk-31-execute) still OPEN with CI IN_PROGRESS — left alone per protocol. This iter-870 disambiguation PR stacks on top (off iter-869 branch HEAD, not main, because walk-31.md doesn't exist on main yet). **In-flight 2/5 of A.8 cap.**
 - Per AGENT.md PR-sweep protocol at iter-870 start: PR #514 (iter-869) status = OPEN, MERGEABLE, CI IN_PROGRESS — `gh pr list` confirms. No action taken; the loop will pick it up when CI completes.
@@ -49,13 +62,13 @@ phase:15 — Architect-driven UX & feature hardening
 
 ## Known issues / blockers
 - **#513 CLOSED (iter-870, wontfix — driver artefact)** — both halves were driver-side: lowercase V-B kind strings and reversed UC association direction. iter-871 amends driver + re-runs walk-31 as walk-32.
-- **#469 (CI step 3, merge queue) BLOCKED:** `status:needs-human` pending operator decision.
-- **#452 (CI velocity epic step 3):** blocked behind #469.
-- **#454 (raise A.8 cap):** blocked behind #469.
+- **#469 CLOSED (2026-05-18T13:17:34Z) — operator decision landed.** STATUS prior to iter-870 carried this as `BLOCKED status:needs-human`; that was stale. Health check at iter-870 surfaced the closure. Implications: #452's step-3 dependency on #469 is satisfied (or moot, depending on how #469 closed); #454 is mechanically unblocked. iter-871 should inspect #469's closure comment before deciding next moves on #452/#454.
+- **#452 (CI velocity epic step 3, p1, type:design, status:ready):** open, status:ready, no longer blocked. Pickable when iter-871 budgets for it; not a Phase-15 termination blocker (CI velocity is independent of the rubric).
+- **#454 (raise A.8 cap, p2, type:design, status:blocked):** open, label still says `status:blocked` but mechanically the #469 dependency has cleared. Relabel to `status:ready` if/when iter-871 chooses to pick it up.
 
 ## Open phase:15 issues at iter-870 close
-- #452 (p1, type:design, status:ready, area:cross-cutting) — Speed up PR-gate CI. Steps 1+2 done; step 3 (#469) blocked.
-- #454 (p2, type:design, status:blocked, area:cross-cutting) — ADR: raise A.8 in-flight branch soft cap. Blocked behind #469.
+- #452 (p1, type:design, status:ready, area:cross-cutting) — Speed up PR-gate CI: shard Playwright + chromium-only-at-PR + merge queue. **Step-3 dependency on #469 cleared (#469 closed 2026-05-18).** Steps 1+2 already shipped; step 3 status to be reassessed when iter-871 inspects #469's closure rationale.
+- #454 (p2, type:design, status:blocked label, area:cross-cutting) — ADR: raise A.8 in-flight branch soft cap 5 → 10. **Mechanically unblocked but label still reads `status:blocked` — needs relabel.**
 
 ## Decisions log
 
