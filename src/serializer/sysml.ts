@@ -174,6 +174,25 @@ function refName(
   );
 }
 
+// OMG SysMLv2 §4.4.1 — `name ::= regularName | quotedName`. `regularName`
+// is `[A-Za-z_][A-Za-z0-9_-]*` (matches the tokenizer's `isIdentStart` /
+// `isIdentPart`); anything outside that form is emitted as a `quotedName`
+// `<…>`. This lets project names like the default `Untitled Project` and
+// any user-authored multi-word identifier survive a SysMLv2-text
+// round-trip (issue #446).
+const SAFE_IDENT = /^[A-Za-z_][A-Za-z0-9_-]*$/;
+function ident(name: string): string {
+  return SAFE_IDENT.test(name) ? name : `<${name}>`;
+}
+
+function refIdent(
+  id: ElementId,
+  byId: Map<ElementId, ModelElement>,
+  libraryIndex: LibraryIndex,
+): string {
+  return ident(refName(id, byId, libraryIndex));
+}
+
 function quote(s: string): string {
   return JSON.stringify(s);
 }
@@ -191,7 +210,7 @@ function renderPackage(
   depth: number,
 ): string {
   const lines: string[] = [];
-  lines.push(`${pad(depth)}package ${el.name} {${idTail(el.id)}`);
+  lines.push(`${pad(depth)}package ${ident(el.name)} {${idTail(el.id)}`);
   lines.push(...renderDoc(el.documentation, depth + 1));
   const members = sortElements(index.children(el.id, 'member'));
   for (const m of members) {
@@ -210,7 +229,7 @@ function renderPartDefinition(
 ): string {
   const abstract = el.isAbstract ? 'abstract ' : '';
   const lines: string[] = [];
-  lines.push(`${pad(depth)}${abstract}part def ${el.name} {${idTail(el.id)}`);
+  lines.push(`${pad(depth)}${abstract}part def ${ident(el.name)} {${idTail(el.id)}`);
   lines.push(...renderDoc(el.documentation, depth + 1));
   const inner = [
     ...index.children(el.id, 'port'),
@@ -230,11 +249,11 @@ function renderPartUsage(
   libraryIndex: LibraryIndex,
   depth: number,
 ): string {
-  const defName = refName(el.definitionId, byId, libraryIndex);
+  const defName = refIdent(el.definitionId, byId, libraryIndex);
   const mult = el.multiplicity ? `[${el.multiplicity}]` : '';
   const lines: string[] = [];
   lines.push(
-    `${pad(depth)}part ${el.name} : ${defName}${mult} {${idTail(el.id)}`,
+    `${pad(depth)}part ${ident(el.name)} : ${defName}${mult} {${idTail(el.id)}`,
   );
   lines.push(...renderDoc(el.documentation, depth + 1));
   const ports = sortElements(index.children(el.id, 'port'));
@@ -252,9 +271,9 @@ function renderPortDefinition(
   depth: number,
 ): string {
   const iface = el.interfaceId
-    ? ` : ${refName(el.interfaceId, byId, libraryIndex)}`
+    ? ` : ${refIdent(el.interfaceId, byId, libraryIndex)}`
     : '';
-  return `${pad(depth)}port def ${el.direction} ${el.name}${iface};${idTail(el.id)}`;
+  return `${pad(depth)}port def ${el.direction} ${ident(el.name)}${iface};${idTail(el.id)}`;
 }
 
 function renderPortUsage(
@@ -263,8 +282,8 @@ function renderPortUsage(
   libraryIndex: LibraryIndex,
   depth: number,
 ): string {
-  const def = refName(el.definitionId, byId, libraryIndex);
-  return `${pad(depth)}port ${el.name} : ${def};${idTail(el.id)}`;
+  const def = refIdent(el.definitionId, byId, libraryIndex);
+  return `${pad(depth)}port ${ident(el.name)} : ${def};${idTail(el.id)}`;
 }
 
 function renderInterfaceDefinition(
@@ -275,7 +294,7 @@ function renderInterfaceDefinition(
   depth: number,
 ): string {
   const lines: string[] = [];
-  lines.push(`${pad(depth)}interface def ${el.name} {${idTail(el.id)}`);
+  lines.push(`${pad(depth)}interface def ${ident(el.name)} {${idTail(el.id)}`);
   lines.push(...renderDoc(el.documentation, depth + 1));
   const ports = sortElements(index.children(el.id, 'portDefinition'));
   for (const m of ports) {
@@ -289,15 +308,15 @@ function renderConnectionUsage(
   el: Extract<ModelElement, { kind: 'ConnectionUsage' }>,
   depth: number,
 ): string {
-  return `${pad(depth)}connection ${el.name} connect ${el.sourceId} to ${el.targetId};${idTail(el.id)}`;
+  return `${pad(depth)}connection ${ident(el.name)} connect ${el.sourceId} to ${el.targetId};${idTail(el.id)}`;
 }
 
 function renderItemFlow(
   el: Extract<ModelElement, { kind: 'ItemFlow' }>,
   depth: number,
 ): string {
-  const ofClause = el.itemType ? ` of ${el.itemType}` : '';
-  return `${pad(depth)}flow ${el.name}${ofClause} from ${el.sourceId} to ${el.targetId};${idTail(el.id)}`;
+  const ofClause = el.itemType ? ` of ${ident(el.itemType)}` : '';
+  return `${pad(depth)}flow ${ident(el.name)}${ofClause} from ${el.sourceId} to ${el.targetId};${idTail(el.id)}`;
 }
 
 function renderRequirement(
@@ -305,8 +324,8 @@ function renderRequirement(
   depth: number,
 ): string {
   const lines: string[] = [];
-  const reqId = el.reqId ? ` ${el.reqId}` : '';
-  lines.push(`${pad(depth)}requirement${reqId} ${el.name} {${idTail(el.id)}`);
+  const reqId = el.reqId ? ` ${ident(el.reqId)}` : '';
+  lines.push(`${pad(depth)}requirement${reqId} ${ident(el.name)} {${idTail(el.id)}`);
   lines.push(`${pad(depth + 1)}priority ${el.priority};`);
   lines.push(`${pad(depth + 1)}status ${el.status};`);
   lines.push(`${pad(depth + 1)}text ${quote(el.text)};`);
@@ -328,7 +347,7 @@ function renderActionDefinition(
   depth: number,
 ): string {
   const lines: string[] = [];
-  lines.push(`${pad(depth)}action def ${el.name} {${idTail(el.id)}`);
+  lines.push(`${pad(depth)}action def ${ident(el.name)} {${idTail(el.id)}`);
   lines.push(...renderDoc(el.documentation, depth + 1));
   const params = sortElements(index.children(el.id, 'parameter'));
   for (const m of params) {
@@ -345,9 +364,9 @@ function renderActionUsage(
   depth: number,
 ): string {
   const defClause = el.definitionId
-    ? ` : ${refName(el.definitionId, byId, libraryIndex)}`
+    ? ` : ${refIdent(el.definitionId, byId, libraryIndex)}`
     : '';
-  return `${pad(depth)}action ${el.nodeType} ${el.name}${defClause};${idTail(el.id)}`;
+  return `${pad(depth)}action ${el.nodeType} ${ident(el.name)}${defClause};${idTail(el.id)}`;
 }
 
 function renderStateDefinition(
@@ -355,7 +374,7 @@ function renderStateDefinition(
   depth: number,
 ): string {
   const composite = el.isComposite ? 'composite ' : '';
-  return `${pad(depth)}${composite}state def ${el.name};${idTail(el.id)}`;
+  return `${pad(depth)}${composite}state def ${ident(el.name)};${idTail(el.id)}`;
 }
 
 function renderStateUsage(
@@ -365,17 +384,17 @@ function renderStateUsage(
   depth: number,
 ): string {
   const def = el.definitionId
-    ? ` : ${refName(el.definitionId, byId, libraryIndex)}`
+    ? ` : ${refIdent(el.definitionId, byId, libraryIndex)}`
     : '';
   const body: string[] = [];
   if (el.entryAction) body.push(`entry ${quote(el.entryAction)};`);
   if (el.doAction) body.push(`do ${quote(el.doAction)};`);
   if (el.exitAction) body.push(`exit ${quote(el.exitAction)};`);
   if (body.length === 0) {
-    return `${pad(depth)}state ${el.stateType} ${el.name}${def};${idTail(el.id)}`;
+    return `${pad(depth)}state ${el.stateType} ${ident(el.name)}${def};${idTail(el.id)}`;
   }
   const lines: string[] = [];
-  lines.push(`${pad(depth)}state ${el.stateType} ${el.name}${def} {${idTail(el.id)}`);
+  lines.push(`${pad(depth)}state ${el.stateType} ${ident(el.name)}${def} {${idTail(el.id)}`);
   for (const b of body) lines.push(`${pad(depth + 1)}${b}`);
   lines.push(`${pad(depth)}}`);
   return lines.join('\n');
@@ -390,7 +409,7 @@ function renderTransition(
   if (el.guard) parts.push(`guard ${quote(el.guard)}`);
   if (el.effect) parts.push(`effect ${quote(el.effect)}`);
   const clause = parts.length > 0 ? ` ${parts.join(' ')}` : '';
-  return `${pad(depth)}transition ${el.name} first ${el.sourceId} then ${el.targetId}${clause};${idTail(el.id)}`;
+  return `${pad(depth)}transition ${ident(el.name)} first ${el.sourceId} then ${el.targetId}${clause};${idTail(el.id)}`;
 }
 
 function renderUseCase(
@@ -399,19 +418,19 @@ function renderUseCase(
 ): string {
   if (el.text) {
     const lines: string[] = [];
-    lines.push(`${pad(depth)}use case ${el.name} {${idTail(el.id)}`);
+    lines.push(`${pad(depth)}use case ${ident(el.name)} {${idTail(el.id)}`);
     lines.push(`${pad(depth + 1)}text ${quote(el.text)};`);
     lines.push(`${pad(depth)}}`);
     return lines.join('\n');
   }
-  return `${pad(depth)}use case ${el.name};${idTail(el.id)}`;
+  return `${pad(depth)}use case ${ident(el.name)};${idTail(el.id)}`;
 }
 
 function renderActor(
   el: Extract<ModelElement, { kind: 'Actor' }>,
   depth: number,
 ): string {
-  return `${pad(depth)}actor ${el.name};${idTail(el.id)}`;
+  return `${pad(depth)}actor ${ident(el.name)};${idTail(el.id)}`;
 }
 
 function renderConstraintDefinition(
@@ -422,7 +441,7 @@ function renderConstraintDefinition(
   depth: number,
 ): string {
   const lines: string[] = [];
-  lines.push(`${pad(depth)}constraint def ${el.name} {${idTail(el.id)}`);
+  lines.push(`${pad(depth)}constraint def ${ident(el.name)} {${idTail(el.id)}`);
   lines.push(`${pad(depth + 1)}expr ${quote(el.expression)};`);
   const params = sortElements(index.children(el.id, 'parameter'));
   for (const m of params) {
@@ -438,8 +457,8 @@ function renderConstraintUsage(
   libraryIndex: LibraryIndex,
   depth: number,
 ): string {
-  const def = refName(el.definitionId, byId, libraryIndex);
-  return `${pad(depth)}constraint ${el.name} : ${def};${idTail(el.id)}`;
+  const def = refIdent(el.definitionId, byId, libraryIndex);
+  return `${pad(depth)}constraint ${ident(el.name)} : ${def};${idTail(el.id)}`;
 }
 
 function renderValueProperty(
@@ -449,7 +468,7 @@ function renderValueProperty(
   const def = el.defaultValue !== undefined
     ? ` = ${renderLiteral(el.defaultValue)}`
     : '';
-  return `${pad(depth)}attribute ${el.name} : ${el.valueType}${def};${idTail(el.id)}`;
+  return `${pad(depth)}attribute ${ident(el.name)} : ${el.valueType}${def};${idTail(el.id)}`;
 }
 
 function renderLiteral(v: ValueLiteral): string {
