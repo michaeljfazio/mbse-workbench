@@ -3,11 +3,11 @@
 ## Current phase
 phase:15 — Architect-driven UX & feature hardening
 
-🎯 **Iter-860: #499 + #500 engineer batch shipped as PR #502.** Theme: `phase-15/fix-ibd-connection-mode`. Closes #499 (p1, IBD connection-mode root cause from walk-27) and #500 (p2, PartUsage acronym auto-name). Code change is surgical: 11 lines in `CanvasPane.tsx` (import `ConnectionMode`, per-viewpoint ternary on `<ReactFlow>`) + 14 lines in `store.ts` (`nextPartUsageName` acronym branch via `^[A-Z][A-Z0-9_]*$`). Test additions: 2 unit tests (acronym naming `PFC` → `PFC_1`; `ADIRU_3` → `ADIRU_3_1`), 1 e2e (inout↔inout drag → `ConnectionUsage`), 1 e2e (inout↔inout Shift+drag → `ItemFlow`). All 1481 unit + 304 chromium e2e + 12 webkit IBD tests pass locally. `docs/CONTEXT.md` records the `ConnectionMode.Strict` vs `Loose` learning. Pre-PR Sonnet review: APPROVE, two non-blocking nits.
+🎯 **Iter-861: `vphase-15.8` / `v1.5.2` released.** PR #502 merged at 2026-05-18T18:24:10Z (squash `95fb6c2`), closing #499 (`p1` `area:viewpoint:ibd` IBD ConnectionMode root cause) + #500 (`p2` PartUsage acronym auto-name). Tags `vphase-15.8` + `v1.5.2` pushed to `main` at the same SHA; both release workflows ran clean (build + deploy + github-release all green). Pages last-modified `Mon, 18 May 2026 18:32:43 GMT`. GitHub Releases: vphase-15.8 published 18:33:54Z, v1.5.2 published 18:32:58Z. Live URL `https://michaeljfazio.github.io/mbse-workbench/` returns HTTP 200. Patch bump (not minor) per SemVer: the work is fix-not-feature — both #499 and #500 were defects surfaced by walk-27, no outward-facing capability gained beyond what walk-27 had attempted to exercise.
+
+🎯 **Iter-860: #499 + #500 engineer batch shipped as PR #502** (closed by squash-merge `95fb6c2`).
 
 🎯 **Iter-859: walk-27 (IBD deep-dive) executed on `vphase-15.7` Pages → 5/8 PCs PASS, 2 issues filed.** First dim-6 score-3 attempt. PC3 (drag-create `ConnectionUsage`) + PC5 (Shift+drag → `ItemFlow`) silently FAIL — root-caused: `HANDLE_TYPE_BY_DIRECTION.inout = 'source'` + React Flow's default `connectionMode` rejects source→source drags before the typed `isValidIbdConnection` validator. Filed #499 (`p1`) + #500 (`p2`). Convergence chain[2] → **chain[0 / 3]** (reset). Walk-27 PR #501 squash-merged at 18:05:28Z as `633436a`.
-
-🎯 **Iter-858 was consumed by the CI-stuck retrigger inside PR #498** (no new architect-walk work performed). PR #498 merged 2026-05-18T17:37:34Z as `d6d2720`.
 
 🎯 **Iter-857: walk-27 plan SEALED + IBD deep-dive conventions research-populated** (PR #498 merged).
 
@@ -24,46 +24,44 @@ phase:15 — Architect-driven UX & feature hardening
 
 | # | Condition | Status |
 |---|-----------|--------|
-| A.12 #1 | Every rubric dim at 3 | **2 of 28** at 3 (dim 5 BDD, dim 14 Round-trip integrity); **22** at 2; 1 at 1 (dim 17 Edge editing — blocked on PR #502); 3 at 0. PR #502 lands the precondition for promoting dim 6 (IBD) to 3 and advancing dim 17 (Edge editing) from 1 to 2/3. Promotion is gated on **walk-28** (regression of walk-27) re-running PC3 + PC5 clean on post-fix `vphase-15.8` Pages. |
-| A.12 #2 | Zero open `phase:15` issues labelled `type:bug/feature/design` | **0 open `type:bug`** once PR #502 merges (closes #499 + #500). **2 open `type:design`**: #452 (`status:needs-human` via #469), #454 (blocked behind #469). **1 open `type:chore` `status:needs-human`**: #469. |
+| A.12 #1 | Every rubric dim at 3 | **2 of 28** at 3 (dim 5 BDD, dim 14 Round-trip integrity); **22** at 2; 1 at 1 (dim 17 Edge editing — fix shipped in `vphase-15.8`, awaiting walk-28 measurement); 3 at 0. The IBD `ConnectionMode.Loose` fix is on Pages; **walk-28** (regression of walk-27) is the next decisive measurement — clean outcome promotes dim 6 (IBD) from 2 to 3 AND advances dim 17 from 1 toward 2/3 simultaneously. |
+| A.12 #2 | Zero open `phase:15` issues labelled `type:bug/feature/design` | **0 open `type:bug`** (held since #499 + #500 closed at 18:24:11Z). **2 open `type:design`**: #452 (`status:needs-human` via #469), #454 (blocked behind #469). **1 open `type:chore` `status:needs-human`**: #469. |
 | A.12 #3 | Three consecutive convergence walks | **chain[0 / 3]** (reset by walk-27). Walk-28 (regression) is the next chain[1] candidate; clean outcome → chain[1] AND dim 6 → 3 simultaneously. |
 | A.12 #4 | FBW example shipped + loadable | unblocks once dim 6 reaches 3 (precondition for authoring A.6-coverage FBW IBDs via UI). |
 
 ## Current iteration
-- Iteration #: 860
-- Started: 2026-05-19
-- Branch: `phase-15/fix-ibd-connection-mode`
-- Working on: PR #502 (auto-merge SQUASH armed; mergeStateStatus BLOCKED on `fast` check QUEUED — normal on a fresh code-path PR; full CI shards run, including visual baselines on Linux runners).
+- Iteration #: 861
+- Started: 2026-05-18 (UTC)
+- Branch: `phase-15/iter-861-vphase-15.8-release`
+- Working on: STATUS + in-flight.md update PR; release work itself complete.
 
 ## Last test run
-- Local: `pnpm typecheck` clean; `pnpm lint` clean (3 pre-existing react-refresh warnings); `pnpm test:unit` 1481/1481 passed; `pnpm exec playwright test --project=chromium` 304/304 passed; `pnpm exec playwright test tests/e2e/ibd-{connection,itemflow}.spec.ts --project=webkit` 12/12 passed; `pnpm build` clean (920 kB main bundle, unchanged).
+- Iter-860 PR #502 CI: full code-path. `fast` (typecheck + lint + unit + classify) SUCCESS in ~5m; `e2e (shard 1/4)`, `(shard 2/4)`, `(shard 3/4)`, `(shard 4/4)` all SUCCESS; `merge-reports` + `check` umbrella SUCCESS. Run [26052034001](https://github.com/michaeljfazio/mbse-workbench/actions/runs/26052034001).
+- Release workflows: v1.5.2 [26052695792](https://github.com/michaeljfazio/mbse-workbench/actions/runs/26052695792) success; vphase-15.8 [26052704429](https://github.com/michaeljfazio/mbse-workbench/actions/runs/26052704429) success. Both deployed the same `95fb6c2` artifact.
 
 ## Last PR sweep
-- Iter-860 open: PR #502 (this batch). No other PRs open.
-- PR #501 (walk-27 doc) squash-merged 2026-05-18T18:05:28Z as `633436a` between iter-859 close and iter-860 open. Doc-only `check` ran in expected ~1m 30s.
+- Iter-861 open: this STATUS PR (only). PR #502 merged 18:24:10Z (squash `95fb6c2`).
+- No other PRs open at iter-861 start.
 
 ## Known issues / blockers
-- **PR #502** (this iter): awaits CI green to auto-merge. Closes #499 + #500.
 - **#469 (CI step 3, merge queue) BLOCKED:** `status:needs-human` pending operator decision.
 - **#452 (CI velocity epic step 3):** blocked behind #469.
 - **#454 (raise A.8 cap):** blocked behind #469.
 
-## Open phase:15 issues at iter-860 close
+## Open phase:15 issues at iter-861 close
 - #452 (p1, type:design, status:ready, area:cross-cutting) — Speed up PR-gate CI. Steps 1+2 done; step 3 (#469) blocked.
 - #454 (p2, type:design, status:blocked, area:cross-cutting) — ADR: raise A.8 in-flight branch soft cap. Blocked behind #469.
-- #499 + #500 — closed-by-PR #502, will auto-close on merge.
 
 ## Decisions log
 
-**Iter-808..iter-859 entries preserved in earlier commits.**
+**Iter-808..iter-860 entries preserved in earlier commits.**
 
-- **Iter-859 — walk-27 executed with expected risk-balance outcome.** Walk-26's decide-next called out the risk-balance explicitly: a clean walk-27 would have triggered both dim-6 score-3 promote AND A.12 #3 convergence, but a finding-walk would still gain useful measurement data. Walk-27 took the finding-walk path. Two root-cause issues filed (#499 + #500); dim 6 + dim 17 score-3 paths now have a concrete blocking issue with a small-PR resolution sketch.
-- **Iter-860 — chose per-viewpoint `connectionMode` ternary over global Loose.** The architect-recommended fix in #499 said "set `connectionMode='loose'` on the IBD's `<ReactFlow>` (and any other viewpoint whose typed validator allows non-canonical source/target roles)." Other viewpoints (BDD, Activity, State Machine, Use Case, Parametric, Package) use distinct nodes for source vs target — their typed validators would still pass under Loose, but keeping them at Strict gives defence-in-depth at zero cost and isolates the regression surface to IBD where the actual semantic is symmetric. Future viewpoints that map symmetric semantics onto same-role handles must explicitly opt into Loose; do not flip the global default. Recorded as a non-obvious fact in `docs/CONTEXT.md`.
-- **Iter-860 — bundled #500 (p2 acronym auto-name) into the #499 PR.** Both touch IBD code; the scope-overlap with #499 made bundling cheaper than splitting. Acceptance criterion: keep `Engine` → `engine`, `engine2` behaviour for mixed-case names (the existing test stays green); promote acronyms `PFC` → `PFC_1`, `PFC_2`.
+- **Iter-861 — release-and-not-walk-28 in this iteration.** A.5 walks are budgeted at 1–3 hours of execution and produce their own close-out commit; bundling walk-28 into the same iteration as the release would couple two unrelated risk surfaces (release-workflow correctness vs walk-28 measurement validity) and would write a STATUS at iteration boundaries that didn't reflect what actually happened. Iter-861 ships only the release; **iter-862** writes the walk-28 plan section against the `vphase-15.8` Pages bundle and executes it. This matches the iter-855 / iter-856 pattern (release then walk-26 in separate iterations).
+- **Iter-861 — kept patch SemVer (`v1.5.2`) not minor.** A strict A.8 reading on the boundary between fix and feature: PR #502 added new keyboard semantics (Shift+drag → ItemFlow) and a new naming behaviour. But the new keyboard semantics is the precondition for an existing-but-broken UX (PC5 from walk-27 failed because the precondition was missing), and the acronym branch is a defect fix. Neither adds a feature visible to a user of the deployed Pages beyond what walk-27 had attempted to exercise on `vphase-15.7`. Calling this a feature would inflate the SemVer line; `v1.5.2` is the honest patch bump. Recorded for the post-walk-28 release decision (which may justify a minor if dim 6 → 3 promotion is paired with new affordances).
 
 ## Session checkpoint summary
 
-This session (iter-793 → iter-860) executed **68 iterations** spanning bootstrap, **15 architect walks** + **walks 26 + 27 executed against deployed Pages**, **~24 engineer batches**, **7 release tags**, **3 ADRs** (0014/0015/0016), CI-velocity steps 1+2 (#472, #475) shipped + step 3 (#469) blocked, the iter-847..851 ADR 0016 path-filter correction trail, and the iter-859 IBD deep-dive surfacing #499 + #500 — now closed by iter-860's PR #502.
+This session (iter-793 → iter-861) executed **69 iterations** spanning bootstrap, **15 architect walks** + **walks 26 + 27 executed against deployed Pages**, **~25 engineer batches**, **8 release tags**, **3 ADRs** (0014/0015/0016), CI-velocity steps 1+2 (#472, #475) shipped + step 3 (#469) blocked, the iter-847..851 ADR 0016 path-filter correction trail, and the iter-859 → iter-861 IBD ConnectionMode arc (walk-27 finding → #499/#500 batch → `vphase-15.8` ship).
 
 | Tag | Date | What |
 |-----|------|------|
@@ -74,21 +72,22 @@ This session (iter-793 → iter-860) executed **68 iterations** spanning bootstr
 | vphase-15.5 / v1.4.0 | 2026-05-17 | ADR 0015 steps 2/3/4 (empty-state click-shortcut, inspector contextual, toolbar `+` retires) |
 | vphase-15.6 / v1.5.0 | 2026-05-18 | #448 quoted-ident + #451 SysML view-block round-trip → dim 14 to 3 |
 | vphase-15.7 / v1.5.1 | 2026-05-18 | #464 IBD enclosing-frame seed + #465 tree-row activates diagram tab → dim 6 → 2, dim 13 → 2 |
+| vphase-15.8 / v1.5.2 | 2026-05-18 | #499 IBD `ConnectionMode.Loose` for inout↔inout drag + #500 acronym auto-name |
 
-Rubric: **2 × score-3** (dim 5 BDD, dim 14 Round-trip integrity) + **22 × score-2** + **1 × score-1** (dim 17 Edge editing — about to advance once #502 + walk-28 clean) + **3 × score-0** (incl. dim 23).
+Rubric: **2 × score-3** (dim 5 BDD, dim 14 Round-trip integrity) + **22 × score-2** + **1 × score-1** (dim 17 Edge editing — fix shipped, awaiting walk-28 measurement) + **3 × score-0** (incl. dim 23).
 
 ## Next action
 
-**Iter-861 — once PR #502 merges, release `vphase-15.8` / `v1.5.2`** (patch release: bug fixes only — `ConnectionMode.Loose` for IBD + acronym auto-name). Then **walk-28** (regression of walk-27) against the post-fix Pages: re-run the same eight PCs from walk-27. Clean outcome → dim 6 promotes to 3 (third score-3 dimension) AND chain advances to chain[1] / 3.
+**Iter-862 — walk-28** (regression of walk-27) against `vphase-15.8` Pages (`95fb6c2` deploy, Pages last-modified `Mon, 18 May 2026 18:32:43 GMT`). Re-run the same eight PCs from walk-27. Clean outcome → dim 6 (IBD) promotes from 2 to 3 (THIRD score-3 dimension), dim 17 (Edge editing) advances from 1 toward 2 via PC 3 (plain-line connection edge), and convergence chain advances from chain[0] to chain[1] / 3. Walk-28 follows the A.5 protocol: plan in `docs/architect/walks/walk-28.md` with `## Plan` written before opening the browser; close-out PR committed on `phase-15/walk-28-log`.
 
-**If PR #502 CI blocks** (visual baseline drift on Linux runners — none expected, but visual baselines are pixel-fragile): inspect the failing diff, refresh baselines deliberately if the change is intentional, push to the same branch.
+**If walk-28 finds new issues:** chain stays at 0; file each finding per A.7 (one-per-defect, area-labeled); rubric scores update per the walk-27 table outcomes.
 
 **#469 (CI step 3, merge queue):** no further loop work. `status:needs-human` until operator decides.
 
 **ADR for raising A.8 cap (#454):** indefinitely blocked behind #469.
 
-**FBW example (A.12 #4):** unblocks the iteration after walk-28 promotes dim 6 to 3.
+**FBW example (A.12 #4):** unblocks the iteration after dim 6 reaches 3.
 
-**In-flight at iter-860 close (1/5 of A.8 cap):** PR #502 (`phase-15/fix-ibd-connection-mode`).
+**In-flight at iter-861 close (1/5 of A.8 cap):** this STATUS PR.
 
-**Halting safety:** STOP file / `status:emergency-stop` label unchanged; Phase-15 iter-count at 68, well under the 300 churn ceiling.
+**Halting safety:** STOP file / `status:emergency-stop` label unchanged; Phase-15 iter-count at 69, well under the 300 churn ceiling.
