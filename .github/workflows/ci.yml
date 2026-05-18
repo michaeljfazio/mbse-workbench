@@ -6,9 +6,17 @@ name: CI
 # umbrella job below; the full-matrix workflow is observational and files
 # a manual p0 issue if it goes red (see CONTEXT.md / ci-full-matrix.yml
 # header for the deferred-automation expectation).
+#
+# `merge_group:` fires when the GitHub native merge queue (issue #469 /
+# CI step 3 of #452) builds a temporary merge-group ref combining queued
+# PRs + the latest `main`. The same `check` umbrella runs against that
+# ref, gating the queue's batch merge. The ruleset that activates the
+# queue lives on the repo (`gh api /repos/.../rulesets`) and is not
+# checked in — see docs/CONTEXT.md for the runbook to enable/disable.
 on:
   pull_request:
     branches: [main]
+  merge_group:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
