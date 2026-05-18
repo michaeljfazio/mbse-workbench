@@ -139,6 +139,18 @@ function topHandleOfActor(page: Page, id: string): Locator {
     .locator('.react-flow__handle-top');
 }
 
+function leftHandleOfActor(page: Page, id: string): Locator {
+  return page
+    .getByTestId(`use-case-actor-${id}`)
+    .locator('.react-flow__handle-left');
+}
+
+function leftHandleOfUseCase(page: Page, id: string): Locator {
+  return page
+    .getByTestId(`use-case-usecase-${id}`)
+    .locator('.react-flow__handle-left');
+}
+
 test.describe('Use Case edges — Include + Extend + Generalization (#119)', () => {
   test.beforeEach(async ({ page }) => {
     await seedUseCaseProject(page);
@@ -277,6 +289,35 @@ test.describe('Use Case edges — Include + Extend + Generalization (#119)', () 
     const popover = page.getByTestId('use-case-edge-kind-popover');
     await expect(popover).toBeVisible();
     await page.getByTestId('use-case-edge-kind-Association').click();
+    await expect(
+      page.locator('g[data-association-edge="true"]'),
+    ).toHaveCount(1);
+  });
+
+  // Phase-15 #528 (walk-33 finding): React Flow gates drag-initiation on
+  // `type="source"` handles; ActorNode's `left`/`top` handles were declared
+  // `type="target"` only, so a drag starting from Actor.left silently
+  // failed even though `isValidUseCaseConnection` accepts both orderings.
+  // Fix: use `ConnectionMode.Loose` for the use-case viewpoint (same
+  // pattern as IBD per #499) so the validator is the single source of
+  // truth for handle-pair validity. This test exercises the previously-
+  // broken direction (actor.left → usecase.left).
+  test('drag Actor.left → UseCase.left also opens popover for Association (phase-15 #528)', async ({
+    page,
+  }) => {
+    await gotoUseCase(page);
+    await dragHandle(
+      page,
+      leftHandleOfActor(page, ACTOR_A_ID),
+      leftHandleOfUseCase(page, UC_A_ID),
+    );
+    const popover = page.getByTestId('use-case-edge-kind-popover');
+    await expect(popover).toBeVisible();
+    await expect(
+      page.getByTestId('use-case-edge-kind-Association'),
+    ).toBeEnabled();
+    await page.getByTestId('use-case-edge-kind-Association').click();
+    await expect(popover).toHaveCount(0);
     await expect(
       page.locator('g[data-association-edge="true"]'),
     ).toHaveCount(1);

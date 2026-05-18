@@ -8,6 +8,26 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
 
 ## Discovered facts
 
+- **2026-05-19 (iter-879 — `ConnectionMode.Loose` is the project pattern for
+  bidirectional handle-pair validity):** When a viewpoint's
+  `isValidConnection` callback is the single source of truth for which
+  handle pairings are valid (i.e., the validator does not just rubber-stamp
+  whatever React Flow accepts at the handle-typing stage), promote the
+  canvas to `ConnectionMode.Loose` rather than duplicating Handle elements
+  to add the inverse `type`. Loose mode lets a drag initiate from a
+  `type="target"` handle and terminate on a `type="source"` handle (or any
+  combination); the validator then governs. **Two instances now**: IBD
+  (#499, iter-861 — `inout`↔`inout` connections where both ports resolve
+  to `type="source"`) and Use Case (#528, iter-879 — Actor `top`/`left`
+  declared `type="target"` only, blocking architects from starting drags
+  there even though `isValidUseCaseConnection` accepts both orderings).
+  `CanvasPane.tsx` selects via `viewpoint.id === IBD_VIEWPOINT_ID ||
+  viewpoint.id === USE_CASE_VIEWPOINT_ID ? Loose : Strict`. **Rule:**
+  when a third viewpoint hits the same problem, prefer Loose over adding
+  Handles; if a fourth or fifth lands, refactor the magic-id OR into a
+  `connectionMode?: 'loose' | 'strict'` property on the `Viewpoint`
+  interface.
+
 - **2026-05-19 (iter-871 — React Flow drag-pipeline two-stage rejection):**
   A handle-drag failure in a React Flow viewpoint can be rejected at
   **two distinct stages**: (1) the handle hit-test (the source/target

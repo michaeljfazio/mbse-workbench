@@ -1313,8 +1313,17 @@ function CanvasInner(): JSX.Element {
           // mode delegates handle-role validity to the typed
           // `isValidIbdConnection` callback, which is the single source of
           // truth per ADR 0003. Issue #499.
+          //
+          // Use Case: ActorNode/UseCaseNode declare `top`/`left` handles as
+          // `type="target"` and `right`/`bottom` as `type="source"`. With
+          // Strict mode React Flow rejects drags that start from a target-
+          // typed handle, so `actor.left → usecase.left` silently failed even
+          // though `isValidUseCaseConnection` accepts both element orderings
+          // (post-#519). Loose mode delegates handle-role validity to the
+          // validator — same pattern as IBD. Issue #528 (walk-33).
           connectionMode={
-            viewpoint.id === IBD_VIEWPOINT_ID
+            viewpoint.id === IBD_VIEWPOINT_ID ||
+            viewpoint.id === USE_CASE_VIEWPOINT_ID
               ? ConnectionMode.Loose
               : ConnectionMode.Strict
           }
