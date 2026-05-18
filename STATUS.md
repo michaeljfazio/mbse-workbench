@@ -3,9 +3,11 @@
 ## Current phase
 phase:15 — Architect-driven UX & feature hardening
 
-🎯 **Iter-856: walk-26 executed clean against deployed `vphase-15.7` Pages (4/4 PCs PASS, 0 issues filed).** Per A.6 ("Pages deploy is the source of truth"), walk-26 re-ran the walk-25 scenario verbatim against the deployed bundle at `https://michaeljfazio.github.io/mbse-workbench/` (functional SHA `4c5cc41`, Pages `last-modified: 2026-05-18T16:17:04Z`). All four pass-criteria PASS on Pages with zero divergence from walk-25's local-dev result: PC1 BDD inline-rename propagates to tree row + IBD enclosing-frame; PC2 Inspector rename propagates to BDD label + IBD enclosing-frame; PC3 exactly 1 tree row carries the FCS element id throughout; PC4 0 page errors + 0 console errors. `app_load = 1422 ms` over network. **Convergence chain advances chain[1] → chain[2] / 3.** One more zero-issue walk completes the A.12 #3 trigger.
+🎯 **Iter-857: walk-27 plan SEALED (IBD deep-dive — chain[3] candidate + dim-6 score-3 promote candidate).** Per A.5 the walk plan is sealed before any browser opens. This PR commits two things: (a) per A.9, the research-populated `docs/architect/diagram-types/ibd.md` § "2026-05-19 — Deep-dive conventions (walk-27 prereq)" — 98 lines of port-square / connection-line-no-arrowhead / item-flow-solid-triangle / proxy-vs-full conventions all cited to OMG SysML v2 + 1.5 + Cameo/SysON vendor docs; (b) the walk-27 plan with 8 PCs targeting every dim-6 score-3 requirement plus opportunistic dim 3 (Ports) and dim 17 (Edge editing) coverage. Target = deployed `vphase-15.7` Pages (`4c5cc41`, `last-modified: 2026-05-18T16:17:04Z`). Expected execution duration 1–3 h per A.5.
 
-🎯 **Iter-855: `vphase-15.7` / `v1.5.1` released.** Tags pushed on `main` at `4c5cc41`; Pages deployed (HTTP 200 at 16:17:04Z); doc-only release sync PR #496 merged at 16:23:00Z (`main` now at `195842c`).
+🎯 **Iter-856: walk-26 executed clean on `vphase-15.7` Pages (4/4 PCs PASS, 0 issues filed)** — chain[1] → chain[2] / 3. Squash-merged via PR #497 at 2026-05-18T16:33:45Z (`a257094`).
+
+🎯 **Iter-855: `vphase-15.7` / `v1.5.1` released.** Tags pushed on `main` at `4c5cc41`; Pages deployed (HTTP 200 at 16:17:04Z); doc-only release sync PR #496 merged at 16:23:00Z.
 
 🎯 **Iter-853: walk-25 executed → CLEAN REGRESSION on local dev.** Rubric: dim 6 (IBD) 1 → 2 (restore) + dim 13 (Cross-diagram coherence) 0 → 2 (FIRST measurement).
 
@@ -16,41 +18,42 @@ phase:15 — Architect-driven UX & feature hardening
 
 | # | Condition | Status |
 |---|-----------|--------|
-| A.12 #1 | Every rubric dim at 3 | **2 of 28** at 3 (dim 5 BDD, dim 14 Round-trip integrity); **22** at 2 (dim 6 IBD + dim 13 Cross-diagram coherence Pages-confirmed by walk-26); 1 at 1 (dim 17 edge editing); 3 at 0 (dim 23 LLM + others). |
+| A.12 #1 | Every rubric dim at 3 | **2 of 28** at 3 (dim 5 BDD, dim 14 Round-trip integrity); **22** at 2; 1 at 1 (dim 17 edge editing); 3 at 0 (dim 23 LLM + others). Walk-27 (planned this iter) targets dim 6 → 3 as the third score-3 candidate. |
 | A.12 #2 | Zero open `phase:15` issues labelled `type:bug/feature/design` | **2 open `type:design`** (#452 CI-velocity epic — step 3 status:needs-human; #454 ADR raise A.8 cap — blocked on #469). **0 open `type:bug`**. **1 open `type:chore` `status:needs-human`**: #469. |
-| A.12 #3 | Three consecutive convergence walks | **chain[2] / 3** — walk-26 (Pages regression) advanced the chain by one. ONE more zero-issue walk completes the convergence trigger. Walk-27 candidate = IBD deep-dive (chain[3] + dim-6 promote 2→3 aggregate). |
-| A.12 #4 | FBW example shipped + loadable | further unblocked — IBD viewpoint Pages-confirmed end-to-end usable. Authoring throughput against A.6 coverage thresholds remains the bottleneck. |
+| A.12 #3 | Three consecutive convergence walks | **chain[2] / 3** — walk-26 (Pages regression) was chain[2]. **Walk-27 is the chain[3] candidate AND the dim-6 score-3 candidate.** A clean walk-27 simultaneously triggers A.12 #3 and promotes dim 6 to 3. |
+| A.12 #4 | FBW example shipped + loadable | further unblocked — IBD viewpoint Pages-confirmed end-to-end usable through enclosing-frame seed + BDD↔IBD coherence. Authoring throughput against A.6 coverage thresholds remains the bottleneck. |
 
 ## Current iteration
-- Iteration #: 856
+- Iteration #: 857
 - Started: 2026-05-19
-- Branch: `phase-15/iter-856-walk-26-execute`
-- Working on: iter-856 walk-26 close-out. Plan sealed in commit `2044124`; driver `artifacts/phase-15/walk-26/walk-26-exec.py` (gitignored per convention) ran headless Chromium against deployed Pages at `2026-05-18T16:27:32Z`; six screenshots saved under `artifacts/phase-15/walk-26/screenshots/`. This PR commits the walk-26.md close-out (Plan + Execution + Findings + Score + Decide-next), quality-rubric.md Pages-confirm entries for dim 6 + dim 13, STATUS.md sync, and in-flight.md row.
+- Branch: `phase-15/iter-857-walk-27-plan`
+- Working on: iter-857 walk-27 plan-seal. Two commits: (1) research-populate `docs/architect/diagram-types/ibd.md` with the 2026-05-19 deep-dive conventions section (A.9 prereq); (2) seal walk-27.md plan with 8 PCs, acceptance/rubric impact table, scope, and out-of-scope. Plan sealed before any browser opens per A.5. Execution iteration is the next iter after this PR merges.
 
 ## Last test run
-- Local: this PR touches only `docs/architect/walks/walk-26.md`, `docs/architect/quality-rubric.md`, `STATUS.md`, and `docs/architect/in-flight.md` — no code, no tests. CI-self-test: should classify `code = false`, skip all e2e shards, aggregate doc-only-branch `check` SUCCESS in ~1m 30s. Sixth consecutive doc-only-skip observation since the ADR 0016 path-filter correction (#491) shipped.
+- Local: this PR touches only `docs/architect/diagram-types/ibd.md`, `docs/architect/walks/walk-27.md`, `STATUS.md`, and `docs/architect/in-flight.md` — no code, no tests. CI-self-test: should classify `code = false`, skip all e2e shards, aggregate doc-only-branch `check` SUCCESS in ~1m 30s. Seventh consecutive doc-only-skip observation since the ADR 0016 path-filter correction (#491) shipped.
+- **Iter-858 CI-stuck retrigger:** Run `26047509259` sat `check` aggregator in QUEUED state for >18h after `fast=SUCCESS` / `e2e=SKIPPED` / `merge-reports=SKIPPED` resolved correctly. Every prior run on neighbouring branches completed normally — isolated to one run, GitHub Actions scheduling hiccup not a workflow defect. Cancelled `26047509259` (now `cancelled/completed`), pushed empty no-op commit (`8e606b2`) to retrigger. New run `26047766234` queued at 16:55:50Z on `8e606b2`; auto-merge stays armed. No code or test change — same doc-only diff.
 
 ## Last PR sweep
-- Iter-856 open: 0 open PRs (iter-855's #496 squash-merged at 16:23:00Z as `195842c`).
-- This iter-856 PR opens as the only in-flight PR (1/5 of A.8 cap).
+- Iter-857 open: 0 open PRs (iter-856's #497 squash-merged at 16:33:45Z as `a257094`; main now at `a257094`).
+- This iter-857 PR opens as the only in-flight PR (1/5 of A.8 cap).
 
 ## Known issues / blockers
 - **#469 (CI step 3, merge queue) BLOCKED:** GitHub feature-gates merge queue to org-owned repos. `status:needs-human` pending operator decision (transfer to org / close as wontfix / accept current 6× speedup as sufficient).
 - All other rubric/walk advancement unblocked.
 
-## Open phase:15 issues at iter-856 open
+## Open phase:15 issues at iter-857 open
 - #452 (p1, type:design, status:ready, area:cross-cutting) — Speed up PR-gate CI. Steps 1+2 done; step 3 (#469) blocked.
 - #454 (p2, type:design, status:blocked, area:cross-cutting) — ADR: raise A.8 in-flight branch soft cap. Blocked behind #469.
 
 ## Decisions log
 
-**Iter-808..iter-855 entries preserved in earlier commits.**
+**Iter-808..iter-856 entries preserved in earlier commits.**
 
-- **Iter-856 — walk-26 Pages-confirm of walk-25 clean.** Per A.6 the Pages deploy is the source of truth; walk-25 measured on local dev (functional SHA `be050e0` at the time). Walk-26 closes the loop on the deployed `vphase-15.7` bundle (`4c5cc41`). 4/4 PCs PASS with zero divergence; dim 6 + dim 13 scores hold at 2 (`Last informed` field updated to `walk-26 (Pages-confirm)`); convergence chain advances chain[1] → chain[2] / 3. Walk-27 = IBD deep-dive — chain[3] candidate + dim-6 score-3 promote in the same walk (highest aggregate value per walk-25's decide-next analysis).
+- **Iter-857 — walk-27 = IBD deep-dive sealed.** Per walk-26's decide-next, IBD deep-dive is the highest-aggregate-value walk-27 candidate: a clean run delivers chain[3] (A.12 #3 trigger) AND dim-6 score-3 (the third score-3 dim after BDD + round-trip). The risk-balance noted in walk-26 stands: deep-dives "exercise rare relationships and edge cases" per A.5, so finding issues is the walk's *job*, not a failure. If walk-27 finds issues, chain resets to 0 but rubric still gains useful measurement data on dim 3, dim 6, and dim 17. Per A.9 the IBD diagram-types doc was research-populated **in the same iter-857 PR** ahead of the walk — primary-source citations from OMG SysML v2.0 spec, SysML 1.5 spec, and Cameo/SysON vendor docs cover port shape/placement/direction, conjugate-port `~TypeName` v2 form, connection-line-no-arrowhead default, item-flow solid-triangle decoration on connection, and proxy-vs-full distinction (v1 keywords vs v2 plain `port`).
 
 ## Session checkpoint summary
 
-This session (iter-793 → iter-856) executed **64 iterations** spanning bootstrap, **14 architect walks** + **walk-26 executed clean against deployed Pages**, **~23 engineer batches**, **7 release tags**, **3 ADRs** (0014/0015/0016), CI-velocity steps 1+2 (#472, #475) shipped + step 3 (#469) blocked, and the iter-847..851 ADR 0016 path-filter correction trail.
+This session (iter-793 → iter-857) executed **65 iterations** spanning bootstrap, **14 architect walks** + **walk-26 executed clean against deployed Pages** + **walk-27 plan-seal**, **~23 engineer batches**, **7 release tags**, **3 ADRs** (0014/0015/0016), CI-velocity steps 1+2 (#472, #475) shipped + step 3 (#469) blocked, and the iter-847..851 ADR 0016 path-filter correction trail.
 
 | Tag | Date | What |
 |-----|------|------|
@@ -62,22 +65,23 @@ This session (iter-793 → iter-856) executed **64 iterations** spanning bootstr
 | vphase-15.6 / v1.5.0 | 2026-05-18 | #448 quoted-ident + #451 SysML view-block round-trip → dim 14 to 3 |
 | vphase-15.7 / v1.5.1 | 2026-05-18 | #464 IBD enclosing-frame seed (closes #461) + #465 tree-row activates diagram tab (closes #462) → dim 6 → 2, dim 13 → 2 |
 
-Rubric: **2 × score-3** (dim 5 BDD, dim 14 Round-trip integrity) + **22 × score-2** (dim 6 + dim 13 Pages-confirmed) + **1 × score-1** (dim 17) + **3 × score-0** (incl. dim 23).
+Rubric: **2 × score-3** (dim 5 BDD, dim 14 Round-trip integrity) + **22 × score-2** (incl. dim 6 + dim 13 Pages-confirmed) + **1 × score-1** (dim 17) + **3 × score-0** (incl. dim 23).
 
 ## Next action
 
-**Iter-857 — merge this PR.** Same doc-only-skip path: `code = false`, all e2e shards SKIPPED, `check` SUCCESS in ~1m 30s. Auto-merge SQUASH armed at PR-open. Sixth consecutive ADR 0016 doc-only-skip empirical validation.
+**Iter-858 — execute walk-27 (IBD deep-dive).** Drive `artifacts/phase-15/walk-27/walk-27-exec.py` against the deployed `vphase-15.7` Pages bundle. Eight PCs covering parts-as-nested-blocks, port-shape-square, connection-no-arrowhead-default, direction-arrow-on-port, item-flow-solid-triangle, proxy-vs-full distinction, persistence round-trip, and zero-errors. Per A.5 a deep-dive that hits a blocking defect stops early — partial walk-27 is a useful outcome (rubric measurement on dim 3 / dim 6 / dim 17 even if not score-3 promote).
 
-**Iter-858 — walk-27 = IBD deep-dive (chain[3] candidate AND dim-6 score-3 promote).** The aggregate-value pick per walk-26's decide-next analysis: a clean walk-27 simultaneously delivers (a) the third consecutive zero-issue walk satisfying A.12 #3 and (b) dim-6 → 3, taking the Phase-15 score-3 count from 2 → 3. Scope: parts (PartUsage as nested blocks), ports (PortUsage on parts), `ConnectionUsage` (port-to-port connection edges), `ItemFlow` (typed flows along connections), proxy-vs-full-port distinction. Target: deployed `vphase-15.7` Pages bundle.
-
-**Risk-balance alternative:** if walk-27 = IBD deep-dive finds issues (likely on a deep-dive, per A.5), the chain resets to 0 but the rubric still gains useful measurement data; dim-13 score-3 walk slots as a chain-rebuild candidate.
+**Aggregate-value outcome targets:**
+- **Best case** — 8/8 PCs PASS: dim 6 → 3 (third score-3 dim); chain[3] / 3 → A.12 #3 trigger fires; phase-15 score-3 count 2 → 3.
+- **Mixed case** — partial PCs PASS: file issues per failed PC (likely candidates: missing UX path to add PartUsage to PartDefinition IBD, missing UX path to add ItemFlow on connection, missing proxy/full distinction in v1 mode); dim 6 holds at 2; chain resets to 0; rubric gains measurement data on dim 3 (ports) and dim 17 (edge editing).
+- **Worst case** — affordance blocker on PC 1: walk stops early per A.5; file `p1` `area:viewpoint:ibd` issue for the missing affordance; no dim promotion this walk; chain resets to 0.
 
 **#469 (CI step 3, merge queue):** No further loop work. `status:needs-human` until operator decides.
 
 **ADR for raising A.8 cap (#454):** indefinitely blocked behind #469.
 
-**FBW example (A.12 #4):** further unblocked — IBD viewpoint Pages-confirmed end-to-end usable; architect authoring throughput against A.6 coverage thresholds remains the bottleneck.
+**FBW example (A.12 #4):** further unblocked once walk-27 lands (clean or otherwise) — IBD viewpoint deep-dive measurement is the gating evidence for how authoring an A.6-coverage-grade FBW model would actually feel. Architect authoring throughput against A.6 coverage thresholds remains the bottleneck.
 
-**In-flight at iter-856 open (1/5 of A.8 cap):** this PR (`phase-15/iter-856-walk-26-execute`).
+**In-flight at iter-857 open (1/5 of A.8 cap):** this PR (`phase-15/iter-857-walk-27-plan`).
 
-**Halting safety:** STOP file / `status:emergency-stop` label unchanged; Phase-15 iter-count at 64, well under the 300 churn ceiling.
+**Halting safety:** STOP file / `status:emergency-stop` label unchanged; Phase-15 iter-count at 65, well under the 300 churn ceiling.
