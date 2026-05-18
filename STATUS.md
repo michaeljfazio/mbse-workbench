@@ -3,6 +3,8 @@
 ## Current phase
 phase:15 — Architect-driven UX & feature hardening
 
+🎯 **Iter-880: PR #531 merged + iter-880 periodic health check PASS; awaiting operator-cut `vphase-15.10` / `v1.6.1` tag.** PR #531 (iter-879's `ConnectionMode.Loose` fix for #528) auto-merged at 2026-05-18T22:17:16Z (squash `f4915ae`). Per AGENT.md directive #13, iter-880 is divisible by 10 and ran the periodic health check — all four checks PASS (see `## Last health check`). Next productive iteration step requires the operator to cut `vphase-15.10` / `v1.6.1` on the post-#531 main commit so the Pages bundle re-deploys with the bidirectionality fix; walk-34 plan-seal then runs in iter-881 (needs verified `last-modified` / `etag` headers in the plan's snapshot per the walk-33 pattern) and walk-34 execute in iter-882. No code changes this iteration.
+
 🎯 **Iter-879: engineer hat → #528 fix shipped.** Use-case viewpoint switched to `ConnectionMode.Loose` (the same pattern IBD adopted in #499). The validator `isValidUseCaseConnection` is already the single source of truth for handle-pair validity (post-#519 it accepts Actor↔UseCase in both element orderings), so promoting connection mode from Strict to Loose unblocks drags that *start* from a `type="target"` handle — including the previously-broken `actor.left → usecase.left` direction surfaced by walk-33. The fix is **+11 / −1 LOC in `CanvasPane.tsx`** (a single line in the `connectionMode` ternary plus an updated comment) and **+41 LOC in `tests/e2e/use-case-edges.spec.ts`** (two new handle helpers + one new test for the previously-broken direction). No DOM changes; no new handles; no visual baseline drift. Existing 10 use-case-edges tests pass unchanged on chromium AND webkit; new test passes on both projects.
 
 🎯 **Iter-878: walk-33 EXECUTED → 22/24 PASS + 1 PARTIAL (use-case V-B primary-only) + 1 INFO; #528 filed; chain stays 0/3; dim-10 holds at 2.** Walk-33 was the chain[1] convergence candidate AND the dim-10 score-3 gate; PARTIAL was the second-row anticipated path in `walk-33.md § Plan § Acceptance / rubric impact`. Filed **#528** (`p2`, `type:bug`, `area:viewpoint:uc`) with full A.7 body, OMG UML 2.5.1 § 11.5.4 citation, proposed-resolution sketch (add paired `type="source"` Handles on ActorNode). Iter-879 chose a smaller-blast-radius fix (Loose connection mode) instead — same end behaviour, identical-by-contract to IBD's solved instance of the same problem class.
@@ -33,45 +35,48 @@ phase:15 — Architect-driven UX & feature hardening
 | A.12 #4 | FBW example shipped + loadable | **Un-gates on walk-34 chain[1] PASS + dim-10 promotion to score-3.** |
 
 ## Current iteration
-- Iteration #: 879
-- Started: 2026-05-19 (UTC)
-- Branch: `phase-15/iter-879-actor-source-handles` (off main `1015a75`, not stacked)
-- Working on: #528 — engineer fix: use-case viewpoint → ConnectionMode.Loose
+- Iteration #: 880
+- Started: 2026-05-18 (UTC, ~22:18Z post-#531-merge)
+- Branch: `phase-15/iter-880-health-check-and-status-sync` (off main `f4915ae`, not stacked)
+- Working on: #532 — periodic health check (iter÷10) + STATUS sync to post-#531 merge state
 
 ## Last test run
-- Iter-879 commits on this branch: **code change** (`src/workspace/CanvasPane.tsx`, +11/-1) + **e2e test** (`tests/e2e/use-case-edges.spec.ts`, +41 LOC).
-- `pnpm run typecheck` — PASS.
-- `pnpm run lint` — PASS (3 pre-existing react-refresh warnings; zero errors).
-- `pnpm run test:unit` — PASS (1486 tests across 136 files).
-- `pnpm run build` — PASS (922 kB → 254 kB gzip, expected size-warning unchanged).
-- `pnpm exec playwright test --project=chromium` — **306 / 306 PASS**, including new `phase-15 #528` test.
-- `pnpm exec playwright test tests/e2e/use-case-edges.spec.ts --project=webkit` — **11 / 11 PASS** (visual baselines unchanged — connectionMode is purely behavioral, no DOM diff).
-- Full webkit matrix deferred to CI per project convention.
+- No code changes this iteration — STATUS-only edit.
+- `pnpm run check` not re-run for a documentation-only diff (per ADR 0016: doc-only PRs skip e2e at the CI gate; the same logic justifies skipping it locally for a STATUS-only change).
 
 ## Last health check
 
-Per AGENT.md directive #13, iter-870 ran the periodic health check (divisible by 10) — all four checks PASS. Next health check is iter-880.
+Per AGENT.md directive #13, **iter-880** ran the periodic health check (divisible by 10) — **all four checks PASS**:
+
+1. **Pages reachable** — `curl -sI https://michaeljfazio.github.io/mbse-workbench/` returns `HTTP/2 200`. (Bundle is still `vphase-15.9` / `v1.6.0` because the operator has not yet cut the post-#531 `vphase-15.10` / `v1.6.1` tag — that is the *expected* state, not a regression.)
+2. **5 most recently merged PRs `merged` + linked issues closed** — #531 (closes #528), #530 (closes #528 + #529), #526 (closes #525), #524 (closes #523), #522 (closes #521). All `merged` state, all referenced issues `closed`.
+3. **`status:needs-human` open issues count** — 0. Comfortably under the directive-#13 threshold of 3.
+4. **Most recent `main` CI runs all green** — last five `ci.yml` runs on `main` (from `gh run list --workflow=ci.yml --branch=main --limit 5`) all `conclusion=success`.
+
+Next health check is **iter-890**.
 
 ## Last PR sweep
-- Iter-879 launch `gh pr list --state open` returned PR #530 (iter-878 close-out, BLOCKED on IN_PROGRESS CI) — IN_PROGRESS not actionable, leave for next iteration to catch. Confirmed at iter-879 close that PR #530 auto-merged at commit `1015a75` (main fast-forwarded before this branch was created). This iteration opens one new PR. **In-flight 1 / 5 of A.8 cap.**
+- Iter-880 launch `gh pr list --state open` returned `[]` after PR #531 auto-merged at 2026-05-18T22:17:16Z. This iteration opens one new PR (#532's close-out). **In-flight 1 / 5 of A.8 cap.**
 
 ## Known issues / blockers
-- None new. **#528** closes on this PR's merge. **#529** closed when PR #530 merged.
+- None new. **#528** closed by PR #531's merge.
 
-## Open phase:15 issues at iter-879 close (expected post-merge)
-- (none) — all open `type:bug` / `type:feature` / `type:design` issues closed post-merge.
+## Open phase:15 issues at iter-880 launch
+- (none) — A.12 #2 fully satisfied. Iter-880's `#532` is `type:chore` (close-out tracking), explicitly excluded from A.12 #2's label scope.
 
 ## Decisions log
 
-**Iter-808..iter-878 entries preserved in earlier commits.**
+**Iter-808..iter-879 entries preserved in earlier commits.**
+
+- **Iter-880 — defer walk-34 plan-seal to iter-881 once operator-cut `vphase-15.10` lands.** Walk-33's plan was sealed at iter-877 with the live Pages `last-modified: Mon, 18 May 2026 21:15:00 GMT, etag: "6a0b8154-1eb"` captured in its `## Snapshot` section as the byte-identity anchor for the execute-iteration's re-verify step. The same pattern requires verified deploy headers from the post-#531 bundle to seal walk-34 — and those headers don't exist until the operator cuts the tag and the release workflow's `pages` concurrency group lets the deploy fronted. Writing walk-34's plan against unknown headers would either need a "fill in at execute time" placeholder (loses the snapshot's purpose as an iteration-anchor) or a re-edit pass at iter-881 once the headers exist (loses the single-PR cleanliness of plan-seal). Cleanest is to do the health check + STATUS sync now and seal the plan in iter-881. No ADR needed — this is a pacing decision, not an architectural one.
+
+- **Iter-880 — no JOURNAL entry this iteration.** A.14 + AGENT.md JOURNAL triggers do not include "periodic health check" or "STATUS sync". The dim-10 score-3 promotion at iter-882+ post-walk-34 will be the next JOURNAL-worthy event (event: design-decision per A.14 "First rubric dimension at 3 of category" — fourth score-3 dimension overall).
 
 - **Iter-879 — `ConnectionMode.Loose` chosen over duplicating Handle elements.** Issue #528's proposed-resolution sketch suggested adding paired `type="source"` Handles on `ActorNode` (and possibly `UseCaseNode`) at the four cardinal positions. That approach lands ~16 new Handle elements across the two files and forces test selectors that previously used `.react-flow__handle-{position}` to disambiguate by handle id (because two handles would now share each position). The Loose approach is **one line** (`viewpoint.id === USE_CASE_VIEWPOINT_ID` added to the existing IBD OR in `CanvasPane.tsx`'s `connectionMode` ternary) with **zero DOM change** — same end behaviour, identical pattern to how IBD solved the same problem class in #499. The validator `isValidUseCaseConnection` is already the single source of truth for handle-pair validity (post-#519), so promoting from Strict to Loose simply stops React Flow from pre-rejecting drags that start at a `type="target"` handle. Per AGENT.md "Don't add features, refactor, or introduce abstractions beyond what the task requires" — the Loose fix is genuinely smaller, not a refactor. ADR-worthiness check: there is precedent for this pattern (IBD #499) so this is not a novel architectural call — no ADR needed.
 
-- **Iter-879 — no JOURNAL entry this iteration.** A.14 + AGENT.md JOURNAL triggers do not include "routine bug fix". The dim-10 score-3 promotion at iter-880+ post-walk-34 will be the next JOURNAL-worthy event (event: design-decision per A.14 "First rubric dimension at 3 of category").
-
 ## Session checkpoint summary
 
-This session (iter-793 → iter-879) executed **87 iterations** spanning bootstrap, **18 broad/regression walks against deployed Pages** (walks 1 + 26 + 27 + 28 + 29 + 30 + 31 + 32 + 33), **~29 engineer batches**, **9 release tags** (`vphase-15.1` → `vphase-15.9`), **3 ADRs** (0014/0015/0016). Most recent arc: iter-871 walk-32 (22/24 + #517) → iter-872 #517 implementation → iter-876 vphase-15.9 / v1.6.0 release → iter-877 walk-33 plan-seal → iter-878 walk-33 execute (#528 surfaces post-#519 bidirectionality gap) → **iter-879 engineer fix: use-case → ConnectionMode.Loose; new e2e test exercises previously-broken `actor.left → usecase.left` direction; ready for `vphase-15.10` release + walk-34 chain[1] retry**.
+This session (iter-793 → iter-880) executed **88 iterations** spanning bootstrap, **18 broad/regression walks against deployed Pages** (walks 1 + 26 + 27 + 28 + 29 + 30 + 31 + 32 + 33), **~29 engineer batches**, **9 release tags** (`vphase-15.1` → `vphase-15.9`), **3 ADRs** (0014/0015/0016). Most recent arc: iter-871 walk-32 (22/24 + #517) → iter-872 #517 implementation → iter-876 vphase-15.9 / v1.6.0 release → iter-877 walk-33 plan-seal → iter-878 walk-33 execute (#528 surfaces post-#519 bidirectionality gap) → iter-879 engineer fix: use-case → ConnectionMode.Loose (merged 2026-05-18T22:17:16Z) → **iter-880 close-out: periodic health check PASS (next iter-890) + STATUS sync; awaiting operator-cut `vphase-15.10` / `v1.6.1` tag**.
 
 | Tag | Date | What |
 |-----|------|------|
@@ -89,14 +94,16 @@ Rubric: **3 × score-3** (dim 5 BDD, dim 14 Round-trip integrity, dim 6 IBD) + *
 
 ## Next action
 
-**Iter-880 — operator release + walk-34.** Sequence (operator-cut tags are notable moments per A.14 — agent does not cut tags directly):
+**Iter-881 — operator release + walk-34 plan-seal.** Sequence (operator-cut tags remain operator-driven per the established session convention; agent does not cut tags directly):
 
-1. PR for this iteration auto-merges on green CI.
-2. Operator (or release workflow trigger) cuts `vphase-15.10` / `v1.6.1` on the post-merge main commit. Pages deploys via existing release workflow.
-3. Iter-880 architect-hat → walk-34 chain[1] retry against the released bundle. Plan: re-execute walk-33's PC set (broad sweep, 24 PCs across 8 viewpoints) with explicit verification that **both** Actor↔UseCase drag directions PASS. If clean: chain advances 0 → 1, dim-10 promotes to score-3 (FOURTH score-3 dimension), JOURNAL entry for the dimension promotion (event: design-decision).
-4. Iter-880 will also run the periodic health check (iter divisible by 10) per AGENT.md directive #13.
+1. ~~PR #531 (iter-879 fix) auto-merges on green CI~~ ✓ Merged at 2026-05-18T22:17:16Z (squash `f4915ae`).
+2. ~~Iter-880 periodic health check (iter÷10) per AGENT.md directive #13~~ ✓ 4/4 PASS (see `## Last health check`).
+3. ~~Iter-880 STATUS sync to post-#531 merge state + close-out chore PR~~ ⏳ This iteration's PR closes #532.
+4. **Operator** cuts `vphase-15.10` / `v1.6.1` on the post-`f4915ae` main commit. Pages deploys via existing release workflow (`build` → `deploy` → `github-release` per `.github/workflows/release.yml`).
+5. **Iter-881 architect-hat → walk-34 plan-seal.** Author `docs/architect/walks/walk-34.md § Plan` + `§ Snapshot` with verified Pages `last-modified` / `etag` headers from the newly-deployed bundle. Pattern: copy of walk-33 plan-seal (iter-877) with the V-B secondary-direction assertion promoted from "anticipated PARTIAL" to "expected PASS" (since #531's fix means React Flow's `ConnectionMode.Loose` now matches the validator's bidirectionality at the runtime gate).
+6. **Iter-882 architect-hat → walk-34 execute.** Re-execute walk-33's 24 PCs against the deployed `vphase-15.10` / `v1.6.1` bundle, with the bidirectional V-B driver. Expected outcome (per `walk-33.md § Plan § Acceptance / rubric impact` top row): **23/24 PASS + 1 INFO (X-7) — both V-B directions PASS** → chain advances **0 → 1 / 3** + dim-10 (Use Case SysML conformance) promotes **2 → 3** (FOURTH score-3 dimension) + JOURNAL entry (`event: design-decision` per A.14 "First rubric dimension at 3 of category" — fourth-of-category here).
 
-**Halting safety:** STOP file / `status:emergency-stop` label unchanged; Phase-15 iter-count at 87, well under the 300 churn ceiling.
+**Halting safety:** STOP file / `status:emergency-stop` label unchanged; Phase-15 iter-count at 88, well under the 300 churn ceiling.
 
-**In-flight at iter-879 close (1 / 5 of A.8 cap):**
-- PR for iter-879 #528 engineer fix — pending CI / auto-merge.
+**In-flight at iter-880 close (1 / 5 of A.8 cap):**
+- PR for iter-880's `#532` close-out chore (STATUS sync + health check log) — opens this iteration.
