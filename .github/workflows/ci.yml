@@ -29,6 +29,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # Classify the PR/push changed-file set as `code` (anything that
+      # could affect runtime behaviour) or doc-only. Doc-only PRs skip
+      # the ~30-40min Playwright install + e2e steps below; the `check`
+      # job still runs (typecheck/lint/unit/build) and still reports
+      # the `check` status, so branch protection requires no change.
+      # See docs/adr/0016-ci-doc-only-skip-e2e.md and issue #453.
+      - name: Classify changed paths
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            code:
+              - '**'
+              - '!**/*.md'
+              - '!LICENSE'
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
@@ -56,6 +72,7 @@ jobs:
         run: pnpm run build
 
       - name: Cache Playwright browsers
+        if: steps.filter.outputs.code == 'true'
         id: pw-cache
         uses: actions/cache@v4
         with:
@@ -63,13 +80,15 @@ jobs:
           key: pw-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
 
       - name: Install Playwright browsers
+        if: steps.filter.outputs.code == 'true'
         run: pnpm exec playwright install --with-deps chromium webkit
 
       - name: E2E tests
+        if: steps.filter.outputs.code == 'true'
         run: pnpm run test:e2e
 
       - name: Upload Playwright report
-        if: ${{ always() }}
+        if: ${{ always() && steps.filter.outputs.code == 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report
@@ -84,7 +103,7 @@ jobs:
       # `toHaveScreenshot` assertion, so it survives cancellation and is
       # the input the lift-from-trace rebaseline procedure actually needs.
       - name: Upload Playwright test-results (per-test actuals/diffs)
-        if: ${{ always() }}
+        if: ${{ always() && steps.filter.outputs.code == 'true' }}
         uses: actions/upload-artifact@v4
         with:
           name: playwright-test-results
