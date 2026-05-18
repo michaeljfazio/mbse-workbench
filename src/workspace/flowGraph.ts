@@ -11,6 +11,8 @@ import {
   buildPortUsageOwnership,
   computeBddBlockCompartments,
   computeEnclosingFrameBounds,
+  IBD_ENCLOSING_FRAME_DEFAULT_HEIGHT,
+  IBD_ENCLOSING_FRAME_DEFAULT_WIDTH,
   IBD_ENCLOSING_FRAME_NODE_TYPE,
   IBD_VIEWPOINT_ID,
   resolveIbdEdgeEndpoints,
@@ -173,10 +175,21 @@ export function toFlowNodes(
       return node;
     });
 
-  if (viewpoint.id === IBD_VIEWPOINT_ID && registry && partUsageRects.length > 0) {
+  if (viewpoint.id === IBD_VIEWPOINT_ID && registry) {
     const label = resolveIbdEnclosingFrameLabel(diagram, registry);
     if (label) {
-      const bounds = computeEnclosingFrameBounds(partUsageRects);
+      // When PartUsage nodes are present, fit the frame around them.
+      // When the IBD is empty (seed state), render a default-sized frame at
+      // the canvas origin so the user can see the context PartDefinition.
+      const bounds =
+        partUsageRects.length > 0
+          ? computeEnclosingFrameBounds(partUsageRects)
+          : {
+              x: 0,
+              y: 0,
+              width: IBD_ENCLOSING_FRAME_DEFAULT_WIDTH,
+              height: IBD_ENCLOSING_FRAME_DEFAULT_HEIGHT,
+            };
       if (bounds) {
         const frame: Node = {
           id: `ibd-enclosing-frame:${label.id}`,
