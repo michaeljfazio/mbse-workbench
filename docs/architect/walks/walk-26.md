@@ -81,3 +81,96 @@ Walk-26 is a **confirmation** walk — it does not promote any dimension past 2.
 
 This file is the **Plan** per A.5. The Plan is sealed before the browser opens — any deviation during execution is captured as a finding, not as a plan amendment.
 
+## Execution
+
+**Iteration:** 856
+**Date:** 2026-05-18
+**Run:** deployed Pages bundle at `https://michaeljfazio.github.io/mbse-workbench/`. Pages `last-modified: Mon, 18 May 2026 16:17:04 GMT` → built from `4c5cc41` (= `vphase-15.7` / `v1.5.1` tag commits). The plan-seal commit (`2044124`) on the walk-26 branch is doc-only and does not affect the bundle being tested.
+**Driver:** `artifacts/phase-15/walk-26/walk-26-exec.py` (single Playwright context, headless Chromium, six screenshots, structured `walk-26.json`). Wall-clock: ~16 s end-to-end (`app_load: 1422 ms` over network); per-step interaction loop matches walk-25's local-dev cadence. Six screenshots saved under `artifacts/phase-15/walk-26/screenshots/`.
+
+The plan was followed verbatim — zero deviations, zero plan amendments needed.
+
+| Phase | Action | Outcome |
+|-------|--------|---------|
+| 1 | Bootstrap: clear browser storage, find root project Package (depth=0 row), open its ⋯ menu → Create child → Package → auto-rename → "FCS Pkg" | ✓ FCS Pkg created via tree-menu UX on Pages |
+| 1 | Open FCS Pkg ⋯ menu → Create child → Part Definition → auto-rename → "FCS" | ✓ FCS PartDefinition created |
+| 1 | Open FCS Pkg ⋯ menu → Create representation… → BDD | ✓ BDD diagram created on FCS Pkg |
+| 1 | Open FCS ⋯ menu → Create representation… → IBD | ✓ IBD diagram created on FCS |
+| 2a | Activate BDD by clicking the diagram row in the tree | ✓ `#465` Pages-confirmed: tree-row click activates the BDD tab atomically (`aria-selected=true`) |
+| 2a | Probe `bdd-block-<fcs>` + `bdd-block-label-<fcs>` | ✓ block + label rendered with text `FCS` |
+| 2b | Double-click `bdd-block-label-<fcs>` → fill `Flight Control System` → Enter | ✓ inline-rename committed; BDD label updates atomically |
+| 2b | Read project-tree row text for `<fcs>` | ✓ tree row reads `Flight Control System` |
+| 2c | Activate IBD by clicking the diagram row in the tree | ✓ `#465` Pages-confirmed a second time |
+| 2d | Probe `ibd-enclosing-frame-<fcs>` + `ibd-enclosing-frame-name-<fcs>` | ✓ `#464` Pages-confirmed: enclosing-frame node renders; name reads `Flight Control System` |
+| 3a | Switch back to BDD, click `bdd-block-<fcs>` → assert `inspector-single` + `inspector-name` populated | ✓ inspector shows single-element pane with name input |
+| 3b | Inspector: fill `FCS Final` → Enter → blur | ✓ inspector commits; BDD label updates to `FCS Final` |
+| 3c | Activate IBD again via tree-row click → probe enclosing-frame | ✓ enclosing-frame name updates to `FCS Final` |
+| 4 | PC3 final probe: count `[data-testid="containment-tree-element-<fcs>"]` rows | ✓ exactly 1 throughout |
+| 4 | PC4 final probe: page error count + console error count | ✓ 0 + 0 |
+
+Page errors: 0. Console errors: 0.
+
+### Four pass-criteria verdict
+
+| # | Criterion | Result |
+|---|-----------|--------|
+| 1 | BDD inline-rename → tree row + IBD enclosing-frame both reflect `Flight Control System` | **PASS** (tree ✓, ibd_frame ✓, ibd_name `'Flight Control System'`) |
+| 2 | Inspector rename → BDD label + IBD enclosing-frame both reflect `FCS Final` | **PASS** (bdd_label ✓, ibd_name `'FCS Final'`) |
+| 3 | Exactly one project-tree row carrying the FCS element id throughout | **PASS** (rows_with_fcs_id=1) |
+| 4 | Zero page errors, zero console errors | **PASS** (page_errors=0, console_errors=0) |
+
+**4 / 4 PASS. Zero issues filed.**
+
+## Findings — workbench
+
+**Zero findings.** The two load-bearing walk-24 issues (#461 IBD empty canvas, #462 tree-row click does not activate diagram tab) are confirmed CLOSED on the deployed `vphase-15.7` Pages bundle:
+
+- **#461 (closed via #464):** The canonical `Create representation… → IBD` flow on Pages seeds an `ibd-enclosing-frame-<contextId>` node for the context PartDefinition. Identical behaviour to walk-25's local-dev run.
+- **#462 (closed via #465):** Clicking a diagram row in the project tree on Pages atomically activates that diagram's tab. Verified twice in walk-26 (BDD and IBD), no workaround required.
+
+## Findings — strong positive
+
+1. **No dev-vs-Pages divergence.** Every single behaviour walk-25 measured at `pnpm dev` reproduces byte-for-byte on the deployed bundle. Same BDD↔IBD↔Tree↔Inspector coherence; same element-registry-integrity invariant (PC3); same console-cleanliness (PC4); same atomic tree-row diagram activation.
+2. **`app_load: 1422 ms` over network** (cold start, fresh storage, full bundle download + `applyStandardLibrary()` bootstrap) — well under the dim-26 score-3 threshold of "< 3s on Pages". No A.10 dim-26 measurement is being made here (walk-26 is scoped to dim 6 + dim 13), but the data is consistent with the deployed bundle being healthy.
+3. **Cold-start `localStorage.clear()` + reload** brings the deployed bundle back to `newEmptyProject()` + `applyStandardLibrary()` shape without any console error — confirming the persistence + bootstrap pipeline is robust on the artifact, not just the dev server.
+
+## Rubric score deltas
+
+| Date | Walk | Dim # | Old | New | Rationale |
+|------|------|-------|-----|-----|-----------|
+| 2026-05-18 | walk-26 | 6 | 2 | 2 | Pages-confirm of walk-25's restoration. Score 2 holds; score 3 still deferred to IBD deep-dive. |
+| 2026-05-18 | walk-26 | 13 | 2 | 2 | Pages-confirm of walk-25's first measurement. Score 2 holds; score 3 still deferred to dedicated walk (right-click `Show in X`, N>2 representations, bidirectional nav). |
+
+No new score-3 dimensions. Phase-15 score-3 count remains at 2 (dim 5 BDD, dim 14 Round-trip integrity). The value of walk-26 is **confirmation on the source of truth** + **convergence chain advance**, not score promotion.
+
+## Convergence chain (A.12 #3)
+
+Walk-26 filed **zero workbench issues**. Per A.12 #3 the chain advances by one.
+
+| Walk | Issues filed | Chain |
+|------|-------------:|------:|
+| walk-22 | 0 | (pre-reset 1) |
+| walk-23 | 0 | (pre-reset 2) |
+| walk-24 | 2 | 0 (RESET) |
+| walk-25 | 0 | 1 |
+| walk-26 | 0 | **2** |
+
+A.12 #3 requires **three consecutive zero-issue walks**. The chain is now at **chain[2] / 3**. One more zero-issue walk completes the convergence trigger.
+
+## Decide next
+
+**Walk-27 = chain[3] candidate.** The choice has two strong options, both compatible with the convergence rule (each is zero-issue-eligible if executed against the deployed bundle and finds nothing actionable):
+
+1. **IBD deep-dive** — parts + ports + `ConnectionUsage` + `ItemFlow` + proxy-vs-full port distinction inside the IBD. Aggregate value: chain[3] candidate AND dim 6 promote (2 → 3). Highest aggregate value.
+2. **Dim-13 score-3 walk** — right-click `Show in X` cross-diagram navigation from both ends, N>2 representations on one PartDefinition, bidirectional navigation. Promotes dim 13 (2 → 3) but does not double-promote dim 6.
+
+Recommended: **IBD deep-dive** for walk-27. A clean walk-27 simultaneously delivers (a) the third consecutive zero-issue walk satisfying A.12 #3 and (b) dim-6 score-3, taking the Phase-15 score-3 count from 2 → 3.
+
+Alternative for risk-balance: if walk-27 = IBD deep-dive finds issues (likely on a deep-dive — see A.5 "deep dives push a single viewpoint hard, exercising rare relationships and edge cases"), the chain resets to 0 but the rubric still gains useful measurement data. The dim-13 score-3 walk could then be slotted as a chain-rebuild candidate.
+
+**FBW example (A.12 #4):** further unblocked — Pages-confirm means the FBW BDD↔IBD authoring loop is now verified on the artifact that any external reviewer would see.
+
+**Iter-counter:** Phase-15 iter-count at **64** of the 300 churn ceiling; well under.
+
+**ADR for raising A.8 cap (#454):** still blocked behind #469 (`status:needs-human`). Walk-26 used 1/5 of the A.8 in-flight cap; no contention this iteration.
+

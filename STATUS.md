@@ -3,9 +3,11 @@
 ## Current phase
 phase:15 — Architect-driven UX & feature hardening
 
-🎯 **Iter-855: `vphase-15.7` / `v1.5.1` released. Pages deployed (HTTP 200 at 16:17:04Z).** A.8 release cadence triggered after walk-25's clean regression: rubric advance (dim 6 IBD 1→2, dim 13 Cross-diagram coherence 0→2) + ≥5 batches since `v1.5.0`. SemVer: **patch** (no outward-facing new feature; the two load-bearing changes — #464 IBD enclosing-frame seed and #465 tree-row activates diagram tab — restore behaviour walk-24 had documented as regressed). Both release workflows triggered against tag `4c5cc41`; `vphase-15.7` deployed and `v1.5.1` queued behind the `pages` concurrency group to redeploy the same artifact. GitHub Releases auto-created with PR-title-derived notes. **Convergence chain unchanged at chain[1] / 3** — releasing doesn't advance the chain; walk-26 is the next chain-advancing candidate.
+🎯 **Iter-856: walk-26 executed clean against deployed `vphase-15.7` Pages (4/4 PCs PASS, 0 issues filed).** Per A.6 ("Pages deploy is the source of truth"), walk-26 re-ran the walk-25 scenario verbatim against the deployed bundle at `https://michaeljfazio.github.io/mbse-workbench/` (functional SHA `4c5cc41`, Pages `last-modified: 2026-05-18T16:17:04Z`). All four pass-criteria PASS on Pages with zero divergence from walk-25's local-dev result: PC1 BDD inline-rename propagates to tree row + IBD enclosing-frame; PC2 Inspector rename propagates to BDD label + IBD enclosing-frame; PC3 exactly 1 tree row carries the FCS element id throughout; PC4 0 page errors + 0 console errors. `app_load = 1422 ms` over network. **Convergence chain advances chain[1] → chain[2] / 3.** One more zero-issue walk completes the A.12 #3 trigger.
 
-🎯 **Iter-853: walk-25 executed → CLEAN REGRESSION (4/4 PCs PASS, 0 issues filed).** Walk-25 ran against local `pnpm dev` (Vite 5.4.21) at HEAD `e634979` (functional code SHA == `be050e0`; the iter-852 commit on top is doc-only). All four pass-criteria PASS: PC1 BDD inline-rename propagates to tree row + IBD enclosing-frame (`'Flight Control System'`); PC2 Inspector rename propagates to BDD label + IBD enclosing-frame (`'FCS Final'`); PC3 exactly 1 tree row carries the FCS element id throughout; PC4 0 page errors + 0 console errors. Both load-bearing walk-24 regressions confirmed CLOSED end-to-end through architect-facing UX: **#461 (IBD empty canvas, fixed by #464)** + **#462 (tree-row click does not activate diagram tab, fixed by #465)**. Rubric: **dim 6 (IBD) 1 → 2** (restore) + **dim 13 (Cross-diagram coherence) 0 → 2** (FIRST measurement). Convergence chain: **walk-25 = chain[1] / 3** — walk-24's reset stands; walks 22/23 cannot be re-counted per the consecutive-walk rule.
+🎯 **Iter-855: `vphase-15.7` / `v1.5.1` released.** Tags pushed on `main` at `4c5cc41`; Pages deployed (HTTP 200 at 16:17:04Z); doc-only release sync PR #496 merged at 16:23:00Z (`main` now at `195842c`).
+
+🎯 **Iter-853: walk-25 executed → CLEAN REGRESSION on local dev.** Rubric: dim 6 (IBD) 1 → 2 (restore) + dim 13 (Cross-diagram coherence) 0 → 2 (FIRST measurement).
 
 🎯 **Iter-826: walks 14 + 19 merged → rubric dim 5 (BDD) at score 3 = FIRST score-3 dimension.**
 🎯 **Iter-834: rubric dim 14 (Round-trip integrity) → score 3 via SysML view-block round-trip (#451).**
@@ -14,41 +16,41 @@ phase:15 — Architect-driven UX & feature hardening
 
 | # | Condition | Status |
 |---|-----------|--------|
-| A.12 #1 | Every rubric dim at 3 | **2 of 28** at 3 (dim 5 BDD, dim 14 Round-trip integrity); **22** at 2 (gained dim 6 IBD restored + dim 13 Cross-diagram coherence first-measurement, both score-2); 1 at 1 (dim 17 edge editing); 3 at 0 (dim 23 LLM + others). |
+| A.12 #1 | Every rubric dim at 3 | **2 of 28** at 3 (dim 5 BDD, dim 14 Round-trip integrity); **22** at 2 (dim 6 IBD + dim 13 Cross-diagram coherence Pages-confirmed by walk-26); 1 at 1 (dim 17 edge editing); 3 at 0 (dim 23 LLM + others). |
 | A.12 #2 | Zero open `phase:15` issues labelled `type:bug/feature/design` | **2 open `type:design`** (#452 CI-velocity epic — step 3 status:needs-human; #454 ADR raise A.8 cap — blocked on #469). **0 open `type:bug`**. **1 open `type:chore` `status:needs-human`**: #469. |
-| A.12 #3 | Three consecutive convergence walks | **chain[1] / 3** — walk-25 advanced the chain by one from the reset. Two more zero-issue walks complete the convergence trigger. Walk-26 (regression on `vphase-15.7` Pages) is the next candidate. |
-| A.12 #4 | FBW example shipped + loadable | further unblocked — IBD viewpoint now end-to-end usable via the canonical creation path. Authoring throughput against A.6 coverage thresholds remains the bottleneck. |
+| A.12 #3 | Three consecutive convergence walks | **chain[2] / 3** — walk-26 (Pages regression) advanced the chain by one. ONE more zero-issue walk completes the convergence trigger. Walk-27 candidate = IBD deep-dive (chain[3] + dim-6 promote 2→3 aggregate). |
+| A.12 #4 | FBW example shipped + loadable | further unblocked — IBD viewpoint Pages-confirmed end-to-end usable. Authoring throughput against A.6 coverage thresholds remains the bottleneck. |
 
 ## Current iteration
-- Iteration #: 855
-- Started: 2026-05-18
-- Branch: `phase-15/iter-855-vphase-15.7-release`
-- Working on: iter-855 release close-out. Tags `vphase-15.7` and `v1.5.1` pushed on `main` at `4c5cc41` (the iter-853 walk-25 squash-merge commit). `vphase-15.7` release workflow completed SUCCESS at 16:17:23Z; Pages deployed (HTTP 200; `last-modified: Mon, 18 May 2026 16:17:04 GMT` matches the build). `v1.5.1` release workflow queued behind the `pages` concurrency group at iter-855 open. This PR commits the JOURNAL release entry, STATUS sync, and in-flight resync.
+- Iteration #: 856
+- Started: 2026-05-19
+- Branch: `phase-15/iter-856-walk-26-execute`
+- Working on: iter-856 walk-26 close-out. Plan sealed in commit `2044124`; driver `artifacts/phase-15/walk-26/walk-26-exec.py` (gitignored per convention) ran headless Chromium against deployed Pages at `2026-05-18T16:27:32Z`; six screenshots saved under `artifacts/phase-15/walk-26/screenshots/`. This PR commits the walk-26.md close-out (Plan + Execution + Findings + Score + Decide-next), quality-rubric.md Pages-confirm entries for dim 6 + dim 13, STATUS.md sync, and in-flight.md row.
 
 ## Last test run
-- Local: this PR touches only `STATUS.md`, `JOURNAL.md`, and `docs/architect/in-flight.md` — no code, no tests. CI-self-test: should classify `code = false`, skip all e2e shards, aggregate doc-only-branch `check` SUCCESS in ~1m 30s–2m wallclock. Fifth consecutive doc-only-skip observation since the ADR 0016 path-filter correction (#491) shipped.
+- Local: this PR touches only `docs/architect/walks/walk-26.md`, `docs/architect/quality-rubric.md`, `STATUS.md`, and `docs/architect/in-flight.md` — no code, no tests. CI-self-test: should classify `code = false`, skip all e2e shards, aggregate doc-only-branch `check` SUCCESS in ~1m 30s. Sixth consecutive doc-only-skip observation since the ADR 0016 path-filter correction (#491) shipped.
 
 ## Last PR sweep
-- Iter-855 open: 0 open PRs (iter-853's #495 squash-merged at 16:15:51Z as `4c5cc41`; the merge triggered the iter-855 release-cadence decision in the same loop iteration).
-- This iter-855 PR opens as the only in-flight PR (1/5 of A.8 cap).
+- Iter-856 open: 0 open PRs (iter-855's #496 squash-merged at 16:23:00Z as `195842c`).
+- This iter-856 PR opens as the only in-flight PR (1/5 of A.8 cap).
 
 ## Known issues / blockers
 - **#469 (CI step 3, merge queue) BLOCKED:** GitHub feature-gates merge queue to org-owned repos. `status:needs-human` pending operator decision (transfer to org / close as wontfix / accept current 6× speedup as sufficient).
 - All other rubric/walk advancement unblocked.
 
-## Open phase:15 issues at iter-855 open
+## Open phase:15 issues at iter-856 open
 - #452 (p1, type:design, status:ready, area:cross-cutting) — Speed up PR-gate CI. Steps 1+2 done; step 3 (#469) blocked.
 - #454 (p2, type:design, status:blocked, area:cross-cutting) — ADR: raise A.8 in-flight branch soft cap. Blocked behind #469.
 
 ## Decisions log
 
-**Iter-808..iter-853 entries preserved in earlier commits.**
+**Iter-808..iter-855 entries preserved in earlier commits.**
 
-- **Iter-855 — `vphase-15.7` / `v1.5.1` released. Pages deployed (HTTP 200 at 16:17:04Z).** A.8 release-cadence trigger met by walk-25 (dim 6 + dim 13 advance) + abundance of merged batches since `v1.5.0`. SemVer: patch — no outward-facing new feature; #464 + #465 restore behaviour walk-24 had documented as regressed. Tags created on `main` at `4c5cc41`. `vphase-15.7` workflow completed SUCCESS at 16:17:23Z; `v1.5.1` queued behind `pages` concurrency to redeploy the same artifact. JOURNAL release entry appended.
+- **Iter-856 — walk-26 Pages-confirm of walk-25 clean.** Per A.6 the Pages deploy is the source of truth; walk-25 measured on local dev (functional SHA `be050e0` at the time). Walk-26 closes the loop on the deployed `vphase-15.7` bundle (`4c5cc41`). 4/4 PCs PASS with zero divergence; dim 6 + dim 13 scores hold at 2 (`Last informed` field updated to `walk-26 (Pages-confirm)`); convergence chain advances chain[1] → chain[2] / 3. Walk-27 = IBD deep-dive — chain[3] candidate + dim-6 score-3 promote in the same walk (highest aggregate value per walk-25's decide-next analysis).
 
 ## Session checkpoint summary
 
-This session (iter-793 → iter-855) executed **63 iterations** spanning bootstrap, **13 architect walks** + walk-24 merged + **walk-25 executed clean**, **~23 engineer batches**, **7 release tags**, **3 ADRs** (0014/0015/0016), CI-velocity steps 1+2 (#472, #475) shipped + step 3 (#469) blocked, and the iter-847..851 ADR 0016 path-filter correction trail.
+This session (iter-793 → iter-856) executed **64 iterations** spanning bootstrap, **14 architect walks** + **walk-26 executed clean against deployed Pages**, **~23 engineer batches**, **7 release tags**, **3 ADRs** (0014/0015/0016), CI-velocity steps 1+2 (#472, #475) shipped + step 3 (#469) blocked, and the iter-847..851 ADR 0016 path-filter correction trail.
 
 | Tag | Date | What |
 |-----|------|------|
@@ -58,24 +60,24 @@ This session (iter-793 → iter-855) executed **63 iterations** spanning bootstr
 | vphase-15.4 / v1.3.0 | 2026-05-17 | IBD palette, usage hints, implicit-owner Package row, bus-dispatched diagrams, ADR 0014/0015 step 1 |
 | vphase-15.5 / v1.4.0 | 2026-05-17 | ADR 0015 steps 2/3/4 (empty-state click-shortcut, inspector contextual, toolbar `+` retires) |
 | vphase-15.6 / v1.5.0 | 2026-05-18 | #448 quoted-ident + #451 SysML view-block round-trip → dim 14 to 3 |
-| **vphase-15.7 / v1.5.1** | 2026-05-18 | #464 IBD enclosing-frame seed (closes #461) + #465 tree-row activates diagram tab (closes #462) → dim 6 → 2, dim 13 → 2 |
+| vphase-15.7 / v1.5.1 | 2026-05-18 | #464 IBD enclosing-frame seed (closes #461) + #465 tree-row activates diagram tab (closes #462) → dim 6 → 2, dim 13 → 2 |
 
-Rubric: **2 × score-3** (dim 5 BDD, dim 14 Round-trip integrity) + **22 × score-2** (gained dim 6 + dim 13) + **1 × score-1** (dim 17) + **3 × score-0** (incl. dim 23).
+Rubric: **2 × score-3** (dim 5 BDD, dim 14 Round-trip integrity) + **22 × score-2** (dim 6 + dim 13 Pages-confirmed) + **1 × score-1** (dim 17) + **3 × score-0** (incl. dim 23).
 
 ## Next action
 
-**Iter-856 — merge this PR.** Same doc-only-skip path: `code = false`, all e2e shards SKIPPED, `check` SUCCESS in ~1m 30s. Auto-merge SQUASH armed at PR-open. Fifth consecutive ADR 0016 doc-only-skip empirical validation.
+**Iter-857 — merge this PR.** Same doc-only-skip path: `code = false`, all e2e shards SKIPPED, `check` SUCCESS in ~1m 30s. Auto-merge SQUASH armed at PR-open. Sixth consecutive ADR 0016 doc-only-skip empirical validation.
 
-**Iter-857 — walk-26 = regression walk** of walk-25 against deployed `vphase-15.7` Pages bundle. Per A.6 ("Pages deploy is the source of truth"), the dim-6 + dim-13 fixes need confirmation on the deploy, not just `pnpm dev`. A clean walk-26 advances the convergence chain to **2 / 3**.
+**Iter-858 — walk-27 = IBD deep-dive (chain[3] candidate AND dim-6 score-3 promote).** The aggregate-value pick per walk-26's decide-next analysis: a clean walk-27 simultaneously delivers (a) the third consecutive zero-issue walk satisfying A.12 #3 and (b) dim-6 → 3, taking the Phase-15 score-3 count from 2 → 3. Scope: parts (PartUsage as nested blocks), ports (PortUsage on parts), `ConnectionUsage` (port-to-port connection edges), `ItemFlow` (typed flows along connections), proxy-vs-full-port distinction. Target: deployed `vphase-15.7` Pages bundle.
 
-**Iter-858+ — walk-27 = chain[3] candidate.** Highest-aggregate-value option: **IBD deep-dive** (parts + ports + ConnectionUsage + ItemFlow + proxy-vs-full port) — doubles as a chain[3] candidate AND a dim-6 promote 2 → 3. Alternative: dim-13 score-3 walk (right-click `Show in X`, N>2 representations, bidirectional cross-diagram navigation) — promotes dim 13 from 2 → 3 but doesn't double on dim 6.
+**Risk-balance alternative:** if walk-27 = IBD deep-dive finds issues (likely on a deep-dive, per A.5), the chain resets to 0 but the rubric still gains useful measurement data; dim-13 score-3 walk slots as a chain-rebuild candidate.
 
 **#469 (CI step 3, merge queue):** No further loop work. `status:needs-human` until operator decides.
 
 **ADR for raising A.8 cap (#454):** indefinitely blocked behind #469.
 
-**FBW example (A.12 #4):** further unblocked — IBD viewpoint now end-to-end usable via the canonical creation path. Architect authoring throughput against A.6 coverage thresholds remains the bottleneck.
+**FBW example (A.12 #4):** further unblocked — IBD viewpoint Pages-confirmed end-to-end usable; architect authoring throughput against A.6 coverage thresholds remains the bottleneck.
 
-**In-flight at iter-855 open (1/5 of A.8 cap):** this PR (`phase-15/iter-855-vphase-15.7-release`).
+**In-flight at iter-856 open (1/5 of A.8 cap):** this PR (`phase-15/iter-856-walk-26-execute`).
 
-**Halting safety:** STOP file / `status:emergency-stop` label unchanged; Phase-15 iter-count at 63, well under the 300 churn ceiling.
+**Halting safety:** STOP file / `status:emergency-stop` label unchanged; Phase-15 iter-count at 64, well under the 300 churn ceiling.
