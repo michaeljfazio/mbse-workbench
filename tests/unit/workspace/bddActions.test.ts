@@ -88,6 +88,41 @@ describe('workspace store — BDD actions', () => {
     expect(edge?.kind).toBe('Generalization');
   });
 
+  it('linkBlocks supports the full BDD edge taxonomy (issue #430): all 5 kinds round-trip through JSON', async () => {
+    const { storage, repository, user } = await bootstrap();
+    const a = useWorkspaceStore.getState().createBlock()!;
+    const b = useWorkspaceStore.getState().createBlock()!;
+    const kinds = [
+      'Composition',
+      'Aggregation',
+      'Generalization',
+      'Association',
+      'Dependency',
+    ] as const;
+    const created: { id: string; kind: string }[] = [];
+    for (const kind of kinds) {
+      const edgeId = useWorkspaceStore.getState().linkBlocks(a, b, kind);
+      expect(edgeId, `linkBlocks(${kind}) must succeed`).not.toBeNull();
+      const edge = useWorkspaceStore
+        .getState()
+        .edges.find((e) => e.id === edgeId);
+      expect(edge?.kind).toBe(kind);
+      created.push({ id: edgeId!, kind });
+    }
+
+    // Wait for autosave then reload through the repository — verifies JSON
+    // persistence round-trip is a no-op for every kind (the discriminator
+    // string serializes as-is).
+    await new Promise((r) => setTimeout(r, 5));
+    resetWorkspaceStoreForTests();
+    await useWorkspaceStore.getState().bootstrap({ repository, user, storage });
+    const reloaded = useWorkspaceStore.getState().edges;
+    for (const { id, kind } of created) {
+      const edge = reloaded.find((e) => e.id === id);
+      expect(edge?.kind, `${kind} edge ${id} after reload`).toBe(kind);
+    }
+  });
+
   it('linkBlocks refuses a self-loop', async () => {
     await bootstrap();
     const a = useWorkspaceStore.getState().createBlock()!;

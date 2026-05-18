@@ -11,7 +11,22 @@ export interface EdgeKindPopoverProps {
 
 const KINDS: ReadonlyArray<{ id: BddEdgeKind; label: string; hint: string }> = [
   { id: 'Composition', label: 'Composition', hint: 'Filled diamond on whole' },
+  {
+    id: 'Aggregation',
+    label: 'Aggregation',
+    hint: 'Shared part — open (hollow) diamond on whole',
+  },
   { id: 'Generalization', label: 'Generalization', hint: 'Hollow triangle on parent' },
+  {
+    id: 'Association',
+    label: 'Association',
+    hint: 'Loose coupling — plain line, no end adornments',
+  },
+  {
+    id: 'Dependency',
+    label: 'Dependency',
+    hint: 'Loose dependency — dashed line, open arrow on target',
+  },
 ];
 
 export function EdgeKindPopover({

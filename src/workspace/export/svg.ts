@@ -134,12 +134,21 @@ function renderNode(
 function renderEdge(geom: EdgeGeometry): string {
   const path = orthogonalPath(geom);
   const markerId = markerIdFor(geom.edge);
-  const markerStart = geom.edge.kind === 'Composition' ? ` marker-start="url(#${markerId})"` : '';
-  const markerEnd = geom.edge.kind === 'Generalization' ? ` marker-end="url(#${markerId})"` : '';
+  // Composition and Aggregation place a diamond marker at the source (whole)
+  // end; Generalization and Dependency place an end marker at the target.
+  // Association has no end adornment.
+  const hasStartMarker =
+    geom.edge.kind === 'Composition' || geom.edge.kind === 'Aggregation';
+  const hasEndMarker =
+    geom.edge.kind === 'Generalization' || geom.edge.kind === 'Dependency';
+  const markerStart = hasStartMarker ? ` marker-start="url(#${markerId})"` : '';
+  const markerEnd = hasEndMarker ? ` marker-end="url(#${markerId})"` : '';
+  const dashAttr =
+    geom.edge.kind === 'Dependency' ? ` stroke-dasharray="6 4"` : '';
   return (
     `<g class="${EXPORT_SVG_EDGE_CLASS}" data-edge-id="${escapeXml(geom.edge.id)}" ` +
     `data-edge-kind="${escapeXml(geom.edge.kind)}">` +
-    `<path d="${path}" fill="none" stroke="${STROKE_COLOR}" stroke-width="${EDGE_STROKE_WIDTH}"` +
+    `<path d="${path}" fill="none" stroke="${STROKE_COLOR}" stroke-width="${EDGE_STROKE_WIDTH}"${dashAttr}` +
     `${markerStart}${markerEnd} />` +
     `</g>`
   );
@@ -158,7 +167,9 @@ function orthogonalPath({ sourceX, sourceY, targetX, targetY }: EdgeGeometry): s
 function renderDefs(geoms: readonly EdgeGeometry[]): string {
   const markers: string[] = [];
   let seenComposition = false;
+  let seenAggregation = false;
   let seenGeneralization = false;
+  let seenDependency = false;
   for (const geom of geoms) {
     if (geom.edge.kind === 'Composition' && !seenComposition) {
       markers.push(
@@ -169,6 +180,15 @@ function renderDefs(geoms: readonly EdgeGeometry[]): string {
       );
       seenComposition = true;
     }
+    if (geom.edge.kind === 'Aggregation' && !seenAggregation) {
+      markers.push(
+        `<marker id="mbse-aggregation" viewBox="0 0 12 10" refX="6" refY="5" ` +
+          `markerWidth="12" markerHeight="10" orient="auto-start-reverse" markerUnits="userSpaceOnUse">` +
+          `<path d="M0,5 L6,0 L12,5 L6,10 Z" fill="${NODE_FILL}" stroke="${STROKE_COLOR}" stroke-width="1.5" />` +
+          `</marker>`,
+      );
+      seenAggregation = true;
+    }
     if (geom.edge.kind === 'Generalization' && !seenGeneralization) {
       markers.push(
         `<marker id="mbse-generalization" viewBox="0 0 12 12" refX="11" refY="6" ` +
@@ -178,6 +198,15 @@ function renderDefs(geoms: readonly EdgeGeometry[]): string {
       );
       seenGeneralization = true;
     }
+    if (geom.edge.kind === 'Dependency' && !seenDependency) {
+      markers.push(
+        `<marker id="mbse-dependency" viewBox="0 0 12 12" refX="11" refY="6" ` +
+          `markerWidth="12" markerHeight="12" orient="auto-start-reverse" markerUnits="userSpaceOnUse">` +
+          `<path d="M1,1 L11,6 L1,11" fill="none" stroke="${STROKE_COLOR}" stroke-width="1.5" />` +
+          `</marker>`,
+      );
+      seenDependency = true;
+    }
   }
   if (markers.length === 0) return '';
   return `<defs>${markers.join('')}</defs>\n`;
@@ -186,7 +215,9 @@ function renderDefs(geoms: readonly EdgeGeometry[]): string {
 function markerIdFor(edge: ModelEdge): string {
   const kind: EdgeKind = edge.kind;
   if (kind === 'Composition') return 'mbse-composition';
+  if (kind === 'Aggregation') return 'mbse-aggregation';
   if (kind === 'Generalization') return 'mbse-generalization';
+  if (kind === 'Dependency') return 'mbse-dependency';
   return `mbse-${kind.toLowerCase()}`;
 }
 

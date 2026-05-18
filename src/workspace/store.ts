@@ -1651,10 +1651,15 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       return null;
     }
     const edgeId = createEdgeId();
-    const edge: ModelEdge =
-      kind === 'Composition'
-        ? { id: edgeId, kind: 'Composition', sourceId: source, targetId: target }
-        : { id: edgeId, kind: 'Generalization', sourceId: source, targetId: target };
+    // BddEdgeKind is a structural subset of ModelEdge['kind'] (the 5 BDD-
+    // taxonomy kinds), so the discriminator widens cleanly with no extra
+    // payload.
+    const edge: ModelEdge = {
+      id: edgeId,
+      kind,
+      sourceId: source,
+      targetId: target,
+    };
     bus.dispatch({ kind: 'link', edge }, user);
     return edgeId;
   },

@@ -12,17 +12,23 @@ export type {
 export { createViewpointRegistry, DuplicateViewpointError } from './types';
 
 export {
+  BDD_AGGREGATION_EDGE_TYPE,
+  BDD_ASSOCIATION_EDGE_TYPE,
   BDD_BLOCK_NODE_TYPE,
   BDD_COMPOSITION_EDGE_TYPE,
+  BDD_DEPENDENCY_EDGE_TYPE,
   BDD_GENERALIZATION_EDGE_TYPE,
   BDD_VIEWPOINT_ID,
   bddViewpoint,
 } from './bdd';
 
 export type {
+  BddAggregationEdge,
+  BddAssociationEdge,
   BddBlockData,
   BddBlockNode,
   BddCompositionEdge,
+  BddDependencyEdge,
   BddEdge,
   BddEdgeKind,
   BddGeneralizationEdge,

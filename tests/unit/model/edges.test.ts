@@ -10,8 +10,14 @@ function describeEdge(edge: ModelEdge): string {
   switch (edge.kind) {
     case 'Composition':
       return 'Composition';
+    case 'Aggregation':
+      return 'Aggregation';
     case 'Generalization':
       return 'Generalization';
+    case 'Association':
+      return 'Association';
+    case 'Dependency':
+      return 'Dependency';
     case 'RequirementTrace':
       return `RequirementTrace(${edge.traceKind})`;
     case 'ControlFlow':
@@ -41,9 +47,27 @@ const sampleByKind: { [K in EdgeKind]: () => Extract<ModelEdge, { kind: K }> } =
     sourceId: src,
     targetId: tgt,
   }),
+  Aggregation: () => ({
+    id: mkEdgeId('e-agg-1'),
+    kind: 'Aggregation',
+    sourceId: src,
+    targetId: tgt,
+  }),
   Generalization: () => ({
     id: mkEdgeId('e-gen-1'),
     kind: 'Generalization',
+    sourceId: src,
+    targetId: tgt,
+  }),
+  Association: () => ({
+    id: mkEdgeId('e-assoc-1'),
+    kind: 'Association',
+    sourceId: src,
+    targetId: tgt,
+  }),
+  Dependency: () => ({
+    id: mkEdgeId('e-dep-1'),
+    kind: 'Dependency',
     sourceId: src,
     targetId: tgt,
   }),
@@ -94,9 +118,21 @@ const sampleByKind: { [K in EdgeKind]: () => Extract<ModelEdge, { kind: K }> } =
 };
 
 describe('metamodel — edges', () => {
-  it('declares all 9 edge kinds in EDGE_KINDS', () => {
-    expect(EDGE_KINDS).toHaveLength(9);
-    expect(new Set(EDGE_KINDS).size).toBe(9);
+  it('declares all 12 edge kinds in EDGE_KINDS', () => {
+    expect(EDGE_KINDS).toHaveLength(12);
+    expect(new Set(EDGE_KINDS).size).toBe(12);
+  });
+
+  it('includes the full SysML BDD edge taxonomy (issue #430)', () => {
+    expect(EDGE_KINDS).toEqual(
+      expect.arrayContaining([
+        'Composition',
+        'Aggregation',
+        'Generalization',
+        'Association',
+        'Dependency',
+      ]),
+    );
   });
 
   it('every edge kind has a constructible sample that round-trips through JSON', () => {

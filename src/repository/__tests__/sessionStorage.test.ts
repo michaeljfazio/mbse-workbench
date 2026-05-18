@@ -165,8 +165,14 @@ function edgeOf(kind: EdgeKind, id: string): ModelEdge {
   switch (kind) {
     case 'Composition':
       return { ...base, kind: 'Composition' };
+    case 'Aggregation':
+      return { ...base, kind: 'Aggregation' };
     case 'Generalization':
       return { ...base, kind: 'Generalization' };
+    case 'Association':
+      return { ...base, kind: 'Association' };
+    case 'Dependency':
+      return { ...base, kind: 'Dependency' };
     case 'RequirementTrace':
       return { ...base, kind: 'RequirementTrace', traceKind: 'satisfy' };
     case 'ControlFlow':
