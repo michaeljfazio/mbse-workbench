@@ -7,6 +7,7 @@ import type {
   ConnectionUsageElement,
   ConstraintDefinitionElement,
   ConstraintUsageElement,
+  AssociationEdge,
   ControlFlowEdge,
   EdgeId,
   EdgePatch,
@@ -2718,15 +2719,23 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
     const sourceEl = registry.get(source);
     const targetEl = registry.get(target);
     if (!sourceEl || !targetEl) return null;
-    // Per ADR 0007 § 4: UseCase↔UseCase for Include/Extend/Generalization;
-    // Actor↔Actor for Generalization only. Reject anything else.
+    // ADR 0007 § 4 + phase-15 #517 amendment: Include/Extend are UseCase↔UseCase;
+    // Generalization is UseCase↔UseCase OR Actor↔Actor; Association is the
+    // cross-kind Actor↔UseCase pair (either direction). Reject anything else.
     if (kind === 'Include' || kind === 'Extend') {
       if (sourceEl.kind !== 'UseCase' || targetEl.kind !== 'UseCase') return null;
-    } else {
+    } else if (kind === 'Generalization') {
       const bothUseCase =
         sourceEl.kind === 'UseCase' && targetEl.kind === 'UseCase';
       const bothActor = sourceEl.kind === 'Actor' && targetEl.kind === 'Actor';
       if (!bothUseCase && !bothActor) return null;
+    } else {
+      // Association — Actor↔UseCase only.
+      const actorToUseCase =
+        sourceEl.kind === 'Actor' && targetEl.kind === 'UseCase';
+      const useCaseToActor =
+        sourceEl.kind === 'UseCase' && targetEl.kind === 'Actor';
+      if (!actorToUseCase && !useCaseToActor) return null;
     }
     const edgeId = createEdgeId();
     let edge: ModelEdge;
@@ -2746,10 +2755,18 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
         targetId: target,
       };
       edge = e;
-    } else {
+    } else if (kind === 'Generalization') {
       const e: GeneralizationEdge = {
         id: edgeId,
         kind: 'Generalization',
+        sourceId: source,
+        targetId: target,
+      };
+      edge = e;
+    } else {
+      const e: AssociationEdge = {
+        id: edgeId,
+        kind: 'Association',
         sourceId: source,
         targetId: target,
       };

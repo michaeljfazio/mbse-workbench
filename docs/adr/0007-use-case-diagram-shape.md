@@ -75,3 +75,26 @@ from BDD) all live in `src/model/elements.ts` and `src/model/edges.ts`.
   in `bddViewpoint.edgeTypes`). #119 either reuses the BDD component
   directly or registers a Use-Case-specific variant — the choice is local
   to that child.
+
+## 2026-05-19 amendment — § 5 / § 7 deferral closed by phase-15 #517
+
+Phase 7 deferred the Actor↔UseCase association edge to "Phase 12 polish."
+Phase 12 shipped without it; phase-15 walk-32 surfaced the gap as the
+explicit rubric-dim-10 score-3 blocker. #517 closes the deferral:
+
+- `isValidUseCaseConnection` accepts cross-kind Actor↔UseCase pairs in
+  both directions.
+- The stereotype picker offers a fourth option, `Association`, enabled
+  only for cross-kind drops. `defaultUseCaseEdgeKindFor` returns
+  `'Association'` for the cross-kind case.
+- The store's `linkUseCaseEdge` dispatches an `AssociationEdge`
+  (already in the metamodel — shared with BDD) for `Association`-kind
+  cross-kind drops; same-kind pairs still reject for `Association`.
+- The new `src/viewpoints/useCase/AssociationEdge.tsx` renders the
+  edge as a plain solid line (UML use-case convention — no
+  arrowhead, no stereotype label). Optional multiplicities mirror
+  the BDD AssociationEdge geometry so they sit at the same canonical
+  distance from each endpoint.
+
+§ 6 (system-boundary chrome) remains deferred — that is a separate
+presentation concern not in scope of #517.

@@ -10,6 +10,7 @@ import {
   USE_CASE_ACTOR_HEIGHT,
   USE_CASE_ACTOR_NODE_TYPE,
   USE_CASE_ACTOR_WIDTH,
+  USE_CASE_ASSOCIATION_EDGE_TYPE,
   USE_CASE_EXTEND_EDGE_TYPE,
   USE_CASE_GENERALIZATION_EDGE_TYPE,
   USE_CASE_INCLUDE_EDGE_TYPE,
@@ -49,12 +50,15 @@ describe('Use Case viewpoint (ADR 0007)', () => {
     expect(useCaseViewpoint.label).toBe('Use Case Diagram');
     // Per ADR 0007 § 2: Actor + UseCase as first-class nodes.
     expect(useCaseViewpoint.acceptedElementKinds).toEqual(['Actor', 'UseCase']);
-    // Per ADR 0007 § 3+§ 4: Include + Extend are ModelEdges; Generalization
-    // is reused for actor-actor and use-case-use-case inheritance.
+    // Per ADR 0007 § 3+§ 4 + phase-15 #517 amendment: Include + Extend are
+    // ModelEdges; Generalization is reused for actor-actor and
+    // use-case-use-case inheritance; Association covers cross-kind
+    // Actor↔UseCase per the closed § 5 / § 7 deferral.
     expect(useCaseViewpoint.acceptedEdgeKinds).toEqual([
       'Include',
       'Extend',
       'Generalization',
+      'Association',
     ]);
     // Per ADR 0007 § 3 consequence: no element-as-edge kinds.
     expect(useCaseViewpoint.acceptedEdgeElementKinds).toEqual([]);
@@ -79,6 +83,7 @@ describe('Use Case viewpoint (ADR 0007)', () => {
         USE_CASE_INCLUDE_EDGE_TYPE,
         USE_CASE_EXTEND_EDGE_TYPE,
         USE_CASE_GENERALIZATION_EDGE_TYPE,
+        USE_CASE_ASSOCIATION_EDGE_TYPE,
       ].sort(),
     );
   });
@@ -125,7 +130,7 @@ describe('Use Case viewpoint (ADR 0007)', () => {
     );
   });
 
-  it('edgeTypeFor maps Include/Extend/Generalization to their use-case edge type strings', () => {
+  it('edgeTypeFor maps Include/Extend/Generalization/Association to their use-case edge type strings', () => {
     expect(
       useCaseViewpoint.edgeTypeFor({
         id: 'e-1' as never,
@@ -150,6 +155,14 @@ describe('Use Case viewpoint (ADR 0007)', () => {
         targetId: 'uc-2' as never,
       }),
     ).toBe(USE_CASE_GENERALIZATION_EDGE_TYPE);
+    expect(
+      useCaseViewpoint.edgeTypeFor({
+        id: 'e-4' as never,
+        kind: 'Association',
+        sourceId: 'actor-1' as never,
+        targetId: 'uc-1' as never,
+      }),
+    ).toBe(USE_CASE_ASSOCIATION_EDGE_TYPE);
   });
 
   it('edgeTypeFor throws for kinds Use Case does not accept', () => {

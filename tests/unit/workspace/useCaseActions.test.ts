@@ -210,7 +210,7 @@ describe('workspace store — Use Case actions', () => {
     expect(edgeId).not.toBeNull();
   });
 
-  it('linkUseCaseEdge rejects mixed Actor↔UseCase pairings (#119)', async () => {
+  it('linkUseCaseEdge rejects Include/Extend/Generalization for Actor↔UseCase (#517)', async () => {
     await bootstrap();
     const diagramId = ensureUseCaseDiagram();
     const actor = useWorkspaceStore
@@ -227,7 +227,71 @@ describe('workspace store — Use Case actions', () => {
     expect(
       useWorkspaceStore
         .getState()
+        .linkUseCaseEdge(actor!, useCase!, 'Extend'),
+    ).toBeNull();
+    expect(
+      useWorkspaceStore
+        .getState()
         .linkUseCaseEdge(actor!, useCase!, 'Generalization'),
+    ).toBeNull();
+  });
+
+  it('linkUseCaseEdge(Association) accepts Actor → UseCase (phase-15 #517)', async () => {
+    await bootstrap();
+    const diagramId = ensureUseCaseDiagram();
+    const actor = useWorkspaceStore
+      .getState()
+      .createActor(diagramId, { x: 0, y: 0 });
+    const useCase = useWorkspaceStore
+      .getState()
+      .createUseCase(diagramId, { x: 0, y: 100 });
+    const edgeId = useWorkspaceStore
+      .getState()
+      .linkUseCaseEdge(actor!, useCase!, 'Association');
+    expect(edgeId).not.toBeNull();
+    const edge = useWorkspaceStore
+      .getState()
+      .edges.find((e) => e.id === edgeId!);
+    expect(edge?.kind).toBe('Association');
+    expect(edge?.sourceId).toBe(actor);
+    expect(edge?.targetId).toBe(useCase);
+  });
+
+  it('linkUseCaseEdge(Association) accepts UseCase → Actor (phase-15 #517)', async () => {
+    await bootstrap();
+    const diagramId = ensureUseCaseDiagram();
+    const useCase = useWorkspaceStore
+      .getState()
+      .createUseCase(diagramId, { x: 0, y: 0 });
+    const actor = useWorkspaceStore
+      .getState()
+      .createActor(diagramId, { x: 0, y: 100 });
+    const edgeId = useWorkspaceStore
+      .getState()
+      .linkUseCaseEdge(useCase!, actor!, 'Association');
+    expect(edgeId).not.toBeNull();
+  });
+
+  it('linkUseCaseEdge(Association) rejects same-kind pairs (phase-15 #517)', async () => {
+    await bootstrap();
+    const diagramId = ensureUseCaseDiagram();
+    const a = useWorkspaceStore
+      .getState()
+      .createUseCase(diagramId, { x: 0, y: 0 });
+    const b = useWorkspaceStore
+      .getState()
+      .createUseCase(diagramId, { x: 0, y: 100 });
+    expect(
+      useWorkspaceStore.getState().linkUseCaseEdge(a!, b!, 'Association'),
+    ).toBeNull();
+    const a2 = useWorkspaceStore
+      .getState()
+      .createActor(diagramId, { x: 200, y: 0 });
+    const b2 = useWorkspaceStore
+      .getState()
+      .createActor(diagramId, { x: 200, y: 100 });
+    expect(
+      useWorkspaceStore.getState().linkUseCaseEdge(a2!, b2!, 'Association'),
     ).toBeNull();
   });
 

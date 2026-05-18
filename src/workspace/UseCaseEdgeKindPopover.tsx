@@ -33,6 +33,11 @@ const KINDS: ReadonlyArray<KindEntry> = [
     label: 'Generalization',
     hint: 'Source inherits from target (no stereotype label)',
   },
+  {
+    id: 'Association',
+    label: 'Association',
+    hint: 'Actor participates in the use case (plain solid line)',
+  },
 ];
 
 export function UseCaseEdgeKindPopover({

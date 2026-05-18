@@ -71,16 +71,16 @@ describe('isValidUseCaseConnection (ADR 0007 § 4)', () => {
     ).toBe(true);
   });
 
-  it('rejects Actor → UseCase and UseCase → Actor (no association in Phase 7)', () => {
+  it('accepts Actor ↔ UseCase in both directions (phase-15 #517 Association)', () => {
     const actor = mkActor('actor');
     const useCase = mkUseCase('uc');
     const registry = setup([actor, useCase]);
     expect(
       isValidUseCaseConnection({ source: actor.id, target: useCase.id, sourceHandle: null, targetHandle: null }, registry),
-    ).toBe(false);
+    ).toBe(true);
     expect(
       isValidUseCaseConnection({ source: useCase.id, target: actor.id, sourceHandle: null, targetHandle: null }, registry),
-    ).toBe(false);
+    ).toBe(true);
   });
 
   it('rejects self-loops', () => {
@@ -112,8 +112,15 @@ describe('defaultUseCaseEdgeKindFor', () => {
       'Generalization',
     );
   });
-  it('mixed → null', () => {
-    expect(defaultUseCaseEdgeKindFor(mkActor('a'), mkUseCase('b'))).toBeNull();
+  it('Actor → UseCase → Association (phase-15 #517)', () => {
+    expect(defaultUseCaseEdgeKindFor(mkActor('a'), mkUseCase('b'))).toBe(
+      'Association',
+    );
+  });
+  it('UseCase → Actor → Association (phase-15 #517)', () => {
+    expect(defaultUseCaseEdgeKindFor(mkUseCase('a'), mkActor('b'))).toBe(
+      'Association',
+    );
   });
 });
 
@@ -130,7 +137,14 @@ describe('allowedUseCaseEdgeKindsFor', () => {
       'Generalization',
     ]);
   });
-  it('mixed returns empty list', () => {
-    expect(allowedUseCaseEdgeKindsFor(mkActor('a'), mkUseCase('b'))).toEqual([]);
+  it('Actor → UseCase allows Association (phase-15 #517)', () => {
+    expect(allowedUseCaseEdgeKindsFor(mkActor('a'), mkUseCase('b'))).toEqual([
+      'Association',
+    ]);
+  });
+  it('UseCase → Actor allows Association (phase-15 #517)', () => {
+    expect(allowedUseCaseEdgeKindsFor(mkUseCase('a'), mkActor('b'))).toEqual([
+      'Association',
+    ]);
   });
 });
