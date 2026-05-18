@@ -18,6 +18,9 @@ import type {
 } from '@/model';
 import { ACTION_NODE_TYPE_VALUES, STATE_NODE_TYPE_VALUES } from '@/model';
 import { STANDARD_LIBRARY_INDEX, type LibraryIndex } from '@/library';
+import type { Diagram, DiagramContext } from '@/workspace/diagram';
+import { createDiagramId } from '@/workspace/diagram';
+import type { ViewpointId } from '@/viewpoints';
 
 export interface ParseError {
   readonly line: number;
@@ -36,6 +39,13 @@ export interface ParsedProject {
    * namespace resolution against the named packages lands in T-14.06.
    */
   readonly imports?: readonly string[];
+  /**
+   * Diagrams recovered from `view … { expose …; }` blocks. Absent (not an
+   * empty array) when the source contains no view blocks, so callers can
+   * distinguish "file had no views" from "file had views but they were all
+   * malformed" (the latter throws a ParseError before we get here).
+   */
+  readonly diagrams?: readonly Diagram[];
 }
 
 export type ParseResult =
@@ -80,6 +90,7 @@ type TokenType =
   | 'number'
   | 'punct'
   | 'idmark'
+  | 'viewpointmark'
   | 'arrow'
   | 'eof';
 
@@ -138,6 +149,18 @@ function tokenize(src: string): Token[] {
         tokens.push({
           type: 'idmark',
           value: m[1] ?? '',
+          line: startLine,
+          col: startCol,
+        });
+      }
+      // Recognise workbench-specific `// @viewpoint <kind>` decorator.
+      // The kind value is emitted as a `viewpointmark` token so the parser
+      // can associate it with the immediately following `view` block.
+      const vpMatch = /^\s*@viewpoint\s+([A-Za-z0-9_-]+)/.exec(body);
+      if (vpMatch !== null) {
+        tokens.push({
+          type: 'viewpointmark',
+          value: vpMatch[1] ?? '',
           line: startLine,
           col: startCol,
         });
@@ -314,6 +337,7 @@ class Parser {
   private projectId?: ProjectId;
   private projectName?: string;
   private readonly elements: ModelElement[] = [];
+  private readonly diagrams: Diagram[] = [];
 
   constructor(tokens: Token[], libraryIndex: LibraryIndex) {
     this.tokens = tokens;
@@ -331,6 +355,16 @@ class Parser {
     let topIndex = 0;
     while (this.peek().type !== 'eof') {
       const t = this.peek();
+
+      // Consume a `// @viewpoint <kind>` decorator token emitted by the
+      // tokenizer, then require the immediately-following `view` block.
+      if (t.type === 'viewpointmark') {
+        const vpTok = this.consume();
+        const viewpointId = vpTok.value as ViewpointId;
+        this.parseViewBlock(viewpointId);
+        continue;
+      }
+
       if (this.isImportDirective()) {
         const qn = this.parseImportDirective();
         imports.push(qn);
@@ -339,6 +373,12 @@ class Parser {
       }
       if (this.isEdgeKeyword(t.value)) {
         edges.push(this.parseEdge());
+        continue;
+      }
+      // A `view` keyword without a preceding `@viewpoint` decorator gets
+      // parsed with the default viewpointId of 'bdd'.
+      if (t.type === 'ident' && t.value === 'view') {
+        this.parseViewBlock('bdd' as ViewpointId);
         continue;
       }
       const loose = this.parseElement();
@@ -369,7 +409,93 @@ class Parser {
     if (imports.length > 0) {
       (result as { imports?: readonly string[] }).imports = imports;
     }
+    if (this.diagrams.length > 0) {
+      (result as { diagrams?: readonly Diagram[] }).diagrams = this.diagrams;
+    }
     return result;
+  }
+
+  /**
+   * Parses `view <ident> { // id: <uuid>\n  expose <ref> (:: <ref>)*; }`
+   * and pushes a `Diagram` record onto `this.diagrams`.
+   *
+   * The caller has already consumed any preceding `viewpointmark` token and
+   * passes its value as `viewpointId`. When called without a preceding mark
+   * the default `'bdd'` is used.
+   *
+   * Throws `ParserError` when:
+   *  - the `expose` path does not resolve to a known element, or
+   *  - the resolved element's kind is not one of the four supported context
+   *    kinds (package, partDefinition, actionDefinition, stateDefinition).
+   */
+  private parseViewBlock(viewpointId: ViewpointId): void {
+    this.expectIdent('view');
+    const nameTok = this.expectIdent();
+    const name = nameTok.value;
+    this.expectPunct('{');
+
+    // Optional `// id: <uuid>` trailing the opening brace.
+    let id: string | undefined;
+    if (this.peek().type === 'idmark') {
+      id = this.consume().value;
+    }
+
+    // `expose <segment> (:: <segment>)*;`
+    this.expectIdent('expose');
+    const pathSegments: string[] = [this.expectIdent().value];
+    while (this.peek().type === 'punct' && this.peek().value === '::') {
+      this.consume();
+      pathSegments.push(this.expectIdent().value);
+    }
+    this.expectPunct(';');
+    this.expectPunct('}');
+
+    // Resolve the path: the last segment's name resolves to an element id.
+    // nameToId is keyed by element name (short, unqualified) as built during
+    // parsing. We rely on unambiguous names within the project — the same
+    // assumption the rest of the parser makes for definition references.
+    const lastName = pathSegments[pathSegments.length - 1] ?? '';
+    const t = this.peek();
+    const contextId = this.nameToId.get(lastName);
+    if (contextId === undefined) {
+      throw new ParserError(
+        `view '${name}': expose target '${lastName}' could not be resolved — no element with that name was parsed`,
+        t.line,
+        t.col,
+      );
+    }
+
+    // Map element kind → DiagramContext kind. Only the four supported
+    // context kinds are valid; others indicate a malformed view block.
+    const contextEl = this.elements.find((e) => e.id === contextId);
+    // contextEl must exist because contextId came from nameToId which is
+    // only populated when an element is parsed — so this invariant holds.
+    const elKind = contextEl?.kind;
+    let contextKind: DiagramContext['kind'];
+    if (elKind === 'Package') {
+      contextKind = 'package';
+    } else if (elKind === 'PartDefinition') {
+      contextKind = 'partDefinition';
+    } else if (elKind === 'ActionDefinition') {
+      contextKind = 'actionDefinition';
+    } else if (elKind === 'StateDefinition') {
+      contextKind = 'stateDefinition';
+    } else {
+      throw new ParserError(
+        `view '${name}': expose target '${lastName}' has unsupported context kind '${elKind ?? 'unknown'}' — valid kinds are Package, PartDefinition, ActionDefinition, StateDefinition`,
+        t.line,
+        t.col,
+      );
+    }
+
+    const diagram: Diagram = {
+      id: (id ?? createDiagramId()) as Diagram['id'],
+      viewpointId,
+      name,
+      positions: {},
+      context: { kind: contextKind, id: contextId },
+    };
+    this.diagrams.push(diagram);
   }
 
   /**
