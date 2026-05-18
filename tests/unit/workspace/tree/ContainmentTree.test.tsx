@@ -1007,6 +1007,26 @@ describe('<ContainmentTree />', () => {
       ).toBeInTheDocument();
       expect(useWorkspaceStore.getState().activeDiagramId).toBe(first);
     });
+
+    // #462: in real browsers Playwright's default `.click()` lands at the
+    // centre of an element. When the diagram-name label is short and the
+    // kebab sits immediately after it, the centre coordinate of the row
+    // falls on the kebab button (which `stopPropagation`s) instead of the
+    // label, so the row's activation click handler never fires. The fix is
+    // structural: the label must consume the remaining horizontal space so
+    // the kebab is pushed to the right edge and the row's centre is always
+    // over the label.
+    it('diagram-row label fills the row width so the kebab is right-aligned (#462)', async () => {
+      await bootstrap();
+      const diagramId = useWorkspaceStore.getState().diagrams[0]!.id;
+
+      render(<ContainmentTree />);
+      const row = screen.getByTestId(`containment-tree-diagram-${diagramId}`);
+      const labelSpan = row.querySelector('span.truncate');
+      expect(labelSpan).not.toBeNull();
+      expect(labelSpan!.classList.contains('flex-1')).toBe(true);
+      expect(labelSpan!.classList.contains('min-w-0')).toBe(true);
+    });
   });
 
   describe('renameDiagram / deleteDiagram (T-13.33d store actions)', () => {
