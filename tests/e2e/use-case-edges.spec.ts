@@ -237,7 +237,7 @@ test.describe('Use Case edges — Include + Extend + Generalization (#119)', () 
     ).toHaveCount(1);
   });
 
-  test('drag Actor→UseCase is rejected silently (no popover, no edge)', async ({
+  test('drag Actor→UseCase opens popover; pick Association creates plain solid edge (phase-15 #517)', async ({
     page,
   }) => {
     await gotoUseCase(page);
@@ -246,12 +246,40 @@ test.describe('Use Case edges — Include + Extend + Generalization (#119)', () 
       bottomHandleOfActor(page, ACTOR_A_ID),
       topHandleOfUseCase(page, UC_A_ID),
     );
+    const popover = page.getByTestId('use-case-edge-kind-popover');
+    await expect(popover).toBeVisible();
+    // Association is the only allowed kind for Actor↔UseCase — others disabled.
     await expect(
-      page.getByTestId('use-case-edge-kind-popover'),
-    ).toHaveCount(0);
+      page.getByTestId('use-case-edge-kind-Include'),
+    ).toBeDisabled();
     await expect(
-      page.locator('[data-use-case-edge-kind]'),
-    ).toHaveCount(0);
+      page.getByTestId('use-case-edge-kind-Extend'),
+    ).toBeDisabled();
+    await expect(
+      page.getByTestId('use-case-edge-kind-Generalization'),
+    ).toBeDisabled();
+    await page.getByTestId('use-case-edge-kind-Association').click();
+    await expect(popover).toHaveCount(0);
+    await expect(
+      page.locator('g[data-association-edge="true"]'),
+    ).toHaveCount(1);
+  });
+
+  test('drag UseCase→Actor also opens popover for Association (phase-15 #517)', async ({
+    page,
+  }) => {
+    await gotoUseCase(page);
+    await dragHandle(
+      page,
+      bottomHandleOfUseCase(page, UC_A_ID),
+      topHandleOfActor(page, ACTOR_A_ID),
+    );
+    const popover = page.getByTestId('use-case-edge-kind-popover');
+    await expect(popover).toBeVisible();
+    await page.getByTestId('use-case-edge-kind-Association').click();
+    await expect(
+      page.locator('g[data-association-edge="true"]'),
+    ).toHaveCount(1);
   });
 
   test('Cmd-Z reverts an Include edge creation in one step', async ({
@@ -379,6 +407,24 @@ test.describe('Use Case edges — Include + Extend + Generalization (#119)', () 
     await page.mouse.move(0, 0);
     await expect(page).toHaveScreenshot(
       'use-case-with-generalization-edge.png',
+      { fullPage: false },
+    );
+  });
+
+  test('@visual use-case-with-association-edge baseline (phase-15 #517)', async ({
+    page,
+  }) => {
+    await gotoUseCase(page);
+    await dragHandle(
+      page,
+      bottomHandleOfActor(page, ACTOR_A_ID),
+      topHandleOfUseCase(page, UC_A_ID),
+    );
+    await page.getByTestId('use-case-edge-kind-Association').click();
+    await page.locator('body').click({ position: { x: 4, y: 4 } });
+    await page.mouse.move(0, 0);
+    await expect(page).toHaveScreenshot(
+      'use-case-with-association-edge.png',
       { fullPage: false },
     );
   });
