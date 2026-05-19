@@ -8,6 +8,33 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
 
 ## Discovered facts
 
+- **2026-05-19 (iter-901 — GitHub's PR auto-link parser closes issues from
+  narrative `close` keyword usage, not just `Closes #N` patterns):** PR #567
+  (walk-36 close-out, docs-only) shipped with the body phrase
+  `engineer batches close #562–#566` in its "Decide next" section. The intent
+  was narrative — "future engineer batches will close these issues." On
+  merge, GitHub's auto-link parser detected the closing keyword `close`
+  and matched it against the next `#NNN` it could find, silently closing
+  **#565** when the PR merged. The other four issues in the list (#562,
+  #563, #564, #566) were not affected because either (a) GitHub's parser
+  stops after the first match per closing keyword, or (b) the em-dash
+  range `#562–#566` is parsed unpredictably and the first parsable token
+  after the `close` keyword resolved to #565 specifically (the exact
+  parser behaviour is undocumented). Iter-901 caught this by cross-checking
+  STATUS.md's "Open phase:15 issues" claim (#563 + #565 open) against
+  `gh issue list --label phase:15 --state open`, which returned only
+  #563 + #566. **Rule:** never use `close`, `closes`, `closed`, `fix`,
+  `fixes`, `fixed`, `resolve`, `resolves`, or `resolved` as a verb in
+  any PR body or commit message that is **followed by `#NNN` within ~10
+  words**, unless you intend to auto-close that issue. For narrative
+  references to multiple issues, use neutral verbs: "engineer batches
+  will address #562–#566", "future PRs ship #562–#566", or list the
+  issues without an action verb at all. The closing-keyword detector is
+  case-insensitive and runs on PR bodies, PR titles, and commit messages
+  on merge. Recorded after #565 was reopened with a comment explaining
+  the accidental close; no implementation had shipped (zero `labelOffset`
+  occurrences in `src/`).
+
 - **2026-05-19 (iter-890 — `use-case-edge-*` testid prefix collides with
   the popover, polluting walk-driver `wait_for_function` polls):** Edge
   components emit `data-testid={`use-case-edge-${id}`}` (e.g.
