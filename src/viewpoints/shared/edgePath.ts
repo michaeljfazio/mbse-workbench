@@ -97,13 +97,14 @@ export interface EdgePathParams {
  * Computes the SVG path string and label anchor (labelX, labelY) for the
  * resolved routing style.
  *
- * Returns `[edgePath, labelX, labelY]` — same tuple shape as the React Flow
- * path helpers, so callers can destructure directly.
+ * Returns the same 5-element tuple as the React Flow path helpers
+ * `[edgePath, labelX, labelY, offsetX, offsetY]`. Callers may destructure
+ * only the first three elements.
  */
 export function computeEdgePath(
   params: EdgePathParams,
   routingStyle: EdgeRoutingStyle,
-): [string, number, number] {
+): [string, number, number, number, number] {
   const { sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition } =
     params;
 

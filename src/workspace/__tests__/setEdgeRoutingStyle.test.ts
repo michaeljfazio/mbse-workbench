@@ -81,7 +81,6 @@ function setEdgeRoutingStyle(
   const modelEdge = registry.getEdge(edgeId as EdgeId);
   if (modelEdge) {
     if ((modelEdge.routingStyle ?? undefined) === style) return false;
-    const prior = modelEdge.routingStyle;
     const patch: EdgePatch<typeof modelEdge.kind> = { routingStyle: style };
     bus.dispatch(
       {

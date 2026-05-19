@@ -187,4 +187,24 @@ test.describe('per-edge routing style inspector (issue #564) @a11y', () => {
     const value = await getEdgeRoutingStyle(page, EDGE_ID);
     expect(value).toBeUndefined();
   });
+
+  test('@visual bdd-composition-straight routing style baseline', async ({
+    page,
+  }) => {
+    await gotoCanvas(page);
+    await selectEdge(page, EDGE_ID);
+
+    await expect(page.getByTestId('edge-routing-style')).toBeVisible();
+    await page.getByTestId('edge-routing-style-straight').click();
+    expect(await getEdgeRoutingStyle(page, EDGE_ID)).toBe('straight');
+
+    // Deselect to get a clean canvas view
+    await page.keyboard.press('Escape');
+    await page.mouse.move(0, 0);
+
+    const canvasLocator = page.locator('.react-flow__viewport');
+    await expect(canvasLocator).toHaveScreenshot('bdd-composition-straight.png', {
+      maxDiffPixelRatio: 0.01,
+    });
+  });
 });

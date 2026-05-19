@@ -233,4 +233,24 @@ test.describe('per-edge stroke style inspector (issue #566) @a11y', () => {
 
     expect(await getEdgeStrokeColor(page, EDGE_ID)).toBe('#ff0000');
   });
+
+  test('@visual bdd-composition-dashed stroke style baseline', async ({
+    page,
+  }) => {
+    await gotoCanvas(page);
+    await selectEdge(page, EDGE_ID);
+
+    await expect(page.getByTestId('edge-stroke-style')).toBeVisible();
+    await page.getByTestId('edge-stroke-style-dashed').click();
+    expect(await getEdgeStrokeStyle(page, EDGE_ID)).toBe('dashed');
+
+    // Deselect to get a clean canvas view
+    await page.keyboard.press('Escape');
+    await page.mouse.move(0, 0);
+
+    const canvasLocator = page.locator('.react-flow__viewport');
+    await expect(canvasLocator).toHaveScreenshot('bdd-composition-dashed.png', {
+      maxDiffPixelRatio: 0.01,
+    });
+  });
 });
