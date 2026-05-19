@@ -2982,7 +2982,7 @@ function EdgeStyleControls({
               className={`flex-1 rounded px-1.5 py-1 text-[10px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                 effectiveRouting === value
                   ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
+                  : 'text-foreground'
               }`}
             >
               {label}
@@ -3012,7 +3012,7 @@ function EdgeStyleControls({
               className={`flex-1 rounded px-1.5 py-1 text-[10px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
                 effectiveStroke === value
                   ? 'bg-background text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
+                  : 'text-foreground'
               }`}
             >
               {label}
