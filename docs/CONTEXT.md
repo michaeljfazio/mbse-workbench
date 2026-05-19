@@ -8,6 +8,38 @@ Each entry is one paragraph max, dated, and explains *why* it matters.
 
 ## Discovered facts
 
+- **2026-05-19 (iter-902 — correction to iter-901: GitHub's PR auto-link
+  parser closed THREE issues from PR #567's narrative, not just #565):**
+  Iter-902 re-checked the close-by-PR references for every issue in the
+  `#562–#566` range mentioned in PR #567's "engineer batches close
+  #562–#566" phrasing. Result: `#562` (closed 01:00:06Z by #567 + #568),
+  `#564` (closed 01:00:06Z by #567 + #571), `#565` (closed 01:00:07Z by
+  #567 only — iter-901 reopened this one). The iter-901 narrative's
+  claim that "the other four issues were not affected" was wrong; #562
+  and #564 were also false-positive closed by #567, but the loss was
+  invisible because (a) #562 was subsequently closed by its proper PR
+  #568 (iter-896, `Closes #562`) so the end state is correct, and (b)
+  #564 is referenced by PR #571's `Closes #564` clause (iter-897), so
+  when #571 merges GitHub will record #571 as an additional closer
+  but the issue stays closed. **Implication 1:** the GitHub auto-link
+  parser CAN match multiple `#NNN` from a single closing keyword — it
+  is not "stops after first match per keyword" as iter-901 hypothesised.
+  Exact parsing of `#NNN–#MMM` em-dash ranges remains unpredictable;
+  #562 + #564 + #565 closed but #563 + #566 in the same range did
+  not. **Implication 2:** iter-901's cross-check was incomplete. The
+  rule "compare open-issues list to STATUS's claim" only catches
+  *currently-open* discrepancies. To also catch silent false-positive
+  closes that happen to coincide with intended future closes, the
+  cross-check must also examine `closedByPullRequestsReferences` for
+  any issue listed as "will close via PR #N" in STATUS — if the
+  closer-PR list includes any PR other than the expected one, that's
+  a false-positive close to investigate. **Rule refinement:** during
+  PR-sweep iters, run `gh issue list --label phase:15 --state closed
+  --search "closed:>=<recent-window>"` and cross-check `closedByPRs`
+  for any issue STATUS expects to be closed by a still-in-flight PR.
+  The iter-901 rule (no close-keyword near #NNN) still holds; this
+  entry adds the multi-issue + cross-check refinements.
+
 - **2026-05-19 (iter-901 — GitHub's PR auto-link parser closes issues from
   narrative `close` keyword usage, not just `Closes #N` patterns):** PR #567
   (walk-36 close-out, docs-only) shipped with the body phrase
