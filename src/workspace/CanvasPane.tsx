@@ -14,6 +14,7 @@ import {
   type Node,
   type NodeChange,
   type OnNodeDrag,
+  type HandleType,
 } from '@xyflow/react';
 
 import type {
@@ -219,6 +220,7 @@ function CanvasInner(): JSX.Element {
     (s) => s.linkParameterBinding,
   );
   const linkPackageImport = useWorkspaceStore((s) => s.linkPackageImport);
+  const reconnectEdge = useWorkspaceStore((s) => s.reconnectEdge);
   const moveElementBetweenPackages = useWorkspaceStore(
     (s) => s.moveElementBetweenPackages,
   );
@@ -489,6 +491,46 @@ function CanvasInner(): JSX.Element {
       isConnectingRef.current = false;
     }, 250);
   }, []);
+
+  // ── Edge reconnect handlers (dim-17 PC1, issue #562) ─────────────────────
+  // React Flow v12 shows `.react-flow__edgeupdater` grip circles on selected
+  // edges when both `edgesReconnectable={true}` and `onReconnect` are set.
+  // Dragging a grip calls onReconnect(oldEdge, newConnection); the new
+  // endpoint is validated by the same `isValidConnection` prop before this
+  // callback fires (first line of defense), and again inside `reconnectEdge`
+  // for defense in depth.
+  const onReconnectStart = useCallback(() => {
+    isConnectingRef.current = true;
+  }, []);
+
+  const onReconnect = useCallback(
+    (oldEdge: Edge, newConnection: Connection) => {
+      // The edge id is either a ModelEdge id or an ElementId for
+      // element-as-edge kinds (ConnectionUsage / ItemFlow / Transition).
+      // Disambiguate via the registry — same pattern used in onEdgesChange.
+      const end: 'source' | 'target' =
+        oldEdge.source !== newConnection.source ? 'source' : 'target';
+      const newNodeId = (
+        end === 'source' ? newConnection.source : newConnection.target
+      ) as ElementId;
+      // For IBD, the handle carries the PortUsage id; pass it so the store
+      // action can resolve the correct endpoint. For all other viewpoints the
+      // handle is undefined/null and the store uses the node id directly.
+      const newHandleId =
+        end === 'source' ? (newConnection.sourceHandle ?? null) : (newConnection.targetHandle ?? null);
+      reconnectEdge(oldEdge.id as EdgeId, end, newNodeId, newHandleId);
+    },
+    [reconnectEdge],
+  );
+
+  const onReconnectEnd = useCallback(
+    (_event: MouseEvent | TouchEvent, _edge: Edge, _handleType: HandleType) => {
+      setTimeout(() => {
+        isConnectingRef.current = false;
+      }, 250);
+    },
+    [],
+  );
 
   const onConnect = useCallback(
     (connection: Connection) => {
@@ -1303,6 +1345,10 @@ function CanvasInner(): JSX.Element {
           onConnect={onConnect}
           onConnectStart={onConnectStart}
           onConnectEnd={onConnectEnd}
+          edgesReconnectable={true}
+          onReconnect={onReconnect}
+          onReconnectStart={onReconnectStart}
+          onReconnectEnd={onReconnectEnd}
           onNodeDrag={onNodeDrag}
           onNodeDragStop={onNodeDragStop}
           onNodeContextMenu={onNodeContextMenu}
