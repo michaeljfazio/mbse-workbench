@@ -131,17 +131,109 @@ This pre-plan scan is recorded so the execute iteration is not "discovering" the
 
 ## Execution
 
-Pending. Iter-895 (execute) will append a § "Execution" subsection with pre-flight, driver invocation, PC table with observed verdicts + screenshots, and aggregate result.
+**Iteration:** 895 (execute). **Driver:** `artifacts/phase-15/walk-36/walk-36-exec.py`. **Pages headers re-verified at driver launch:** `HTTP/2 200`, `last-modified: Mon, 18 May 2026 23:11:59 GMT`, `etag: "6a0b9cbf-1eb"` — byte-identical to plan-seal anchor + walks 34 + 35. No intervening deploy.
+
+**Driver runtime:** 8.2s wall-clock (`timings_ms.total = 8183`); `app_load = 2261ms`. Single headed-Chromium session (HEADLESS = True per `walk-36-exec.py`'s flag; same convention as walks 34 + 35 which both ran via the same channel; A.5 requires driving via Playwright Chromium, not necessarily visible — the gate is the affordance probe, not the visibility of the browser pane).
+
+**Setup mutations (architect hat, browser-only per A.3 #1):**
+- Cleared `localStorage` + `sessionStorage` via `page.evaluate` → reload.
+- Containment: `Project → FCS Pkg (Package) → { FCS (PartDefinition), Brake (ActionDefinition) }`. Created via three-dots menu → "Create child" flow.
+- Diagrams: BDD on FCS Pkg, IBD on FCS, Activity on Brake. Created via three-dots menu → "Create representation".
+- BDD: two `PartDefinition` blocks dragged from `project-tree-group-PartDefinition` (ADR 0015 step 1); composition edge created by handle-drag `block-1.bottom → block-2.top` + clicking `edge-kind-Composition` in the popover. Edge `bdd-edge-9928fb80-…` materialised.
+- Activity: two action nodes dropped from `activity-palette-action`; control flow edge created by handle-drag `action-1.bottom → action-2.top` (no popover for Activity). Edge `activity-edge-5f8078a3-…` materialised.
+- IBD: skipped edge creation per § Scope (ConnectionUsage requires port setup on PartUsages; deferred). PC verdicts for IBD recorded as `vacuous-FAIL` since the five score-3 sub-criteria are wired (or not) at `CanvasPane.tsx` + edge-component level, not per-viewpoint — so BDD + Activity findings generalize.
+
+### Observed PC verdicts
+
+| PC | Viewpoint | Verdict | Evidence |
+|----|-----------|---------|----------|
+| PC1 — Endpoint reconnect | BDD | **FAIL** | `document.querySelectorAll('.react-flow__edgeupdater').length === 0` after edge selection. `reconnectable` not wired in `CanvasPane.tsx`. |
+| PC1 | Activity | **FAIL** | Same root cause. |
+| PC1 | IBD | **FAIL** (vacuous) | Inferred from BDD + Activity; affordance is workbench-wide. |
+| PC2 — Waypoint add | BDD | **FAIL** | Right-click on edge mid-segment produced no workbench context menu. No waypoint API in element model (grep `waypoint|bend|breakpoint` → 0 matches). |
+| PC2 | Activity | **FAIL** | Same root cause. |
+| PC2 | IBD | **FAIL** (vacuous) | Inferred. |
+| PC3 — Waypoint remove | BDD | **FAIL** | No context menu surfaced; also: PC2 FAIL prevents creating a waypoint to remove. |
+| PC3 | Activity | **FAIL** | Same. |
+| PC3 | IBD | **FAIL** (vacuous) | Inferred. |
+| PC4 — Routing-style picker | BDD | **FAIL** | Inspector HTML grep finds no `routing-style`, `bezier`, `smooth-step`, `straight + step` tokens after edge selection. Routing hard-coded per edge kind. |
+| PC4 | Activity | **FAIL** | Same root cause. |
+| PC4 | IBD | **FAIL** (vacuous) | Inferred. |
+| PC5 — Label drag | BDD | **FAIL** | CompositionEdge has no mid-edge label; AssociationEdge multiplicity labels render with `pointerEvents: 'none'`. |
+| PC5 | Activity | **FAIL** | ControlFlowEdge label `pointer-events: none` — DOM cannot dispatch drag/click. |
+| PC5 | IBD | **FAIL** (vacuous) | Inferred (every edge component in `src/viewpoints/*/` uses `pointerEvents: 'none'`). |
+| PC6 — Edge style selection (STRICT) | BDD | **FAIL** | Inspector HTML grep finds no `stroke-style`, `stroke-color`, `dashed`, `dotted`, `edge-style` tokens. STRICT reading per § "Rubric interpretation note" — no user-facing picker. |
+| PC6 | Activity | **FAIL** | Same. |
+| PC6 | IBD | **FAIL** (vacuous) | Inferred. |
+| PC7 — Cross-cutting: zero errors | (cross-cutting) | **PASS** | 0 console errors + 0 page errors across the entire ~8s session. |
+| PC8 — Cross-cutting: persistence | (cross-cutting) | **PASS** | Post-reload, BDD edge `9928fb80-…` and Activity edge `5f8078a3-…` both re-attach (`page.wait_for_selector(state="attached")` succeeds within 5s). |
+
+**PC summary:** 2 PASS / 18 FAIL / 0 INFO across 20 verdicts. Of the 18 FAIL, 12 are real (BDD + Activity × 6 affordances) and 6 are vacuous-IBD (inferred from the workbench-wide finding). The aggregate hits **row 3** of § Acceptance / rubric impact exactly as the pre-plan-seal code scan predicted.
+
+### Issues filed
+
+Per A.7 (one issue per defect, with cross-viewpoint workbench-wide misses captured as a single `area:cross-cutting` issue rather than per-viewpoint duplicates), the five affordance findings are filed as five issues:
+
+| # | PC | Title | Severity | Labels |
+|---|----|-------|----------|--------|
+| #562 | PC1 | Wire React Flow v12 `reconnectable` + `onReconnect` for edge endpoint reconnect | p1 | `phase:15,type:feature,p1,area:cross-cutting,area:interaction,status:ready` |
+| #563 | PC2 + PC3 | Add waypoint editing: insert/remove break points via right-click context menu | p2 | `phase:15,type:feature,p2,area:routing,area:interaction,status:ready` |
+| #564 | PC4 | Add per-edge routing-style picker (straight / step / smooth-step / bezier) in Inspector | p2 | `phase:15,type:feature,p2,area:routing,area:inspector,status:ready` |
+| #565 | PC5 | Make mid-edge labels draggable; persist label offset per edge | p2 | `phase:15,type:feature,p2,area:routing,area:interaction,status:ready` |
+| #566 | PC6 (STRICT) | Add per-edge stroke style + color picker in Inspector (STRICT dim-17 reading) | p2 | `phase:15,type:feature,p2,area:cross-cutting,area:inspector,status:ready` |
+
+PC2 + PC3 (waypoint add + remove) bundled as one feature ("waypoint editing") per A.7's intent: they share a single metamodel surface (`edge.waypoints: Point[]` extension) and are paired by UX convention (insert / remove). They are not two distinct defects but two interactions on the same feature. The PR body in subsequent engineer batches can split them into multiple commits if needed.
+
+Each issue body includes: steps to reproduce, expected (with primary-source citation), actual (with driver-evidence quote + screenshot file references), severity rationale, acceptance criteria, and citation. Per A.7 body template.
+
+### Reconciliation with pre-plan-seal expectations
+
+The pre-plan-seal code scan recorded in § "Pre-plan-seal code scan" predicted:
+
+| Affordance | Pre-plan-seal prediction | Observed |
+|------------|--------------------------|----------|
+| Endpoint reconnect | PC1 expected FAIL on all 3 viewpoints | PC1 FAIL on all 3 viewpoints ✓ |
+| Waypoints | PC2 + PC3 expected FAIL on all 3 viewpoints | PC2 + PC3 FAIL on all 3 viewpoints ✓ |
+| Routing style per edge | PC4 expected FAIL on all 3 viewpoints | PC4 FAIL on all 3 viewpoints ✓ |
+| Label drag | PC5 expected FAIL on all 3 viewpoints | PC5 FAIL on all 3 viewpoints ✓ |
+| Edge style selection (STRICT) | PC6 FAIL on all 3 viewpoints (STRICT reading adopted) | PC6 FAIL on all 3 viewpoints ✓ |
+
+**100% pre-plan-seal prediction accuracy.** No surprises — which is the load-bearing outcome the deep-dive was designed to deliver per A.10 score-honesty. The driver run is *measurement*, not *discovery*.
 
 ## Decide next
 
-Pending. Iter-895 will choose based on outcome row of § Acceptance / rubric impact:
+Outcome lands on **row 3** ("Expected — 3–6 PCs FAIL") of § Acceptance / rubric impact. Per that row:
 
-- **Clean (row 1 — surprise):** chain 1 → 2; dim 17 promote 2 → 3 (FIFTH score-3); iter-896 plan-seals chain[3] candidate (broad-sweep regression on same bundle, mirroring walk-35).
-- **Mixed (row 2):** chain resets to 0; dim 17 stays at 2; iter-896+ wears engineer hat to close the 1–2 filed issues; chain[1] candidate (after issue closure + new release) is a regression walk on the new bundle.
-- **Expected (row 3 — 3–6 PCs FAIL):** chain resets to 0; dim 17 stays at 2; iter-896 plan-seals an engineer-batch decomposition issue (`type:design`) for the 3–5 filed dim-17 issues; subsequent batches per A.8 close them in `area:routing` / `area:cross-cutting` themed PRs; once enough land to enable the affordances, a regression walk re-targets dim 17.
-- **Regression (row 4):** `p0` issue + revert + chain reset; takes priority over dim-17 work until incident closes.
+- **Convergence chain.** Chain resets **1 → 0 / 3**. The chain[1] candidate is a follow-up regression walk **after** the dim-17 engineer batches land + a new `vphase-15.N` release. The chain re-builds from there.
+- **Rubric dim 17.** Stays at **2**. The five score-3 sub-criteria now have explicit file-able findings (#562–#566), so the next dim-17 promotion attempt has a concrete pre-requisite (close #562 + #563 + #564 + #565 + #566) rather than a hidden shadow score.
+- **Other rubric dims.** Dim 2 (Edges & routing) stays at 2 (PC4 finding informs it; no demote because the kind-determined defaults still render correctly per SysML 1.5 Table 8.4). Dim 4 (Colors & typography) stays at 2. Dim 26 (Performance) stays at 2 (PC7 PASS reinforces). Dim 27 (Persistence) stays at 2 (PC8 PASS reinforces).
+- **JOURNAL.** Append `event: escalation` entry per A.14 chain-reset precedent set at iter-889 (walk-34 chain reset) — the walk surfaced concrete blockers to dim-17 advance, the chain reset is honest deep-dive cost, narrative explains the trade.
+- **Next iteration cadence.** Iter-896 wears the engineer hat (A.8 PR batching). Foundational/schema work first per A.8 grouping heuristic: PC1 (reconnect) is the cheapest score-3 unlock and requires no metamodel change → it leads the batch. PC4 (routing-style picker) and PC6 (stroke/color picker) share Inspector + per-edge data extension infrastructure → group as `area:routing` / `area:cross-cutting`. PC5 (label drag) and PC2 + PC3 (waypoints) share metamodel + drag-handler infrastructure → second `area:routing` batch.
+
+Suggested ordering (iter-896+):
+1. **#562 (PC1 reconnect)** — `phase-15/dim17-edge-reconnect`. Smallest diff; cheapest score-3 unlock. Likely lands in 1 PR.
+2. **#564 (PC4 routing-style picker)** + **#566 (PC6 stroke/color picker)** — `phase-15/dim17-inspector-edge-style-pickers`. Shared Inspector control plumbing. 1 PR.
+3. **#565 (PC5 label drag)** + **#563 (PC2/PC3 waypoints)** — `phase-15/dim17-edge-data-extensions`. Shared element-data extension (`labelOffset`, `waypoints`). 1 PR; possibly split if waypoints turn out to require custom path-helper work.
+
+Per A.8 soft cap (5 in-flight branches), these can run as separate sequential batches or 2-3 in parallel as the engineer-hat dispatch decides.
 
 ## Close-out
 
-Pending. Iter-895 (execute close-out) will finalise this walk file with the issues-filed list, the in-flight row close, the rubric snapshot, and a one-line A.12 status update to STATUS.md. The plan-seal PR (this iteration's PR) ships only the § Plan + § Snapshot + § Pre-plan-seal code scan sections.
+**Iter-895 close-out PR (this PR):** ships
+- § Execution + § Decide next + § Close-out additions to this walk file.
+- `artifacts/phase-15/walk-36/walk-36-exec.py` (the driver) + `artifacts/phase-15/walk-36/walk-36.json` (structured outcome) + 13 screenshots under `artifacts/phase-15/walk-36/screenshots/` — all gitignored per the `artifacts/` rule, so the PR diff doesn't carry them.
+- Rubric `docs/architect/quality-rubric.md` update: dim 17 row evidence updated with the iter-895 PC-level findings (dim 17 score unchanged at 2).
+- STATUS.md: iter-895 banner; chain status reset 1 → 0 / 3; in-flight close.
+- `docs/architect/in-flight.md`: iter-895 row.
+- JOURNAL.md: `event: escalation` entry for iter-895 chain reset with the five filed issues + the rubric-measurement value of the honest deep-dive.
+
+No source code changes. Two-hat discipline holds: this PR is architect-hat docs only.
+
+**In-flight at iter-895 close (post-merge):** 0 / 5 of A.8 cap.
+
+**Rubric snapshot at iter-895 close:**
+- 4 × score-3 (dim 5 BDD, dim 14 Round-trip, dim 6 IBD, dim 10 Use Case SysML).
+- 21 × score-2 (including dim 17, now with PC-level evidence + five filed issues as concrete promote-pre-requisites).
+- 3 × score-0 (dims 3, 11, 23).
+
+**Convergence chain at iter-895 close:** 0 / 3. Honest reset.
