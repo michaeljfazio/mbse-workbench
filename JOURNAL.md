@@ -1025,3 +1025,28 @@ Phase 13 ships zero library content. Phase 13's design accommodates Phase 14 via
 - AGENT.md A.12 (termination conditions) / A.14 (journal triggers): https://github.com/michaeljfazio/mbse-workbench/blob/main/AGENT.md
 
 ---
+
+## Iteration 893 — 2026-05-19 — Walk-35 lands row 1: dim 10 (Use Case SysML conformance) promotes to 3 (FOURTH score-3 dim); convergence chain 0 → 1 / 3
+
+**Event:** design-decision
+
+**Phase:** phase:15 — Architect-driven UX & feature hardening
+
+**Narrative:** Walk-35 was the corrected-driver retry that walk-34 had set up but couldn't complete. Walk-34's use-case V-B step had reported a PRIMARY-passes-SECONDARY-fails partition on Actor↔UseCase Association, which iter-890's investigation traced to two compounding driver artefacts rather than an application bug — the walk driver's `[data-testid^="use-case-edge-"]` selector matched both real edge testids and the popover testids that ADR 0007 § 4 stages between drag and edge-creation, and the driver never clicked `use-case-edge-kind-Association` to commit the popover. Iter-890's lock-in e2e test at `tests/e2e/use-case-edges.spec.ts` proved the application has been bidirectional since PR #531 / `vphase-15.10` shipped at iter-879, but A.3 #3's no-silent-rubric-promotion corollary required a deployed-bundle architect walk with a non-artefactual driver to license the dim-10 promotion. Walk-35 was that walk. Iter-891 plan-sealed the corrected driver (tightened probe to `g[data-association-edge="true"]`; added popover-visibility wait + `use-case-edge-kind-Association` commit click after each drag), iter-892 executed it against the byte-identical Pages anchor as walk-34 (`last-modified: Mon, 18 May 2026 23:11:59 GMT`, `etag: "6a0b9cbf-1eb"`), and the outcome landed on row 1 of walk-35.md § Acceptance / rubric impact exactly as predicted: 23/24 PASS + 1 INFO (X-7 unchanged), use-case V-B PASS bidirectional in both PRIMARY (`usecase.right → actor.left`) and SECONDARY (`actor.right → usecase.left`) directions, zero new issues filed, zero rubric demotion. Per the iter-834 / iter-867 broader-interpretation precedent for A.14 (each subsequent dim at 3 treated as a notable moment, even though A.14's literal trigger names only the first), this entry marks dim 10 promotion to 3 — the FOURTH score-3 dimension (after dim 5 BDD at iter-826, dim 14 Round-trip integrity at iter-834, dim 6 IBD at iter-867). All six dim-10 score-3 criteria are now satisfied with cited evidence: ellipses, actor stick figures, Association bidirectional on Actor↔UseCase, `include`, `extend`, generalization between use cases, generalization between actors; the system-boundary chrome was explicitly deferred per ADR 0007 § 5 and is a separate decoration concern outside the relationship set per walk-35.md § Acceptance / rubric impact row 1. The structural lesson this iteration consolidates is **the gap between a unit-level lock-in test and an architect-walk's deployed-bundle confirmation is not procedural overhead — it is the load-bearing distinction that lets the rubric promote honestly**. Iter-890's lock-in test proved the *code* was right. Walk-35 proved the *deployed bundle* — the artefact a real architect would touch — behaves right when probed by a driver that talks to the ADR-prescribed UI contract (popover-mediated kind selection) rather than a stale prefix heuristic. The two together are what A.3 #3 means by "no silent rubric promotion." Convergence chain (A.12 #3) advances 0 → 1 / 3; walk-36 (chain[2] candidate, plan-seal in iter-894+) is provisionally a dedicated dim-17 walk per iter-876's post-dim-10 plan — edge editing affordances (reconnect endpoints, waypoints, label placement, edge style selection), currently at score 2 and the lightest path to chain[2] against the same deployed bundle. Termination state after iter-893 close: A.12 #1 advances to 4 × score-3 (dim 5 BDD, dim 6 IBD, dim 10 Use Case SysML, dim 14 Round-trip integrity) + 21 × score-2 + 3 × score-0 (dims 3, 11, 23); A.12 #2 fully satisfied (zero open `phase:15 type:bug/feature/design`); A.12 #3 at chain[1 / 3]; A.12 #4 still gated on chain saturation + rubric saturation.
+
+**Links:**
+- Walk-35 file (full plan + execution + decide-next + close-out): https://github.com/michaeljfazio/mbse-workbench/blob/main/docs/architect/walks/walk-35.md
+- Iter-891 walk-35 plan-seal PR: https://github.com/michaeljfazio/mbse-workbench/pull/555
+- Iter-892 walk-35 execute commit: `d5627b5`
+- Iter-893 close-out PR (this iteration): closes #556
+- Iter-890 lock-in e2e test PR (`tests/e2e/use-case-edges.spec.ts`): https://github.com/michaeljfazio/mbse-workbench/pull/553
+- Iter-889 walk-34 escalation entry (chain reset 1 → 0): https://github.com/michaeljfazio/mbse-workbench/blob/main/JOURNAL.md
+- Iter-826 dim 5 BDD → 3 (FIRST score-3, A.14 literal trigger): https://github.com/michaeljfazio/mbse-workbench/blob/main/JOURNAL.md
+- Iter-834 dim 14 Round-trip → 3 (SECOND, broader-interpretation precedent): https://github.com/michaeljfazio/mbse-workbench/blob/main/JOURNAL.md
+- Iter-867 dim 6 IBD → 3 (THIRD): https://github.com/michaeljfazio/mbse-workbench/blob/main/JOURNAL.md
+- ADR 0007 (Use-Case Diagram shape) § 4 popover-mediated kind selection / § 5 system-boundary deferral: https://github.com/michaeljfazio/mbse-workbench/blob/main/docs/adr/0007-use-case-diagram-shape.md
+- Quality rubric (dim 10 promoted): https://github.com/michaeljfazio/mbse-workbench/blob/main/docs/architect/quality-rubric.md
+- Live app (`vphase-15.10` / `v1.6.1` deploy — walk-35 target): https://michaeljfazio.github.io/mbse-workbench/
+- AGENT.md A.3 #3 (no silent rubric promotion) / A.10 / A.12 / A.14: https://github.com/michaeljfazio/mbse-workbench/blob/main/AGENT.md
+
+---
