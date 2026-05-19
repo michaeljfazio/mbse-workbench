@@ -1,14 +1,22 @@
 import {
   BaseEdge,
-  getSmoothStepPath,
   type Edge,
   type EdgeProps,
 } from '@xyflow/react';
 
 import type { EdgeId } from '@/model';
+import {
+  computeEdgePath,
+  defaultRoutingStyleForType,
+  defaultStrokeStyleForType,
+  strokeDasharray,
+} from '../shared/edgePath';
 
 export interface UseCaseGeneralizationEdgeData extends Record<string, unknown> {
   readonly edgeId: EdgeId;
+  readonly routingStyle?: string;
+  readonly strokeStyle?: string;
+  readonly strokeColor?: string;
 }
 
 export type UseCaseGeneralizationFlowEdge = Edge<
@@ -28,19 +36,26 @@ export function GeneralizationEdge({
   sourcePosition,
   targetPosition,
   selected,
+  data,
 }: EdgeProps<UseCaseGeneralizationFlowEdge>): JSX.Element {
-  const [edgePath] = getSmoothStepPath({
-    sourceX,
-    sourceY,
-    targetX,
-    targetY,
-    sourcePosition,
-    targetPosition,
-    borderRadius: 4,
-  });
+  const routingStyle =
+    (data?.routingStyle as Parameters<typeof computeEdgePath>[1] | undefined) ??
+    defaultRoutingStyleForType(USE_CASE_GENERALIZATION_EDGE_TYPE);
+  const [edgePath] = computeEdgePath(
+    { sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition },
+    routingStyle,
+  );
+
+  const strokeStyleValue =
+    (data?.strokeStyle as Parameters<typeof strokeDasharray>[0] | undefined) ??
+    defaultStrokeStyleForType(USE_CASE_GENERALIZATION_EDGE_TYPE);
+  const dashArray = strokeDasharray(strokeStyleValue);
+  const strokeColor = data?.strokeColor ?? undefined;
 
   const markerId = `use-case-gen-triangle-${id}`;
-  const stroke = selected ? 'hsl(var(--primary))' : 'currentColor';
+  const stroke = selected
+    ? 'hsl(var(--primary))'
+    : (strokeColor ?? 'currentColor');
   const strokeWidth = selected ? 2.5 : 1.75;
 
   return (
@@ -78,6 +93,7 @@ export function GeneralizationEdge({
           stroke,
           strokeWidth,
           color: stroke,
+          ...(dashArray !== undefined ? { strokeDasharray: dashArray } : {}),
         }}
       />
     </g>

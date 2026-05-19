@@ -1,16 +1,24 @@
 import {
   BaseEdge,
   EdgeLabelRenderer,
-  getSmoothStepPath,
   type Edge,
   type EdgeProps,
 } from '@xyflow/react';
 
 import type { EdgeId } from '@/model';
+import {
+  computeEdgePath,
+  defaultRoutingStyleForType,
+  defaultStrokeStyleForType,
+  strokeDasharray,
+} from '../shared/edgePath';
 
 export interface ParameterBindingEdgeData extends Record<string, unknown> {
   readonly edgeId: EdgeId;
   readonly label?: string;
+  readonly routingStyle?: string;
+  readonly strokeStyle?: string;
+  readonly strokeColor?: string;
 }
 
 export type ParameterBindingFlowEdge = Edge<
@@ -35,20 +43,26 @@ export function ParameterBindingEdge({
   selected,
   data,
 }: EdgeProps<ParameterBindingFlowEdge>): JSX.Element {
-  const [edgePath, labelX, labelY] = getSmoothStepPath({
-    sourceX,
-    sourceY,
-    targetX,
-    targetY,
-    sourcePosition,
-    targetPosition,
-    borderRadius: 4,
-  });
+  const routingStyle =
+    (data?.routingStyle as Parameters<typeof computeEdgePath>[1] | undefined) ??
+    defaultRoutingStyleForType(PARAMETRIC_PARAMETER_BINDING_EDGE_TYPE);
+  const [edgePath, labelX, labelY] = computeEdgePath(
+    { sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition },
+    routingStyle,
+  );
+
+  const strokeStyleValue =
+    (data?.strokeStyle as Parameters<typeof strokeDasharray>[0] | undefined) ??
+    defaultStrokeStyleForType(PARAMETRIC_PARAMETER_BINDING_EDGE_TYPE);
+  const dashArray = strokeDasharray(strokeStyleValue);
+  const strokeColor = data?.strokeColor ?? undefined;
 
   const userLabel = data?.label;
   const markerStartId = `parametric-binding-start-${id}`;
   const markerEndId = `parametric-binding-end-${id}`;
-  const stroke = selected ? 'hsl(var(--primary))' : 'currentColor';
+  const stroke = selected
+    ? 'hsl(var(--primary))'
+    : (strokeColor ?? 'currentColor');
   const strokeWidth = selected ? 2 : 1.5;
 
   return (
@@ -86,6 +100,7 @@ export function ParameterBindingEdge({
           stroke,
           strokeWidth,
           color: stroke,
+          ...(dashArray !== undefined ? { strokeDasharray: dashArray } : {}),
         }}
       />
       {userLabel ? (

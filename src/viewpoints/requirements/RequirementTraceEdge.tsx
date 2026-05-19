@@ -1,17 +1,25 @@
 import {
   BaseEdge,
   EdgeLabelRenderer,
-  getSmoothStepPath,
   type Edge,
   type EdgeProps,
 } from '@xyflow/react';
 
 import type { EdgeId, RequirementTraceKind } from '@/model';
+import {
+  computeEdgePath,
+  defaultRoutingStyleForType,
+  defaultStrokeStyleForType,
+  strokeDasharray,
+} from '../shared/edgePath';
 
 export interface RequirementTraceEdgeData extends Record<string, unknown> {
   readonly edgeId: EdgeId;
   readonly traceKind: RequirementTraceKind;
   readonly label?: string;
+  readonly routingStyle?: string;
+  readonly strokeStyle?: string;
+  readonly strokeColor?: string;
 }
 
 export type RequirementTraceFlowEdge = Edge<
@@ -20,11 +28,6 @@ export type RequirementTraceFlowEdge = Edge<
 >;
 
 export const REQUIREMENTS_TRACE_EDGE_TYPE = 'requirements-trace' as const;
-
-// SysML 1.6 §9.1.4.5: every trace dependency (derive, satisfy, verify,
-// refine) is a UML dependency — dashed line with an open arrowhead at the
-// target end. The stereotype keyword carries the discriminator.
-const TRACE_DASH_PATTERN = '6 4';
 
 export function RequirementTraceEdge({
   id,
@@ -37,21 +40,26 @@ export function RequirementTraceEdge({
   selected,
   data,
 }: EdgeProps<RequirementTraceFlowEdge>): JSX.Element {
-  const [edgePath, labelX, labelY] = getSmoothStepPath({
-    sourceX,
-    sourceY,
-    targetX,
-    targetY,
-    sourcePosition,
-    targetPosition,
-    borderRadius: 4,
-  });
+  const routingStyle =
+    (data?.routingStyle as Parameters<typeof computeEdgePath>[1] | undefined) ??
+    defaultRoutingStyleForType(REQUIREMENTS_TRACE_EDGE_TYPE);
+  const [edgePath, labelX, labelY] = computeEdgePath(
+    { sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition },
+    routingStyle,
+  );
+
+  const strokeStyleValue =
+    (data?.strokeStyle as Parameters<typeof strokeDasharray>[0] | undefined) ??
+    defaultStrokeStyleForType(REQUIREMENTS_TRACE_EDGE_TYPE);
+  const dashArray = strokeDasharray(strokeStyleValue);
+  const strokeColor = data?.strokeColor ?? undefined;
 
   const traceKind = data?.traceKind ?? 'satisfy';
   const userLabel = data?.label;
   const markerId = `req-trace-${id}`;
-  const dashArray = TRACE_DASH_PATTERN;
-  const stroke = selected ? 'hsl(var(--primary))' : 'currentColor';
+  const stroke = selected
+    ? 'hsl(var(--primary))'
+    : (strokeColor ?? 'currentColor');
   const strokeWidth = selected ? 2 : 1.5;
 
   return (
@@ -87,8 +95,8 @@ export function RequirementTraceEdge({
         style={{
           stroke,
           strokeWidth,
-          strokeDasharray: dashArray,
           color: stroke,
+          ...(dashArray !== undefined ? { strokeDasharray: dashArray } : {}),
         }}
       />
       <EdgeLabelRenderer>

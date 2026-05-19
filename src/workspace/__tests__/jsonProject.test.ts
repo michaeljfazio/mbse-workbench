@@ -3,8 +3,14 @@ import { describe, expect, it } from 'vitest';
 import { createDiagramId } from '@/workspace/diagram';
 import type { Diagram } from '@/workspace/diagram';
 import { bddViewpoint } from '@/viewpoints';
-import { createElementId, createProjectId } from '@/model';
-import type { ModelElement, PackageElement, PartDefinitionElement } from '@/model';
+import { createEdgeId, createElementId, createProjectId } from '@/model';
+import type {
+  CompositionEdge,
+  ModelEdge,
+  ModelElement,
+  PackageElement,
+  PartDefinitionElement,
+} from '@/model';
 import type { Project } from '@/repository/types';
 import { EMPTY_COMMAND_HISTORY } from '@/repository/types';
 
@@ -117,5 +123,79 @@ describe('jsonProject', () => {
     if (!result.ok) return;
     expect(result.project.history).toEqual(EMPTY_COMMAND_HISTORY);
     expect(result.project.conversations).toEqual([]);
+  });
+
+  it('round-trips a non-default routingStyle on a ModelEdge (refs #564)', () => {
+    const project = makeProject();
+    const elements = project.elements as ModelElement[];
+    const blockA = elements.find((e) => e.kind === 'PartDefinition')!;
+    const blockB: PartDefinitionElement = {
+      kind: 'PartDefinition',
+      id: createElementId(),
+      name: 'Block 2',
+      isAbstract: false,
+      ownerId: blockA.ownerId,
+      ownerRole: 'member',
+      ownerIndex: 1,
+    };
+    const edge: CompositionEdge = {
+      kind: 'Composition',
+      id: createEdgeId(),
+      sourceId: blockA.id,
+      targetId: blockB.id,
+      routingStyle: 'straight',
+    };
+    const projectWithEdge: Project = {
+      ...project,
+      elements: [...project.elements, blockB],
+      edges: [edge] as readonly ModelEdge[],
+    };
+    const text = serializeProjectJson(projectWithEdge);
+    const parsed = parseProjectJson(text);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    const roundTrippedEdge = stripStandardLibrary(parsed.project).edges.find(
+      (e) => e.id === edge.id,
+    );
+    expect(roundTrippedEdge).toBeDefined();
+    expect(roundTrippedEdge?.routingStyle).toBe('straight');
+  });
+
+  it('round-trips non-default strokeStyle and strokeColor on a ModelEdge (refs #566)', () => {
+    const project = makeProject();
+    const elements = project.elements as ModelElement[];
+    const blockA = elements.find((e) => e.kind === 'PartDefinition')!;
+    const blockB: PartDefinitionElement = {
+      kind: 'PartDefinition',
+      id: createElementId(),
+      name: 'Block 3',
+      isAbstract: false,
+      ownerId: blockA.ownerId,
+      ownerRole: 'member',
+      ownerIndex: 1,
+    };
+    const edge: CompositionEdge = {
+      kind: 'Composition',
+      id: createEdgeId(),
+      sourceId: blockA.id,
+      targetId: blockB.id,
+      strokeStyle: 'dashed',
+      strokeColor: '#ff0000',
+    };
+    const projectWithEdge: Project = {
+      ...project,
+      elements: [...project.elements, blockB],
+      edges: [edge] as readonly ModelEdge[],
+    };
+    const text = serializeProjectJson(projectWithEdge);
+    const parsed = parseProjectJson(text);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    const roundTrippedEdge = stripStandardLibrary(parsed.project).edges.find(
+      (e) => e.id === edge.id,
+    );
+    expect(roundTrippedEdge).toBeDefined();
+    expect(roundTrippedEdge?.strokeStyle).toBe('dashed');
+    expect(roundTrippedEdge?.strokeColor).toBe('#ff0000');
   });
 });

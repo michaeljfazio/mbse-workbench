@@ -1,17 +1,25 @@
 import {
   BaseEdge,
   EdgeLabelRenderer,
-  getBezierPath,
   type Edge,
   type EdgeProps,
 } from '@xyflow/react';
 
 import type { ElementId } from '@/model';
+import {
+  computeEdgePath,
+  defaultRoutingStyleForType,
+  defaultStrokeStyleForType,
+  strokeDasharray,
+} from '../shared/edgePath';
 
 export interface IbdItemFlowEdgeData extends Record<string, unknown> {
   readonly elementId: ElementId;
   readonly name: string;
   readonly itemType: string | undefined;
+  readonly routingStyle?: string;
+  readonly strokeStyle?: string;
+  readonly strokeColor?: string;
 }
 
 export type IbdItemFlowEdge = Edge<IbdItemFlowEdgeData, 'ibd-item-flow'>;
@@ -29,17 +37,24 @@ export function ItemFlowEdge({
   selected,
   data,
 }: EdgeProps<IbdItemFlowEdge>): JSX.Element {
-  const [edgePath, labelX, labelY] = getBezierPath({
-    sourceX,
-    sourceY,
-    targetX,
-    targetY,
-    sourcePosition,
-    targetPosition,
-  });
+  const routingStyle =
+    (data?.routingStyle as Parameters<typeof computeEdgePath>[1] | undefined) ??
+    defaultRoutingStyleForType(IBD_ITEM_FLOW_EDGE_TYPE);
+  const [edgePath, labelX, labelY] = computeEdgePath(
+    { sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition },
+    routingStyle,
+  );
+
+  const strokeStyleValue =
+    (data?.strokeStyle as Parameters<typeof strokeDasharray>[0] | undefined) ??
+    defaultStrokeStyleForType(IBD_ITEM_FLOW_EDGE_TYPE);
+  const dashArray = strokeDasharray(strokeStyleValue);
+  const strokeColor = data?.strokeColor ?? undefined;
 
   const markerId = `ibd-itemflow-arrow-${id}`;
-  const stroke = selected ? 'hsl(var(--primary))' : 'hsl(var(--foreground))';
+  const stroke = selected
+    ? 'hsl(var(--primary))'
+    : (strokeColor ?? 'hsl(var(--foreground))');
   const itemType = data?.itemType ?? '';
   const name = data?.name ?? '';
   const labelText = itemType.length > 0 ? itemType : name;
@@ -69,6 +84,7 @@ export function ItemFlowEdge({
           stroke,
           strokeWidth: selected ? 2.5 : 1.5,
           fill: 'none',
+          ...(dashArray !== undefined ? { strokeDasharray: dashArray } : {}),
         }}
       />
       {hasLabel ? (

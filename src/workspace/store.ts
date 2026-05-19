@@ -11,6 +11,8 @@ import type {
   ControlFlowEdge,
   EdgeId,
   EdgePatch,
+  EdgeRoutingStyle,
+  EdgeStrokeStyle,
   ElementId,
   ElementKind,
   ElementPatch,
@@ -394,6 +396,13 @@ export interface WorkspaceActions {
   // Pass empty string to clear. Issue #434.
   setAssociationSourceMultiplicity(id: EdgeId, multiplicity: string): void;
   setAssociationTargetMultiplicity(id: EdgeId, multiplicity: string): void;
+  // Per-edge routing style (#564) and stroke style/color (#566).
+  // Works for both ModelEdge (by EdgeId) and element-as-edges (by ElementId:
+  // ConnectionUsage, ItemFlow, Transition).
+  setEdgeRoutingStyle(id: EdgeId | ElementId, style: EdgeRoutingStyle): boolean;
+  setEdgeStrokeStyle(id: EdgeId | ElementId, style: EdgeStrokeStyle): boolean;
+  /** Pass `undefined` or empty string to reset to the kind default. */
+  setEdgeStrokeColor(id: EdgeId | ElementId, color: string | undefined): boolean;
   setNodePosition(
     diagramId: DiagramId,
     elementId: ElementId,
@@ -1876,6 +1885,95 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
     if ((existing.targetMultiplicity ?? undefined) === next) return;
     const patch: EdgePatch<'Association'> = { targetMultiplicity: next };
     bus.dispatch({ kind: 'update-edge', id, patch }, user);
+  },
+
+  setEdgeRoutingStyle(id, style) {
+    const { bus, user, registry } = get();
+    if (!bus || !user || !registry) return false;
+
+    // ── ModelEdge path ──────────────────────────────────────────────────────
+    const modelEdge = registry.getEdge(id as EdgeId);
+    if (modelEdge) {
+      if ((modelEdge.routingStyle ?? undefined) === style) return false;
+      const patch: EdgePatch<typeof modelEdge.kind> = { routingStyle: style };
+      bus.dispatch({ kind: 'update-edge', id: modelEdge.id, patch }, user);
+      return true;
+    }
+
+    // ── Element-as-edge path ─────────────────────────────────────────────────
+    const element = registry.get(id as ElementId);
+    if (!element) return false;
+    if (
+      element.kind !== 'ConnectionUsage' &&
+      element.kind !== 'ItemFlow' &&
+      element.kind !== 'Transition'
+    ) {
+      return false;
+    }
+    if ((element.routingStyle ?? undefined) === style) return false;
+    const patch: ElementPatch<typeof element.kind> = { routingStyle: style };
+    bus.dispatch({ kind: 'update-element', id: element.id, patch }, user);
+    return true;
+  },
+
+  setEdgeStrokeStyle(id, style) {
+    const { bus, user, registry } = get();
+    if (!bus || !user || !registry) return false;
+
+    // ── ModelEdge path ──────────────────────────────────────────────────────
+    const modelEdge = registry.getEdge(id as EdgeId);
+    if (modelEdge) {
+      if ((modelEdge.strokeStyle ?? undefined) === style) return false;
+      const patch: EdgePatch<typeof modelEdge.kind> = { strokeStyle: style };
+      bus.dispatch({ kind: 'update-edge', id: modelEdge.id, patch }, user);
+      return true;
+    }
+
+    // ── Element-as-edge path ─────────────────────────────────────────────────
+    const element = registry.get(id as ElementId);
+    if (!element) return false;
+    if (
+      element.kind !== 'ConnectionUsage' &&
+      element.kind !== 'ItemFlow' &&
+      element.kind !== 'Transition'
+    ) {
+      return false;
+    }
+    if ((element.strokeStyle ?? undefined) === style) return false;
+    const patch: ElementPatch<typeof element.kind> = { strokeStyle: style };
+    bus.dispatch({ kind: 'update-element', id: element.id, patch }, user);
+    return true;
+  },
+
+  setEdgeStrokeColor(id, color) {
+    const { bus, user, registry } = get();
+    if (!bus || !user || !registry) return false;
+    // Normalize empty string to undefined so it removes the override cleanly.
+    const normalizedColor = color === '' ? undefined : color;
+
+    // ── ModelEdge path ──────────────────────────────────────────────────────
+    const modelEdge = registry.getEdge(id as EdgeId);
+    if (modelEdge) {
+      if ((modelEdge.strokeColor ?? undefined) === normalizedColor) return false;
+      const patch: EdgePatch<typeof modelEdge.kind> = { strokeColor: normalizedColor };
+      bus.dispatch({ kind: 'update-edge', id: modelEdge.id, patch }, user);
+      return true;
+    }
+
+    // ── Element-as-edge path ─────────────────────────────────────────────────
+    const element = registry.get(id as ElementId);
+    if (!element) return false;
+    if (
+      element.kind !== 'ConnectionUsage' &&
+      element.kind !== 'ItemFlow' &&
+      element.kind !== 'Transition'
+    ) {
+      return false;
+    }
+    if ((element.strokeColor ?? undefined) === normalizedColor) return false;
+    const patch: ElementPatch<typeof element.kind> = { strokeColor: normalizedColor };
+    bus.dispatch({ kind: 'update-element', id: element.id, patch }, user);
+    return true;
   },
 
   setNodePosition(diagramId, elementId, position) {

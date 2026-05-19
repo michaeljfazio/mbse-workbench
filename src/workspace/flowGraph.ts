@@ -251,6 +251,11 @@ export function toFlowEdges(
       data.sourceMultiplicity = e.sourceMultiplicity;
       data.targetMultiplicity = e.targetMultiplicity;
     }
+    // Per-edge style overrides (refs #564 #566). Only set in data when
+    // explicitly stored — edge components fall back to kind defaults when absent.
+    if (e.routingStyle !== undefined) data.routingStyle = e.routingStyle;
+    if (e.strokeStyle !== undefined) data.strokeStyle = e.strokeStyle;
+    if (e.strokeColor !== undefined) data.strokeColor = e.strokeColor;
     out.push({
       id: e.id,
       type: viewpoint.edgeTypeFor(e),
@@ -306,6 +311,10 @@ export function toFlowEdges(
         targetHandleId = endpoints.targetHandleId;
         if (el.kind === 'ItemFlow') data.itemType = el.itemType;
       }
+      // Per-edge style overrides for element-as-edges (refs #564 #566).
+      if (el.routingStyle !== undefined) data.routingStyle = el.routingStyle;
+      if (el.strokeStyle !== undefined) data.strokeStyle = el.strokeStyle;
+      if (el.strokeColor !== undefined) data.strokeColor = el.strokeColor;
       out.push({
         id: el.id,
         type: viewpoint.edgeTypeForElement(el),

@@ -1,12 +1,17 @@
 import {
   BaseEdge,
   EdgeLabelRenderer,
-  getBezierPath,
   type Edge,
   type EdgeProps,
 } from '@xyflow/react';
 
 import type { ElementId } from '@/model';
+import {
+  computeEdgePath,
+  defaultRoutingStyleForType,
+  defaultStrokeStyleForType,
+  strokeDasharray,
+} from '../shared/edgePath';
 
 export interface StateMachineTransitionEdgeData extends Record<string, unknown> {
   readonly elementId: ElementId;
@@ -14,6 +19,9 @@ export interface StateMachineTransitionEdgeData extends Record<string, unknown> 
   readonly trigger: string | undefined;
   readonly guard: string | undefined;
   readonly effect: string | undefined;
+  readonly routingStyle?: string;
+  readonly strokeStyle?: string;
+  readonly strokeColor?: string;
 }
 
 export type StateMachineTransitionFlowEdge = Edge<
@@ -47,6 +55,8 @@ export function composeTransitionLabel(data: {
   return `${head} / ${effect}`;
 }
 
+export const STATE_MACHINE_TRANSITION_EDGE_TYPE = 'state-machine-transition' as const;
+
 export function TransitionEdge({
   id,
   sourceX,
@@ -58,17 +68,24 @@ export function TransitionEdge({
   selected,
   data,
 }: EdgeProps<StateMachineTransitionFlowEdge>): JSX.Element {
-  const [edgePath, labelX, labelY] = getBezierPath({
-    sourceX,
-    sourceY,
-    targetX,
-    targetY,
-    sourcePosition,
-    targetPosition,
-  });
+  const routingStyle =
+    (data?.routingStyle as Parameters<typeof computeEdgePath>[1] | undefined) ??
+    defaultRoutingStyleForType(STATE_MACHINE_TRANSITION_EDGE_TYPE);
+  const [edgePath, labelX, labelY] = computeEdgePath(
+    { sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition },
+    routingStyle,
+  );
+
+  const strokeStyleValue =
+    (data?.strokeStyle as Parameters<typeof strokeDasharray>[0] | undefined) ??
+    defaultStrokeStyleForType(STATE_MACHINE_TRANSITION_EDGE_TYPE);
+  const dashArray = strokeDasharray(strokeStyleValue);
+  const strokeColor = data?.strokeColor ?? undefined;
 
   const markerId = `state-transition-${id}`;
-  const stroke = selected ? 'hsl(var(--primary))' : 'hsl(var(--foreground))';
+  const stroke = selected
+    ? 'hsl(var(--primary))'
+    : (strokeColor ?? 'hsl(var(--foreground))');
   const label = composeTransitionLabel({
     trigger: data?.trigger,
     guard: data?.guard,
@@ -103,6 +120,7 @@ export function TransitionEdge({
           stroke,
           strokeWidth: selected ? 2.5 : 1.5,
           fill: 'none',
+          ...(dashArray !== undefined ? { strokeDasharray: dashArray } : {}),
         }}
       />
       {label.length > 0 ? (

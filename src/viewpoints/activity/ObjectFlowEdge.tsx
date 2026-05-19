@@ -1,17 +1,25 @@
 import {
   BaseEdge,
   EdgeLabelRenderer,
-  getBezierPath,
   type Edge,
   type EdgeProps,
 } from '@xyflow/react';
 
 import type { EdgeId } from '@/model';
+import {
+  computeEdgePath,
+  defaultRoutingStyleForType,
+  defaultStrokeStyleForType,
+  strokeDasharray,
+} from '../shared/edgePath';
 
 export interface ActivityObjectFlowEdgeData extends Record<string, unknown> {
   readonly edgeId: EdgeId;
   readonly itemType?: string;
   readonly label?: string;
+  readonly routingStyle?: string;
+  readonly strokeStyle?: string;
+  readonly strokeColor?: string;
 }
 
 export type ActivityObjectFlowFlowEdge = Edge<
@@ -32,17 +40,24 @@ export function ActivityObjectFlowEdge({
   selected,
   data,
 }: EdgeProps<ActivityObjectFlowFlowEdge>): JSX.Element {
-  const [edgePath, labelX, labelY] = getBezierPath({
-    sourceX,
-    sourceY,
-    targetX,
-    targetY,
-    sourcePosition,
-    targetPosition,
-  });
+  const routingStyle =
+    (data?.routingStyle as Parameters<typeof computeEdgePath>[1] | undefined) ??
+    defaultRoutingStyleForType(ACTIVITY_OBJECT_FLOW_EDGE_TYPE);
+  const [edgePath, labelX, labelY] = computeEdgePath(
+    { sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition },
+    routingStyle,
+  );
+
+  const strokeStyleValue =
+    (data?.strokeStyle as Parameters<typeof strokeDasharray>[0] | undefined) ??
+    defaultStrokeStyleForType(ACTIVITY_OBJECT_FLOW_EDGE_TYPE);
+  const dashArray = strokeDasharray(strokeStyleValue);
+  const strokeColor = data?.strokeColor ?? undefined;
 
   const markerId = `activity-objectflow-${id}`;
-  const stroke = selected ? 'hsl(var(--primary))' : 'hsl(var(--foreground))';
+  const stroke = selected
+    ? 'hsl(var(--primary))'
+    : (strokeColor ?? 'hsl(var(--foreground))');
   const itemType = data?.itemType;
   const userLabel = data?.label;
   const labelText = itemType ?? userLabel;
@@ -80,8 +95,8 @@ export function ActivityObjectFlowEdge({
         style={{
           stroke,
           strokeWidth: selected ? 2.5 : 1.5,
-          strokeDasharray: '6 4',
           fill: 'none',
+          ...(dashArray !== undefined ? { strokeDasharray: dashArray } : {}),
         }}
       />
       {labelText ? (

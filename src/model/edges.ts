@@ -1,10 +1,40 @@
 import type { EdgeId, ElementId } from './id';
 
+/**
+ * Per-edge routing style. When absent, each edge component falls back to its
+ * kind-default (see `edgePath.ts` `defaultRoutingStyleForKind`). Setting an
+ * explicit value overrides the kind default and persists across JSON round-trips.
+ *
+ * Refs #564
+ */
+export type EdgeRoutingStyle = 'straight' | 'step' | 'smooth-step' | 'bezier';
+
+/**
+ * Per-edge stroke style. When absent, each edge component falls back to its
+ * kind-default (dashed for Dependency / RequirementTrace / Include / Extend /
+ * PackageImport; solid for all others). Setting an explicit value overrides the
+ * kind default and persists across JSON round-trips.
+ *
+ * SysML 1.5 Table 8.4 / v2 §7.13: line style is load-bearing semantics for
+ * several edge kinds. The default per kind already encodes the SysML convention;
+ * this optional field lets a user deviate (e.g. highlight a dependency with a
+ * solid line for an impact-analysis diagram).
+ *
+ * Refs #566
+ */
+export type EdgeStrokeStyle = 'solid' | 'dashed' | 'dotted';
+
 interface EdgeBase {
   readonly id: EdgeId;
   readonly sourceId: ElementId;
   readonly targetId: ElementId;
   label?: string;
+  /** Optional per-edge routing style. Absent = kind default. Refs #564. */
+  routingStyle?: EdgeRoutingStyle;
+  /** Optional per-edge stroke style. Absent = kind default. Refs #566. */
+  strokeStyle?: EdgeStrokeStyle;
+  /** Optional per-edge stroke color as a CSS color string. Absent = currentColor. Refs #566. */
+  strokeColor?: string;
 }
 
 export type RequirementTraceKind = 'satisfy' | 'verify' | 'derive' | 'refine';

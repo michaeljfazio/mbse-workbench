@@ -1,12 +1,17 @@
 import {
   BaseEdge,
   EdgeLabelRenderer,
-  getSmoothStepPath,
   type Edge,
   type EdgeProps,
 } from '@xyflow/react';
 
 import type { EdgeId } from '@/model';
+import {
+  computeEdgePath,
+  defaultRoutingStyleForType,
+  defaultStrokeStyleForType,
+  strokeDasharray,
+} from '../shared/edgePath';
 
 export interface BddAssociationEdgeData extends Record<string, unknown> {
   readonly edgeId: EdgeId;
@@ -14,6 +19,9 @@ export interface BddAssociationEdgeData extends Record<string, unknown> {
   // renders blank — same look as the pre-#434 plain-line edge.
   readonly sourceMultiplicity?: string;
   readonly targetMultiplicity?: string;
+  readonly routingStyle?: string;
+  readonly strokeStyle?: string;
+  readonly strokeColor?: string;
 }
 
 export type BddAssociationEdge = Edge<BddAssociationEdgeData, 'bdd-association'>;
@@ -53,15 +61,19 @@ export function AssociationEdge({
   selected,
   data,
 }: EdgeProps<BddAssociationEdge>): JSX.Element {
-  const [edgePath] = getSmoothStepPath({
-    sourceX,
-    sourceY,
-    targetX,
-    targetY,
-    sourcePosition,
-    targetPosition,
-    borderRadius: 4,
-  });
+  const routingStyle =
+    (data?.routingStyle as Parameters<typeof computeEdgePath>[1] | undefined) ??
+    defaultRoutingStyleForType(BDD_ASSOCIATION_EDGE_TYPE);
+  const [edgePath] = computeEdgePath(
+    { sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition },
+    routingStyle,
+  );
+
+  const strokeStyleValue =
+    (data?.strokeStyle as Parameters<typeof strokeDasharray>[0] | undefined) ??
+    defaultStrokeStyleForType(BDD_ASSOCIATION_EDGE_TYPE);
+  const dashArray = strokeDasharray(strokeStyleValue);
+  const strokeColor = data?.strokeColor ?? undefined;
 
   // Position the labels along the straight chord between the endpoints.
   // getSmoothStepPath bends the rendered path orthogonally, but the chord
@@ -78,6 +90,10 @@ export function AssociationEdge({
   const sourceMult = data?.sourceMultiplicity;
   const targetMult = data?.targetMultiplicity;
 
+  const baseStroke = selected
+    ? 'hsl(var(--primary))'
+    : (strokeColor ?? 'currentColor');
+
   // SysML 1.x BDD convention: association is a plain line with no end
   // adornments. Optional multiplicity labels at each end carry the
   // cardinality (`1`, `0..*`, ...).
@@ -87,9 +103,10 @@ export function AssociationEdge({
         id={id}
         path={edgePath}
         style={{
-          stroke: selected ? 'hsl(var(--primary))' : 'currentColor',
+          stroke: baseStroke,
           strokeWidth: selected ? 2.5 : 1.75,
-          color: selected ? 'hsl(var(--primary))' : 'hsl(var(--foreground))',
+          color: selected ? 'hsl(var(--primary))' : (strokeColor ?? 'hsl(var(--foreground))'),
+          ...(dashArray !== undefined ? { strokeDasharray: dashArray } : {}),
         }}
       />
       {sourceMult ? (

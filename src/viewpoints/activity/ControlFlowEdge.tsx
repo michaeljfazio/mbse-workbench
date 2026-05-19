@@ -1,17 +1,25 @@
 import {
   BaseEdge,
   EdgeLabelRenderer,
-  getBezierPath,
   type Edge,
   type EdgeProps,
 } from '@xyflow/react';
 
 import type { EdgeId } from '@/model';
+import {
+  computeEdgePath,
+  defaultRoutingStyleForType,
+  defaultStrokeStyleForType,
+  strokeDasharray,
+} from '../shared/edgePath';
 
 export interface ActivityControlFlowEdgeData extends Record<string, unknown> {
   readonly edgeId: EdgeId;
   readonly guard?: string;
   readonly label?: string;
+  readonly routingStyle?: string;
+  readonly strokeStyle?: string;
+  readonly strokeColor?: string;
 }
 
 export type ActivityControlFlowFlowEdge = Edge<
@@ -32,17 +40,24 @@ export function ActivityControlFlowEdge({
   selected,
   data,
 }: EdgeProps<ActivityControlFlowFlowEdge>): JSX.Element {
-  const [edgePath, labelX, labelY] = getBezierPath({
-    sourceX,
-    sourceY,
-    targetX,
-    targetY,
-    sourcePosition,
-    targetPosition,
-  });
+  const routingStyle =
+    (data?.routingStyle as Parameters<typeof computeEdgePath>[1] | undefined) ??
+    defaultRoutingStyleForType(ACTIVITY_CONTROL_FLOW_EDGE_TYPE);
+  const [edgePath, labelX, labelY] = computeEdgePath(
+    { sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition },
+    routingStyle,
+  );
+
+  const strokeStyleValue =
+    (data?.strokeStyle as Parameters<typeof strokeDasharray>[0] | undefined) ??
+    defaultStrokeStyleForType(ACTIVITY_CONTROL_FLOW_EDGE_TYPE);
+  const dashArray = strokeDasharray(strokeStyleValue);
+  const strokeColor = data?.strokeColor ?? undefined;
 
   const markerId = `activity-controlflow-${id}`;
-  const stroke = selected ? 'hsl(var(--primary))' : 'hsl(var(--foreground))';
+  const stroke = selected
+    ? 'hsl(var(--primary))'
+    : (strokeColor ?? 'hsl(var(--foreground))');
   const guard = data?.guard;
   const userLabel = data?.label;
 
@@ -74,6 +89,7 @@ export function ActivityControlFlowEdge({
           stroke,
           strokeWidth: selected ? 2.5 : 1.5,
           fill: 'none',
+          ...(dashArray !== undefined ? { strokeDasharray: dashArray } : {}),
         }}
       />
       {guard || userLabel ? (

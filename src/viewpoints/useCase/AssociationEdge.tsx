@@ -1,12 +1,17 @@
 import {
   BaseEdge,
   EdgeLabelRenderer,
-  getSmoothStepPath,
   type Edge,
   type EdgeProps,
 } from '@xyflow/react';
 
 import type { EdgeId } from '@/model';
+import {
+  computeEdgePath,
+  defaultRoutingStyleForType,
+  defaultStrokeStyleForType,
+  strokeDasharray,
+} from '../shared/edgePath';
 
 export interface UseCaseAssociationEdgeData extends Record<string, unknown> {
   readonly edgeId: EdgeId;
@@ -16,6 +21,9 @@ export interface UseCaseAssociationEdgeData extends Record<string, unknown> {
   // multiplicity-annotated import remains visible.
   readonly sourceMultiplicity?: string;
   readonly targetMultiplicity?: string;
+  readonly routingStyle?: string;
+  readonly strokeStyle?: string;
+  readonly strokeColor?: string;
 }
 
 export type UseCaseAssociationFlowEdge = Edge<
@@ -53,15 +61,19 @@ export function AssociationEdge({
   selected,
   data,
 }: EdgeProps<UseCaseAssociationFlowEdge>): JSX.Element {
-  const [edgePath] = getSmoothStepPath({
-    sourceX,
-    sourceY,
-    targetX,
-    targetY,
-    sourcePosition,
-    targetPosition,
-    borderRadius: 4,
-  });
+  const routingStyle =
+    (data?.routingStyle as Parameters<typeof computeEdgePath>[1] | undefined) ??
+    defaultRoutingStyleForType(USE_CASE_ASSOCIATION_EDGE_TYPE);
+  const [edgePath] = computeEdgePath(
+    { sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition },
+    routingStyle,
+  );
+
+  const strokeStyleValue =
+    (data?.strokeStyle as Parameters<typeof strokeDasharray>[0] | undefined) ??
+    defaultStrokeStyleForType(USE_CASE_ASSOCIATION_EDGE_TYPE);
+  const dashArray = strokeDasharray(strokeStyleValue);
+  const strokeColor = data?.strokeColor ?? undefined;
 
   const { tx, ty } = unitTangent(sourceX, sourceY, targetX, targetY);
   const sourceLabelX = sourceX + tx * ENDPOINT_LABEL_INSET_PX - ty * ENDPOINT_LABEL_OFFSET_PX;
@@ -69,7 +81,9 @@ export function AssociationEdge({
   const targetLabelX = targetX - tx * ENDPOINT_LABEL_INSET_PX - ty * ENDPOINT_LABEL_OFFSET_PX;
   const targetLabelY = targetY - ty * ENDPOINT_LABEL_INSET_PX + tx * ENDPOINT_LABEL_OFFSET_PX;
 
-  const stroke = selected ? 'hsl(var(--primary))' : 'currentColor';
+  const stroke = selected
+    ? 'hsl(var(--primary))'
+    : (strokeColor ?? 'currentColor');
   const strokeWidth = selected ? 2.5 : 1.75;
   const sourceMult = data?.sourceMultiplicity;
   const targetMult = data?.targetMultiplicity;
@@ -90,6 +104,7 @@ export function AssociationEdge({
           stroke,
           strokeWidth,
           color: stroke,
+          ...(dashArray !== undefined ? { strokeDasharray: dashArray } : {}),
         }}
       />
       {sourceMult ? (

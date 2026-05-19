@@ -1,16 +1,24 @@
 import {
   BaseEdge,
   EdgeLabelRenderer,
-  getBezierPath,
   type Edge,
   type EdgeProps,
 } from '@xyflow/react';
 
 import type { ElementId } from '@/model';
+import {
+  computeEdgePath,
+  defaultRoutingStyleForType,
+  defaultStrokeStyleForType,
+  strokeDasharray,
+} from '../shared/edgePath';
 
 export interface IbdConnectionUsageEdgeData extends Record<string, unknown> {
   readonly elementId: ElementId;
   readonly name: string;
+  readonly routingStyle?: string;
+  readonly strokeStyle?: string;
+  readonly strokeColor?: string;
 }
 
 export type IbdConnectionUsageEdge = Edge<
@@ -31,17 +39,26 @@ export function ConnectionUsageEdge({
   selected,
   data,
 }: EdgeProps<IbdConnectionUsageEdge>): JSX.Element {
-  const [edgePath, labelX, labelY] = getBezierPath({
-    sourceX,
-    sourceY,
-    targetX,
-    targetY,
-    sourcePosition,
-    targetPosition,
-  });
+  const routingStyle =
+    (data?.routingStyle as Parameters<typeof computeEdgePath>[1] | undefined) ??
+    defaultRoutingStyleForType(IBD_CONNECTION_USAGE_EDGE_TYPE);
+  const [edgePath, labelX, labelY] = computeEdgePath(
+    { sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition },
+    routingStyle,
+  );
+
+  const strokeStyleValue =
+    (data?.strokeStyle as Parameters<typeof strokeDasharray>[0] | undefined) ??
+    defaultStrokeStyleForType(IBD_CONNECTION_USAGE_EDGE_TYPE);
+  const dashArray = strokeDasharray(strokeStyleValue);
+  const strokeColor = data?.strokeColor ?? undefined;
 
   const name = data?.name ?? '';
   const hasLabel = name.length > 0;
+
+  const baseStroke = selected
+    ? 'hsl(var(--primary))'
+    : (strokeColor ?? 'hsl(var(--foreground))');
 
   return (
     <g data-testid={`ibd-edge-${id}`} data-edge-kind="ConnectionUsage">
@@ -49,9 +66,10 @@ export function ConnectionUsageEdge({
         id={id}
         path={edgePath}
         style={{
-          stroke: selected ? 'hsl(var(--primary))' : 'hsl(var(--foreground))',
+          stroke: baseStroke,
           strokeWidth: selected ? 2.5 : 1.5,
           fill: 'none',
+          ...(dashArray !== undefined ? { strokeDasharray: dashArray } : {}),
         }}
       />
       {hasLabel ? (

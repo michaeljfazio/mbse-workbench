@@ -1,17 +1,25 @@
 import {
   BaseEdge,
   EdgeLabelRenderer,
-  getSmoothStepPath,
   type Edge,
   type EdgeProps,
 } from '@xyflow/react';
 
 import type { EdgeId } from '@/model';
+import {
+  computeEdgePath,
+  defaultRoutingStyleForType,
+  defaultStrokeStyleForType,
+  strokeDasharray,
+} from '../shared/edgePath';
 
 export interface UseCaseExtendEdgeData extends Record<string, unknown> {
   readonly edgeId: EdgeId;
   readonly label?: string;
   readonly extensionPoint?: string;
+  readonly routingStyle?: string;
+  readonly strokeStyle?: string;
+  readonly strokeColor?: string;
 }
 
 export type UseCaseExtendFlowEdge = Edge<
@@ -32,18 +40,24 @@ export function ExtendEdge({
   selected,
   data,
 }: EdgeProps<UseCaseExtendFlowEdge>): JSX.Element {
-  const [edgePath, labelX, labelY] = getSmoothStepPath({
-    sourceX,
-    sourceY,
-    targetX,
-    targetY,
-    sourcePosition,
-    targetPosition,
-    borderRadius: 4,
-  });
+  const routingStyle =
+    (data?.routingStyle as Parameters<typeof computeEdgePath>[1] | undefined) ??
+    defaultRoutingStyleForType(USE_CASE_EXTEND_EDGE_TYPE);
+  const [edgePath, labelX, labelY] = computeEdgePath(
+    { sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition },
+    routingStyle,
+  );
+
+  const strokeStyleValue =
+    (data?.strokeStyle as Parameters<typeof strokeDasharray>[0] | undefined) ??
+    defaultStrokeStyleForType(USE_CASE_EXTEND_EDGE_TYPE);
+  const dashArray = strokeDasharray(strokeStyleValue);
+  const strokeColor = data?.strokeColor ?? undefined;
 
   const markerId = `use-case-extend-arrow-${id}`;
-  const stroke = selected ? 'hsl(var(--primary))' : 'currentColor';
+  const stroke = selected
+    ? 'hsl(var(--primary))'
+    : (strokeColor ?? 'currentColor');
   const strokeWidth = selected ? 2 : 1.5;
   const userLabel = data?.label;
   const extensionPoint = data?.extensionPoint;
@@ -82,8 +96,8 @@ export function ExtendEdge({
         style={{
           stroke,
           strokeWidth,
-          strokeDasharray: '4 3',
           color: stroke,
+          ...(dashArray !== undefined ? { strokeDasharray: dashArray } : {}),
         }}
       />
       <EdgeLabelRenderer>

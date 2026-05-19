@@ -100,10 +100,15 @@ const EDGE_KIND_OPTIONAL_FIELDS: Partial<
   Extend: new Set(['extensionPoint']),
 };
 
-// `label` is on EdgeBase and is valid for every edge kind, but the instance
-// may not carry the property if it was never set — same shape as
-// ELEMENT_BASE_OPTIONAL_FIELDS for elements.
-const EDGE_BASE_OPTIONAL_FIELDS = new Set<string>(['label']);
+// `label`, `routingStyle`, `strokeStyle`, `strokeColor` are on EdgeBase and
+// valid for every edge kind, but the instance may not carry them if never set —
+// same shape as ELEMENT_BASE_OPTIONAL_FIELDS for elements. Refs #564 #566.
+const EDGE_BASE_OPTIONAL_FIELDS = new Set<string>([
+  'label',
+  'routingStyle',
+  'strokeStyle',
+  'strokeColor',
+]);
 
 const KIND_OPTIONAL_FIELDS: Partial<
   Record<ElementKind, ReadonlySet<string>>
@@ -112,10 +117,11 @@ const KIND_OPTIONAL_FIELDS: Partial<
   PortDefinition: new Set(['interfaceId']),
   ActionUsage: new Set(['definitionId']),
   StateUsage: new Set(['definitionId', 'entryAction', 'exitAction', 'doAction']),
-  Transition: new Set(['trigger', 'guard', 'effect']),
+  Transition: new Set(['trigger', 'guard', 'effect', 'routingStyle', 'strokeStyle', 'strokeColor']),
   UseCase: new Set(['text']),
   Requirement: new Set(['reqId', 'rationale']),
-  ItemFlow: new Set(['itemType']),
+  ItemFlow: new Set(['itemType', 'routingStyle', 'strokeStyle', 'strokeColor']),
+  ConnectionUsage: new Set(['routingStyle', 'strokeStyle', 'strokeColor']),
   ValueProperty: new Set(['defaultValue']),
 };
 

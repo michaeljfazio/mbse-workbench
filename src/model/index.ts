@@ -71,6 +71,8 @@ export type {
   ParameterBindingEdge,
   PackageImportEdge,
   RequirementTraceKind,
+  EdgeRoutingStyle,
+  EdgeStrokeStyle,
 } from './edges';
 
 export { EDGE_KINDS } from './edges';

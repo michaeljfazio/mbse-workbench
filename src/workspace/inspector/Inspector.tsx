@@ -3,10 +3,16 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type {
   ActionDefinitionElement,
   ActionUsageElement,
+  AggregationEdge,
   AssociationEdge,
+  CompositionEdge,
   ConnectionUsageElement,
   ConstraintUsageElement,
   ControlFlowEdge,
+  DependencyEdge,
+  EdgeId,
+  EdgeRoutingStyle,
+  EdgeStrokeStyle,
   ElementId,
   ExtendEdge,
   GeneralizationEdge,
@@ -16,6 +22,7 @@ import type {
   ModelElement,
   ObjectFlowEdge,
   PackageElement,
+  PackageImportEdge,
   ParameterBindingEdge,
   PartDefinitionElement,
   PartUsageElement,
@@ -34,7 +41,26 @@ import type {
   ValuePropertyElement,
   ValueType,
 } from '@/model';
-import { isTraceTargetKind } from '@/viewpoints';
+import {
+  isTraceTargetKind,
+  BDD_AGGREGATION_EDGE_TYPE,
+  BDD_ASSOCIATION_EDGE_TYPE,
+  BDD_COMPOSITION_EDGE_TYPE,
+  BDD_DEPENDENCY_EDGE_TYPE,
+  BDD_GENERALIZATION_EDGE_TYPE,
+  IBD_CONNECTION_USAGE_EDGE_TYPE,
+  IBD_ITEM_FLOW_EDGE_TYPE,
+  REQUIREMENTS_TRACE_EDGE_TYPE,
+  ACTIVITY_CONTROL_FLOW_EDGE_TYPE,
+  ACTIVITY_OBJECT_FLOW_EDGE_TYPE,
+  STATE_MACHINE_TRANSITION_EDGE_TYPE,
+  USE_CASE_ASSOCIATION_EDGE_TYPE,
+  USE_CASE_EXTEND_EDGE_TYPE,
+  USE_CASE_GENERALIZATION_EDGE_TYPE,
+  USE_CASE_INCLUDE_EDGE_TYPE,
+  PARAMETRIC_PARAMETER_BINDING_EDGE_TYPE,
+  PACKAGE_IMPORT_EDGE_TYPE,
+} from '@/viewpoints';
 import { getActiveDiagram, getActiveViewpoint, useWorkspaceStore } from '../store';
 import {
   acceptedChildKinds,
@@ -47,6 +73,10 @@ import {
   type InspectorCreateAction,
 } from './inspectorCreatePanel';
 import { LinkRequirementPopover } from './LinkRequirementPopover';
+import {
+  defaultRoutingStyleForType,
+  defaultStrokeStyleForType,
+} from '@/viewpoints/shared/edgePath';
 
 // ADR 0015 step 4 — when an element is selected, the inspector exposes a
 // contextual "+ New X" panel whose buttons create X as a *child of the
@@ -158,6 +188,18 @@ export function Inspector(): JSX.Element {
   }
   if (edge && edge.kind === 'ParameterBinding') {
     return <InspectorParameterBindingEdge edge={edge} />;
+  }
+  if (edge && edge.kind === 'Composition') {
+    return <InspectorCompositionEdge edge={edge} />;
+  }
+  if (edge && edge.kind === 'Aggregation') {
+    return <InspectorAggregationEdge edge={edge} />;
+  }
+  if (edge && edge.kind === 'Dependency') {
+    return <InspectorDependencyEdge edge={edge} />;
+  }
+  if (edge && edge.kind === 'PackageImport') {
+    return <InspectorPackageImportEdge edge={edge} />;
   }
   return (
     <p data-testid="inspector-missing" className="text-muted-foreground">
@@ -852,6 +894,14 @@ function ConnectionUsageExtras({
           <dd data-testid="inspector-connection-target">{targetLabel}</dd>
         </div>
       </dl>
+      <EdgeStyleControls
+        edgeId={element.id}
+        routingStyle={element.routingStyle}
+        strokeStyle={element.strokeStyle}
+        strokeColor={element.strokeColor}
+        defaultRoutingStyle={defaultRoutingStyleForType(IBD_CONNECTION_USAGE_EDGE_TYPE)}
+        defaultStrokeStyle={defaultStrokeStyleForType(IBD_CONNECTION_USAGE_EDGE_TYPE)}
+      />
     </div>
   );
 }
@@ -949,6 +999,14 @@ function InspectorTraceEdge({ edge }: InspectorTraceEdgeProps): JSX.Element {
           className="rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground shadow-sm focus:border-primary focus:outline-none"
         />
       </div>
+      <EdgeStyleControls
+        edgeId={edge.id}
+        routingStyle={edge.routingStyle}
+        strokeStyle={edge.strokeStyle}
+        strokeColor={edge.strokeColor}
+        defaultRoutingStyle={defaultRoutingStyleForType(REQUIREMENTS_TRACE_EDGE_TYPE)}
+        defaultStrokeStyle={defaultStrokeStyleForType(REQUIREMENTS_TRACE_EDGE_TYPE)}
+      />
     </div>
   );
 }
@@ -1064,6 +1122,14 @@ function InspectorControlFlowEdge({
           className="rounded-md border border-border bg-background px-2 py-1.5 font-mono text-sm text-foreground shadow-sm focus:border-primary focus:outline-none"
         />
       </div>
+      <EdgeStyleControls
+        edgeId={edge.id}
+        routingStyle={edge.routingStyle}
+        strokeStyle={edge.strokeStyle}
+        strokeColor={edge.strokeColor}
+        defaultRoutingStyle={defaultRoutingStyleForType(ACTIVITY_CONTROL_FLOW_EDGE_TYPE)}
+        defaultStrokeStyle={defaultStrokeStyleForType(ACTIVITY_CONTROL_FLOW_EDGE_TYPE)}
+      />
     </div>
   );
 }
@@ -1159,6 +1225,14 @@ function InspectorObjectFlowEdge({
           className="rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground shadow-sm focus:border-primary focus:outline-none"
         />
       </div>
+      <EdgeStyleControls
+        edgeId={edge.id}
+        routingStyle={edge.routingStyle}
+        strokeStyle={edge.strokeStyle}
+        strokeColor={edge.strokeColor}
+        defaultRoutingStyle={defaultRoutingStyleForType(ACTIVITY_OBJECT_FLOW_EDGE_TYPE)}
+        defaultStrokeStyle={defaultStrokeStyleForType(ACTIVITY_OBJECT_FLOW_EDGE_TYPE)}
+      />
     </div>
   );
 }
@@ -1217,6 +1291,14 @@ function InspectorIncludeEdge({ edge }: InspectorIncludeEdgeProps): JSX.Element 
           <dd data-testid="inspector-include-target">{targetLabel}</dd>
         </div>
       </dl>
+      <EdgeStyleControls
+        edgeId={edge.id}
+        routingStyle={edge.routingStyle}
+        strokeStyle={edge.strokeStyle}
+        strokeColor={edge.strokeColor}
+        defaultRoutingStyle={defaultRoutingStyleForType(USE_CASE_INCLUDE_EDGE_TYPE)}
+        defaultStrokeStyle={defaultStrokeStyleForType(USE_CASE_INCLUDE_EDGE_TYPE)}
+      />
     </div>
   );
 }
@@ -1310,6 +1392,14 @@ function InspectorExtendEdge({ edge }: InspectorExtendEdgeProps): JSX.Element {
           className="rounded-md border border-border bg-background px-2 py-1.5 font-mono text-sm text-foreground shadow-sm focus:border-primary focus:outline-none"
         />
       </div>
+      <EdgeStyleControls
+        edgeId={edge.id}
+        routingStyle={edge.routingStyle}
+        strokeStyle={edge.strokeStyle}
+        strokeColor={edge.strokeColor}
+        defaultRoutingStyle={defaultRoutingStyleForType(USE_CASE_EXTEND_EDGE_TYPE)}
+        defaultStrokeStyle={defaultStrokeStyleForType(USE_CASE_EXTEND_EDGE_TYPE)}
+      />
     </div>
   );
 }
@@ -1358,6 +1448,14 @@ function InspectorGeneralizationEdge({
           <dd data-testid="inspector-generalization-target">{targetLabel}</dd>
         </div>
       </dl>
+      <EdgeStyleControls
+        edgeId={edge.id}
+        routingStyle={edge.routingStyle}
+        strokeStyle={edge.strokeStyle}
+        strokeColor={edge.strokeColor}
+        defaultRoutingStyle={defaultRoutingStyleForType(USE_CASE_GENERALIZATION_EDGE_TYPE)}
+        defaultStrokeStyle={defaultStrokeStyleForType(USE_CASE_GENERALIZATION_EDGE_TYPE)}
+      />
     </div>
   );
 }
@@ -1514,6 +1612,14 @@ function InspectorAssociationEdge({
           className="rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground shadow-sm focus:border-primary focus:outline-none"
         />
       </div>
+      <EdgeStyleControls
+        edgeId={edge.id}
+        routingStyle={edge.routingStyle}
+        strokeStyle={edge.strokeStyle}
+        strokeColor={edge.strokeColor}
+        defaultRoutingStyle={defaultRoutingStyleForType(USE_CASE_ASSOCIATION_EDGE_TYPE)}
+        defaultStrokeStyle={defaultStrokeStyleForType(USE_CASE_ASSOCIATION_EDGE_TYPE)}
+      />
     </div>
   );
 }
@@ -1914,6 +2020,14 @@ function ItemFlowExtras({ element }: ItemFlowExtrasProps): JSX.Element {
           className="rounded-md border border-border bg-background px-2 py-1.5 text-sm text-foreground shadow-sm focus:border-primary focus:outline-none"
         />
       </div>
+      <EdgeStyleControls
+        edgeId={element.id}
+        routingStyle={element.routingStyle}
+        strokeStyle={element.strokeStyle}
+        strokeColor={element.strokeColor}
+        defaultRoutingStyle={defaultRoutingStyleForType(IBD_ITEM_FLOW_EDGE_TYPE)}
+        defaultStrokeStyle={defaultStrokeStyleForType(IBD_ITEM_FLOW_EDGE_TYPE)}
+      />
     </>
   );
 }
@@ -2353,6 +2467,14 @@ function TransitionExtras({ element }: TransitionExtrasProps): JSX.Element {
         testId="inspector-transition-effect"
         onCommit={(v) => setTransitionEffect(element.id, v)}
       />
+      <EdgeStyleControls
+        edgeId={element.id}
+        routingStyle={element.routingStyle}
+        strokeStyle={element.strokeStyle}
+        strokeColor={element.strokeColor}
+        defaultRoutingStyle={defaultRoutingStyleForType(STATE_MACHINE_TRANSITION_EDGE_TYPE)}
+        defaultStrokeStyle={defaultStrokeStyleForType(STATE_MACHINE_TRANSITION_EDGE_TYPE)}
+      />
     </div>
   );
 }
@@ -2791,6 +2913,150 @@ function describeParametricEndpoint(
   return `${el.kind} · ${el.name}`;
 }
 
+// ─── Shared edge style controls (#564 #566) ─────────────────────────────────
+
+const ROUTING_STYLE_OPTIONS: readonly { value: EdgeRoutingStyle; label: string }[] = [
+  { value: 'straight', label: 'Straight' },
+  { value: 'step', label: 'Step' },
+  { value: 'smooth-step', label: 'Smooth' },
+  { value: 'bezier', label: 'Bezier' },
+];
+
+const STROKE_STYLE_OPTIONS: readonly { value: EdgeStrokeStyle; label: string }[] = [
+  { value: 'solid', label: 'Solid' },
+  { value: 'dashed', label: 'Dashed' },
+  { value: 'dotted', label: 'Dotted' },
+];
+
+interface EdgeStyleControlsProps {
+  readonly edgeId: EdgeId | ElementId;
+  readonly routingStyle: EdgeRoutingStyle | undefined;
+  readonly strokeStyle: EdgeStrokeStyle | undefined;
+  readonly strokeColor: string | undefined;
+  /** Default routing style for the edge kind, shown as selected when routingStyle is undefined. */
+  readonly defaultRoutingStyle: EdgeRoutingStyle;
+  /** Default stroke style for the edge kind, shown as selected when strokeStyle is undefined. */
+  readonly defaultStrokeStyle: EdgeStrokeStyle;
+}
+
+/**
+ * Shared segmented-control + color-picker panel for per-edge routing style and
+ * stroke style/color, injected into every edge inspector panel. Dispatches via
+ * the store actions `setEdgeRoutingStyle`, `setEdgeStrokeStyle`,
+ * `setEdgeStrokeColor`. Refs #564 #566.
+ */
+function EdgeStyleControls({
+  edgeId,
+  routingStyle,
+  strokeStyle,
+  strokeColor,
+  defaultRoutingStyle,
+  defaultStrokeStyle,
+}: EdgeStyleControlsProps): JSX.Element {
+  const setEdgeRoutingStyle = useWorkspaceStore((s) => s.setEdgeRoutingStyle);
+  const setEdgeStrokeStyle = useWorkspaceStore((s) => s.setEdgeStrokeStyle);
+  const setEdgeStrokeColor = useWorkspaceStore((s) => s.setEdgeStrokeColor);
+
+  const effectiveRouting = routingStyle ?? defaultRoutingStyle;
+  const effectiveStroke = strokeStyle ?? defaultStrokeStyle;
+  const effectiveColor = strokeColor ?? '';
+
+  return (
+    <div className="flex flex-col gap-3">
+      {/* ── Routing style ─────────────────────────────────────────────── */}
+      <div className="flex flex-col gap-1.5">
+        <span className="text-xs font-medium text-muted-foreground">
+          Routing
+        </span>
+        <div
+          role="group"
+          aria-label="Edge routing style"
+          data-testid="edge-routing-style"
+          className="flex gap-0.5 rounded-md border border-border bg-muted p-0.5"
+        >
+          {ROUTING_STYLE_OPTIONS.map(({ value, label }) => (
+            <button
+              key={value}
+              type="button"
+              data-testid={`edge-routing-style-${value}`}
+              aria-pressed={effectiveRouting === value}
+              onClick={() => setEdgeRoutingStyle(edgeId, value)}
+              className={`flex-1 rounded px-1.5 py-1 text-[10px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                effectiveRouting === value
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Stroke style ──────────────────────────────────────────────── */}
+      <div className="flex flex-col gap-1.5">
+        <span className="text-xs font-medium text-muted-foreground">
+          Line style
+        </span>
+        <div
+          role="group"
+          aria-label="Edge stroke style"
+          data-testid="edge-stroke-style"
+          className="flex gap-0.5 rounded-md border border-border bg-muted p-0.5"
+        >
+          {STROKE_STYLE_OPTIONS.map(({ value, label }) => (
+            <button
+              key={value}
+              type="button"
+              data-testid={`edge-stroke-style-${value}`}
+              aria-pressed={effectiveStroke === value}
+              onClick={() => setEdgeStrokeStyle(edgeId, value)}
+              className={`flex-1 rounded px-1.5 py-1 text-[10px] font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+                effectiveStroke === value
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Stroke color ──────────────────────────────────────────────── */}
+      <div className="flex flex-col gap-1.5">
+        <span className="text-xs font-medium text-muted-foreground">
+          Color
+        </span>
+        <div className="flex items-center gap-2">
+          <input
+            type="color"
+            aria-label="Edge stroke color"
+            data-testid="edge-stroke-color"
+            value={effectiveColor.length > 0 ? effectiveColor : '#000000'}
+            onChange={(e) => setEdgeStrokeColor(edgeId, e.target.value)}
+            className="h-7 w-7 cursor-pointer rounded border border-border bg-background p-0.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          />
+          {effectiveColor.length > 0 ? (
+            <button
+              type="button"
+              aria-label="Reset stroke color to default"
+              onClick={() => setEdgeStrokeColor(edgeId, undefined)}
+              className="text-[10px] text-muted-foreground hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              Reset
+            </button>
+          ) : (
+            <span className="text-[10px] text-muted-foreground">
+              Default
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 interface InspectorParameterBindingEdgeProps {
   readonly edge: ParameterBindingEdge;
 }
@@ -2882,6 +3148,240 @@ function InspectorParameterBindingEdge({
           className="rounded-md border border-border bg-background px-2 py-1.5 font-mono text-sm text-foreground shadow-sm focus:border-primary focus:outline-none"
         />
       </div>
+      <EdgeStyleControls
+        edgeId={edge.id}
+        routingStyle={edge.routingStyle}
+        strokeStyle={edge.strokeStyle}
+        strokeColor={edge.strokeColor}
+        defaultRoutingStyle={defaultRoutingStyleForType(PARAMETRIC_PARAMETER_BINDING_EDGE_TYPE)}
+        defaultStrokeStyle={defaultStrokeStyleForType(PARAMETRIC_PARAMETER_BINDING_EDGE_TYPE)}
+      />
+    </div>
+  );
+}
+
+// ─── Simple ModelEdge inspector panels for BDD / Package edge kinds ──────────
+
+interface InspectorCompositionEdgeProps {
+  readonly edge: CompositionEdge;
+}
+
+function InspectorCompositionEdge({
+  edge,
+}: InspectorCompositionEdgeProps): JSX.Element {
+  const elements = useWorkspaceStore((s) => s.elements);
+  const sourceLabel = useMemo(
+    () => describeBddEndpoint(elements, edge.sourceId),
+    [elements, edge.sourceId],
+  );
+  const targetLabel = useMemo(
+    () => describeBddEndpoint(elements, edge.targetId),
+    [elements, edge.targetId],
+  );
+
+  return (
+    <div
+      data-testid="inspector-composition-edge"
+      data-edge-id={edge.id}
+      className="flex flex-col gap-4"
+    >
+      <header className="flex flex-col gap-0.5">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-foreground/75">
+          Composition
+        </span>
+        <span className="text-sm font-medium text-foreground">
+          Composition relationship
+        </span>
+      </header>
+      <dl
+        data-testid="inspector-composition-endpoints"
+        className="flex flex-col gap-1 rounded-md border border-dashed border-border bg-muted/40 px-2 py-1.5 text-xs text-foreground/75"
+      >
+        <div className="flex gap-2">
+          <dt className="font-semibold uppercase tracking-wide">Source</dt>
+          <dd data-testid="inspector-composition-source">{sourceLabel}</dd>
+        </div>
+        <div className="flex gap-2">
+          <dt className="font-semibold uppercase tracking-wide">Target</dt>
+          <dd data-testid="inspector-composition-target">{targetLabel}</dd>
+        </div>
+      </dl>
+      <EdgeStyleControls
+        edgeId={edge.id}
+        routingStyle={edge.routingStyle}
+        strokeStyle={edge.strokeStyle}
+        strokeColor={edge.strokeColor}
+        defaultRoutingStyle={defaultRoutingStyleForType(BDD_COMPOSITION_EDGE_TYPE)}
+        defaultStrokeStyle={defaultStrokeStyleForType(BDD_COMPOSITION_EDGE_TYPE)}
+      />
+    </div>
+  );
+}
+
+interface InspectorAggregationEdgeProps {
+  readonly edge: AggregationEdge;
+}
+
+function InspectorAggregationEdge({
+  edge,
+}: InspectorAggregationEdgeProps): JSX.Element {
+  const elements = useWorkspaceStore((s) => s.elements);
+  const sourceLabel = useMemo(
+    () => describeBddEndpoint(elements, edge.sourceId),
+    [elements, edge.sourceId],
+  );
+  const targetLabel = useMemo(
+    () => describeBddEndpoint(elements, edge.targetId),
+    [elements, edge.targetId],
+  );
+
+  return (
+    <div
+      data-testid="inspector-aggregation-edge"
+      data-edge-id={edge.id}
+      className="flex flex-col gap-4"
+    >
+      <header className="flex flex-col gap-0.5">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-foreground/75">
+          Aggregation
+        </span>
+        <span className="text-sm font-medium text-foreground">
+          Aggregation relationship
+        </span>
+      </header>
+      <dl
+        data-testid="inspector-aggregation-endpoints"
+        className="flex flex-col gap-1 rounded-md border border-dashed border-border bg-muted/40 px-2 py-1.5 text-xs text-foreground/75"
+      >
+        <div className="flex gap-2">
+          <dt className="font-semibold uppercase tracking-wide">Source</dt>
+          <dd data-testid="inspector-aggregation-source">{sourceLabel}</dd>
+        </div>
+        <div className="flex gap-2">
+          <dt className="font-semibold uppercase tracking-wide">Target</dt>
+          <dd data-testid="inspector-aggregation-target">{targetLabel}</dd>
+        </div>
+      </dl>
+      <EdgeStyleControls
+        edgeId={edge.id}
+        routingStyle={edge.routingStyle}
+        strokeStyle={edge.strokeStyle}
+        strokeColor={edge.strokeColor}
+        defaultRoutingStyle={defaultRoutingStyleForType(BDD_AGGREGATION_EDGE_TYPE)}
+        defaultStrokeStyle={defaultStrokeStyleForType(BDD_AGGREGATION_EDGE_TYPE)}
+      />
+    </div>
+  );
+}
+
+interface InspectorDependencyEdgeProps {
+  readonly edge: DependencyEdge;
+}
+
+function InspectorDependencyEdge({
+  edge,
+}: InspectorDependencyEdgeProps): JSX.Element {
+  const elements = useWorkspaceStore((s) => s.elements);
+  const sourceLabel = useMemo(
+    () => describeBddEndpoint(elements, edge.sourceId),
+    [elements, edge.sourceId],
+  );
+  const targetLabel = useMemo(
+    () => describeBddEndpoint(elements, edge.targetId),
+    [elements, edge.targetId],
+  );
+
+  return (
+    <div
+      data-testid="inspector-dependency-edge"
+      data-edge-id={edge.id}
+      className="flex flex-col gap-4"
+    >
+      <header className="flex flex-col gap-0.5">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-foreground/75">
+          Dependency
+        </span>
+        <span className="text-sm font-medium text-foreground">
+          Dependency relationship
+        </span>
+      </header>
+      <dl
+        data-testid="inspector-dependency-endpoints"
+        className="flex flex-col gap-1 rounded-md border border-dashed border-border bg-muted/40 px-2 py-1.5 text-xs text-foreground/75"
+      >
+        <div className="flex gap-2">
+          <dt className="font-semibold uppercase tracking-wide">Source</dt>
+          <dd data-testid="inspector-dependency-source">{sourceLabel}</dd>
+        </div>
+        <div className="flex gap-2">
+          <dt className="font-semibold uppercase tracking-wide">Target</dt>
+          <dd data-testid="inspector-dependency-target">{targetLabel}</dd>
+        </div>
+      </dl>
+      <EdgeStyleControls
+        edgeId={edge.id}
+        routingStyle={edge.routingStyle}
+        strokeStyle={edge.strokeStyle}
+        strokeColor={edge.strokeColor}
+        defaultRoutingStyle={defaultRoutingStyleForType(BDD_DEPENDENCY_EDGE_TYPE)}
+        defaultStrokeStyle={defaultStrokeStyleForType(BDD_DEPENDENCY_EDGE_TYPE)}
+      />
+    </div>
+  );
+}
+
+interface InspectorPackageImportEdgeProps {
+  readonly edge: PackageImportEdge;
+}
+
+function InspectorPackageImportEdge({
+  edge,
+}: InspectorPackageImportEdgeProps): JSX.Element {
+  const elements = useWorkspaceStore((s) => s.elements);
+  const sourceLabel = useMemo(
+    () => describeBddEndpoint(elements, edge.sourceId),
+    [elements, edge.sourceId],
+  );
+  const targetLabel = useMemo(
+    () => describeBddEndpoint(elements, edge.targetId),
+    [elements, edge.targetId],
+  );
+
+  return (
+    <div
+      data-testid="inspector-package-import-edge"
+      data-edge-id={edge.id}
+      className="flex flex-col gap-4"
+    >
+      <header className="flex flex-col gap-0.5">
+        <span className="text-[10px] font-semibold uppercase tracking-wider text-foreground/75">
+          PackageImport
+        </span>
+        <span className="text-sm font-medium text-foreground">
+          «import» relationship
+        </span>
+      </header>
+      <dl
+        data-testid="inspector-package-import-endpoints"
+        className="flex flex-col gap-1 rounded-md border border-dashed border-border bg-muted/40 px-2 py-1.5 text-xs text-foreground/75"
+      >
+        <div className="flex gap-2">
+          <dt className="font-semibold uppercase tracking-wide">Source</dt>
+          <dd data-testid="inspector-package-import-source">{sourceLabel}</dd>
+        </div>
+        <div className="flex gap-2">
+          <dt className="font-semibold uppercase tracking-wide">Target</dt>
+          <dd data-testid="inspector-package-import-target">{targetLabel}</dd>
+        </div>
+      </dl>
+      <EdgeStyleControls
+        edgeId={edge.id}
+        routingStyle={edge.routingStyle}
+        strokeStyle={edge.strokeStyle}
+        strokeColor={edge.strokeColor}
+        defaultRoutingStyle={defaultRoutingStyleForType(PACKAGE_IMPORT_EDGE_TYPE)}
+        defaultStrokeStyle={defaultStrokeStyleForType(PACKAGE_IMPORT_EDGE_TYPE)}
+      />
     </div>
   );
 }

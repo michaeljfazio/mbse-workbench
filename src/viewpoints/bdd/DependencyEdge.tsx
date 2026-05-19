@@ -1,9 +1,18 @@
-import { BaseEdge, getSmoothStepPath, type EdgeProps, type Edge } from '@xyflow/react';
+import { BaseEdge, type EdgeProps, type Edge } from '@xyflow/react';
 
 import type { EdgeId } from '@/model';
+import {
+  computeEdgePath,
+  defaultRoutingStyleForType,
+  defaultStrokeStyleForType,
+  strokeDasharray,
+} from '../shared/edgePath';
 
 export interface BddDependencyEdgeData extends Record<string, unknown> {
   readonly edgeId: EdgeId;
+  readonly routingStyle?: string;
+  readonly strokeStyle?: string;
+  readonly strokeColor?: string;
 }
 
 export type BddDependencyEdge = Edge<BddDependencyEdgeData, 'bdd-dependency'>;
@@ -19,20 +28,28 @@ export function DependencyEdge({
   sourcePosition,
   targetPosition,
   selected,
+  data,
 }: EdgeProps<BddDependencyEdge>): JSX.Element {
-  const [edgePath] = getSmoothStepPath({
-    sourceX,
-    sourceY,
-    targetX,
-    targetY,
-    sourcePosition,
-    targetPosition,
-    borderRadius: 4,
-  });
+  const routingStyle =
+    (data?.routingStyle as Parameters<typeof computeEdgePath>[1] | undefined) ??
+    defaultRoutingStyleForType(BDD_DEPENDENCY_EDGE_TYPE);
+  const [edgePath] = computeEdgePath(
+    { sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition },
+    routingStyle,
+  );
+
+  const strokeStyleValue =
+    (data?.strokeStyle as Parameters<typeof strokeDasharray>[0] | undefined) ??
+    defaultStrokeStyleForType(BDD_DEPENDENCY_EDGE_TYPE);
+  const dashArray = strokeDasharray(strokeStyleValue);
+  const strokeColor = data?.strokeColor ?? undefined;
 
   // UML 2.x / SysML 1.x convention: dependency is a dashed line ending in an
   // open arrowhead (`>` shape, no fill).
   const markerId = `bdd-dependency-arrow-${id}`;
+  const baseStroke = selected
+    ? 'hsl(var(--primary))'
+    : (strokeColor ?? 'currentColor');
 
   return (
     <g data-testid={`bdd-edge-${id}`} data-edge-kind="Dependency">
@@ -62,10 +79,10 @@ export function DependencyEdge({
         path={edgePath}
         markerEnd={`url(#${markerId})`}
         style={{
-          stroke: selected ? 'hsl(var(--primary))' : 'currentColor',
+          stroke: baseStroke,
           strokeWidth: selected ? 2.5 : 1.75,
-          strokeDasharray: '6 4',
-          color: selected ? 'hsl(var(--primary))' : 'hsl(var(--foreground))',
+          color: selected ? 'hsl(var(--primary))' : (strokeColor ?? 'hsl(var(--foreground))'),
+          ...(dashArray !== undefined ? { strokeDasharray: dashArray } : {}),
         }}
       />
     </g>

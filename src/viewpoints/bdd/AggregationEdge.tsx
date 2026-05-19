@@ -1,9 +1,18 @@
-import { BaseEdge, getSmoothStepPath, type EdgeProps, type Edge } from '@xyflow/react';
+import { BaseEdge, type EdgeProps, type Edge } from '@xyflow/react';
 
 import type { EdgeId } from '@/model';
+import {
+  computeEdgePath,
+  defaultRoutingStyleForType,
+  defaultStrokeStyleForType,
+  strokeDasharray,
+} from '../shared/edgePath';
 
 export interface BddAggregationEdgeData extends Record<string, unknown> {
   readonly edgeId: EdgeId;
+  readonly routingStyle?: string;
+  readonly strokeStyle?: string;
+  readonly strokeColor?: string;
 }
 
 export type BddAggregationEdge = Edge<BddAggregationEdgeData, 'bdd-aggregation'>;
@@ -19,20 +28,28 @@ export function AggregationEdge({
   sourcePosition,
   targetPosition,
   selected,
+  data,
 }: EdgeProps<BddAggregationEdge>): JSX.Element {
-  const [edgePath] = getSmoothStepPath({
-    sourceX,
-    sourceY,
-    targetX,
-    targetY,
-    sourcePosition,
-    targetPosition,
-    borderRadius: 4,
-  });
+  const routingStyle =
+    (data?.routingStyle as Parameters<typeof computeEdgePath>[1] | undefined) ??
+    defaultRoutingStyleForType(BDD_AGGREGATION_EDGE_TYPE);
+  const [edgePath] = computeEdgePath(
+    { sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition },
+    routingStyle,
+  );
+
+  const strokeStyleValue =
+    (data?.strokeStyle as Parameters<typeof strokeDasharray>[0] | undefined) ??
+    defaultStrokeStyleForType(BDD_AGGREGATION_EDGE_TYPE);
+  const dashArray = strokeDasharray(strokeStyleValue);
+  const strokeColor = data?.strokeColor ?? undefined;
 
   // SysML 1.x BDD convention: aggregation differs from composition only in the
   // diamond fill — hollow (background-filled) rather than solid foreground.
   const markerId = `bdd-aggregation-diamond-${id}`;
+  const baseStroke = selected
+    ? 'hsl(var(--primary))'
+    : (strokeColor ?? 'currentColor');
 
   return (
     <g data-testid={`bdd-edge-${id}`} data-edge-kind="Aggregation">
@@ -61,9 +78,10 @@ export function AggregationEdge({
         path={edgePath}
         markerStart={`url(#${markerId})`}
         style={{
-          stroke: selected ? 'hsl(var(--primary))' : 'currentColor',
+          stroke: baseStroke,
           strokeWidth: selected ? 2.5 : 1.75,
-          color: selected ? 'hsl(var(--primary))' : 'hsl(var(--foreground))',
+          color: selected ? 'hsl(var(--primary))' : (strokeColor ?? 'hsl(var(--foreground))'),
+          ...(dashArray !== undefined ? { strokeDasharray: dashArray } : {}),
         }}
       />
     </g>

@@ -1,3 +1,4 @@
+import type { EdgeRoutingStyle, EdgeStrokeStyle } from './edges';
 import type { ElementId, UserId } from './id';
 
 /**
@@ -136,6 +137,12 @@ export interface ConnectionUsageElement extends ElementBase {
   readonly kind: 'ConnectionUsage';
   sourceId: ElementId;
   targetId: ElementId;
+  /** Optional per-edge routing style. Absent = kind default (bezier). Refs #564. */
+  routingStyle?: EdgeRoutingStyle;
+  /** Optional per-edge stroke style. Absent = kind default (solid). Refs #566. */
+  strokeStyle?: EdgeStrokeStyle;
+  /** Optional per-edge stroke color. Absent = currentColor. Refs #566. */
+  strokeColor?: string;
 }
 
 export interface ItemFlowElement extends ElementBase {
@@ -143,6 +150,12 @@ export interface ItemFlowElement extends ElementBase {
   sourceId: ElementId;
   targetId: ElementId;
   itemType?: string;
+  /** Optional per-edge routing style. Absent = kind default (bezier). Refs #564. */
+  routingStyle?: EdgeRoutingStyle;
+  /** Optional per-edge stroke style. Absent = kind default (solid). Refs #566. */
+  strokeStyle?: EdgeStrokeStyle;
+  /** Optional per-edge stroke color. Absent = currentColor. Refs #566. */
+  strokeColor?: string;
 }
 
 export interface RequirementElement extends ElementBase {
@@ -185,6 +198,12 @@ export interface TransitionElement extends ElementBase {
   trigger?: string;
   guard?: string;
   effect?: string;
+  /** Optional per-edge routing style. Absent = kind default (bezier). Refs #564. */
+  routingStyle?: EdgeRoutingStyle;
+  /** Optional per-edge stroke style. Absent = kind default (solid). Refs #566. */
+  strokeStyle?: EdgeStrokeStyle;
+  /** Optional per-edge stroke color. Absent = currentColor. Refs #566. */
+  strokeColor?: string;
 }
 
 export interface UseCaseElement extends ElementBase {
