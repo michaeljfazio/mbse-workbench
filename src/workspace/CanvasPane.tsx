@@ -508,8 +508,15 @@ function CanvasInner(): JSX.Element {
       // The edge id is either a ModelEdge id or an ElementId for
       // element-as-edge kinds (ConnectionUsage / ItemFlow / Transition).
       // Disambiguate via the registry — same pattern used in onEdgesChange.
-      const end: 'source' | 'target' =
-        oldEdge.source !== newConnection.source ? 'source' : 'target';
+      //
+      // Compare both node id AND handle id: dragging a source edgeupdater to a
+      // different handle on the same node leaves oldEdge.source ===
+      // newConnection.source, so a node-id-only check would misclassify the
+      // move as a target reconnect (review feedback, #562).
+      const sourceMoved =
+        oldEdge.source !== newConnection.source ||
+        oldEdge.sourceHandle !== newConnection.sourceHandle;
+      const end: 'source' | 'target' = sourceMoved ? 'source' : 'target';
       const newNodeId = (
         end === 'source' ? newConnection.source : newConnection.target
       ) as ElementId;
