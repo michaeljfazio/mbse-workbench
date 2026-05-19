@@ -91,6 +91,7 @@ import {
   requirementsViewpoint,
   stateMachineViewpoint,
   useCaseViewpoint,
+  USE_CASE_VIEWPOINT_ID,
   validTraceKindsFor,
   type BddEdgeKind,
   type UseCaseEdgeKind,
@@ -1688,8 +1689,14 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
   },
 
   reconnectEdge(edgeId, end, newNodeId, newHandleId) {
-    const { bus, user, registry, edges } = get();
+    const { bus, user, registry, edges, diagrams, activeDiagramId } = get();
     if (!bus || !user || !registry) return false;
+
+    // Resolve the viewpoint of the currently active diagram so that edge kinds
+    // shared between viewpoints (Generalization, Association) are validated by
+    // the correct rules.
+    const activeDiagram = diagrams.find((d) => d.id === activeDiagramId);
+    const activeViewpointId = activeDiagram?.viewpointId ?? null;
 
     // ── ModelEdge path ──────────────────────────────────────────────────────
     const modelEdge = registry.getEdge(edgeId as EdgeId);
@@ -1707,15 +1714,21 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
       };
 
       // Validate using the appropriate viewpoint rule for this edge kind.
+      // Generalization and Association exist in both BDD and UseCase diagrams
+      // with different endpoint constraints, so we dispatch to the validator
+      // that matches the active diagram's viewpoint (review feedback, #562).
       const kind = modelEdge.kind;
-      if (
-        kind === 'Composition' ||
-        kind === 'Aggregation' ||
-        kind === 'Generalization' ||
-        kind === 'Association' ||
-        kind === 'Dependency'
-      ) {
+      if (kind === 'Composition' || kind === 'Aggregation' || kind === 'Dependency') {
         if (!isValidBddConnection(syntheticConn, registry)) return false;
+      } else if (kind === 'Generalization' || kind === 'Association') {
+        if (activeViewpointId === USE_CASE_VIEWPOINT_ID) {
+          if (!isValidUseCaseConnection(syntheticConn, registry)) return false;
+        } else {
+          // Default to BDD rules (PartDefinition ↔ PartDefinition) for all
+          // other viewpoints; the exhaustiveness guard below catches any new
+          // viewpoint that introduces these kinds without a case here.
+          if (!isValidBddConnection(syntheticConn, registry)) return false;
+        }
       } else if (kind === 'RequirementTrace') {
         if (validTraceKindsFor(syntheticConn, registry).length === 0) return false;
       } else if (kind === 'ControlFlow' || kind === 'ObjectFlow') {
@@ -1774,20 +1787,22 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
     if (newSource === newTarget) return false;
 
     if (element.kind === 'ConnectionUsage' || element.kind === 'ItemFlow') {
-      // IBD validator needs the PortUsage ids in the handle fields. When
-      // newHandleId is available the synthetic connection can be fully
-      // resolved; without it the validation is skipped (the React Flow
-      // isValidConnection prop already ran the check before onReconnect fires).
-      if (newHandleId != null) {
-        const oldHandle = end === 'source' ? currentSourceId : currentTargetId;
-        const syntheticConn = {
-          source: end === 'source' ? newNodeId as string : registry.get(currentSourceId)?.ownerId ?? newNodeId as string,
-          target: end === 'target' ? newNodeId as string : registry.get(currentTargetId)?.ownerId ?? newNodeId as string,
-          sourceHandle: (end === 'source' ? newHandleId : oldHandle) as string,
-          targetHandle: (end === 'target' ? newHandleId : oldHandle) as string,
-        };
-        if (!isValidIbdConnection(syntheticConn, registry)) return false;
-      }
+      // IBD edges are port-to-port: a null handle means the drop landed on a
+      // plain node rather than a PortUsage handle. Reject immediately — there
+      // is no valid IBD connection without a port on both ends (review
+      // feedback, defense-in-depth, #562).
+      if (newHandleId == null) return false;
+
+      const syntheticConn = {
+        // For the unchanged end, resolve the PartUsage id from the PortUsage's ownerId.
+        // For the changed end, newNodeId already carries the PartUsage id.
+        source: end === 'source' ? newNodeId as string : registry.get(currentSourceId)?.ownerId ?? newNodeId as string,
+        target: end === 'target' ? newNodeId as string : registry.get(currentTargetId)?.ownerId ?? newNodeId as string,
+        // The sourceHandle is always the source port id; targetHandle is always the target port id.
+        sourceHandle: (end === 'source' ? newHandleId : currentSourceId) as string,
+        targetHandle: (end === 'target' ? newHandleId : currentTargetId) as string,
+      };
+      if (!isValidIbdConnection(syntheticConn, registry)) return false;
     } else if (element.kind === 'Transition') {
       const syntheticConn = {
         source: newSource as string,
