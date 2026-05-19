@@ -78,9 +78,12 @@ import {
   IBD_VIEWPOINT_ID,
   ibdViewpoint,
   isValidActivityConnection,
+  isValidBddConnection,
+  isValidIbdConnection,
   isValidPackageConnection,
   isValidParametricConnection,
   isValidStateMachineConnection,
+  isValidUseCaseConnection,
   canonicalizeParametricConnection,
   packageViewpoint,
   parametricViewpoint,
@@ -88,6 +91,7 @@ import {
   requirementsViewpoint,
   stateMachineViewpoint,
   useCaseViewpoint,
+  validTraceKindsFor,
   type BddEdgeKind,
   type UseCaseEdgeKind,
   type Viewpoint,
@@ -354,6 +358,32 @@ export interface WorkspaceActions {
   deleteElement(id: ElementId): void;
   deleteSelection(): void;
   unlinkEdge(id: EdgeId): void;
+  /**
+   * Reconnect one endpoint of an existing edge or element-as-edge to a new
+   * node. The edge keeps its identity and kind; only the source or target
+   * reference is updated.
+   *
+   * For ModelEdges (BDD / Requirements / ControlFlow / ObjectFlow / UseCase
+   * Include-Extend-Generalization-Association / ParameterBinding /
+   * PackageImport): dispatches a compound `[unlink, link]` so a single Cmd-Z
+   * restores the original pair.
+   *
+   * For element-as-edges (ConnectionUsage / ItemFlow / Transition): dispatches
+   * `update-element` with the new `sourceId` or `targetId`.
+   *
+   * `newHandleId` is used by IBD ConnectionUsage / ItemFlow where the
+   * endpoint identity is a PortUsage id carried in the React Flow handle.
+   * Pass `null` for all other viewpoints.
+   *
+   * Returns `false` when the new pair fails the viewpoint validator (defense in
+   * depth — React Flow's `isValidConnection` prop already gates the drag).
+   */
+  reconnectEdge(
+    edgeId: EdgeId | ElementId,
+    end: 'source' | 'target',
+    newNodeId: ElementId,
+    newHandleId?: string | null,
+  ): boolean;
   linkBlocks(
     source: ElementId,
     target: ElementId,
@@ -1655,6 +1685,134 @@ export const useWorkspaceStore = create<WorkspaceStore>()((set, get) => ({
     if (!bus || !user || !registry) return;
     if (!registry.getEdge(id)) return;
     bus.dispatch({ kind: 'unlink', id }, user);
+  },
+
+  reconnectEdge(edgeId, end, newNodeId, newHandleId) {
+    const { bus, user, registry, edges } = get();
+    if (!bus || !user || !registry) return false;
+
+    // ── ModelEdge path ──────────────────────────────────────────────────────
+    const modelEdge = registry.getEdge(edgeId as EdgeId);
+    if (modelEdge) {
+      const newSource = end === 'source' ? newNodeId : modelEdge.sourceId;
+      const newTarget = end === 'target' ? newNodeId : modelEdge.targetId;
+      if (newSource === newTarget) return false;
+
+      // Build a synthetic Connection to run through the viewpoint validator.
+      const syntheticConn = {
+        source: newSource as string,
+        target: newTarget as string,
+        sourceHandle: null,
+        targetHandle: null,
+      };
+
+      // Validate using the appropriate viewpoint rule for this edge kind.
+      const kind = modelEdge.kind;
+      if (
+        kind === 'Composition' ||
+        kind === 'Aggregation' ||
+        kind === 'Generalization' ||
+        kind === 'Association' ||
+        kind === 'Dependency'
+      ) {
+        if (!isValidBddConnection(syntheticConn, registry)) return false;
+      } else if (kind === 'RequirementTrace') {
+        if (validTraceKindsFor(syntheticConn, registry).length === 0) return false;
+      } else if (kind === 'ControlFlow' || kind === 'ObjectFlow') {
+        if (!isValidActivityConnection(syntheticConn, registry)) return false;
+      } else if (
+        kind === 'Include' ||
+        kind === 'Extend' ||
+        kind === 'PackageImport'
+      ) {
+        if (!isValidUseCaseConnection(syntheticConn, registry)) return false;
+      } else if (kind === 'ParameterBinding') {
+        if (!isValidParametricConnection(syntheticConn, registry, edges)) return false;
+      } else {
+        // Exhaustiveness guard — if a new edge kind is added without a case,
+        // this block rejects the reconnect rather than silently permitting it.
+        return false;
+      }
+
+      // Dispatch compound [unlink, link-with-new-endpoints] so Cmd-Z is one step.
+      const updatedEdge: ModelEdge = { ...modelEdge, sourceId: newSource, targetId: newTarget };
+      bus.dispatch(
+        {
+          kind: 'compound',
+          commands: [
+            { kind: 'unlink', id: modelEdge.id },
+            { kind: 'link', edge: updatedEdge },
+          ],
+        },
+        user,
+      );
+      return true;
+    }
+
+    // ── Element-as-edge path ─────────────────────────────────────────────────
+    const element = registry.get(edgeId as ElementId);
+    if (!element) return false;
+    if (
+      element.kind !== 'ConnectionUsage' &&
+      element.kind !== 'ItemFlow' &&
+      element.kind !== 'Transition'
+    ) {
+      return false;
+    }
+
+    const currentSourceId = element.sourceId;
+    const currentTargetId = element.targetId;
+
+    // For IBD (ConnectionUsage / ItemFlow) the endpoint identity is the
+    // PortUsage id, which React Flow carries in the connection handle.
+    // When newHandleId is provided, use it as the endpoint id directly.
+    const resolvedNewEndpoint = (newHandleId != null
+      ? (newHandleId as ElementId)
+      : newNodeId);
+    const newSource = end === 'source' ? resolvedNewEndpoint : currentSourceId;
+    const newTarget = end === 'target' ? resolvedNewEndpoint : currentTargetId;
+    if (newSource === newTarget) return false;
+
+    if (element.kind === 'ConnectionUsage' || element.kind === 'ItemFlow') {
+      // IBD validator needs the PortUsage ids in the handle fields. When
+      // newHandleId is available the synthetic connection can be fully
+      // resolved; without it the validation is skipped (the React Flow
+      // isValidConnection prop already ran the check before onReconnect fires).
+      if (newHandleId != null) {
+        const oldHandle = end === 'source' ? currentSourceId : currentTargetId;
+        const syntheticConn = {
+          source: end === 'source' ? newNodeId as string : registry.get(currentSourceId)?.ownerId ?? newNodeId as string,
+          target: end === 'target' ? newNodeId as string : registry.get(currentTargetId)?.ownerId ?? newNodeId as string,
+          sourceHandle: (end === 'source' ? newHandleId : oldHandle) as string,
+          targetHandle: (end === 'target' ? newHandleId : oldHandle) as string,
+        };
+        if (!isValidIbdConnection(syntheticConn, registry)) return false;
+      }
+    } else if (element.kind === 'Transition') {
+      const syntheticConn = {
+        source: newSource as string,
+        target: newTarget as string,
+        sourceHandle: null,
+        targetHandle: null,
+      };
+      if (!isValidStateMachineConnection(syntheticConn, registry)) return false;
+    }
+
+    // Use the specific element kind so TypeScript can validate that
+    // sourceId / targetId are valid patch fields for this element's type.
+    const endpointPatch: ElementPatch<typeof element.kind> = {
+      sourceId: newSource,
+      targetId: newTarget,
+    };
+    bus.dispatch(
+      {
+        kind: 'update-element',
+        id: element.id,
+        patch: endpointPatch,
+      },
+      user,
+    );
+    return true;
   },
 
   linkBlocks(source, target, kind) {
