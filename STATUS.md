@@ -3,7 +3,9 @@
 ## Current phase
 phase:15 — Architect-driven UX & feature hardening
 
-🎯 **Iter-891: architect hat → walk-35 PLAN-SEAL against the deployed `vphase-15.10` / `v1.6.1` bundle.** Walk-35 is the **new chain[1] retry candidate** post-#548-closure (chain stays at 0/3 per the iter-889/890 strict-read of A.12 #3 — a walk that filed a `type:bug` at walk time does not retroactively un-reset, even if the bug is later closed as a driver artefact). Walk-35's plan sealed at `docs/architect/walks/walk-35.md` with `## Plan` + `## Snapshot` sections; `## Execution` + `## Decide next` + `## Close-out` deferred to iter-892. **Key driver amendment from walk-34:** the use-case V-B step now probes `g[data-association-edge="true"]` (NOT `[data-testid^="use-case-edge-"]` which collides with popover-kind testids) and explicitly clicks `use-case-edge-kind-Association` after each drag to commit the popover. The same `data-{kind}-edge` pattern applies to any future per-kind probes. Closes chore `#554`.
+🎯 **Iter-892: architect hat → walk-35 EXECUTED CLEAN against `vphase-15.10` / `v1.6.1` Pages.** 23/24 PASS + 1 INFO (X-7) — lands on row 1 of walk-35.md § Acceptance / rubric impact (expected outcome). Use-case V-B now PASSES bidirectional (`edge_kind=association-bidirectional`) with both PRIMARY (`usecase.right → actor.left`) and SECONDARY (`actor.right → usecase.left`) drags opening the kind popover, committing via `use-case-edge-kind-Association` click, and producing a new `g[data-association-edge="true"]` element. Walk-34's PARTIAL is now fully disambiguated as a driver artefact: PRIMARY was a false positive (loose `[data-testid^="use-case-edge-"]` prefix matched the un-committed popover testids); SECONDARY was a false negative (popover testids from PRIMARY's un-committed popover were already in the pre-drag snapshot). Zero issues filed; zero rubric demotion. **Chain advance 0 → 1/3 + dim 10 promotion 2 → 3 stage to iter-893's close-out PR** per walk-35.md § Two-hat discipline (this iteration documents evidence; iter-893 commits the promotion). Pages headers byte-identical to walk-34/walk-35-plan-seal anchor (`last-modified: Mon, 18 May 2026 23:11:59 GMT`, `etag: "6a0b9cbf-1eb"`). Closes chore `#556`.
+
+🎯 **Iter-891: architect hat → walk-35 PLAN-SEAL.** Walk-35 plan authored at `docs/architect/walks/walk-35.md` with corrected use-case V-B driver consuming the iter-890 popover-prefix-collision gotcha. Closed `#554`; merged at `4eff517` (PR #555).
 
 🎯 **Iter-890: engineer hat → #548 closed as walk-driver artefact (NOT an application bug).** Investigation traced walk-34's `use-case_v_b_secondary: FAIL` to a testid-prefix collision in the walk driver: `[data-testid^="use-case-edge-"]` matches both real edge testids (`use-case-edge-{id}`) AND popover testids (`use-case-edge-kind-popover`, `use-case-edge-kind-Association`, ...). PRIMARY's PASS was a false positive (popover testids appearing as "new" edges); SECONDARY's FAIL was a false negative (popover testids already in the `before` snapshot from PRIMARY's still-open popover). New e2e test `tests/e2e/use-case-edges.spec.ts § 'drag Actor.right → UseCase.left also opens popover for Association (phase-15 #548)'` exercises the exact handle pair and PASSES — application is correct. CONTEXT.md gotcha appended for walk-35's driver fix. **Dim 10 (Use Case SysML conformance) stays at 2 pending walk-35.** Convergence chain stays at 0 / 3.
 
@@ -30,49 +32,52 @@ phase:15 — Architect-driven UX & feature hardening
 
 | # | Condition | Status |
 |---|-----------|--------|
-| A.12 #1 | Every rubric dim at 3 | **3 of 28** at 3 (dim 5 BDD, dim 14 Round-trip, dim 6 IBD); **22** at 2; 0 at 1; 3 at 0. Dim 10 (Use Case SysML conformance) **holds at 2** at iter-891 — application bidirectional Actor↔UseCase Association is locked in by iter-890's e2e test; promotion to 3 stages behind walk-35 (corrected driver) demonstrating a clean bidirectional pass on the deployed bundle. |
-| A.12 #2 | Zero open `phase:15` issues labelled `type:bug/feature/design` | **Satisfied** at iter-891 close — only `#554` open (`type:chore`, plan-seal scaffold) which is label-scope-excluded. |
-| A.12 #3 | Three consecutive convergence walks | **chain[0 / 3]** — walk-35 is the new chain[1] retry candidate (iter-892 execute). |
+| A.12 #1 | Every rubric dim at 3 | **3 of 28** at 3 (dim 5 BDD, dim 14 Round-trip, dim 6 IBD); 22 at 2; 0 at 1; 3 at 0. **Dim 10 (Use Case SysML conformance) staged 2 → 3** at iter-892 — walk-35 demonstrated bidirectional Actor↔UseCase Association on the deployed bundle with a non-artefactual driver. Iter-893's close-out PR commits the promotion to `docs/architect/quality-rubric.md`, bringing the count to **4 of 28** at 3. |
+| A.12 #2 | Zero open `phase:15` issues labelled `type:bug/feature/design` | **Satisfied** at iter-892 close — only `#556` open (`type:chore`, this iteration's close-out) which is label-scope-excluded. |
+| A.12 #3 | Three consecutive convergence walks | **chain[0 → 1 / 3]** staged at iter-892 — walk-35 EXECUTED CLEAN (23/24 PASS + 1 INFO, zero issues filed). Iter-893's close-out PR commits the advance. |
 | A.12 #4 | FBW example shipped + loadable | **Un-gates on chain saturation + rubric saturation.** |
 
 ## Current iteration
-- Iteration #: 891
-- Started: 2026-05-19 (UTC, post-#553 merge at `fd1d625`)
-- Branch: `phase-15/walk-35-plan-seal` (off main `fd1d625`, not stacked)
-- Working on: #554 — walk-35 plan-seal (architect hat)
+- Iteration #: 892
+- Started: 2026-05-19 (UTC, post-#555 merge at `4eff517`)
+- Branch: `phase-15/walk-35-execute` (off main `4eff517`, not stacked)
+- Working on: #556 — walk-35 execute (architect hat)
 
 ## Last test run
-- `pnpm typecheck` not run this iteration — plan-seal is docs-only (no source changes; no test additions).
+- `pnpm typecheck` not run this iteration — execute is docs-only at the commit layer (the walk driver under `artifacts/` is gitignored; the only committed change is `docs/architect/walks/walk-35.md`, `docs/architect/in-flight.md`, and `STATUS.md`). No source changes; no test additions.
 - Full CI gate runs on the PR via the doc-only paths-filter from ADR 0016 (CI skips e2e for doc-only PRs that touch only `docs/**` and `STATUS.md`).
+- **Walk-35 driver outcome (run against the deployed bundle, not part of CI):** 23/24 PASS + 1 INFO. JSON outcome: `artifacts/phase-15/walk-35/walk-35.json`. Screenshots: `artifacts/phase-15/walk-35/screenshots/` (26 PNGs).
 
 ## Last health check
 
 Per AGENT.md directive #13, **iter-880** ran the periodic health check — **all four checks PASS**. Next health check is **iter-900** (iter-890 deferral now compounds to iter-900 to keep the every-10th cadence on round multiples).
 
+Iter-892 incidentally re-verified the "Pages deploy reachable" check (HTTP 200 + byte-identical headers to walk-34/walk-35-plan-seal anchor) — passes — but this does not advance the formal health-check cadence.
+
 ## Last PR sweep
-- Iter-891 launch: `gh pr list --state open` returned `[]` after #553 auto-merged at `fd1d625`. This iteration opens one new PR (the walk-35 plan-seal). **In-flight 1 / 5 of A.8 cap.**
+- Iter-892 launch: `gh pr list --state open` returned `[]` after #555 auto-merged at `4eff517`. This iteration opens one new PR (the walk-35 execute close-out). **In-flight 1 / 5 of A.8 cap.**
 
 ## Known issues / blockers
-- None. Walk-35 plan-seal is doc-only; iter-892 will execute walk-35 against the unchanged `vphase-15.10` Pages bundle.
+- None. Walk-35 execute landed CLEAN (row 1 of walk-35.md § Acceptance / rubric impact). Iter-893's close-out PR commits the chain advance 0 → 1/3 + dim 10 promotion 2 → 3 + JOURNAL `event: design-decision` entry per A.14.
 
-## Open phase:15 issues at iter-891 close (after #554 file)
-- **#554** — `[phase-15] iter-891 — walk-35 plan-seal (chain[1] retry on vphase-15.10 / v1.6.1; dim-10 score-3 candidate, corrected driver)` (`type:chore`, `p2`, `area:cross-cutting`, `status:in-progress`). Closes via this iteration's PR.
+## Open phase:15 issues at iter-892 close (after #556 file)
+- **#556** — `[phase-15] iter-892 — execute walk-35 (chain[1] retry; corrected driver; dim-10 score-3 gate)` (`type:chore`, `p2`, `area:cross-cutting`, `status:in-progress`). Closes via this iteration's PR.
 
 ## Decisions log
 
-**Iter-808..iter-890 entries preserved in earlier commits.**
+**Iter-808..iter-891 entries preserved in earlier commits.**
 
-- **Iter-891 — walk-35 plan-sealed with corrected use-case V-B driver.** Walk-34's PARTIAL on V-B SECONDARY was traced in iter-890 to a popover-prefix-collision in the driver's `wait_for_function` selector (`[data-testid^="use-case-edge-"]` matches both real edge testids and popover-kind testids). The walk-35 plan therefore encodes two mandatory amendments inline (so iter-892 cannot regress to the broken pattern): (1) probe real edges via `g[data-association-edge="true"]` (or `data-{kind}-edge` for other kinds), (2) explicitly click `use-case-edge-kind-Association` after each drag to commit the popover before checking the post-drag count. Both amendments are also implicit in the iter-890 e2e test at `tests/e2e/use-case-edges.spec.ts § 'drag Actor.right → UseCase.left also opens popover for Association (phase-15 #548)'`, which serves as the executable reference for the correct driver pattern.
+- **Iter-892 — walk-35 EXECUTED CLEAN; row 1 of § Acceptance / rubric impact.** 23/24 PASS + 1 INFO (X-7 unchanged). Both use-case V-B drag directions PASSED (`edge_kind=association-bidirectional`): PRIMARY `usecase.right → actor.left` and SECONDARY `actor.right → usecase.left` each opened `[data-testid="use-case-edge-kind-popover"]`, committed via `use-case-edge-kind-Association` click, and produced a new `g[data-association-edge="true"]` element. Zero issues filed; zero rubric demotion. The corrected driver fully disambiguated walk-34's apparent PRIMARY-passes-SECONDARY-fails partition as a driver artefact, in exact agreement with iter-890's e2e lock-in test at `tests/e2e/use-case-edges.spec.ts § 'drag Actor.right → UseCase.left also opens popover for Association (phase-15 #548)'`. The application has been bidirectional on `vphase-15.10` / `v1.6.1` since iter-879's PR #531; iter-892 is the deployed-bundle confirmation.
 
-- **Iter-891 — convergence chain stays at 0 / 3 (no change from iter-890).** Per the iter-889/890 strict-read: a walk that files a `type:bug` at walk time resets the chain, even if the bug is later closed as an artefact. Walk-35 is the new chain[1] candidate.
+- **Iter-892 — chain advance 0 → 1/3 + dim 10 promotion 2 → 3 stage to iter-893's close-out PR.** Per walk-35.md § Two-hat discipline, the execute iteration documents evidence; the close-out iteration commits the promotion. The `docs/architect/quality-rubric.md` edit (dim 10: 2 → 3) and the JOURNAL `event: design-decision` entry per A.14 land in iter-893's PR. Walk-36 (chain[2] candidate) plan-seals in iter-894+. Per iter-876's post-dim-10 plan, walk-36 should be a dedicated dim-17 walk (edge editing affordances) — currently dim 17 holds at 2 and a focused walk against the deployed bundle is the lightest path to chain[2].
 
-- **Iter-891 — Pages bundle unchanged.** `curl -sI` at iter-891 launch returned the byte-identical headers (`last-modified: Mon, 18 May 2026 23:11:59 GMT`, `etag: "6a0b9cbf-1eb"`) to walk-34's anchor — confirming that iter-890's PR #553 (test+docs-only) did not trigger a Pages deploy. Walk-35 targets the same `vphase-15.10` / `v1.6.1` bundle that walk-34 ran against. This is the right target — the application correctness is already deployed; what walk-35 verifies is the deployed-bundle behaviour with a non-artefactual driver.
+- **Iter-892 — Pages bundle unchanged across iter-890..892 (three iterations).** `curl -sI` at iter-892 launch returned the same `last-modified: Mon, 18 May 2026 23:11:59 GMT, etag: "6a0b9cbf-1eb"` headers as walk-34, walk-35-plan-seal, and iter-890. Confirms that PRs #553 (test+docs-only), #555 (docs-only), and any pending #557 (docs-only) do not trigger Pages deploys per ADR 0017's release-tag-only deploy cadence. Walk-35 targeted the same `vphase-15.10` / `v1.6.1` bundle as walk-34 (correct target — application correctness is already deployed; walk-35 verified the deployed-bundle behaviour with a non-artefactual driver).
 
 ## Session checkpoint summary
 
-This session (iter-793 → iter-891) has executed **99 iterations** spanning bootstrap, **19 broad/regression walks against deployed Pages** (walks 1 + 26..34), **~29 engineer batches**, **10 release tags** (`vphase-15.1` → `vphase-15.10`), **4 ADRs** (0014/0015/0016/0017).
+This session (iter-793 → iter-892) has executed **100 iterations** spanning bootstrap, **20 broad/regression walks against deployed Pages** (walks 1 + 26..35), **~29 engineer batches**, **10 release tags** (`vphase-15.1` → `vphase-15.10`), **4 ADRs** (0014/0015/0016/0017).
 
-Most recent arc: iter-879 #528 fix shipped → iter-880 health check PASS → iter-881..884 four blocked-tick STATUS syncs → iter-885 ADR 0017 (agent-cut tags) → iter-886 vphase-15.10 / v1.6.1 first agent-cut release → iter-887 walk-34 plan-seal (PR #547) → iter-888 walk-34 execute (22 PASS + 1 PARTIAL + 1 INFO; #548 filed) → iter-889 walk-34 architect close-out (PR #552) → iter-890 engineer hat → #548 closed as walk-driver artefact + lock-in test (PR #553) → **iter-891 architect hat → walk-35 plan-seal with corrected driver (PR pending; closes #554)**.
+Most recent arc: iter-879 #528 fix shipped → iter-880 health check PASS → iter-881..884 four blocked-tick STATUS syncs → iter-885 ADR 0017 (agent-cut tags) → iter-886 vphase-15.10 / v1.6.1 first agent-cut release → iter-887 walk-34 plan-seal (PR #547) → iter-888 walk-34 execute (22 PASS + 1 PARTIAL + 1 INFO; #548 filed) → iter-889 walk-34 architect close-out (PR #552) → iter-890 engineer hat → #548 closed as walk-driver artefact + lock-in test (PR #553) → iter-891 walk-35 plan-seal with corrected driver (PR #555 merged at `4eff517`) → **iter-892 walk-35 EXECUTE → CLEAN row 1 (23/24 PASS + 1 INFO); chain 0 → 1/3 + dim 10 → 3 stage to iter-893 close-out**.
 
 | Tag | Date | What |
 |-----|------|------|
@@ -87,15 +92,15 @@ Most recent arc: iter-879 #528 fix shipped → iter-880 health check PASS → it
 | vphase-15.9 / v1.6.0 | 2026-05-18 | #517 Actor↔UseCase Association + ADR 0007 § 5/§ 7 deferral closure |
 | vphase-15.10 / v1.6.1 | 2026-05-19 | #528 use-case bidirectional-drag fix (#531) + ADR 0017 agent-cut tag cadence (#543). Iter-890 confirms the #531 fix is complete; walk-34's contrary finding was a driver artefact. |
 
-Rubric: **3 × score-3** (dim 5 BDD, dim 14 Round-trip integrity, dim 6 IBD) + **22 × score-2** + **0 × score-1** + **3 × score-0**. Dim-10 promotion gated on walk-35 (corrected driver, iter-892 execute).
+Rubric: **3 × score-3** (dim 5 BDD, dim 14 Round-trip integrity, dim 6 IBD) + **22 × score-2** + **0 × score-1** + **3 × score-0**. **Dim-10 staged 2 → 3** at iter-892 close (walk-35 row 1 evidence in hand); iter-893 close-out PR commits the promotion to **4 × score-3**.
 
 ## Next action
 
-**Iter-892 — walk-35 EXECUTE against the deployed `vphase-15.10` / `v1.6.1` bundle.** Pre-flight: re-verify Pages headers (`last-modified: Mon, 18 May 2026 23:11:59 GMT`, `etag: "6a0b9cbf-1eb"`); confirm no STOP file / `status:emergency-stop`. Driver: copy `walk-34-exec.py` to `walk-35-exec.py` and apply the use-case V-B amendment per `walk-35.md § Driver amendment from walk-34` (probe `g[data-association-edge="true"]`, click `use-case-edge-kind-Association` after each drag). Expected outcome: 23/24 PASS + 1 INFO → chain 0 → 1/3 + dim 10 promotion to 3 (FOURTH score-3 dimension).
+**Iter-893 — walk-35 close-out (architect hat).** Small docs PR that lands: (1) STATUS sync committing chain 0 → 1/3, (2) `docs/architect/quality-rubric.md` edit promoting dim 10 (Use Case SysML conformance) 2 → 3 with score rationale, (3) JOURNAL `event: design-decision` entry per A.14 (broader interpretation per iter-834 / iter-867 precedent — each new dim at 3 is a notable moment), (4) close the iter-892 in-flight row from `docs/architect/in-flight.md` and open the iter-893 row.
 
-**Iter-893+ — walk-35 close-out (chain advance + dim-10 promotion + JOURNAL `event: design-decision` entry per A.14) + chain[2] candidate plan-seal.**
+**Iter-894+ — walk-36 plan-seal (chain[2] candidate).** Per iter-876's post-dim-10 plan, walk-36 should be a dedicated **dim-17 walk** (edge editing affordances — reconnect endpoints, waypoints, label placement, edge style selection). Dim 17 holds at 2; a focused walk against the deployed `vphase-15.10` bundle is the lightest path to chain[2].
 
-**Halting safety:** STOP file / `status:emergency-stop` label unchanged; Phase-15 iter-count at 99, well under the 300 churn ceiling.
+**Halting safety:** STOP file / `status:emergency-stop` label unchanged; Phase-15 iter-count at 100, well under the 300 churn ceiling.
 
-**In-flight at iter-891 close (1 / 5 of A.8 cap):**
-- PR for iter-891's walk-35 plan-seal (#554 close-out) — opens this iteration.
+**In-flight at iter-892 close (1 / 5 of A.8 cap):**
+- PR for iter-892's walk-35 execute (#556 close-out) — opens this iteration.
